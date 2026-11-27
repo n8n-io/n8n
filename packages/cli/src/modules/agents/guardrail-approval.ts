@@ -18,11 +18,11 @@ import { isRecord } from '@n8n/utils/is-record';
 import { buildApprovalArgs } from './execution-recorder';
 import { executeWorkflow } from './tools/workflow-tool-factory';
 
-/** Per-run identity the `review` response routes flagged content with. */
-export interface ToolGuardrailReviewContext {
+/** Per-run identity the `approval` response routes flagged content with. */
+export interface ToolGuardrailApprovalContext {
 	agentId: string;
 	projectId: string;
-	/** Published runs execute the review workflow's published version, integrated. */
+	/** Published runs execute the approval workflow's published version, integrated. */
 	published: boolean;
 	/** The agent's connected channels; a channel destination must be among them. */
 	integrations: AgentIntegrationConfig[];
@@ -30,8 +30,8 @@ export interface ToolGuardrailReviewContext {
 	configurations: AgentHitlConfiguration[];
 }
 
-/** The flagged content a guardrail sends to review. */
-export interface GuardrailReviewPayload {
+/** The flagged content a guardrail sends for approval. */
+export interface GuardrailApprovalPayload {
 	/** The stage the check ran at, for the reviewer's context. */
 	stage: 'before' | 'after';
 	/** The value the check flagged: the tool input or the tool result. */
@@ -41,12 +41,12 @@ export interface GuardrailReviewPayload {
 }
 
 /**
- * Routes a `review`-response guardrail trigger to the agent's human-review
+ * Routes an `approval`-response guardrail trigger to the agent's human-review
  * configuration. The routing starts a decision-workflow execution and returns;
  * the tool call continues and never waits for a reviewer.
  */
 @Service()
-export class ToolGuardrailReviewService {
+export class ToolGuardrailApprovalService {
 	constructor(
 		private readonly loader: CallableWorkflowLoader,
 		private readonly policyChecker: SubworkflowPolicyChecker,
@@ -55,17 +55,17 @@ export class ToolGuardrailReviewService {
 		private readonly logger: Logger,
 	) {}
 
-	/** Never rejects: a review must not break the call it flagged. */
+	/** Never rejects: an approval must not break the call it flagged. */
 	async route(
-		context: ToolGuardrailReviewContext | undefined,
+		context: ToolGuardrailApprovalContext | undefined,
 		guardrail: AgentToolGuardrailConfig,
 		ctx: GuardrailToolCallContext,
-		payload: GuardrailReviewPayload,
+		payload: GuardrailApprovalPayload,
 	): Promise<void> {
 		try {
 			await this.startRouting(context, guardrail, ctx, payload);
 		} catch (error) {
-			this.logger.warn('A guardrail review did not route', {
+			this.logger.warn('A guardrail approval request did not route', {
 				guardrailKind: guardrail.kind,
 				error: error instanceof Error ? error.message : String(error),
 			});
@@ -73,44 +73,53 @@ export class ToolGuardrailReviewService {
 	}
 
 	private async startRouting(
-		context: ToolGuardrailReviewContext | undefined,
+		context: ToolGuardrailApprovalContext | undefined,
 		guardrail: AgentToolGuardrailConfig,
 		ctx: GuardrailToolCallContext,
-		payload: GuardrailReviewPayload,
+		payload: GuardrailApprovalPayload,
 	): Promise<void> {
 		if (!context) {
-			this.logger.warn('A guardrail review did not route: the run has no review identity', {
-				guardrailKind: guardrail.kind,
-			});
+			this.logger.warn(
+				'A guardrail approval request did not route: the run has no approval identity',
+				{
+					guardrailKind: guardrail.kind,
+				},
+			);
 			return;
 		}
 		if (!this.config.humanReviewEnabled) {
-			this.logger.warn('A guardrail review did not route: human review is not enabled', {
-				agentId: context.agentId,
-				guardrailKind: guardrail.kind,
-			});
+			this.logger.warn(
+				'A guardrail approval request did not route: human approval is not enabled',
+				{
+					agentId: context.agentId,
+					guardrailKind: guardrail.kind,
+				},
+			);
 			return;
 		}
 		const configuration = context.configurations.find(
-			(entry) => entry.id === guardrail.reviewConfigurationId,
+			(entry) => entry.id === guardrail.approvalConfigurationId,
 		);
 		if (!configuration) {
-			this.logger.warn('A guardrail review did not route: its configuration is unavailable', {
-				agentId: context.agentId,
-				guardrailKind: guardrail.kind,
-			});
+			this.logger.warn(
+				'A guardrail approval request did not route: its configuration is unavailable',
+				{
+					agentId: context.agentId,
+					guardrailKind: guardrail.kind,
+				},
+			);
 			return;
 		}
 		if (configuration.method === 'channel') {
 			// The only channel delivery the HITL surface offers is a
 			// send-and-wait approval card, and its buttons only work for real
-			// approval jobs this path never creates — so a channel review would
+			// approval jobs this path never creates — so a channel approval would
 			// deliver a card with dead buttons and leave the child execution
 			// waiting until timeout. A notify-only channel destination needs
 			// per-platform nodes from the approval owners; until then, routing
 			// skips the channel rather than sending a broken card.
 			this.logger.warn(
-				'A guardrail review did not route: channel review destinations are not supported yet',
+				'A guardrail approval request did not route: channel approval destinations are not supported yet',
 				{ agentId: context.agentId, guardrailKind: guardrail.kind },
 			);
 			return;
@@ -121,10 +130,13 @@ export class ToolGuardrailReviewService {
 			{ usePublishedVersion: context.published },
 		);
 		if (!workflow) {
-			this.logger.warn('A guardrail review did not route: the review workflow is unavailable', {
-				agentId: context.agentId,
-				guardrailKind: guardrail.kind,
-			});
+			this.logger.warn(
+				'A guardrail approval request did not route: the approval workflow is unavailable',
+				{
+					agentId: context.agentId,
+					guardrailKind: guardrail.kind,
+				},
+			);
 			return;
 		}
 		const trigger = workflow.nodes.find(
@@ -132,7 +144,7 @@ export class ToolGuardrailReviewService {
 		);
 		if (!trigger) {
 			this.logger.warn(
-				'A guardrail review did not route: the review workflow has no Request from agent trigger',
+				'A guardrail approval request did not route: the approval workflow has no Request from agent trigger',
 				{ agentId: context.agentId, guardrailKind: guardrail.kind },
 			);
 			return;
@@ -142,7 +154,7 @@ export class ToolGuardrailReviewService {
 			payload.stage === 'before' ? 'tool input' : 'tool result'
 		} for ${ctx.toolName}${this.describeMatches(payload.matchDetails)}`;
 		// The execution runs on its own: nothing resumes the tool call on its
-		// completion, so the review informs and never gates.
+		// completion, so the approval informs and never gates.
 		const { WorkflowRunner } = await import('@/workflow-runner.js');
 		void executeWorkflow(
 			workflow,
@@ -163,7 +175,7 @@ export class ToolGuardrailReviewService {
 				executionMode: context.published ? 'integrated' : 'manual',
 			},
 		).catch((error) =>
-			this.logger.warn('A guardrail review workflow failed', {
+			this.logger.warn('A guardrail approval workflow failed', {
 				agentId: context.agentId,
 				guardrailKind: guardrail.kind,
 				error: error instanceof Error ? error.message : String(error),

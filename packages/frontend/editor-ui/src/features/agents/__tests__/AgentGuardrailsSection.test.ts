@@ -64,8 +64,8 @@ vi.mock('../components/AgentGuardrailModal.vue', () => ({
 			'guardrail',
 			'kind',
 			'tools',
-			'reviewConfigurations',
-			'reviewContext',
+			'approvalConfigurations',
+			'approvalContext',
 			'projectId',
 			'disabled',
 		],
@@ -174,7 +174,7 @@ function mountSection(
 		tools: AgentJsonToolRef[];
 		disabled: boolean;
 		validationIssues: AgentConfigValidationIssue[];
-		reviewContext: AgentHitlContext;
+		approvalContext: AgentHitlContext;
 	}> = {},
 	approval?: string,
 ) {
@@ -485,12 +485,12 @@ describe('AgentGuardrailsSection', () => {
 	});
 
 	it('forwards the review context and configurations into the guardrail modal', () => {
-		const reviewContext: AgentHitlContext = { getConfig: () => null, saveConfiguration: vi.fn() };
-		const wrapper = mountSection({ reviewContext });
+		const approvalContext: AgentHitlContext = { getConfig: () => null, saveConfiguration: vi.fn() };
+		const wrapper = mountSection({ approvalContext });
 
 		const modal = wrapper.getComponent({ name: 'AgentGuardrailModal' });
-		expect(modal.props('reviewContext')).toStrictEqual(reviewContext);
-		expect(modal.props('reviewConfigurations')).toEqual([]);
+		expect(modal.props('approvalContext')).toStrictEqual(approvalContext);
+		expect(modal.props('approvalConfigurations')).toEqual([]);
 	});
 
 	it('opens the add menu from the empty-state button when no guardrail exists', async () => {

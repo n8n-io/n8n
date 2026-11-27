@@ -1055,7 +1055,7 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 
 	it('rejects review without a configuration and a configuration without review', () => {
 		const reviewless = parseGuardrails([
-			{ ...baseGuardrail, kind: 'keywords', keywords: ['a'], response: 'review' },
+			{ ...baseGuardrail, kind: 'keywords', keywords: ['a'], response: 'approval' },
 		]);
 		expect(reviewless.success).toBe(false);
 		if (!reviewless.success) {
@@ -1070,7 +1070,7 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 				kind: 'keywords',
 				keywords: ['a'],
 				response: 'block',
-				reviewConfigurationId: 'config-1',
+				approvalConfigurationId: 'config-1',
 			},
 		]);
 		expect(misconfigured.success).toBe(false);
@@ -1094,8 +1094,8 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 							...baseGuardrail,
 							kind: 'keywords',
 							keywords: ['a'],
-							response: 'review',
-							reviewConfigurationId: 'config-missing',
+							response: 'approval',
+							approvalConfigurationId: 'config-missing',
 						},
 					],
 				},
@@ -1122,8 +1122,8 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 							...baseGuardrail,
 							kind: 'keywords',
 							keywords: ['a'],
-							response: 'review',
-							reviewConfigurationId: 'config-1',
+							response: 'approval',
+							approvalConfigurationId: 'config-1',
 						},
 					],
 				},
@@ -1143,8 +1143,8 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 							...baseGuardrail,
 							kind: 'keywords',
 							keywords: ['a'],
-							response: 'review',
-							reviewConfigurationId: 'config-missing',
+							response: 'approval',
+							approvalConfigurationId: 'config-missing',
 						},
 					],
 				},

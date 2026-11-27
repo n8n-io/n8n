@@ -190,7 +190,7 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 		actions.onOpenAddToolModal();
 		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
 		const configuration = {
-			id: 'review',
+			id: 'approval',
 			name: 'Review',
 			method: 'workflow',
 			workflowId: 'wf',
@@ -201,7 +201,7 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 				type: 'custom',
 				id: 'send',
 				requireApproval: true,
-				approvalRoute: { type: 'configuration', configurationIds: ['review'] },
+				approvalRoute: { type: 'configuration', configurationIds: ['approval'] },
 			},
 		];
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith(
@@ -299,11 +299,11 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 
 		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY]
 			.data as unknown as ToolsModalData & {
-			guardrails?: { getReviewContext?: () => unknown };
+			guardrails?: { getApprovalContext?: () => unknown };
 		};
 		// With the module off, the add-reviewer flow must not offer a context:
 		// entries the Human-review panel cannot manage must not be created.
-		expect(modalData.guardrails?.getReviewContext?.()).toBeUndefined();
+		expect(modalData.guardrails?.getApprovalContext?.()).toBeUndefined();
 	});
 
 	it('provides the guardrail review context while the human-review module is on', () => {
@@ -314,9 +314,11 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 
 		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY]
 			.data as unknown as ToolsModalData & {
-			guardrails?: { getReviewContext?: () => unknown };
+			guardrails?: { getApprovalContext?: () => unknown };
 		};
-		expect(modalData.guardrails?.getReviewContext?.()).toMatchObject({ agentId: 'inline:node-1' });
+		expect(modalData.guardrails?.getApprovalContext?.()).toMatchObject({
+			agentId: 'inline:node-1',
+		});
 	});
 
 	it('drops a late guardrail update when the host identity changed', () => {

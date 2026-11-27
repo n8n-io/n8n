@@ -51,10 +51,10 @@ const props = withDefaults(
 		kind?: AgentToolGuardrailKind;
 		/** The agent's configured tools, for the "Which tools" picker. */
 		tools?: AgentJsonToolRef[];
-		/** The agent's human-review configurations, for the review response target. */
-		reviewConfigurations?: AgentHitlConfiguration[];
+		/** The agent's human-review configurations, for the approval response target. */
+		approvalConfigurations?: AgentHitlConfiguration[];
 		/** Write access to the agent's configurations, so an empty picker can add a reviewer. */
-		reviewContext?: AgentHitlContext;
+		approvalContext?: AgentHitlContext;
 		/** The agent's project: the check workflow picker lists its workflows. */
 		projectId?: string;
 		/** Ids of guardrails that already exist, so a create cannot duplicate one. */
@@ -65,8 +65,8 @@ const props = withDefaults(
 		guardrail: null,
 		kind: 'keywords',
 		tools: () => [],
-		reviewConfigurations: () => [],
-		reviewContext: undefined,
+		approvalConfigurations: () => [],
+		approvalContext: undefined,
 		projectId: undefined,
 		disabled: false,
 	},
@@ -95,7 +95,7 @@ const allowSubdomains = ref(false);
 const prompt = ref('');
 const threshold = ref<number | undefined>();
 const response = ref<ToolGuardrailResponse>('block');
-const reviewConfigurationId = ref('');
+const approvalConfigurationId = ref('');
 const checkWorkflowId = ref('');
 const toolScope = ref<'all' | 'selected'>('all');
 const selectedToolKeys = ref<string[]>([]);
@@ -116,7 +116,7 @@ function resetKindFields() {
 	threshold.value = undefined;
 	// The new kind presets its own default response and drops the old target.
 	response.value = guardrailDefaultResponse(selectedKind.value);
-	reviewConfigurationId.value = '';
+	approvalConfigurationId.value = '';
 	checkWorkflowId.value = '';
 }
 
@@ -161,7 +161,7 @@ watch(
 			}
 		}
 		response.value = guardrail?.response ?? guardrailDefaultResponse(selectedKind.value);
-		reviewConfigurationId.value = guardrail?.reviewConfigurationId ?? '';
+		approvalConfigurationId.value = guardrail?.approvalConfigurationId ?? '';
 		toolScope.value = guardrail?.tools ? 'selected' : 'all';
 		selectedToolKeys.value = (guardrail?.tools ?? []).map(toolRefKey);
 		// The kind watcher runs as a queued job after this one; clearing the
@@ -245,10 +245,10 @@ const responseOptions = computed(() =>
 	})),
 );
 
-// Channel destinations have no notify-only delivery yet, so a channel review
+// Channel destinations have no notify-only delivery yet, so a channel approval
 // would never route; the picker offers workflow destinations only.
-const reviewConfigurationOptions = computed(() =>
-	props.reviewConfigurations
+const approvalConfigurationOptions = computed(() =>
+	props.approvalConfigurations
 		.filter((configuration) => configuration.method === 'workflow')
 		.map((configuration) => ({
 			value: configuration.id,
@@ -257,16 +257,16 @@ const reviewConfigurationOptions = computed(() =>
 );
 
 /**
- * Saves a picked review destination into the agent's configurations and
+ * Saves a picked approval destination into the agent's configurations and
  * selects it for this guardrail — one step, so an empty picker is never a
  * dead end. The configuration list derives from the agent config, so the
  * picker shows the new entry on the next render.
  */
-function addReviewConfiguration(destination: ApprovalDestination) {
-	if (!props.reviewContext || props.disabled) return;
+function addApprovalConfiguration(destination: ApprovalDestination) {
+	if (!props.approvalContext || props.disabled) return;
 	const configuration = { ...destination, id: generateNanoId() };
-	props.reviewContext.saveConfiguration(configuration);
-	reviewConfigurationId.value = configuration.id;
+	props.approvalContext.saveConfiguration(configuration);
+	approvalConfigurationId.value = configuration.id;
 }
 
 const piiEntityOptions = computed(() =>
@@ -283,8 +283,8 @@ const canSave = computed(() => {
 	if (selectedKind.value === 'pii' && !(piiType.value === 'all' || piiEntities.value.length > 0))
 		return false;
 	if (selectedKind.value === 'workflow' && checkWorkflowId.value.trim().length === 0) return false;
-	// The review response routes through one of the agent's configurations.
-	if (response.value === 'review' && reviewConfigurationId.value.length === 0) return false;
+	// The approval response routes through one of the agent's configurations.
+	if (response.value === 'approval' && approvalConfigurationId.value.length === 0) return false;
 	if (threshold.value !== undefined && (threshold.value < 0 || threshold.value > 1)) return false;
 	return true;
 });
@@ -312,8 +312,8 @@ function buildConfig(): AgentToolGuardrailConfig {
 			props.guardrail?.id ?? slugifyGuardrailId(name.value, selectedKind.value, props.existingIds),
 		...stage,
 		...(name.value.trim() ? { name: name.value.trim() } : {}),
-		...(response.value === 'review' && reviewConfigurationId.value
-			? { reviewConfigurationId: reviewConfigurationId.value }
+		...(response.value === 'approval' && approvalConfigurationId.value
+			? { approvalConfigurationId: approvalConfigurationId.value }
 			: {}),
 		...(toolScope.value === 'selected' ? { tools: selectedTools.value } : {}),
 	};
@@ -647,38 +647,38 @@ function onRemove() {
 					</N8nSelect>
 				</div>
 
-				<div v-if="response === 'review'" :class="$style.field">
+				<div v-if="response === 'approval'" :class="$style.field">
 					<N8nText size="medium" bold>
-						{{ i18n.baseText('agents.builder.guardrails.review.configuration.label') }}
+						{{ i18n.baseText('agents.builder.guardrails.approval.configuration.label') }}
 						<N8nText color="primary" bold size="small">*</N8nText>
 					</N8nText>
 					<N8nSelect
-						v-if="reviewConfigurationOptions.length > 0"
-						:model-value="reviewConfigurationId"
+						v-if="approvalConfigurationOptions.length > 0"
+						:model-value="approvalConfigurationId"
 						size="small"
 						:disabled="disabled"
-						data-testid="agent-guardrail-review-configuration"
-						@update:model-value="reviewConfigurationId = $event"
+						data-testid="agent-guardrail-approval-configuration"
+						@update:model-value="approvalConfigurationId = $event"
 					>
 						<N8nOption
-							v-for="option in reviewConfigurationOptions"
+							v-for="option in approvalConfigurationOptions"
 							:key="option.value"
 							:value="option.value"
 							:label="option.label"
 						/>
 					</N8nSelect>
 					<N8nText v-else size="small" :class="$style.hint">
-						{{ i18n.baseText('agents.builder.guardrails.review.configuration.none') }}
+						{{ i18n.baseText('agents.builder.guardrails.approval.configuration.none') }}
 					</N8nText>
 					<AgentApprovalDestinationMenu
-						v-if="reviewContext"
-						:context="reviewContext"
+						v-if="approvalContext"
+						:context="approvalContext"
 						:project-id="projectId ?? ''"
 						:disabled="disabled"
 						:class="$style.addReview"
-						:label="i18n.baseText('agents.builder.guardrails.review.configuration.add')"
-						data-testid="agent-guardrail-review-configuration-add"
-						@select="addReviewConfiguration"
+						:label="i18n.baseText('agents.builder.guardrails.approval.configuration.add')"
+						data-testid="agent-guardrail-approval-configuration-add"
+						@select="addApprovalConfiguration"
 					/>
 				</div>
 

@@ -151,10 +151,10 @@ const testButtonPrimaryColorExperiment = useTestButtonPrimaryColorExperiment();
 
 /**
  * Write access to the agent's human-review configurations for the guardrail
- * modal, so an empty review picker can add a reviewer. Mirrors the context
+ * modal, so an empty approval picker can add a reviewer. Mirrors the context
  * the Human-review panel builds for itself.
  */
-const guardrailReviewContext: AgentHitlContext = {
+const guardrailApprovalContext: AgentHitlContext = {
 	get agentId() {
 		return props.agentUnsaved ? undefined : props.agentId;
 	},
@@ -415,7 +415,7 @@ defineExpose({ onSetupTaskAction });
 							:agent-id="agentId"
 							:disabled="childrenDisabled"
 							:validation-issues="configValidationIssues ?? []"
-							:review-context="approvalDestinationsEnabled ? guardrailReviewContext : undefined"
+							:approval-context="approvalDestinationsEnabled ? guardrailApprovalContext : undefined"
 							@update:config="emit('update:config', $event)"
 							@update:budget-config="emit('update:budget-config', $event)"
 						>

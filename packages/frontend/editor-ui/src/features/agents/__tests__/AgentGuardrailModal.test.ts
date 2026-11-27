@@ -23,7 +23,7 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.guardrails.response.block': 'Block execution',
 				'agents.builder.guardrails.response.redact': 'Redact the match',
 				'agents.builder.guardrails.response.review': 'Send to review',
-				'agents.builder.guardrails.review.configuration.label': 'Human review destination',
+				'agents.builder.guardrails.approval.configuration.label': 'Human approval destination',
 				'agents.builder.guardrails.tools.all': 'All tools',
 				'agents.builder.guardrails.tools.selected': 'Select tools',
 				'agents.builder.guardrails.tools.none': 'Add tools to the agent first.',
@@ -188,8 +188,8 @@ function mountModal(
 		guardrail: AgentToolGuardrailConfig | null;
 		kind: AgentToolGuardrailConfig['kind'];
 		tools: AgentJsonToolRef[];
-		reviewConfigurations: AgentHitlConfiguration[];
-		reviewContext: AgentHitlContext;
+		approvalConfigurations: AgentHitlConfiguration[];
+		approvalContext: AgentHitlContext;
 		existingIds: string[];
 		disabled: boolean;
 	}> = {},
@@ -518,7 +518,7 @@ describe('AgentGuardrailModal', () => {
 			(wrapper.get('[data-testid="agent-guardrail-response"]').element as HTMLSelectElement)
 				.options,
 		).map((option) => option.value);
-		expect(options).toEqual(['block', 'review']);
+		expect(options).toEqual(['block', 'approval']);
 	});
 
 	it('presets the kind default response: pii redacts, keywords block', () => {
@@ -533,53 +533,55 @@ describe('AgentGuardrailModal', () => {
 		expect(selected(mountModal({ kind: 'jailbreak' }))).toBe('block');
 	});
 
-	it('requires a review destination for the review response and writes it', async () => {
+	it('requires a approval destination for the approval response and writes it', async () => {
 		const wrapper = mountModal({ kind: 'keywords' });
 		const keywordInput = wrapper.find('[data-testid="agent-guardrail-keywords"]');
 		await keywordInput.setValue('secret');
 		await keywordInput.trigger('keydown.enter');
-		await selectSingle(wrapper, 'agent-guardrail-response', 'review');
+		await selectSingle(wrapper, 'agent-guardrail-response', 'approval');
 
 		// No configurations exist: the empty-state hint shows and save stays off.
-		expect(wrapper.find('[data-testid="agent-guardrail-review-configuration"]').exists()).toBe(
+		expect(wrapper.find('[data-testid="agent-guardrail-approval-configuration"]').exists()).toBe(
 			false,
 		);
 		expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
 
 		await wrapper.setProps({
-			reviewConfigurations: [
+			approvalConfigurations: [
 				{ id: 'config-1', name: 'Security review', method: 'workflow', workflowId: 'wf-9' },
 			],
 		});
-		await selectSingle(wrapper, 'agent-guardrail-review-configuration', 'config-1');
+		await selectSingle(wrapper, 'agent-guardrail-approval-configuration', 'config-1');
 		expect(saveButton(wrapper).attributes('disabled')).toBeUndefined();
 		await saveButton(wrapper).trigger('click');
 
 		expect(savedConfig(wrapper)).toMatchObject({
 			kind: 'keywords',
 			keywords: ['secret'],
-			response: 'review',
-			reviewConfigurationId: 'config-1',
+			response: 'approval',
+			approvalConfigurationId: 'config-1',
 		});
 	});
 
 	it('adds a reviewer from the empty picker and selects it for the guardrail', async () => {
 		const saveConfiguration = vi.fn();
-		const reviewContext: AgentHitlContext = {
+		const approvalContext: AgentHitlContext = {
 			getConfig: () => null,
 			saveConfiguration,
 		};
-		const wrapper = mountModal({ kind: 'keywords', reviewContext });
+		const wrapper = mountModal({ kind: 'keywords', approvalContext });
 		const keywordInput = wrapper.find('[data-testid="agent-guardrail-keywords"]');
 		await keywordInput.setValue('secret');
 		await keywordInput.trigger('keydown.enter');
-		await selectSingle(wrapper, 'agent-guardrail-response', 'review');
+		await selectSingle(wrapper, 'agent-guardrail-response', 'approval');
 
 		// The empty state offers the add affordance; the select is absent.
-		expect(wrapper.find('[data-testid="agent-guardrail-review-configuration"]').exists()).toBe(
+		expect(wrapper.find('[data-testid="agent-guardrail-approval-configuration"]').exists()).toBe(
 			false,
 		);
-		await wrapper.get('[data-testid="agent-guardrail-review-configuration-add"]').trigger('click');
+		await wrapper
+			.get('[data-testid="agent-guardrail-approval-configuration-add"]')
+			.trigger('click');
 
 		// The picked destination is saved with a new id and selected for the guardrail.
 		expect(saveConfiguration).toHaveBeenCalledTimes(1);
@@ -592,15 +594,15 @@ describe('AgentGuardrailModal', () => {
 		expect(configuration.id.length).toBeGreaterThan(0);
 
 		// The configuration list derives from the agent config, so it re-renders.
-		await wrapper.setProps({ reviewConfigurations: [configuration] });
+		await wrapper.setProps({ approvalConfigurations: [configuration] });
 		expect(saveButton(wrapper).attributes('disabled')).toBeUndefined();
 		await saveButton(wrapper).trigger('click');
 
 		expect(savedConfig(wrapper)).toMatchObject({
 			kind: 'keywords',
 			keywords: ['secret'],
-			response: 'review',
-			reviewConfigurationId: configuration.id,
+			response: 'approval',
+			approvalConfigurationId: configuration.id,
 		});
 	});
 
@@ -609,12 +611,12 @@ describe('AgentGuardrailModal', () => {
 		const keywordInput = wrapper.find('[data-testid="agent-guardrail-keywords"]');
 		await keywordInput.setValue('secret');
 		await keywordInput.trigger('keydown.enter');
-		await selectSingle(wrapper, 'agent-guardrail-response', 'review');
+		await selectSingle(wrapper, 'agent-guardrail-response', 'approval');
 
-		expect(wrapper.find('[data-testid="agent-guardrail-review-configuration-add"]').exists()).toBe(
-			false,
-		);
-		expect(wrapper.text()).toContain('agents.builder.guardrails.review.configuration.none');
+		expect(
+			wrapper.find('[data-testid="agent-guardrail-approval-configuration-add"]').exists(),
+		).toBe(false);
+		expect(wrapper.text()).toContain('agents.builder.guardrails.approval.configuration.none');
 	});
 
 	it('requires a check workflow for the workflow kind and writes its id', async () => {

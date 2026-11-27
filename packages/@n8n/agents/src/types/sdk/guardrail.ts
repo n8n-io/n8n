@@ -80,5 +80,5 @@ export type GuardrailNotice = {
 	code: string;
 	agentId?: string;
 	/** Marks a non-blocking outcome so the session timeline can show it later. */
-	outcome?: 'redact' | 'review';
+	outcome?: 'redact' | 'approval';
 };

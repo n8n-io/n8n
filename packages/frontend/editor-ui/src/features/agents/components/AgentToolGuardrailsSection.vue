@@ -34,10 +34,10 @@ export interface ToolGuardrailsWiring {
 	getGuardrails: () => AgentToolGuardrailConfig[];
 	getTools: () => AgentJsonToolRef[];
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
-	/** The agent's human-review configurations, for the `review` response target. */
-	getReviewConfigurations?: () => AgentHitlConfiguration[];
+	/** The agent's human-review configurations, for the `approval` response target. */
+	getApprovalConfigurations?: () => AgentHitlConfiguration[];
 	/** Write access to the agent's configurations, for the modal's add-reviewer flow. */
-	getReviewContext?: () => AgentHitlContext | undefined;
+	getApprovalContext?: () => AgentHitlContext | undefined;
 	/** The agent's project: the check workflow picker lists its workflows. */
 	getProjectId?: () => string | undefined;
 	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;

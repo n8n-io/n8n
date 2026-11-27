@@ -73,7 +73,7 @@ import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
 import { budgetChargeOptions, withBudgetGuardrail } from './budget-guardrail';
 import { withToolGuardrails } from './tool-guardrails';
-import type { ToolGuardrailReviewContext } from './guardrail-review';
+import type { ToolGuardrailApprovalContext } from './guardrail-approval';
 import type { WorkflowToolContext } from './tools/workflow-tool-factory';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
@@ -299,8 +299,8 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	guardrailModelId?: string;
 	/** Callable-workflow machinery for `workflow`-kind guardrail checks. Absent when none is configured. */
 	guardrailWorkflowContext?: WorkflowToolContext;
-	/** Review identity for `review`-response guardrails. Absent when none is configured. */
-	guardrailReview?: ToolGuardrailReviewContext;
+	/** Approval identity for `approval`-response guardrails. Absent when none is configured. */
+	guardrailApproval?: ToolGuardrailApprovalContext;
 	/** See `AgentRuntime.mcpServerAttributions`. */
 	mcpServerAttributions: Map<string, string>;
 	userId?: string;
@@ -1006,7 +1006,7 @@ export class AgentExecutionOrchestratorService {
 					guardrailModel: runtime.guardrailModel,
 					guardrailModelId: runtime.guardrailModelId,
 					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
-					guardrailReview: runtime.guardrailReview,
+					guardrailApproval: runtime.guardrailApproval,
 					agentId,
 					message,
 					modelMessage,
@@ -1096,7 +1096,7 @@ export class AgentExecutionOrchestratorService {
 					guardrailModel: runtime.guardrailModel,
 					guardrailModelId: runtime.guardrailModelId,
 					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
-					guardrailReview: runtime.guardrailReview,
+					guardrailApproval: runtime.guardrailApproval,
 					agentId,
 					projectId,
 					message,
@@ -1163,7 +1163,7 @@ export class AgentExecutionOrchestratorService {
 					guardrailModel: runtime.guardrailModel,
 					guardrailModelId: runtime.guardrailModelId,
 					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
-					guardrailReview: runtime.guardrailReview,
+					guardrailApproval: runtime.guardrailApproval,
 					agentId,
 					message,
 					memory,
@@ -1228,7 +1228,7 @@ export class AgentExecutionOrchestratorService {
 					guardrailModel: runtime.guardrailModel,
 					guardrailModelId: runtime.guardrailModelId,
 					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
-					guardrailReview: runtime.guardrailReview,
+					guardrailApproval: runtime.guardrailApproval,
 					agentId,
 					userId: user.id,
 					message,
@@ -1644,7 +1644,7 @@ export class AgentExecutionOrchestratorService {
 					guardrailModelId: runtime.guardrailModelId,
 					budget: budgetChargeOptions(budgetInput),
 					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
-					guardrailReview: runtime.guardrailReview,
+					guardrailApproval: runtime.guardrailApproval,
 				},
 			),
 			recording: {
@@ -1987,7 +1987,7 @@ export class AgentExecutionOrchestratorService {
 			guardrailModel: runtime.guardrailModel,
 			guardrailModelId: runtime.guardrailModelId,
 			guardrailWorkflowContext: runtime.guardrailWorkflowContext,
-			guardrailReview: runtime.guardrailReview,
+			guardrailApproval: runtime.guardrailApproval,
 			agentId,
 			userId: user.id,
 			requester: reviewRequesterForUser(
@@ -2122,7 +2122,7 @@ export class AgentExecutionOrchestratorService {
 					guardrailModelId: config.guardrailModelId,
 					budget: budgetChargeOptions(budgetInput),
 					guardrailWorkflowContext: config.guardrailWorkflowContext,
-					guardrailReview: config.guardrailReview,
+					guardrailApproval: config.guardrailApproval,
 				},
 			),
 			recording: this.createChatRecording(config),
@@ -2264,7 +2264,7 @@ export class AgentExecutionOrchestratorService {
 			guardrailModel: runtime.guardrailModel,
 			guardrailModelId: runtime.guardrailModelId,
 			guardrailWorkflowContext: runtime.guardrailWorkflowContext,
-			guardrailReview: runtime.guardrailReview,
+			guardrailApproval: runtime.guardrailApproval,
 			agentId,
 			...(access.ownerId ? { userId: access.ownerId } : {}),
 			message,

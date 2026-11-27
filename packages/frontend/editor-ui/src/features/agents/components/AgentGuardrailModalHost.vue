@@ -23,10 +23,10 @@ export interface AgentGuardrailModalData {
 	kind?: AgentToolGuardrailKind;
 	getGuardrails: () => AgentToolGuardrailConfig[];
 	getTools: () => AgentJsonToolRef[];
-	/** The agent's human-review configurations, for the `review` response target. */
-	getReviewConfigurations?: () => AgentHitlConfiguration[];
+	/** The agent's human-review configurations, for the `approval` response target. */
+	getApprovalConfigurations?: () => AgentHitlConfiguration[];
 	/** Write access to the agent's configurations, for the modal's add-reviewer flow. */
-	getReviewContext?: () => AgentHitlContext | undefined;
+	getApprovalContext?: () => AgentHitlContext | undefined;
 	/** The agent's project: the check workflow picker lists its workflows. */
 	getProjectId?: () => string | undefined;
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
@@ -73,8 +73,8 @@ function onRemove() {
 		:guardrail="data.guardrail"
 		:kind="data.kind ?? 'keywords'"
 		:tools="data.getTools()"
-		:review-configurations="data.getReviewConfigurations?.() ?? []"
-		:review-context="data.getReviewContext?.()"
+		:approval-configurations="data.getApprovalConfigurations?.() ?? []"
+		:approval-context="data.getApprovalContext?.()"
 		:project-id="data.getProjectId?.()"
 		:existing-ids="data.getGuardrails().map((guardrail) => guardrail.id)"
 		data-testid="agent-guardrail-modal-host"

@@ -41,13 +41,13 @@ const props = withDefaults(
 		/** Structured backend validation issues — drives the invalid state on guardrail chips. */
 		validationIssues?: AgentConfigValidationIssue[];
 		/** Write access to the agent's configurations, for the modal's add-reviewer flow. */
-		reviewContext?: AgentHitlContext;
+		approvalContext?: AgentHitlContext;
 	}>(),
 	{
 		tools: () => [],
 		disabled: false,
 		validationIssues: () => [],
-		reviewContext: undefined,
+		approvalContext: undefined,
 	},
 );
 
@@ -260,8 +260,8 @@ function onModalRemove() {
 			:guardrail="editingGuardrail"
 			:kind="createKind"
 			:tools="tools"
-			:review-configurations="config?.hitlConfigurations ?? []"
-			:review-context="reviewContext"
+			:approval-configurations="config?.hitlConfigurations ?? []"
+			:approval-context="approvalContext"
 			:project-id="projectId"
 			:existing-ids="guardrails.map((guardrail) => guardrail.id)"
 			:disabled="disabled"

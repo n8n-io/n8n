@@ -36,8 +36,8 @@ import { generateText, type LanguageModel } from 'ai';
 import { nodeNameToToolName } from 'n8n-workflow';
 
 import { attachGuardrails } from './budget-guardrail';
-import type { ToolGuardrailReviewContext } from './guardrail-review';
-import { ToolGuardrailReviewService } from './guardrail-review';
+import type { ToolGuardrailApprovalContext } from './guardrail-approval';
+import { ToolGuardrailApprovalService } from './guardrail-approval';
 import { createWorkflowGuardrailCheck } from './tools/workflow-guardrail-check';
 import type { WorkflowToolContext } from './tools/workflow-tool-factory';
 import type { ToolRegistry } from './tool-registry';
@@ -49,7 +49,7 @@ import type { ToolRegistry } from './tool-registry';
  * check runs on the JSON-stringified tool input (before) and final tool
  * result (after). A `block` response stops the call with the code
  * `guardrail.<kind>.<id>`; a `redact` response rewrites the value with the
- * matches removed; a `review` response routes the flagged content to the
+ * matches removed; a `approval` response routes the flagged content to the
  * agent's human-review configuration and lets the call continue.
  * Pattern kinds check locally; the model kinds run on the agent's own model
  * through the AGENT-1547 seam and charge its spend; workflow checks use the
@@ -94,7 +94,7 @@ type PatternToolGuardrailConfig = Exclude<AgentToolGuardrailConfig, { kind: Mode
 type ModelToolGuardrailConfig = Extract<AgentToolGuardrailConfig, { kind: ModelGuardrailKind }>;
 
 /** The configured response, with the kind's default for configs saved before the field existed. */
-function responseOf(guardrail: AgentToolGuardrailConfig): 'block' | 'redact' | 'review' {
+function responseOf(guardrail: AgentToolGuardrailConfig): 'block' | 'redact' | 'approval' {
 	return guardrail.response ?? TOOL_GUARDRAIL_RESPONSES[guardrail.kind].default;
 }
 
@@ -195,16 +195,19 @@ async function runCheck(check: CheckFn, value: unknown): Promise<CheckOutcome> {
 	}
 }
 
-/** Fires the flagged content at the review destination; the call itself continues. */
-function routeReview(
-	review: { service: ToolGuardrailReviewService; context: ToolGuardrailReviewContext | undefined },
+/** Fires the flagged content at the approval destination; the call itself continues. */
+function routeApproval(
+	approval: {
+		service: ToolGuardrailApprovalService;
+		context: ToolGuardrailApprovalContext | undefined;
+	},
 	guardrail: AgentToolGuardrailConfig,
 	ctx: GuardrailToolCallContext,
 	stage: 'before' | 'after',
 	value: unknown,
 	result: GuardrailResult,
 ): void {
-	void review.service.route(review.context, guardrail, ctx, {
+	void approval.service.route(approval.context, guardrail, ctx, {
 		stage,
 		value,
 		matchDetails: result.info,
@@ -214,12 +217,12 @@ function routeReview(
 /** Everything a triggered check needs to apply the configured response. */
 interface ResponseContext {
 	code: string;
-	response: 'block' | 'redact' | 'review';
+	response: 'block' | 'redact' | 'approval';
 	guardrail: AgentToolGuardrailConfig;
 	stage: 'before' | 'after';
 	ctx: GuardrailToolCallContext;
-	review:
-		| { service: ToolGuardrailReviewService; context: ToolGuardrailReviewContext | undefined }
+	approval:
+		| { service: ToolGuardrailApprovalService; context: ToolGuardrailApprovalContext | undefined }
 		| undefined;
 	notice: ((notice: GuardrailNotice) => void) | undefined;
 }
@@ -231,7 +234,7 @@ interface ResponseContext {
  * scan reported with JSON punctuation attached still redacts cleanly. A match
  * that exists only in the serialized form (a serialization artifact, no field
  * content carries it) has nothing to remove, so the call continues. A
- * `review` response routes the flagged content to the agent's human-review
+ * `approval` response routes the flagged content to the agent's human-review
  * configuration and lets the call continue.
  */
 async function decide(
@@ -242,12 +245,12 @@ async function decide(
 	const outcome = await runCheck(check, value);
 	if (outcome.failed || outcome.result.executionFailed) return { action: 'stop', code: rc.code };
 	if (!outcome.result.tripwireTriggered) return undefined;
-	if (rc.response === 'review') {
-		if (rc.review) {
-			rc.notice?.({ code: rc.code, outcome: 'review' });
-			routeReview(rc.review, rc.guardrail, rc.ctx, rc.stage, value, outcome.result);
+	if (rc.response === 'approval') {
+		if (rc.approval) {
+			rc.notice?.({ code: rc.code, outcome: 'approval' });
+			routeApproval(rc.approval, rc.guardrail, rc.ctx, rc.stage, value, outcome.result);
 		}
-		// The call continues: a review informs, it never gates.
+		// The call continues: an approval informs, it never gates.
 		return undefined;
 	}
 	if (rc.response === 'block') return { action: 'stop', code: rc.code };
@@ -319,8 +322,8 @@ function buildHook(
 	guardrailModel: LanguageModel | undefined,
 	spend: Omit<GuardrailSpend, 'callId'> | undefined,
 	guardrailWorkflowContext: WorkflowToolContext | undefined,
-	review:
-		| { service: ToolGuardrailReviewService; context: ToolGuardrailReviewContext | undefined }
+	approval:
+		| { service: ToolGuardrailApprovalService; context: ToolGuardrailApprovalContext | undefined }
 		| undefined,
 	notice: ((notice: GuardrailNotice) => void) | undefined,
 ): ModelGuardrail | undefined {
@@ -347,10 +350,10 @@ function buildHook(
 				const result = await check(ctx.toolName, ctx.input);
 				if (result.executionFailed) return { action: 'stop', code };
 				if (!result.tripwireTriggered) return undefined;
-				if (response === 'review') {
-					if (review) {
-						notice?.({ code, outcome: 'review' });
-						routeReview(review, guardrail, ctx, 'before', ctx.input, result);
+				if (response === 'approval') {
+					if (approval) {
+						notice?.({ code, outcome: 'approval' });
+						routeApproval(approval, guardrail, ctx, 'before', ctx.input, result);
 					}
 					return undefined;
 				}
@@ -379,13 +382,13 @@ function buildHook(
 					spend ? { ...spend, callId: guardrailCallId(toolCallId, guardrail, stage) } : undefined,
 				),
 				value,
-				{ code, response, guardrail, stage, ctx, review, notice },
+				{ code, response, guardrail, stage, ctx, approval, notice },
 			);
 	} else {
 		const check = buildPatternCheck(guardrail);
 		if (!check) return undefined;
 		run = async (stage, _toolCallId, ctx, value) =>
-			await decide(check, value, { code, response, guardrail, stage, ctx, review, notice });
+			await decide(check, value, { code, response, guardrail, stage, ctx, approval, notice });
 	}
 
 	const hook: ModelGuardrail = {};
@@ -420,8 +423,8 @@ export function withToolGuardrails<T extends RunOptions & ExecutionOptions>(
 		budget?: BudgetGuardrailOptions;
 		/** Callable-workflow machinery for `workflow`-kind guardrail checks. */
 		guardrailWorkflowContext?: WorkflowToolContext;
-		/** Review identity for `review`-response guardrails. */
-		guardrailReview?: ToolGuardrailReviewContext;
+		/** Approval identity for `approval`-response guardrails. */
+		guardrailApproval?: ToolGuardrailApprovalContext;
 	},
 ): T {
 	const guardrails = input.toolGuardrails ?? [];
@@ -442,8 +445,8 @@ export function withToolGuardrails<T extends RunOptions & ExecutionOptions>(
 		input.budget && input.guardrailModelId
 			? { modelId: input.guardrailModelId, budget: input.budget }
 			: undefined;
-	const review = guardrails.some((guardrail) => responseOf(guardrail) === 'review')
-		? { service: Container.get(ToolGuardrailReviewService), context: input.guardrailReview }
+	const approval = guardrails.some((guardrail) => responseOf(guardrail) === 'approval')
+		? { service: Container.get(ToolGuardrailApprovalService), context: input.guardrailApproval }
 		: undefined;
 
 	const hooks: ModelGuardrail[] = [];
@@ -454,7 +457,7 @@ export function withToolGuardrails<T extends RunOptions & ExecutionOptions>(
 			input.guardrailModel,
 			spend,
 			input.guardrailWorkflowContext,
-			review,
+			approval,
 			options.guardrails?.onNotice,
 		);
 		if (hook) hooks.push(hook);

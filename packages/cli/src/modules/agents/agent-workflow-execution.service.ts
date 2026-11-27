@@ -64,7 +64,7 @@ import { AgentTurnExecutionService } from './agent-turn-execution.service';
 import { budgetChargeOptions, withBudgetGuardrail } from './budget-guardrail';
 import type { ExecutionRecorder, MessageRecord } from './execution-recorder';
 import { withToolGuardrails } from './tool-guardrails';
-import type { ToolGuardrailReviewContext } from './guardrail-review';
+import type { ToolGuardrailApprovalContext } from './guardrail-approval';
 import type { ToolRegistry } from './tool-registry';
 import { encodeIntegrationMessageContext } from './integrations/integration-message-context';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
@@ -132,8 +132,8 @@ interface WorkflowAgentStreamParams {
 	guardrailModelId?: string;
 	/** Registry resolving guardrail tool refs to runtime tool names. */
 	toolRegistry?: ToolRegistry;
-	/** Review identity for `review`-response guardrails. Absent when none is configured. */
-	guardrailReview?: ToolGuardrailReviewContext;
+	/** Approval identity for `approval`-response guardrails. Absent when none is configured. */
+	guardrailApproval?: ToolGuardrailApprovalContext;
 	streamObserver?: WorkflowAgentStreamObserver;
 	sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
 	/**
@@ -320,7 +320,7 @@ export class AgentWorkflowExecutionService {
 		guardrailWorkflowContext?: ReconstructedAgentRuntime['guardrailWorkflowContext'];
 		guardrailModelId?: string;
 		toolRegistry?: ToolRegistry;
-		guardrailReview?: ToolGuardrailReviewContext;
+		guardrailApproval?: ToolGuardrailApprovalContext;
 		error?: string;
 	}> {
 		if (!runSource.agent.schema) {
@@ -357,7 +357,7 @@ export class AgentWorkflowExecutionService {
 				guardrailWorkflowContext: reconstructed.guardrailWorkflowContext,
 				guardrailModelId: reconstructed.guardrailModelId,
 				toolRegistry: reconstructed.toolRegistry,
-				guardrailReview: reconstructed.guardrailReview,
+				guardrailApproval: reconstructed.guardrailApproval,
 			};
 		} catch (e) {
 			return {
@@ -395,7 +395,7 @@ export class AgentWorkflowExecutionService {
 		guardrailWorkflowContext?: ReconstructedAgentRuntime['guardrailWorkflowContext'];
 		guardrailModelId?: string;
 		toolRegistry?: ToolRegistry;
-		guardrailReview?: ToolGuardrailReviewContext;
+		guardrailApproval?: ToolGuardrailApprovalContext;
 		error?: string;
 	}> {
 		try {
@@ -423,7 +423,7 @@ export class AgentWorkflowExecutionService {
 				guardrailWorkflowContext: reconstructed.guardrailWorkflowContext,
 				guardrailModelId: reconstructed.guardrailModelId,
 				toolRegistry: reconstructed.toolRegistry,
-				guardrailReview: reconstructed.guardrailReview,
+				guardrailApproval: reconstructed.guardrailApproval,
 			};
 		} catch (e) {
 			return {
@@ -541,7 +541,7 @@ export class AgentWorkflowExecutionService {
 			guardrailWorkflowContext,
 			guardrailModelId,
 			toolRegistry,
-			guardrailReview,
+			guardrailApproval,
 		} = params;
 		const telemetry = await this.agentRunTracingService.build({
 			agentId: telemetryAgentId,
@@ -610,7 +610,7 @@ export class AgentWorkflowExecutionService {
 			guardrailWorkflowContext,
 			guardrailModelId,
 			budget: budgetChargeOptions(budgetInput),
-			guardrailReview,
+			guardrailApproval,
 		});
 	}
 
@@ -863,7 +863,7 @@ export class AgentWorkflowExecutionService {
 			guardrailWorkflowContext,
 			guardrailModelId,
 			toolRegistry,
-			guardrailReview,
+			guardrailApproval,
 		} = prepared;
 		// Filled by `beforeFinalize` when the run waits for a human review.
 		const suspension: { waiting?: { runId: string; executionIds: string[] } } = {};
@@ -880,7 +880,7 @@ export class AgentWorkflowExecutionService {
 				guardrailWorkflowContext,
 				guardrailModelId,
 				toolRegistry,
-				guardrailReview,
+				guardrailApproval,
 				recordingParams: { ...recordingParams, agentName: agentInstance.name },
 				...(sandboxScope
 					? { sandboxScope: { projectId, principalHash: sandboxScope.principalHash } }
@@ -1017,7 +1017,7 @@ export class AgentWorkflowExecutionService {
 			guardrailWorkflowContext: reconstructed.guardrailWorkflowContext,
 			guardrailModelId: reconstructed.guardrailModelId,
 			toolRegistry: reconstructed.toolRegistry,
-			guardrailReview: reconstructed.guardrailReview,
+			guardrailApproval: reconstructed.guardrailApproval,
 			snapshot,
 			resume: { runId: continuation.runId, toolCallId: call.toolCallId },
 		};
@@ -1106,7 +1106,7 @@ export class AgentWorkflowExecutionService {
 			guardrailWorkflowContext: compiled.guardrailWorkflowContext,
 			guardrailModelId: compiled.guardrailModelId,
 			toolRegistry: compiled.toolRegistry,
-			guardrailReview: compiled.guardrailReview,
+			guardrailApproval: compiled.guardrailApproval,
 		};
 	}
 
@@ -1168,7 +1168,7 @@ export class AgentWorkflowExecutionService {
 			| 'guardrailWorkflowContext'
 			| 'guardrailModelId'
 			| 'toolRegistry'
-			| 'guardrailReview'
+			| 'guardrailApproval'
 			| 'beforeFinalize'
 		>,
 	): Promise<WorkflowAgentRunOutcome> {
@@ -1278,7 +1278,7 @@ export class AgentWorkflowExecutionService {
 				guardrailWorkflowContext: compiled.guardrailWorkflowContext,
 				guardrailModelId: compiled.guardrailModelId,
 				toolRegistry: compiled.toolRegistry,
-				guardrailReview: compiled.guardrailReview,
+				guardrailApproval: compiled.guardrailApproval,
 			});
 			this.trackInlineRun(params, syntheticAgentId, runType, runtimeConfig, run);
 			return this.buildWorkflowResult({ run, session: null, outputSchema });

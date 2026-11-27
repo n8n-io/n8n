@@ -126,7 +126,7 @@ import type { WorkflowToolContext, WorkflowToolExecutionMode } from './tools/wor
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import type { AgentDecisionWorkflowService } from './approval/agent-decision-workflow.service';
 import { withApprovalDescription } from './approval/approval-description';
-import type { ToolGuardrailReviewContext } from './guardrail-review';
+import type { ToolGuardrailApprovalContext } from './guardrail-approval';
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
@@ -171,10 +171,10 @@ export interface ReconstructedAgentRuntime {
 	 */
 	guardrailWorkflowContext?: WorkflowToolContext;
 	/**
-	 * The routing identity for `review`-response guardrails. Absent when no
-	 * guardrail uses the review response.
+	 * The routing identity for `approval`-response guardrails. Absent when no
+	 * guardrail uses the approval response.
 	 */
-	guardrailReview?: ToolGuardrailReviewContext;
+	guardrailApproval?: ToolGuardrailApprovalContext;
 }
 
 export interface SubAgentDelegationConfig {
@@ -425,15 +425,15 @@ function hasWorkflowGuardrail(config: AgentJsonConfig): boolean {
 }
 
 /**
- * The routing identity for `review`-response guardrails: the agent's own
+ * The routing identity for `approval`-response guardrails: the agent's own
  * human-review configurations and the identity a decision workflow runs with.
  * A review never suspends the run, so no resumability gate applies here.
  */
-function buildToolGuardrailReviewContext(
+function buildToolGuardrailApprovalContext(
 	options: RuntimeReconstructionOptions,
-): ToolGuardrailReviewContext | undefined {
+): ToolGuardrailApprovalContext | undefined {
 	const tools = options.config.config?.guardrails?.tools ?? [];
-	if (!tools.some((guardrail) => guardrail.response === 'review')) return undefined;
+	if (!tools.some((guardrail) => guardrail.response === 'approval')) return undefined;
 	return {
 		agentId: options.memoryOwnerAgentId,
 		projectId: options.projectId,
@@ -847,7 +847,7 @@ export class AgentRuntimeReconstructionService {
 					options.user,
 				)
 			: undefined;
-		const guardrailReview = buildToolGuardrailReviewContext(options);
+		const guardrailApproval = buildToolGuardrailApprovalContext(options);
 		return {
 			agent: runtime.agent,
 			toolRegistry: buildToolRegistry(runtime.resolvedTools),
@@ -866,7 +866,7 @@ export class AgentRuntimeReconstructionService {
 				? { guardrailModelId: runtime.guardrailModelId }
 				: {}),
 			...(guardrailWorkflowContext !== undefined ? { guardrailWorkflowContext } : {}),
-			...(guardrailReview !== undefined ? { guardrailReview } : {}),
+			...(guardrailApproval !== undefined ? { guardrailApproval } : {}),
 		};
 	}
 

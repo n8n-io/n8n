@@ -733,8 +733,8 @@ describe('sanitizeAgentJsonConfig', () => {
 							kind: 'keywords',
 							id: 'g1',
 							keywords: ['secret'],
-							response: 'review',
-							reviewConfigurationId: 'deleted-config',
+							response: 'approval',
+							approvalConfigurationId: 'deleted-config',
 						},
 					],
 				},
@@ -754,12 +754,12 @@ describe('sanitizeAgentJsonConfig', () => {
 		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
 	});
 
-	it('heals a review response without a configuration', () => {
+	it('heals a approval response without a configuration', () => {
 		const sanitized = sanitizeAgentJsonConfig({
 			...baseConfig,
 			config: {
 				guardrails: {
-					tools: [{ kind: 'pii', id: 'g1', type: 'all', response: 'review' }],
+					tools: [{ kind: 'pii', id: 'g1', type: 'all', response: 'approval' }],
 				},
 			},
 		});
@@ -788,8 +788,8 @@ describe('sanitizeAgentJsonConfig', () => {
 							kind: 'keywords',
 							id: 'g1',
 							keywords: ['secret'],
-							response: 'review',
-							reviewConfigurationId: 'config-1',
+							response: 'approval',
+							approvalConfigurationId: 'config-1',
 						},
 					],
 				},

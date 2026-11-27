@@ -188,10 +188,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			getGuardrails: () =>
 				isCurrent() ? (localConfig.value?.config?.guardrails?.tools ?? []) : [],
 			getTools: () => (isCurrent() ? (localConfig.value?.tools ?? []) : []),
-			// The `review` response routes through one of these configurations.
-			getReviewConfigurations: () =>
+			// The `approval` response routes through one of these configurations.
+			getApprovalConfigurations: () =>
 				isCurrent() ? (localConfig.value?.hitlConfigurations ?? []) : [],
-			getReviewContext: () =>
+			getApprovalContext: () =>
 				isCurrent() && approvalDestinationsEnabled.value ? hitlContext() : undefined,
 			getProjectId: () => (isCurrent() ? projectId.value : undefined),
 			onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => {

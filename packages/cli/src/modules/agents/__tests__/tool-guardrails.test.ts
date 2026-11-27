@@ -10,7 +10,7 @@ import { createServer } from 'node:http';
 import { vi } from 'vitest';
 
 import { withToolGuardrails } from '../tool-guardrails';
-import { ToolGuardrailReviewService } from '../guardrail-review';
+import { ToolGuardrailApprovalService } from '../guardrail-approval';
 import { createWorkflowGuardrailCheck } from '../tools/workflow-guardrail-check';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
 import type { ToolRegistry } from '../tool-registry';
@@ -409,9 +409,9 @@ describe('withToolGuardrails', () => {
 		expect(value.title).toBe('Rotate exposed live API key');
 	});
 
-	it('routes a review response and lets the call continue', async () => {
-		const route = vi.fn<ToolGuardrailReviewService['route']>().mockResolvedValue(undefined);
-		Container.set(ToolGuardrailReviewService, mock<ToolGuardrailReviewService>({ route }));
+	it('routes a approval response and lets the call continue', async () => {
+		const route = vi.fn<ToolGuardrailApprovalService['route']>().mockResolvedValue(undefined);
+		Container.set(ToolGuardrailApprovalService, mock<ToolGuardrailApprovalService>({ route }));
 		const notice = vi.fn();
 		const options: RunOptions & ExecutionOptions = {
 			...base,
@@ -424,13 +424,13 @@ describe('withToolGuardrails', () => {
 					kind: 'keywords',
 					id: 'g1',
 					stage: 'before',
-					response: 'review',
-					reviewConfigurationId: 'config-1',
+					response: 'approval',
+					approvalConfigurationId: 'config-1',
 					keywords: ['secret'],
 				},
 			],
 			toolRegistry: registry,
-			guardrailReview: {
+			guardrailApproval: {
 				agentId: 'agent-1',
 				projectId: 'project-1',
 				published: false,
@@ -453,7 +453,7 @@ describe('withToolGuardrails', () => {
 		expect(payload).toMatchObject({ stage: 'before', value: { note: 'a secret' } });
 
 		// The notice marks the review outcome; the budget sink may drop it.
-		expect(notice).toHaveBeenCalledWith({ code: 'guardrail.keywords.g1', outcome: 'review' });
+		expect(notice).toHaveBeenCalledWith({ code: 'guardrail.keywords.g1', outcome: 'approval' });
 
 		// A clean call routes nothing.
 		await hook?.beforeTool?.(ctx('read_file', { note: 'fine' }));

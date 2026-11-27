@@ -447,7 +447,7 @@ export class SubAgentRunner {
 					guardrailModel: reconstructed.guardrailModel,
 					guardrailWorkflowContext: reconstructed.guardrailWorkflowContext,
 					guardrailModelId: reconstructed.guardrailModelId,
-					guardrailReview: reconstructed.guardrailReview,
+					guardrailApproval: reconstructed.guardrailApproval,
 					budget: budgetChargeOptions(budgetInput),
 				},
 			);

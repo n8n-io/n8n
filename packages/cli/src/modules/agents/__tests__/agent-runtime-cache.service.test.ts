@@ -20,7 +20,7 @@ import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
-import type { ToolGuardrailReviewContext } from '../guardrail-review';
+import type { ToolGuardrailApprovalContext } from '../guardrail-approval';
 import { createAgentSkillRefsService, storedRunSource } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
@@ -169,24 +169,24 @@ describe('AgentRuntimeCacheService', () => {
 	it('carries the guardrail review context from the reconstruction onto the cached runtime', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const agent = makeAgent();
-		const guardrailReview = {
+		const guardrailApproval = {
 			agentId: 'agent-1',
 			projectId: 'project-1',
 			published: false,
 			integrations: [],
 			configurations: [],
-		} as unknown as ToolGuardrailReviewContext;
+		} as unknown as ToolGuardrailApprovalContext;
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
 			...makeRuntime(),
-			guardrailReview,
+			guardrailApproval,
 		});
 
 		const runtime = await service.getRuntime({ agentId, projectId });
 
 		// Without this carry, every cache-backed run (chat, resume, task,
 		// wake) drops the review routing identity.
-		expect(runtime.guardrailReview).toBe(guardrailReview);
+		expect(runtime.guardrailApproval).toBe(guardrailApproval);
 	});
 
 	it('keeps task runtimes separate and disables their background tools', async () => {

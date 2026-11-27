@@ -556,11 +556,11 @@ const toolGuardrailBaseShape = {
 	/** Covers every tool when absent. At least one ref when present. */
 	tools: z.array(ToolGuardrailToolRefSchema).min(1).optional(),
 	/**
-	 * The human-review configuration the `review` response routes flagged
-	 * content to. Required for `review`, rejected for every other response.
+	 * The human-review configuration the `approval` response routes flagged
+	 * content to. Required for `approval`, rejected for every other response.
 	 * Refers to an entry of the agent's `hitlConfigurations`.
 	 */
-	reviewConfigurationId: z.string().min(1).optional(),
+	approvalConfigurationId: z.string().min(1).optional(),
 };
 
 const modelToolGuardrailShape = {
@@ -568,7 +568,7 @@ const modelToolGuardrailShape = {
 	threshold: z.number().min(0).max(1).optional(),
 };
 
-export type ToolGuardrailResponse = 'block' | 'redact' | 'review';
+export type ToolGuardrailResponse = 'block' | 'redact' | 'approval';
 
 /**
  * Stage scope per kind: absent `stage` means these stages, so a kind cannot
@@ -595,14 +595,14 @@ export const TOOL_GUARDRAIL_STAGE_SCOPE: Record<
  * the kind does not allow.
  */
 export const TOOL_GUARDRAIL_RESPONSES = {
-	keywords: { default: 'block', allowed: ['block', 'redact', 'review'] },
-	pii: { default: 'redact', allowed: ['redact', 'block', 'review'] },
-	secretKeys: { default: 'redact', allowed: ['redact', 'block', 'review'] },
-	urls: { default: 'block', allowed: ['block', 'redact', 'review'] },
-	jailbreak: { default: 'block', allowed: ['block', 'review'] },
-	nsfw: { default: 'block', allowed: ['block', 'review'] },
-	topicalAlignment: { default: 'block', allowed: ['block', 'review'] },
-	workflow: { default: 'block', allowed: ['block', 'review'] },
+	keywords: { default: 'block', allowed: ['block', 'redact', 'approval'] },
+	pii: { default: 'redact', allowed: ['redact', 'block', 'approval'] },
+	secretKeys: { default: 'redact', allowed: ['redact', 'block', 'approval'] },
+	urls: { default: 'block', allowed: ['block', 'redact', 'approval'] },
+	jailbreak: { default: 'block', allowed: ['block', 'approval'] },
+	nsfw: { default: 'block', allowed: ['block', 'approval'] },
+	topicalAlignment: { default: 'block', allowed: ['block', 'approval'] },
+	workflow: { default: 'block', allowed: ['block', 'approval'] },
 } as const;
 
 const toolGuardrailResponseSchema = <K extends keyof typeof TOOL_GUARDRAIL_RESPONSES>(kind: K) =>
@@ -810,20 +810,20 @@ export const AgentJsonConfigBaseSchema = z.object({
 										message: 'A workflow guardrail cannot run after a tool call',
 									});
 								}
-								// The review response routes flagged content to a
+								// The approval response routes flagged content to a
 								// human-review configuration; no other response has
 								// anywhere to route it to.
-								if (guardrail.response === 'review' && !guardrail.reviewConfigurationId) {
+								if (guardrail.response === 'approval' && !guardrail.approvalConfigurationId) {
 									ctx.addIssue({
 										code: z.ZodIssueCode.custom,
-										path: [index, 'reviewConfigurationId'],
+										path: [index, 'approvalConfigurationId'],
 										message: 'Send to review requires a human-review configuration',
 									});
 								}
-								if (guardrail.response !== 'review' && guardrail.reviewConfigurationId) {
+								if (guardrail.response !== 'approval' && guardrail.approvalConfigurationId) {
 									ctx.addIssue({
 										code: z.ZodIssueCode.custom,
-										path: [index, 'reviewConfigurationId'],
+										path: [index, 'approvalConfigurationId'],
 										message: 'A human-review configuration only applies to send to review',
 									});
 								}
@@ -837,21 +837,24 @@ export const AgentJsonConfigBaseSchema = z.object({
 });
 
 /**
- * A review-response guardrail routes through a human-review configuration of
+ * An approval-response guardrail routes through a human-review configuration of
  * the same agent, so the referenced id must exist on the document. Shared by
  * the draft and runnable schemas: a runnable or sub-agent config must not
  * carry a dangling reference either.
  */
-function checkReviewConfigurationReferences(
+function checkApprovalConfigurationReferences(
 	config: z.infer<typeof AgentJsonConfigBaseSchema>,
 	ctx: z.RefinementCtx,
 ): void {
 	const configurationIds = new Set((config.hitlConfigurations ?? []).map(({ id }) => id));
 	for (const [index, guardrail] of (config.config?.guardrails?.tools ?? []).entries()) {
-		if (guardrail.reviewConfigurationId && !configurationIds.has(guardrail.reviewConfigurationId)) {
+		if (
+			guardrail.approvalConfigurationId &&
+			!configurationIds.has(guardrail.approvalConfigurationId)
+		) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				path: ['config', 'guardrails', 'tools', index, 'reviewConfigurationId'],
+				path: ['config', 'guardrails', 'tools', index, 'approvalConfigurationId'],
 				message: 'Select a human-review configuration of this agent',
 			});
 		}
@@ -866,7 +869,7 @@ export const AgentJsonConfigSchema = AgentJsonConfigBaseSchema.superRefine((conf
 			message: 'A credential requires a model to be set',
 		});
 	}
-	checkReviewConfigurationReferences(config, ctx);
+	checkApprovalConfigurationReferences(config, ctx);
 });
 
 export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
@@ -874,7 +877,7 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 	credential: z.string().refine((value) => value.trim().length > 0, {
 		message: 'Credential is required',
 	}),
-}).superRefine(checkReviewConfigurationReferences);
+}).superRefine(checkApprovalConfigurationReferences);
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 

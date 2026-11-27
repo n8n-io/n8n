@@ -184,7 +184,7 @@ vi.mock('../components/AgentGuardrailsSection.vue', () => ({
 			'agentId',
 			'disabled',
 			'validationIssues',
-			'reviewContext',
+			'approvalContext',
 		],
 		emits: ['update:config', 'update:budget-config'],
 	},
@@ -703,7 +703,9 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(panel.props('agentUnsaved')).toBe(true);
 		expect(panel.props('disabled')).toBe(false);
 		const changes = {
-			hitlConfigurations: [{ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' }],
+			hitlConfigurations: [
+				{ id: 'approval', name: 'Review', method: 'workflow', workflowId: 'wf' },
+			],
 		};
 		panel.vm.$emit('update:config', changes);
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([changes]);
@@ -719,14 +721,14 @@ describe('AgentBuilderEditorColumn', () => {
 
 	it('withholds the guardrail review context when the module is disabled', async () => {
 		const disabled = await mountColumn({ agentUnsaved: true });
-		expect(disabled.getComponent({ name: 'AgentGuardrailsSection' }).props('reviewContext')).toBe(
+		expect(disabled.getComponent({ name: 'AgentGuardrailsSection' }).props('approvalContext')).toBe(
 			undefined,
 		);
 
-		// With the module on, the guardrail modal may create review destinations.
+		// With the module on, the guardrail modal may create approval destinations.
 		const enabled = await mountColumn({ humanReviewEnabled: true });
 		expect(
-			enabled.getComponent({ name: 'AgentGuardrailsSection' }).props('reviewContext'),
+			enabled.getComponent({ name: 'AgentGuardrailsSection' }).props('approvalContext'),
 		).toMatchObject({ agentId: 'agent-1' });
 	});
 
