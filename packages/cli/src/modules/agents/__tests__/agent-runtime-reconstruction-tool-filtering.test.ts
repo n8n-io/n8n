@@ -929,21 +929,24 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		});
 
 		it('should report when the output reader can no longer reveal the workflow data', async () => {
-			const workflowRepository = mock<WorkflowRepository>();
-			workflowRepository.findByIds.mockResolvedValue([
-				mock<WorkflowEntity>({ id: 'wf-1', settings: { redactionPolicy: 'all' }, nodes: [] }),
-			]);
-			const { service } = makeService({
-				workflowRepository,
+			const { service, workflowRepository } = makeService({
+				...accessibleWorkflow(),
 				executionRedaction: redactingProxy(false),
 			});
 
 			await expect(
 				service.outputReaderStillSeesWorkflowOutputs(
 					{ credentialIds: [], workflowIds: ['wf-1'], workflowToolExecutionMode: 'integrated' },
+					projectId,
 					testUser,
 				),
 			).resolves.toBe(false);
+			// The re-check reads the active version, the same as the build.
+			expect(workflowRepository.findOneByAgentToolReference).toHaveBeenCalledWith(
+				projectId,
+				{ workflowName: 'wf-1', workflowId: 'wf-1' },
+				{ withActiveVersion: true },
+			);
 		});
 	});
 

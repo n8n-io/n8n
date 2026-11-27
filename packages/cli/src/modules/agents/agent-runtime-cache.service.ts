@@ -293,7 +293,11 @@ export class AgentRuntimeCacheService {
 							params.projectId,
 							user,
 						)
-					: await this.outputReaderStillSeesOutputs(userToolAccessSnapshot, outputReaderUserId);
+					: await this.outputReaderStillSeesOutputs(
+							userToolAccessSnapshot,
+							params.projectId,
+							outputReaderUserId,
+						);
 				if (stillGranted) runtime.toolAccessCheckedAt = Date.now();
 				return stillGranted;
 			} catch (error) {
@@ -333,12 +337,14 @@ export class AgentRuntimeCacheService {
 
 	private async outputReaderStillSeesOutputs(
 		snapshot: NonNullable<AgentRuntime['userToolAccessSnapshot']>,
+		projectId: string,
 		userId: string | undefined,
 	): Promise<boolean> {
 		const reader = await this.loadOutputReader(userId);
 		if (!reader) return true;
 		return await this.agentRuntimeReconstructionService.outputReaderStillSeesWorkflowOutputs(
 			snapshot,
+			projectId,
 			reader,
 		);
 	}

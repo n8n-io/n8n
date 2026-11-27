@@ -40,6 +40,7 @@ import {
 	type AgentJsonMcpServerConfig,
 	type AgentJsonMemoryConfig,
 	type AgentJsonToolConfig,
+	type AgentJsonWorkflowToolConfig,
 	type AgentSkill,
 	type SubAgentRunPolicy,
 	type SubAgentSource,
@@ -642,9 +643,7 @@ export class AgentRuntimeReconstructionService {
 				filtered.push(ref);
 				continue;
 			}
-			const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId, {
-				withActiveVersion: mode === 'integrated',
-			});
+			const workflow = await this.findCheckedWorkflow(ref, projectId, mode);
 			if (!workflow) {
 				unavailable.push(missingWorkflow(ref));
 				continue;
@@ -684,17 +683,30 @@ export class AgentRuntimeReconstructionService {
 	 */
 	async outputReaderStillSeesWorkflowOutputs(
 		snapshot: UserToolAccessSnapshot,
+		projectId: string,
 		reader: User,
 	): Promise<boolean> {
 		const mode = snapshot.workflowToolExecutionMode;
 		if (!mode) return true;
-		const workflows = await this.workflowRepository.findByIds(snapshot.workflowIds);
 		const hidden = await Promise.all(
-			workflows.map(
-				async (workflow) => await this.isWorkflowOutputHiddenFrom(workflow, reader, mode),
-			),
+			snapshot.workflowIds.map(async (id) => {
+				const ref = { type: 'workflow' as const, workflow: id, workflowId: id };
+				const workflow = await this.findCheckedWorkflow(ref, projectId, mode);
+				return !workflow || (await this.isWorkflowOutputHiddenFrom(workflow, reader, mode));
+			}),
 		);
 		return !hidden.some(Boolean);
+	}
+
+	/** The workflow of a tool, with the active version that a published run uses. */
+	private async findCheckedWorkflow(
+		ref: AgentJsonWorkflowToolConfig,
+		projectId: string,
+		mode: WorkflowToolExecutionMode,
+	) {
+		return await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId, {
+			withActiveVersion: mode === 'integrated',
+		});
 	}
 
 	/**
@@ -833,9 +845,7 @@ export class AgentRuntimeReconstructionService {
 			return { credentialIds, workflowIds: [] };
 		}
 
-		const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId, {
-			withActiveVersion: mode === 'integrated',
-		});
+		const workflow = await this.findCheckedWorkflow(ref, projectId, mode);
 		if (!workflow) return missingWorkflow(ref);
 		const accessibleWorkflow = await this.workflowFinderService.findWorkflowForUser(
 			workflow.id,

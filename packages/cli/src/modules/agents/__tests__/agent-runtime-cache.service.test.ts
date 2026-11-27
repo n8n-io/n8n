@@ -377,6 +377,7 @@ describe('AgentRuntimeCacheService', () => {
 
 			expect(reconstructionService.outputReaderStillSeesWorkflowOutputs).toHaveBeenCalledWith(
 				snapshot,
+				projectId,
 				reader,
 			);
 			expect(reconstructionService.userStillHasToolAccess).not.toHaveBeenCalled();
