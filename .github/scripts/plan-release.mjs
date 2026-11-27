@@ -49,8 +49,8 @@ if (!isReleaseType(bump)) {
 	process.exit(1);
 }
 
-if (track === 'v2' && bump !== 'patch') {
-	throw new Error('The v2 maintenance track only supports patch releases.');
+if ((track === 'v1' || track === 'v2') && bump !== 'patch') {
+	throw new Error(`The ${track} maintenance track only supports patch releases.`);
 }
 
 const next = semver.inc(cleanedBase, bump);
