@@ -1,5 +1,5 @@
-import type { OperationContext, Transaction } from '@n8n/db';
-import { NotFoundError } from '@n8n/errors';
+import type { OperationContext, Transaction, User } from '@n8n/db';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -7,6 +7,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
+import type { KnowledgeCollectionCatalogService } from '@/modules/knowledge/collections/knowledge-collection-catalog.service';
 import type { KnowledgeFileCleanupService } from '@/modules/knowledge/files/knowledge-file-cleanup.service';
 import type {
 	KnowledgeFileService,
@@ -61,6 +62,7 @@ describe('AgentKnowledgeService', () => {
 	let knowledgeRetrievalService: Mocked<KnowledgeRetrievalService>;
 	let projectDeletion: Mocked<AgentProjectDeletionRepository>;
 	let knowledgeFileCleanupService: Mocked<KnowledgeFileCleanupService>;
+	let collectionCatalogService: Mocked<KnowledgeCollectionCatalogService>;
 	let service: AgentKnowledgeService;
 
 	function makeService(
@@ -73,6 +75,7 @@ describe('AgentKnowledgeService', () => {
 			knowledgeAvailabilityService,
 			projectDeletion,
 			knowledgeFileCleanupService,
+			collectionCatalogService,
 		);
 	}
 
@@ -87,6 +90,7 @@ describe('AgentKnowledgeService', () => {
 			async (_projectId, write, ctx = {}) => await write(ctx),
 		);
 		knowledgeFileCleanupService = mock<KnowledgeFileCleanupService>();
+		collectionCatalogService = mock<KnowledgeCollectionCatalogService>();
 		service = makeService();
 	});
 
@@ -252,6 +256,73 @@ describe('AgentKnowledgeService', () => {
 			await service.destroyKnowledgeSandbox(projectId, agentId);
 
 			expect(knowledgeRetrievalService.destroySandbox).toHaveBeenCalledWith(scope);
+		});
+	});
+
+	describe('collections', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const collectionRef = { projectId, collectionId: 'collection-1' };
+
+		it('lists the collections of an agent of the project', async () => {
+			const collections = [
+				{ id: 'collection-1', name: 'Docs', description: 'd', fileCount: 1, usedByAgent: true },
+			];
+			collectionCatalogService.listForAgent.mockResolvedValue(collections);
+
+			await expect(service.listCollections(user, agentId, projectId)).resolves.toEqual(collections);
+			expect(collectionCatalogService.listForAgent).toHaveBeenCalledWith(user, projectId, agentId);
+		});
+
+		it('answers not found for an agent that is not in the project', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.listCollections(user, agentId, projectId)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(collectionCatalogService.listForAgent).not.toHaveBeenCalled();
+		});
+
+		describe.each([
+			['addCollection', 'addAgent'],
+			['removeCollection', 'removeAgent'],
+		] as const)('%s', (method, catalogMethod) => {
+			it('writes through the project-deletion fence', async () => {
+				const ctx: OperationContext = { trx: mock<Transaction>() };
+				projectDeletion.withWritableProject.mockImplementation(
+					async (_projectId, write) => await write(ctx),
+				);
+				collectionCatalogService[catalogMethod].mockImplementation(
+					async (_user, _ref, _agentId, writeFence) => {
+						await expect(writeFence(async (writeCtx) => writeCtx)).resolves.toBe(ctx);
+					},
+				);
+
+				await service[method](user, agentId, projectId, 'collection-1');
+
+				expect(collectionCatalogService[catalogMethod]).toHaveBeenCalledWith(
+					user,
+					collectionRef,
+					agentId,
+					expect.any(Function),
+				);
+				expect(projectDeletion.withWritableProject).toHaveBeenCalledWith(
+					projectId,
+					expect.any(Function),
+				);
+			});
+
+			it('refuses an archived agent and writes nothing', async () => {
+				agentRepository.findByIdAndProjectId.mockResolvedValue({
+					id: agentId,
+					projectId,
+					isArchived: true,
+				} as never);
+
+				await expect(service[method](user, agentId, projectId, 'collection-1')).rejects.toThrow(
+					BadRequestError,
+				);
+				expect(collectionCatalogService[catalogMethod]).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

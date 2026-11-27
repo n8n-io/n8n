@@ -3,7 +3,7 @@ import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { CHAT_MESSAGE_ROLE } from './constants';
 import { appendHostEventSources, type AgentsChatHostEventSource } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
-import { getMessageInteractives } from './messageMappers';
+import { getMessageInteractives, isStoppedMessage } from './messageMappers';
 import { getMessageThinkingSegments } from './thinking';
 import type { AgentsChatMessage, InteractivePayload, ThinkingSegment, ToolCall } from './types';
 
@@ -40,11 +40,15 @@ export type DisplayGroup =
 			id: string;
 			message: AgentsChatMessage;
 			thinkingSegments: ThinkingSegment[];
+			/** Last group of the run, set on the head of a run with more than one group. */
+			runTail?: TurnDisplayGroup;
 	  }
 	| {
 			kind: typeof DISPLAY_GROUP_KIND.TOOL_RUN;
 			id: string;
 			thinkingSegments: ThinkingSegment[];
+			/** Last group of the run, set on the head of a run with more than one group. */
+			runTail?: TurnDisplayGroup;
 			active: boolean;
 			awaitingInput: boolean;
 			toolCalls: ToolCall[];
@@ -90,6 +94,11 @@ export function isGroupable(message: AgentsChatMessage): boolean {
 
 type ToolRunGroup = Extract<DisplayGroup, { kind: typeof DISPLAY_GROUP_KIND.TOOL_RUN }>;
 
+/** Whether the group is the notice of a stopped turn, which the list shows as a status line. */
+function isStoppedGroup(group: DisplayGroup): boolean {
+	return group.kind === DISPLAY_GROUP_KIND.MESSAGE && isStoppedMessage(group.message);
+}
+
 export function isAssistantGroup(group: DisplayGroup): group is TurnDisplayGroup {
 	return (
 		group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ||
@@ -102,8 +111,13 @@ function executionIdForGroup(group: TurnDisplayGroup): string | undefined {
 	return group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ? group.executionId : group.message.executionId;
 }
 
-/** Keep one reasoning block at the tail of each assistant run, below its final output. */
-function moveThinkingToRunTail(groups: DisplayGroup[]): void {
+/**
+ * Keep one reasoning block at the head of each assistant run. The first group
+ * exists from the start of the stream, so the block does not move while later
+ * groups stream in below it.
+ * The notice of a stopped turn ends the run, so the block stays above it.
+ */
+function moveThinkingToRunHead(groups: DisplayGroup[]): void {
 	let run: TurnDisplayGroup[] = [];
 	let executionId: string | undefined;
 
@@ -111,13 +125,15 @@ function moveThinkingToRunTail(groups: DisplayGroup[]): void {
 		if (run.length === 0) return;
 		const segments = run.flatMap((group) => group.thinkingSegments);
 		for (const group of run) group.thinkingSegments = [];
-		run[run.length - 1].thinkingSegments = segments;
+		run[0].thinkingSegments = segments;
+		// The head shows the reasoning of the whole run, so it is live while the tail is.
+		if (run.length > 1) run[0].runTail = run[run.length - 1];
 		run = [];
 		executionId = undefined;
 	};
 
 	for (const group of groups) {
-		if (!isAssistantGroup(group)) {
+		if (!isAssistantGroup(group) || isStoppedGroup(group)) {
 			flush();
 			continue;
 		}
@@ -143,7 +159,7 @@ function moveThinkingToRunTail(groups: DisplayGroup[]): void {
  * handoff uses the turn that owns the errored tool.
  */
 function canAppendToToolRun(last: ToolRunGroup, message: AgentsChatMessage): boolean {
-	if (last.finalMessage || message.stopReport) return false;
+	if (last.finalMessage || message.stopReport || isStoppedMessage(message)) return false;
 
 	if (
 		last.executionId !== undefined &&
@@ -321,6 +337,6 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 		});
 	}
 
-	moveThinkingToRunTail(groups);
+	moveThinkingToRunHead(groups);
 	return groups;
 }

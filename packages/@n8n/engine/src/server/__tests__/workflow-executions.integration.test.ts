@@ -127,6 +127,7 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 				'mode',
 				'hostMode',
 				'parent',
+				'errorSource',
 				'createdAt',
 				'updatedAt',
 				'finishedAt',
@@ -270,6 +271,8 @@ function subExecutionRecord(id: string, parent: ParentLink): NewExecutionRecord 
 		callerContext: { hostMode: 'integrated' },
 		responseExpectation: { kind: 'none' },
 		parent,
+		errorSource: null,
+		resolveErrorWorkflowOnFailure: false,
 	};
 }
 
@@ -836,6 +839,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			graph: sampleGraph,
 			workflow: sampleWorkflow,
 			parent: null,
+			errorSource: null,
 			finishedAt: null,
 		});
 		expect(response.body).not.toHaveProperty('steps');

@@ -7,6 +7,7 @@ import type { ActionDropdownItem } from '@n8n/design-system';
 import type { useI18n } from '@n8n/i18n';
 import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 import { AGENT_N8N_CHAT_VIEW } from '../constants';
+import { formatThreadTitle } from '../utils/thread-title';
 
 /**
  * A chat in the sidebar or the history. `assistant-agent` is an n8n Assistant thread
@@ -28,10 +29,13 @@ export function chatItemRoute(item: RecentChatItem) {
 	};
 }
 
-/** Display title for a chat item, falling back to a generic label for an untitled agent thread. */
+/**
+ * Display title for a chat item. An agent thread shows its first message until its title
+ * arrives, and a generic label when it has neither.
+ */
 export function chatItemTitle(item: RecentChatItem, i18n: ReturnType<typeof useI18n>): string {
 	if (item.kind === 'assistant') return item.thread.title;
-	return item.thread.title ?? i18n.baseText('commandBar.instanceAi.newThread');
+	return formatThreadTitle(item.thread, i18n.baseText('commandBar.instanceAi.newThread'));
 }
 
 /** Whether the item is an n8n Assistant thread, on either runtime. */

@@ -4,6 +4,8 @@ export { QueuedStepDetector } from './queued-step-detector';
 export { QueuedStepRepair } from './queued-step-repair';
 export { RunningStepDetector } from './running-step-detector';
 export { RunningStepRepair, STALE_RUNNING_STEP_ERROR_NAME } from './running-step-repair';
+export { SettledStepDetector } from './settled-step-detector';
+export { SettledStepRepair } from './settled-step-repair';
 export {
 	DEFAULT_RECONCILIATION_BATCH_SIZE,
 	DEFAULT_RECONCILIATION_INTERVAL_MS,

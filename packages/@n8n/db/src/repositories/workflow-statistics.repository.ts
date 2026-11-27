@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { DataSource, type EntityManager, In, QueryFailedError, Repository } from '@n8n/typeorm';
 import { UnexpectedError } from '@n8n/errors';
+import chunk from 'lodash/chunk';
 
 import { buildStatisticsDeltaClaimQuery } from './statistics-delta';
 
@@ -18,6 +19,8 @@ import { StatisticsNames } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
 import { entityManagerOf } from '../services/typeorm-transaction';
 import { chunkIds } from '../utils/chunk-ids';
+import { toDialectQuery } from '../utils/dialect-sql';
+import { toSqliteDbTime } from '../utils/dialect-time';
 
 type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
@@ -32,6 +35,36 @@ export type FirstOccurrenceRow = {
 	workflowName: string | null;
 	firstEventMs: number;
 };
+
+/** The amounts to add to one counter. `firstEvent` dates a first-occurrence milestone. */
+export type WorkflowStatisticsIncrement = {
+	workflowId: string;
+	name: StatisticsNames;
+	count: number;
+	rootCount: number;
+	latestEvent: Date;
+	firstEvent: Date;
+	workflowName: string | null;
+};
+
+const INCREMENT_COLUMNS = [
+	'workflowId',
+	'name',
+	'count',
+	'rootCount',
+	'latestEvent',
+	'workflowName',
+] as const;
+
+/** Keeps a statement far below the bind limit of both databases. */
+const INCREMENT_CHUNK_SIZE = 1000;
+
+const PRODUCTION_NAMES: readonly StatisticsNames[] = [
+	StatisticsNames.productionSuccess,
+	StatisticsNames.productionError,
+];
+
+const counterKey = (workflowId: string, name: string) => `${workflowId}\u0000${name}`;
 
 /** One row returned by the fold query: the batch total (`delta_rows`) plus per-counter fold results. */
 type FoldRow = {
@@ -233,6 +266,117 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 			}));
 
 		return { increments: rows[0].delta_rows, firstOccurrences };
+	}
+
+	/**
+	 * Adds each increment to its counter, in the transaction of `ctx`. Each (workflowId, name)
+	 * must appear once. Returns the production counters that this call created.
+	 */
+	async addIncrements(
+		increments: readonly WorkflowStatisticsIncrement[],
+		ctx: OperationContext,
+	): Promise<FirstOccurrenceRow[]> {
+		if (!ctx.trx) throw new UnexpectedError('addIncrements needs an active transaction');
+		const manager = entityManagerOf(ctx.trx);
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
+
+		const created = new Set<string>();
+		for (const batch of chunk(increments, INCREMENT_CHUNK_SIZE)) {
+			const keys = isPostgres
+				? await this.upsertIncrementsPostgres(manager, batch)
+				: await this.upsertIncrementsSqlite(manager, batch);
+			for (const key of keys) created.add(key);
+		}
+
+		return increments
+			.filter(
+				({ workflowId, name }) =>
+					PRODUCTION_NAMES.includes(name) && created.has(counterKey(workflowId, name)),
+			)
+			.map(({ name, workflowId, workflowName, firstEvent }) => ({
+				name,
+				workflowId,
+				workflowName,
+				firstEventMs: firstEvent.getTime(),
+			}));
+	}
+
+	private incrementUpsertSql(rowCount: number): string {
+		const stats = this.manager.connection.driver.escape(this.metadata.tableName);
+		const width = INCREMENT_COLUMNS.length;
+		const values = Array.from({ length: rowCount }, (_, row) => {
+			const binds = INCREMENT_COLUMNS.map((__, column) => `$${row * width + column + 1}`);
+			return `(${binds.join(', ')})`;
+		});
+		const latestOf = this.globalConfig.database.type === 'postgresdb' ? 'GREATEST' : 'MAX';
+
+		return `INSERT INTO ${stats} (${INCREMENT_COLUMNS.map((column) => `"${column}"`).join(', ')})
+			VALUES ${values.join(', ')}
+			ON CONFLICT ("workflowId", "name") DO UPDATE SET
+				"count" = ${stats}."count" + EXCLUDED."count",
+				"rootCount" = ${stats}."rootCount" + EXCLUDED."rootCount",
+				"latestEvent" = ${latestOf}(${stats}."latestEvent", EXCLUDED."latestEvent"),
+				"workflowName" = EXCLUDED."workflowName"`;
+	}
+
+	private incrementParams(
+		increments: readonly WorkflowStatisticsIncrement[],
+		toDbTime: (date: Date) => Date | string = (date) => date,
+	): unknown[] {
+		return increments.flatMap((increment) =>
+			INCREMENT_COLUMNS.map((column) =>
+				column === 'latestEvent' ? toDbTime(increment.latestEvent) : increment[column],
+			),
+		);
+	}
+
+	/** Returns the keys of the counters the statement created. */
+	private async upsertIncrementsPostgres(
+		manager: EntityManager,
+		increments: readonly WorkflowStatisticsIncrement[],
+	): Promise<string[]> {
+		const rows = await manager.query<
+			Array<{ workflowId: string; name: string; inserted: boolean }>
+		>(
+			`${this.incrementUpsertSql(increments.length)}
+			RETURNING "workflowId", "name", ("xmax" = 0) AS inserted`,
+			this.incrementParams(increments),
+		);
+
+		return rows.filter((row) => row.inserted).map((row) => counterKey(row.workflowId, row.name));
+	}
+
+	/**
+	 * Returns the keys of the production counters the statement created. SQLite gives no rows
+	 * back for an INSERT, so the counters are read first. The fold holds the write lock.
+	 */
+	private async upsertIncrementsSqlite(
+		manager: EntityManager,
+		increments: readonly WorkflowStatisticsIncrement[],
+	): Promise<string[]> {
+		const production = increments.filter(({ name }) => PRODUCTION_NAMES.includes(name));
+		const found =
+			production.length === 0
+				? []
+				: await manager.find(WorkflowStatistics, {
+						select: ['workflowId', 'name'],
+						where: {
+							name: In([...PRODUCTION_NAMES]),
+							workflowId: In([...new Set(production.map(({ workflowId }) => workflowId))]),
+						},
+					});
+		const existing = new Set(found.map((row) => counterKey(row.workflowId, row.name)));
+
+		const { sql, params } = toDialectQuery(
+			false,
+			this.incrementUpsertSql(increments.length),
+			this.incrementParams(increments, toSqliteDbTime),
+		);
+		await manager.query(sql, params);
+
+		return production
+			.map(({ workflowId, name }) => counterKey(workflowId, name))
+			.filter((key) => !existing.has(key));
 	}
 
 	async queryNumWorkflowsUserHasWithFiveOrMoreProdExecs(userId: User['id']): Promise<number> {

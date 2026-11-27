@@ -109,3 +109,6 @@ export const PENDING_AGENT_ID_STATE = 'instanceAiPendingAgentId';
  * pending agent id, and out of the URL, for the same reason.
  */
 export const PENDING_AGENT_STARTER_STATE = 'instanceAiPendingAgentStarter';
+
+/** The channel modal row and view type of scheduled tasks. It is not a channel platform. */
+export const AGENT_SCHEDULE_VIEW_TYPE = 'schedule';
