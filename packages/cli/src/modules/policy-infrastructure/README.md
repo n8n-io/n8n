@@ -165,9 +165,9 @@ Every field is `readonly` — a check reads, it never writes.
 
 The `ExecutionAdmissionContext` fields map to an execution ledger row, but they
 are not a `LedgerFact`. To apply the shared counting rules in
-`@n8n/backend-services`, build the fact: `entityType` from `artifact.kind`,
-`source ?? 'none'`, `event: 'started'`, and `outcome: 'none'`. The context has
-no nodes.
+`@n8n/backend-services`, build the fact with `entityType: artifact.kind`,
+`mode: context.mode`, `source: context.source ?? 'none'`, `event: 'started'`,
+and `outcome: 'none'`. The context has no nodes.
 
 `transport` is `cli`, `source-control`, `package`, or `git-connection`. Read it
 to hold an unattended sync to a different standard than a hand-run import. The

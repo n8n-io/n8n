@@ -91,9 +91,9 @@ export type PolicedArtifactRef = {
 };
 
 /**
- * A run that asks for its execution row. A check builds a `LedgerFact` from these fields
- * (`source ?? 'none'`, `event: 'started'`, `outcome: 'none'`). There are no nodes: a check
- * here must read memory only.
+ * A run that asks for its execution row. A check builds a `LedgerFact` from it with
+ * `entityType: artifact.kind`, `mode`, `source ?? 'none'`, `event: 'started'` and
+ * `outcome: 'none'`. There are no nodes: a check here must read memory only.
  */
 export type ExecutionAdmissionContext = {
 	readonly artifact: PolicedArtifactRef;
