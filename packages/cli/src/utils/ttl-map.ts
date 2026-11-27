@@ -20,11 +20,14 @@ export class TtlMap<K, V> {
 	 * @param sweepIntervalMs How often to run the background sweep (defaults to `ttlMs`).
 	 *                        Set to `0` to disable the background sweep entirely.
 	 * @param onExpire        Called after an entry is removed because its TTL elapsed.
+	 * @param keepAlive       While it returns `true`, an entry stays past its TTL. `delete` and
+	 *                        `clear` still remove it.
 	 */
 	constructor(
 		private readonly ttlMs: number,
 		sweepIntervalMs: number = ttlMs,
 		private readonly onExpire?: (value: V) => void,
+		private readonly keepAlive?: (value: V) => boolean,
 	) {
 		if (sweepIntervalMs > 0) {
 			this.sweepTimer = setInterval(() => this.sweep(), sweepIntervalMs).unref();
@@ -36,9 +39,13 @@ export class TtlMap<K, V> {
 		entry: { value: V; expiresAt: number },
 		now = Date.now(),
 	): boolean {
-		if (now <= entry.expiresAt) return false;
+		if (this.isLive(entry, now)) return false;
 		if (this.store.delete(key)) this.onExpire?.(entry.value);
 		return true;
+	}
+
+	private isLive(entry: { value: V; expiresAt: number }, now: number): boolean {
+		return now <= entry.expiresAt || this.keepAlive?.(entry.value) === true;
 	}
 
 	set(key: K, value: V): this {
@@ -84,7 +91,7 @@ export class TtlMap<K, V> {
 	*entries(): IterableIterator<[K, V]> {
 		const now = Date.now();
 		for (const [key, entry] of this.store) {
-			if (now <= entry.expiresAt) {
+			if (this.isLive(entry, now)) {
 				yield [key, entry.value];
 			}
 		}

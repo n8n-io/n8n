@@ -35,6 +35,7 @@ import type { AgentChatAttachment } from '../entities/agent-chat-attachment.enti
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentTestRunService } from '../agent-test-run.service';
+import type { AgentTestScenariosService } from '../agent-test-scenarios.service';
 import { AgentChatRelayService } from '../agent-chat-relay.service';
 import type { AgentsService } from '../agents.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -111,6 +112,7 @@ function makeController() {
 
 	const taskCancellation = mock<AgentTaskCancellationService>();
 	const plans = mock<AgentPlanService>();
+	const agentTestScenariosService = mock<AgentTestScenariosService>();
 	const controller = new AgentChatController(
 		taskCancellation,
 		agentExecutionOrchestratorService,
@@ -127,10 +129,12 @@ function makeController() {
 		agentsConfig,
 		new AgentChatRelayService(messageQueue, previewStreams, agentChatAttachmentService),
 		plans,
+		agentTestScenariosService,
 	);
 
 	return {
 		plans,
+		agentTestScenariosService,
 		taskCancellation,
 		controller,
 		agentsConfig,
@@ -233,8 +237,35 @@ describe('AgentChatController route access scopes', () => {
 		['getProductionPlan', 'agent:execute'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
+		['generateTestScenarios', 'agent:execute'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
+	});
+});
+
+describe('AgentChatController.generateTestScenarios', () => {
+	it('delegates to AgentTestScenariosService with params, user, and payload', async () => {
+		const { controller, agentTestScenariosService } = makeController();
+		agentTestScenariosService.generateTestScenarios.mockResolvedValue({
+			scenarios: ['Scenario A', 'Scenario B'],
+		});
+
+		const result = await controller.generateTestScenarios(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1' },
+				user: { id: 'user-1' },
+			} as never,
+			{},
+			{ previousScenarios: ['Old scenario'] },
+		);
+
+		expect(result).toEqual({ scenarios: ['Scenario A', 'Scenario B'] });
+		expect(agentTestScenariosService.generateTestScenarios).toHaveBeenCalledWith(
+			{ id: 'user-1' },
+			'project-1',
+			'agent-1',
+			{ previousScenarios: ['Old scenario'] },
+		);
 	});
 });
 

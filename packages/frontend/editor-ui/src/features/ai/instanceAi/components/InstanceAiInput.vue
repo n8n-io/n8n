@@ -114,9 +114,7 @@ const props = withDefaults(
 		mentionActiveWorkflowId?: string;
 		reservedAttachmentCount?: number;
 		isOutOfCredits?: boolean;
-		/** Undefined keeps the default "+" menu; a string replaces it with a plain attach button restricted to those MIME types (`''` hides attaching). */
-		attachOnlyMimeTypes?: string;
-		/** Restricts the accepted file types, as an `accept` string, and keeps the "+" menu. `attachOnlyMimeTypes` wins when both are set. */
+		/** Restricts the accepted file types, as an `accept` string. */
 		acceptedMimeTypes?: string;
 	}>(),
 	{
@@ -292,9 +290,6 @@ defineExpose({
 	isDirty,
 	insertSuggestion: handleSuggestionInsert,
 	submitSuggestion,
-	// Lets a host disable other controls (e.g. an agent picker) while a file
-	// attachment is still encoding, so they cannot change who a send targets.
-	isPreparingSubmission,
 	getSendStopButtonElement: () => chatInputRef.value?.getSendStopButtonElement(),
 });
 
@@ -357,9 +352,6 @@ const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAtt
 watch(isComposerDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
-);
-const showAttach = computed(
-	() => props.attachOnlyMimeTypes === undefined || props.attachOnlyMimeTypes.length > 0,
 );
 const shouldShowMentions = computed(() => props.mentionsEnabled && Boolean(props.mentionProjectId));
 const mentionAvailability = useAssistantMentionAvailability({
@@ -934,9 +926,9 @@ const resizable = computed(() => {
 			:composer-height="props.composerHeight"
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
-			:show-attach="showAttach"
-			:show-attach-button="props.attachOnlyMimeTypes !== undefined"
-			:accepted-mime-types="props.attachOnlyMimeTypes ?? props.acceptedMimeTypes"
+			show-attach
+			:show-attach-button="false"
+			:accepted-mime-types="props.acceptedMimeTypes"
 			:attached-encoded-bytes="attachedEncodedBytes"
 			@update:model-value="mentions.handleTextChange"
 			@submit="handleSubmit"
@@ -985,17 +977,9 @@ const resizable = computed(() => {
 					/>
 				</N8nAttachmentGroup>
 			</template>
-			<template
-				v-if="
-					$slots['footer-start'] ||
-					$slots['footer-after-menu'] ||
-					props.attachOnlyMimeTypes === undefined
-				"
-				#footer-start
-			>
+			<template #footer-start>
 				<slot name="footer-start" />
 				<InstanceAiInputMenu
-					v-if="props.attachOnlyMimeTypes === undefined"
 					:disabled="isBusy || isGatedBySetup"
 					:is-streaming="props.isStreaming"
 					:project-id="props.mentionProjectId"

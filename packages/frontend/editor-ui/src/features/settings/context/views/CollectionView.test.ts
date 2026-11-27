@@ -86,7 +86,9 @@ const setup = async ({
 } = {}) => {
 	const pinia = createTestingPinia();
 	collectionsStore = mockedStore(useCollectionsStore);
-	collectionsStore.getCollection.mockResolvedValue(collectionDto({ description }));
+	collectionsStore.getCollection.mockResolvedValue(
+		collectionDto({ description, agentCount: agents.length }),
+	);
 	collectionsStore.listCollectionFiles.mockResolvedValue({
 		count: files.length,
 		totalSizeBytes: 0,
@@ -684,6 +686,17 @@ describe('CollectionView', () => {
 				expect(replaceMock).toHaveBeenCalledWith({ name: VIEWS.SETTINGS_CONTEXT_COLLECTIONS }),
 			);
 			expect(pushMock).not.toHaveBeenCalled();
+		});
+
+		it('names the agents of the page in the dialog without loading them again', async () => {
+			await setup({ agents: [{ id: 'agent-1', name: 'Support agent', projectId: 'p1' }] });
+
+			await pickAction('Delete');
+
+			expect(await screen.findByTestId('collection-delete-agents-warning')).toHaveTextContent(
+				'1 agent uses this collection and will stop answering from it: Support agent.',
+			);
+			expect(collectionsStore.listCollectionAgents).toHaveBeenCalledTimes(1);
 		});
 	});
 

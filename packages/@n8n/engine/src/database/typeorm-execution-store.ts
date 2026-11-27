@@ -1,10 +1,20 @@
-import { In, LessThanOrEqual, type EntityManager, type Repository } from '@n8n/typeorm';
+import {
+	In,
+	IsNull,
+	LessThanOrEqual,
+	Not,
+	type EntityManager,
+	type Repository,
+} from '@n8n/typeorm';
 
 import { WorkflowSeededStep, type WorkflowExecution } from './entities';
+import { toErrorSourceColumns } from './error-source-columns';
+import { KEEP_UPDATED_AT } from './keep-updated-at';
 import { parentLinkSql, toParentColumns } from './parent-link-columns';
 import {
 	ExecutionNotFoundError,
 	ParentExecutionEndedError,
+	type CreateExecutionResult,
 	type ExecutionRecord,
 	type ExecutionStore,
 	type NewExecutionRecord,
@@ -15,6 +25,7 @@ import {
 import {
 	DEFAULT_STALENESS_THRESHOLDS,
 	nextQueuedStaleAfter,
+	errorWorkflowPendingMs,
 	type StalenessThresholds,
 } from '../execution/staleness';
 import {
@@ -46,24 +57,79 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		return status === 'queued' ? new Date(Date.now() + this.staleness.queuedMs) : null;
 	}
 
-	async createExecution({ seededSteps, parent, ...record }: NewExecutionRecord): Promise<void> {
+	async createExecution({
+		seededSteps,
+		parent,
+		errorSource,
+		...record
+	}: NewExecutionRecord): Promise<CreateExecutionResult> {
 		const execution = this.repo.create({
 			...record,
 			...toParentColumns(parent),
+			...toErrorSourceColumns(errorSource),
 			finishedAt: null,
 			staleAfter: this.staleAfterFor(record.status),
 		});
 		const seeded = Object.entries(seededSteps ?? {}).flatMap(([nodeId, passes]) =>
 			passes.map((outputs, iteration) => ({ executionId: record.id, nodeId, iteration, outputs })),
 		);
-		await this.repo.manager.transaction(async (manager) => {
+		return await this.repo.manager.transaction(async (manager) => {
 			if (parent) await this.holdParentNotEnded(manager, parent.executionId);
 			// The cast is needed because the insert payload type recurses into the
 			// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.
 			// NOTE: prefer insert to save for performance reasons.
-			await manager.insert(this.repo.target, execution as InsertValues);
+			if (errorSource) {
+				const inserted = await this.insertErrorExecution(manager, execution as InsertValues);
+				// Cleared even when another start won, so a stray marker cannot outlive it.
+				// The source has ended, so the write keeps its `updated_at`.
+				await manager.update(
+					this.repo.target,
+					{ id: errorSource.executionId, errorWorkflowDueAt: Not(IsNull()) },
+					{ errorWorkflowDueAt: null, ...KEEP_UPDATED_AT },
+				);
+				if (!inserted) return { errorExecutionAlreadyExists: true };
+			} else {
+				await manager.insert(this.repo.target, execution as InsertValues);
+			}
 			if (seeded.length > 0) await manager.insert(WorkflowSeededStep, seeded);
+			return { errorExecutionAlreadyExists: false };
 		});
+	}
+
+	/**
+	 * Inserts an error execution unless its source already has an error execution.
+	 * The unique index on the source decides, so two concurrent starts cannot
+	 * both insert. Only a conflict on that index is ignored: an id that another
+	 * execution already has still throws, so the marker of the source stays.
+	 */
+	private async insertErrorExecution(
+		manager: EntityManager,
+		execution: InsertValues,
+	): Promise<boolean> {
+		const result = await manager
+			.createQueryBuilder()
+			.insert()
+			.into(this.repo.target)
+			.values(execution)
+			// Deprecated, but `orIgnore` takes no conflict target and `orUpdate` cannot do nothing.
+			// oxlint-disable-next-line typescript/no-deprecated
+			.onConflict(
+				'(error_source_execution_id) WHERE error_source_execution_id IS NOT NULL DO NOTHING',
+			)
+			.returning('id')
+			.execute();
+		return Array.isArray(result.raw) && result.raw.length > 0;
+	}
+
+	/**
+	 * The marker value that the write which fails an execution sets: a time for
+	 * an execution with `resolve_error_workflow_on_failure`, `NULL` for any other. SQL,
+	 * so the flag is read in the same statement as the status change.
+	 */
+	private errorWorkflowDueSql(): () => string {
+		const dueAt = new Date(Date.now() + errorWorkflowPendingMs(this.staleness)).toISOString();
+		return () =>
+			`CASE WHEN resolve_error_workflow_on_failure THEN '${dueAt}'::timestamptz ELSE NULL END`;
 	}
 
 	/**
@@ -149,7 +215,11 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		const finishedAt = new Date();
 		const result = await this.repo.update(
 			{ id, status: In([...LIVE_EXECUTION_STATUSES]) },
-			{ status, finishedAt },
+			{
+				status,
+				finishedAt,
+				...(status === 'failed' ? { errorWorkflowDueAt: this.errorWorkflowDueSql() } : {}),
+			},
 		);
 		return result.affected === 1 ? { finishedAt } : null;
 	}

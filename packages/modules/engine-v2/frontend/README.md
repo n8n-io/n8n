@@ -19,22 +19,32 @@ The module tells the editor if the open workflow can run on engine v2. Every ans
   node-type rule as the workflow check. The node creator uses it before the node exists.
 - `useEngineV2Compatibility` takes getters for the nodes, the connections and the settings of the
   workflow, because the document store belongs to the shell. It returns the reasons, the blocking
-  reasons and `isNodeTypeIncompatible`.
-- `EngineV2CompatibilityButton` shows the number of reasons, with a red icon when one blocks and a
-  yellow icon when all are warnings. The shell puts it above the node creator toolbar on editable
-  canvases, and at the top right on read-only canvases. A click opens
-  `EngineV2CompatibilityDialog`, which lists the blocking reasons first, then the warnings. The
-  list scrolls inside the dialog. Each entry's icon depends on its severity only, so a new reason
-  code needs no icon.
+  reasons, the groups and `isNodeTypeIncompatible`.
+- `groupEngineV2Reasons` (`src/engineV2Findings.ts`) puts the reasons of one node in one group. A
+  reason with no node is a group of its own. Every surface shows the number of groups as its
+  count. `findEngineV2Issues` runs the check without the engine gate, so workflow settings can
+  ask before the switch.
+- `confirmEngineV2Switch` asks the user to confirm the switch to engine v2. It is a message box,
+  so it opens above the workflow settings modal.
+- `EngineV2CompatibilityButton` shows the number of groups in a badge: red when one blocks, yellow
+  when all are warnings. The shell puts it above the node creator toolbar on editable canvases,
+  and at the top right on read-only canvases. A click opens the findings dialog through
+  `useEngineV2FindingsDialog`, the one open state that the button, the publish tooltip and
+  workflow settings share.
+- `EngineV2CompatibilityDialog` lists the groups, blocking ones first. Each finding says what
+  isn't supported and how to fix it. It emits `open-node` and `switch-to-v1`, and the shell does
+  both, because the module can't reach the canvas or the stores. The shell mounts it once on the
+  canvas. Each finding's icon depends on its severity only, so a new reason code needs no icon.
 - `src/engineV2ReasonText.ts` gives the text of each reason:
   - `REASON_TEXT_KEYS` has an entry for every code of the package, so the typecheck fails when
-    the package adds a code. An entry is a key in `en.json`, one key for each `kind` when a code
-    has two meanings, or `null`. A `temporary` reason adds "Run this workflow on Engine v1 for
-    now." Codes with the same text share a key.
+    the package adds a code. An entry is a `reason` key and a `fix` key in `en.json`, one pair
+    for each `kind` when a code has two meanings, or `null`. Codes with the same text share a
+    key. A code about one node setting uses `unsupportedNodeSetting`, which puts the setting's
+    name from `nodeSettings.<setting>.displayName` in the shared `nodeSetting` keys.
   - A `null` code shows the English `message` of the package. Use `null` when the `message` holds
     details that a fixed string can't, such as a second node or a count. The dialog then shows no
     node name before the `message` when the `message` already names the node.
-  - When the package adds a code, add its entry, and its key to `en.json` unless the entry is
+  - When the package adds a code, add its entry, and its keys to `en.json` unless the entry is
     `null`. When a package rule changes what its `message` says, change the string in the same
     PR, or set the entry to `null`.
 - Tests replace the check with `mockEngineV2Compatibility` from

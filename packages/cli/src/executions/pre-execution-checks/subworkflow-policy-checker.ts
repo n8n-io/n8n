@@ -95,17 +95,12 @@ export class SubworkflowPolicyChecker {
 		parentProjectId: string,
 		userId?: string,
 	) {
+		const denial = await this.findProjectDenial(subworkflow, parentProjectId);
+
+		if (!denial) return;
+
+		const { policy, subworkflowProject } = denial;
 		const { id: subworkflowId } = subworkflow;
-
-		if (!subworkflowId) return;
-
-		const policy = this.findPolicy(subworkflow);
-
-		if (policy === 'any') return;
-
-		const subworkflowProject = await this.ownershipService.getWorkflowProjectCached(subworkflowId);
-
-		if (policy === 'workflowsFromSameOwner' && parentProjectId === subworkflowProject.id) return;
 
 		this.logDenial({ parentProjectId, subworkflowId, policy });
 
@@ -117,6 +112,32 @@ export class SubworkflowPolicyChecker {
 			instanceUrl: this.urlService.getInstanceBaseUrl(),
 			...errorDetails,
 		});
+	}
+
+	/**
+	 * Same decision as `checkForProject`, but returned instead of thrown and not logged, for
+	 * callers that only preview a call, such as a list of the workflows that can be a tool.
+	 */
+	async isCallableByProject(subworkflow: WorkflowWithCallerPolicy, parentProjectId: string) {
+		return (await this.findProjectDenial(subworkflow, parentProjectId)) === null;
+	}
+
+	private async findProjectDenial(
+		subworkflow: WorkflowWithCallerPolicy,
+		parentProjectId: string,
+	): Promise<{ policy: DenialPolicy; subworkflowProject: Project } | null> {
+		if (!subworkflow.id) return null;
+
+		const policy = this.findPolicy(subworkflow);
+
+		if (policy === 'any') return null;
+
+		const subworkflowProject = await this.ownershipService.getWorkflowProjectCached(subworkflow.id);
+
+		if (policy === 'workflowsFromSameOwner' && parentProjectId === subworkflowProject.id)
+			return null;
+
+		return { policy, subworkflowProject };
 	}
 
 	private async errorDetails(subworkflowProject: Project, subworkflowId: string, userId?: string) {

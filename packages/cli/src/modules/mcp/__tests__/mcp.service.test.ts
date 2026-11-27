@@ -7,12 +7,7 @@ import { createListTagsTool } from '../tools/list-tags.tool';
 
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore `type McpServer`; keep createMcpHandler.
 import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
-import {
-	MCP_APPS_FLAG,
-	MCP_APPS_VARIANT_CONTROL,
-	MCP_APPS_VARIANT_ENABLED,
-	INSTANCE_ACTIVITY_CONTEXT_FLAG,
-} from '@n8n/api-types';
+import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
 import {
 	EventService,
@@ -481,7 +476,7 @@ describe('McpService', () => {
 
 		const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
-		it('resolves user flags and the instance activity flag', async () => {
+		it('resolves user flags and turns instance context on', async () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
 				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
@@ -492,7 +487,7 @@ describe('McpService', () => {
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				credentialDescriptionsEnabled: false,
 				mcpApps: { enabled: true, variant: 'variant' },
-				instanceContextEnabled: false,
+				instanceContextEnabled: true,
 				skillsExtensionEnabled: false,
 				preferencesNoteVariant: 'variant',
 			});
@@ -515,42 +510,15 @@ describe('McpService', () => {
 			},
 		);
 
-		it.each([true, false])(
-			'uses the same instance context answer for two users: %s',
-			async (enabled) => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags
-					.mockResolvedValueOnce({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true })
-					.mockResolvedValueOnce({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: false });
-				postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
-				const service = buildResolutionService({ postHogClient });
-				const secondUser = Object.assign(new User(), { id: 'user-2', role: GLOBAL_MEMBER_ROLE });
-
-				const results = await Promise.all([
-					service.resolveFeatureFlags(user),
-					service.resolveFeatureFlags(secondUser),
-				]);
-
-				expect(results.map((result) => result.instanceContextEnabled)).toEqual([enabled, enabled]);
-				expect(postHogClient.getFeatureFlagForInstance.mock.calls).toEqual([
-					[INSTANCE_ACTIVITY_CONTEXT_FLAG],
-					[INSTANCE_ACTIVITY_CONTEXT_FLAG],
-				]);
-			},
-		);
-
-		it('keeps context off when its flag fails without disabling user features', async () => {
+		it('keeps context on when user flags cannot be read', async () => {
 			const postHogClient = mockInstance(PostHogClient);
-			postHogClient.getFeatureFlags.mockResolvedValue({
-				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
-			});
-			postHogClient.getFeatureFlagForInstance.mockRejectedValue(new Error('Flag unavailable'));
+			postHogClient.getFeatureFlags.mockRejectedValue(new Error('Flags unavailable'));
 
 			await expect(
 				buildResolutionService({ postHogClient }).resolveFeatureFlags(user),
 			).resolves.toMatchObject({
-				instanceContextEnabled: false,
-				mcpApps: { enabled: true, variant: 'variant' },
+				instanceContextEnabled: true,
+				mcpApps: { enabled: false, variant: 'unassigned' },
 			});
 		});
 
@@ -600,35 +568,6 @@ describe('McpService', () => {
 			});
 		});
 
-		describe('instance context', () => {
-			it('enables the surface from the shared instance flag alone', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({});
-				postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
-				const service = buildResolutionService({ postHogClient });
-
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					instanceContextEnabled: true,
-				});
-			});
-
-			it.each([false, undefined, 'variant'])(
-				'keeps the surface off when the instance flag is %s',
-				async (value) => {
-					const postHogClient = mockInstance(PostHogClient);
-					postHogClient.getFeatureFlags.mockResolvedValue({
-						[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
-					});
-					postHogClient.getFeatureFlagForInstance.mockResolvedValue(value);
-					const service = buildResolutionService({ postHogClient });
-
-					await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-						instanceContextEnabled: false,
-					});
-				},
-			);
-		});
-
 		it.each([
 			[true, true],
 			['variant', false],
@@ -651,7 +590,7 @@ describe('McpService', () => {
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				credentialDescriptionsEnabled: false,
 				mcpApps: { enabled: true, variant: 'env_override' },
-				instanceContextEnabled: false,
+				instanceContextEnabled: true,
 				skillsExtensionEnabled: false,
 				preferencesNoteVariant: 'unassigned',
 			});

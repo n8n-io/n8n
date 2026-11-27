@@ -1,6 +1,8 @@
 import type { FavoriteResourceType } from '@n8n/api-types';
 import {
 	FavoriteResourceResolverRegistry,
+	FolderFinderService,
+	ProjectScopeService,
 	type FavoriteResourceMeta as ResourceMeta,
 	type ResolvedFavoriteResourceType,
 } from '@n8n/backend-services';
@@ -57,6 +59,8 @@ export class FavoritesService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly folderRepository: FolderRepository,
 		private readonly resourceResolvers: FavoriteResourceResolverRegistry,
+		private readonly projectScopeService: ProjectScopeService,
+		private readonly folderFinderService: FolderFinderService,
 	) {}
 
 	async getEnrichedFavorites(user: User) {
@@ -206,14 +210,15 @@ export class FavoritesService {
 		return result;
 	}
 
-	async addFavorite(userId: string, resourceId: string, resourceType: FavoriteResourceType) {
+	async addFavorite(user: User, resourceId: string, resourceType: FavoriteResourceType) {
+		await this.assertResourceAccessible(user, resourceId, resourceType);
+
+		const userId = user.id;
 		const existing = await this.userFavoriteRepository.findOne({
 			where: { userId, resourceId, resourceType },
 		});
 
 		if (existing) return existing;
-
-		await this.assertResourceExists(resourceId, resourceType);
 
 		const count = await this.userFavoriteRepository.count({ where: { userId } });
 		if (count >= this.MAX_FAVORITES) {
@@ -224,31 +229,78 @@ export class FavoritesService {
 		return await this.userFavoriteRepository.save(favorite);
 	}
 
-	private async assertResourceExists(
+	private async assertResourceAccessible(
+		user: User,
 		resourceId: string,
 		resourceType: FavoriteResourceType,
 	): Promise<void> {
-		let exists: boolean;
+		let accessible: boolean;
 
 		switch (resourceType) {
 			case 'workflow':
-				exists = await this.workflowRepository.existsBy({ id: resourceId });
+				accessible = await this.hasWorkflowAccess(user, resourceId);
 				break;
 			case 'project':
-				exists = await this.projectRepository.existsBy({ id: resourceId });
+				accessible = await this.hasProjectAccess(user, resourceId);
 				break;
 			case 'folder':
-				exists = await this.folderRepository.existsBy({ id: resourceId });
+				accessible = await this.hasFolderAccess(user, resourceId);
 				break;
 			case 'dataTable':
 			case 'agent':
-				exists = (await this.resourceResolvers.get(resourceType)?.exists(resourceId)) ?? false;
+				accessible = await this.hasResolvedResourceAccess(user, resourceType, resourceId);
 				break;
 		}
 
-		if (!exists) {
+		if (!accessible) {
 			throw new NotFoundError(`${resourceType} with id "${resourceId}" not found`);
 		}
+	}
+
+	private async hasWorkflowAccess(user: User, workflowId: string): Promise<boolean> {
+		const roleSlugs = await this.projectScopeService.getProjectRoleSlugs(user, ['workflow:read']);
+		if (roleSlugs === null) {
+			return await this.workflowRepository.existsBy({ id: workflowId });
+		}
+		const accessibleIds = await this.sharedWorkflowRepository.findWorkflowIdsInUserProjects(
+			[workflowId],
+			user.id,
+			roleSlugs,
+		);
+		return accessibleIds.has(workflowId);
+	}
+
+	private async hasProjectAccess(user: User, projectId: string): Promise<boolean> {
+		const roleSlugs = await this.projectScopeService.getProjectRoleSlugs(user, ['project:read']);
+		if (roleSlugs !== null && roleSlugs.length === 0) return false;
+		const project = await this.projectRepository.findOneWithUserRoles(
+			projectId,
+			user.id,
+			roleSlugs ?? undefined,
+		);
+		return project !== null;
+	}
+
+	private async hasFolderAccess(user: User, folderId: string): Promise<boolean> {
+		const folders = await this.folderFinderService.findFoldersByIdsForUser([folderId], user, [
+			'folder:read',
+		]);
+		return folders.some((folder) => folder.id === folderId && Boolean(folder.homeProject?.id));
+	}
+
+	private async hasResolvedResourceAccess(
+		user: User,
+		resourceType: ResolvedFavoriteResourceType,
+		resourceId: string,
+	): Promise<boolean> {
+		const resolver = this.resourceResolvers.get(resourceType);
+		if (!resolver) return false;
+
+		const meta = await resolver.findMeta([resourceId]);
+		const projectId = meta.get(resourceId)?.projectId;
+		if (!projectId) return false;
+
+		return await this.projectScopeService.hasScopes(user, projectId, [resolver.globalReadScope]);
 	}
 
 	async removeFavorite(userId: string, resourceId: string, resourceType: FavoriteResourceType) {

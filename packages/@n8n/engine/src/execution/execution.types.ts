@@ -68,6 +68,16 @@ export interface ParentLink {
 }
 
 /**
+ * The failed execution that an error execution reports on. Only
+ * the engine's own error start sets it: a caller over HTTP cannot claim one.
+ * The workflow id is stored too, because the source row can be pruned first.
+ */
+export interface ErrorSourceLink {
+	executionId: string;
+	workflowId: string;
+}
+
+/**
  * Lifecycle status of a single step within an execution. `skipped` is terminal
  * at birth: the step was considered and decided against (no live input), so it
  * never runs. `waiting` is the other extreme: the step ran, but it produced no

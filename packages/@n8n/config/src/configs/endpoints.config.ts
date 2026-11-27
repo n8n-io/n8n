@@ -159,6 +159,15 @@ export class PrometheusMetricsConfig {
 	 */
 	@Env('N8N_METRICS_INCLUDE_EXECUTION_LEDGER_METRICS')
 	includeExecutionLedgerMetrics: boolean = false;
+
+	/**
+	 * Whether to include metrics for the `execution-limits` module: how long n8n takes to
+	 * refresh the execution counts it compares with your limits, the time of the last
+	 * successful refresh, and how often a refresh fails. Main and webhook instances report
+	 * them, and only when execution limits are licensed.
+	 */
+	@Env('N8N_METRICS_INCLUDE_EXECUTION_LIMITS_METRICS')
+	includeExecutionLimitsMetrics: boolean = false;
 }
 
 @Config

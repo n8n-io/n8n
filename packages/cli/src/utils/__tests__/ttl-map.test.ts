@@ -9,6 +9,28 @@ describe('TtlMap', () => {
 		vi.useRealTimers();
 	});
 
+	describe('keepAlive', () => {
+		it('keeps an entry past its TTL while the predicate is true, then expires it', () => {
+			const onExpire = vi.fn();
+			const kept = new Set(['value']);
+			const map = new TtlMap<string, string>(30, 0, onExpire, (value) => kept.has(value));
+			map.set('key', 'value');
+
+			vi.advanceTimersByTime(31);
+			map.sweep();
+			expect(map.get('key')).toBe('value');
+			expect([...map]).toEqual([['key', 'value']]);
+			expect(onExpire).not.toHaveBeenCalled();
+
+			kept.clear();
+			map.sweep();
+			expect(map.get('key')).toBeUndefined();
+			expect(onExpire).toHaveBeenCalledWith('value');
+
+			map.dispose();
+		});
+	});
+
 	describe('touch', () => {
 		it('slides the expiry so a touched entry outlives its original deadline', () => {
 			const map = new TtlMap<string, string>(30, 0);

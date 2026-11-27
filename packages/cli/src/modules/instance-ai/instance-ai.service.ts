@@ -988,7 +988,7 @@ export class InstanceAiService {
 		}
 		const [observations, cursor] = await Promise.all([
 			this.observationRepo.findActiveForThread(threadId),
-			this.observationCursorRepo.findForThread(threadId),
+			this.observationCursorRepo.findForThread(threadId, {}),
 		]);
 		return {
 			observations: observations.map(({ marker, text, tokenCount }) => ({

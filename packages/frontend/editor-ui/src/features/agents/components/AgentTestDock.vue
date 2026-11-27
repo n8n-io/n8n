@@ -58,10 +58,12 @@ const props = withDefaults(
 		effectiveSessionId?: string;
 		newSession?: boolean;
 		initialPrompt?: string;
+		showTestScenarios?: boolean;
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
 		canDeleteSession?: boolean;
 		beforeSend?: () => Promise<void> | void;
+		beforeGenerate?: () => Promise<void> | void;
 		isDeletingSession?: boolean;
 		budgetCards?: boolean;
 		/** Persists a raised budget cap. Omitted when the agent is read-only. */
@@ -69,6 +71,7 @@ const props = withDefaults(
 	}>(),
 	{
 		newSession: false,
+		showTestScenarios: false,
 		overlay: false,
 		canDeleteSession: false,
 		isDeletingSession: false,
@@ -340,9 +343,11 @@ defineExpose({ clearBudgetStops });
 				:effective-session-id="props.effectiveSessionId"
 				:new-session="props.newSession"
 				:initial-prompt="props.initialPrompt"
+				:show-test-scenarios="props.showTestScenarios"
 				:can-send-to-assistant="props.canSendToAssistant"
 				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"
+				:before-generate="props.beforeGenerate"
 				:budget-cards="props.budgetCards"
 				:increase-budget="props.increaseBudget"
 				@continue-loaded="emit('continue-loaded', $event)"

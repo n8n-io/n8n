@@ -367,7 +367,7 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 	});
 };
 
-const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAction['data']) => {
+const unpublishWorkflowVersion = (id: WorkflowVersionId) => {
 	if (publishedWorkflowVersionId.value !== id) {
 		return;
 	}
@@ -396,7 +396,7 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAc
 		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 		data: {
 			workflowId: workflowId.value,
-			versionName: data.versionName,
+			workflowName: publishedWorkflow.value?.name ?? '',
 			eventBus: unpublishEventBus,
 		},
 	});
@@ -505,7 +505,7 @@ const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 				publishWorkflowVersion(id, data);
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.UNPUBLISH:
-				unpublishWorkflowVersion(id, data);
+				unpublishWorkflowVersion(id);
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.NAME:
 				await nameWorkflowVersion(id, data);

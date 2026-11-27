@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 
 import { getBrowserUsePrompt } from './browser-use-prompt';
 import { COMMUNICATION_STYLE_SECTION } from './communication-style.prompt';
-import { ASK_USER_TOOL_ID, ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
+import { ASK_USER_TOOL_ID, DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
 import {
 	SCOPE_GROUNDING_GUARDRAIL,
 	SECRET_ASK_GUARDRAIL,
@@ -39,6 +39,7 @@ interface SystemPromptOptions {
 	/** The send_feedback tool is wired; tell the model when to report a problem. */
 	feedbackToolEnabled?: boolean;
 	skillManagementEnabled?: boolean;
+	agentArchiveEnabled?: boolean;
 	/** The start-cloud-browser-task tool is wired; tell the model when and how to delegate to it. */
 	cloudBrowserEnabled?: boolean;
 	/** Setup panel v2 flag: `setup_workflow` announces instead of opening a card. */
@@ -171,6 +172,12 @@ Before treating a request as a build, work out whether it points at a workflow t
 Changing the workflow itself is different: its nodes, its parameters and its name are all build territory, so those take the normal build path even though the workflow already exists. Find it first either way — match the workflow before you edit it.
 
 A request to build something genuinely new goes straight to the build path — no lookup first.
+`;
+}
+
+function getAgentArchiveGuidance(): string {
+	return `
+**Archive an Agent**: This is a lifecycle action, not a build. Find the Agent in this project with \`${DOMAIN_TOOL_IDS.AGENT_CONTEXT}\` (\`type: "agents"\`) if you need its ID. If more than one Agent matches, ask the user which one to archive. Use \`${DOMAIN_TOOL_IDS.ARCHIVE_AGENT}\` to request confirmation. Do not report that the Agent is archived until the tool succeeds.
 `;
 }
 
@@ -336,6 +343,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			preferenceSavingEnabled,
 			feedbackToolEnabled,
 			skillManagementEnabled,
+			agentArchiveEnabled,
 			cloudBrowserEnabled,
 			setupPanelEnabled,
 			engineSetup,
@@ -345,7 +353,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot, { fileImportEnabled, fileListingEnabled, fileSharingEnabled, fileViewingEnabled })}` : ''}
 ${getProjectScopeSection(projectId)}
-${getExistingResourcesSection()}
+${getExistingResourcesSection()}${agentArchiveEnabled ? getAgentArchiveGuidance() : ''}
 ${getPreviewTabsSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}

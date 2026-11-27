@@ -9,6 +9,7 @@ import {
 
 import { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
+import { KEEP_UPDATED_AT } from './keep-updated-at';
 import { UnexpectedError } from '../common';
 import {
 	ANNOUNCED_STEP_STATUSES,
@@ -51,13 +52,6 @@ const FILLED_OUTPUT_SLOTS = `COALESCE(
 	 FROM jsonb_array_elements(step.outputs) WITH ORDINALITY AS slot),
 	'{}'
 )`;
-
-/**
- * For a write that changes only `stale_after` of a settled step. TypeORM sets
- * `updated_at` to the current time in each UPDATE that does not name the
- * column, and readers use `updated_at` as the time the step settled.
- */
-const KEEP_UPDATED_AT = { updatedAt: () => 'updated_at' };
 
 type StepSummaryRow = {
 	id: string;

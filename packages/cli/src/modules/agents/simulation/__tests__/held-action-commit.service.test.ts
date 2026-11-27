@@ -572,7 +572,7 @@ describe('HeldActionCommitService', () => {
 			}),
 		).rejects.toThrow(NotFoundError);
 		expect(simulationSessions.getSession).toHaveBeenCalledWith({
-			userId: 'user-1',
+			user,
 			projectId: 'project-1',
 			agentId: 'agent-1',
 			testChatId: 'other-chat',
