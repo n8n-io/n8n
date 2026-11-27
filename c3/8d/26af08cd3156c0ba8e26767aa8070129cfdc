@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  h_23d60aac2fe72e 214,283-287,1025-1028,1061-1063
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  h_23d60aac2fe72e 532-533
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.test.ts
+  h_23d60aac2fe72e 86,849,856,859-860,862-871
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  h_23d60aac2fe72e 76,251,288,360,388,400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c38d26af08cd3156c0ba8e26767aa8070129cfdc",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

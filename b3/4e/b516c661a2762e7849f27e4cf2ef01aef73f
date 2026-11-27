@@ -1,0 +1,19 @@
+packages/@n8n/telemetry/src/events/internal-api.ts
+  s_1f81abe09807b5::t_fc918a7e84b490 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b34eb516c661a2762e7849f27e4cf2ef01aef73f",
+  "prompts": {},
+  "sessions": {
+    "s_1f81abe09807b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66abfa0d-c819-44a1-b320-43149bbebabb",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
