@@ -1,0 +1,77 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_08ad1fe1d43e02::t_72de92a429d911 3001,3022-3023
+  s_08ad1fe1d43e02::t_555b3a519ff516 2918-2921,2967,3014,3035
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 78,1852,1876-1878,1882,2077,2085,2131
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 65-75,78,85-86
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 55-61
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_08ad1fe1d43e02::t_3818527223d225 1253-1269
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_08ad1fe1d43e02::t_dfbdda57f50037 272,309
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_08ad1fe1d43e02::t_a8b284c26d12e3 305-306,314,316-317
+packages/frontend/editor-ui/src/features/agents/components/AgentScheduleTestNotice.vue
+  s_08ad1fe1d43e02::t_505156e776bf75 7
+  s_08ad1fe1d43e02::t_739ccc2015b9e6 29-39
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_08ad1fe1d43e02::t_802edc3d53c36c 3704-3706,3707-3716,3718-3731,3733-3735,3739-3745
+  s_08ad1fe1d43e02::t_0f6b3033a5ef7e 474
+  s_08ad1fe1d43e02::t_555b3a519ff516 3623,3627,3640
+  s_08ad1fe1d43e02::t_8e89d678a88bc9 3717
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 1374,1383-1386
+  s_08ad1fe1d43e02::t_1909f8fc22b434 3782,3939
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_08ad1fe1d43e02::t_ebd879cb46fa76 589-591,593-598
+  s_08ad1fe1d43e02::t_92d344bb3f3f0d 600-604
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_08ad1fe1d43e02::t_555b3a519ff516 74,432-439
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
+  s_08ad1fe1d43e02::t_3818527223d225 56,58-59,62-77
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_08ad1fe1d43e02::t_ce516087524c1e 395-396,412,554-555
+  s_08ad1fe1d43e02::t_b641f835fb76d3 401-402,413
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestDock.test.ts
+  s_08ad1fe1d43e02::t_27b95583e40022 9
+  s_08ad1fe1d43e02::t_555b3a519ff516 144,422,724,744
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskForm.vue
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 351-355
+  s_08ad1fe1d43e02::t_616248fc4bbc41 422-431
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_08ad1fe1d43e02::t_802edc3d53c36c 3953,3956,3961-3962,3966,3969,3972-3973,3976-3977,3911,3923-3933,3935,3937-3938,3940,3942-3951
+  s_08ad1fe1d43e02::t_555b3a519ff516 3960,3905-3906,3912-3913,3934,3936,3939,3941,3963-3965
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 689,693
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_08ad1fe1d43e02::t_392596019c0558 89
+  s_08ad1fe1d43e02::t_739ccc2015b9e6 192-193,1145-1146,2080
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 1049,1381,1402,1465,1500,1519,1530,1592,1660,1665,1702
+packages/frontend/editor-ui/src/features/agents/components/AgentTestChatPage.vue
+  s_08ad1fe1d43e02::t_739ccc2015b9e6 34,146
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 108
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_08ad1fe1d43e02::t_3818527223d225 1412,1419
+packages/frontend/editor-ui/src/features/agents/components/AgentTestDock.vue
+  s_08ad1fe1d43e02::t_739ccc2015b9e6 63,351
+packages/@n8n/api-types/src/agents/dto.ts
+  s_08ad1fe1d43e02::t_ebd879cb46fa76 932-938,947-951,959-960
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d1eb1b8964c7517e3ceb5c2a0cacae482974e20d",
+  "prompts": {},
+  "sessions": {
+    "s_08ad1fe1d43e02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8181cd39-5693-42c0-89cf-63f7653ab06b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

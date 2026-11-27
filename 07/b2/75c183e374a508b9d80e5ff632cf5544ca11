@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_08ad1fe1d43e02::t_802edc3d53c36c 3920,3923,3928-3929,3931,3934,3937-3938,3941-3942
+  s_08ad1fe1d43e02::t_555b3a519ff516 3927
+packages/frontend/editor-ui/src/features/agents/components/AgentScheduleTestNotice.vue
+  s_08ad1fe1d43e02::t_505156e776bf75 2,6,36
+packages/@n8n/api-types/src/agents/dto.ts
+  s_08ad1fe1d43e02::t_ebd879cb46fa76 932
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
+  s_08ad1fe1d43e02::t_3818527223d225 56,58-59,62-64
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_08ad1fe1d43e02::t_72de92a429d911 2998,3019-3020
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "07b275c183e374a508b9d80e5ff632cf5544ca11",
+  "prompts": {},
+  "sessions": {
+    "s_08ad1fe1d43e02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8181cd39-5693-42c0-89cf-63f7653ab06b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
