@@ -300,6 +300,80 @@ describe('ParameterInputFull.vue', () => {
 		expect(emitted().hover).toEqual([[true], [false]]);
 	});
 
+	// KNO-13: a drop on a fixed field with `requiresDataPath: 'multiple'` (for example
+	// "Fields To Include" in the Aggregate node) appends ", <field>" to the value. While
+	// the user hovers, the drag ghost must snap to where the value lands, after the
+	// existing text, and not on top of it.
+	describe('drag ghost position on a fixed multiple-fields input', () => {
+		const inputRect = { left: 100, top: 200, width: 300, height: 30 };
+
+		const fieldsParameter = createTestNodeProperties({
+			displayName: 'Fields To Include',
+			name: 'fieldsToInclude',
+			type: 'string',
+			default: '',
+			requiresDataPath: 'multiple',
+		});
+
+		const startMappingDrag = () => {
+			mockNdvState.isDraggableDragging = true;
+			mockNdvState.draggableType = 'mapping';
+			mockNdvState.draggable = {
+				isDragging: true,
+				type: 'mapping',
+				data: '{{ $json.age }}',
+				dimensions: { width: 40, height: 20 },
+				activeTarget: null,
+				stickyPosition: null,
+			} as never;
+			mockNdvState.setDraggableTarget = vi.fn();
+		};
+
+		const hoverDropTarget = async (value: string) => {
+			startMappingDrag();
+			const { getByTestId } = renderComponent({
+				props: { path: 'fieldsToInclude', parameter: fieldsParameter, value },
+			});
+
+			// The DraggableTarget root is the direct child of the input label
+			const inputLabel = getByTestId('input-label');
+			let dropTarget = getByTestId('parameter-input');
+			while (dropTarget.parentElement && dropTarget.parentElement !== inputLabel) {
+				dropTarget = dropTarget.parentElement;
+			}
+			vi.spyOn(dropTarget, 'getBoundingClientRect').mockReturnValue({
+				...inputRect,
+				x: inputRect.left,
+				y: inputRect.top,
+				right: inputRect.left + inputRect.width,
+				bottom: inputRect.top + inputRect.height,
+				toJSON: () => ({}),
+			});
+
+			await fireEvent.mouseEnter(dropTarget);
+			await nextTick();
+
+			const calls = vi.mocked(mockNdvState.setDraggableTarget!).mock.calls;
+			const target = calls[calls.length - 1]?.[0];
+			expect(target).toBeTruthy();
+			return target!.stickyPosition;
+		};
+
+		it('snaps the ghost to the start of an empty field', async () => {
+			const stickyPosition = await hoverDropTarget('');
+
+			expect(stickyPosition).toEqual([inputRect.left + 3, inputRect.top + 3]);
+		});
+
+		it('snaps the ghost after the existing fields, not over them', async () => {
+			const stickyPosition = await hoverDropTarget('name, email');
+
+			expect(stickyPosition).not.toBeNull();
+			// The ghost must not cover the existing "name, email" text at the start of the input
+			expect(stickyPosition![0]).toBeGreaterThan(inputRect.left + 3);
+		});
+	});
+
 	// Guards the three capability reads in this component. Each test pairs a baseline
 	// with the flag set, so reverting a read back to the literal
 	// `isResourceLocator` list flips the flagged case and fails here.
