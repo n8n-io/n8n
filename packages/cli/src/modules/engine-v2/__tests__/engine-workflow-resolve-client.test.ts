@@ -1,4 +1,5 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
+import type { ErrorWorkflowSource } from '@n8n/engine';
 import { OperationalError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -7,8 +8,8 @@ import { EngineWorkflowResolveClient } from '../engine-workflow-resolve-client';
 import type {
 	ResolvedErrorWorkflow,
 	ResolvedSubWorkflow,
-	ResolveErrorWorkflowRequest,
 	ResolveSubWorkflowRequest,
+	ResolveWorkflowCall,
 } from '../engine-workflow-resolve.contract';
 
 const request: ResolveSubWorkflowRequest = {
@@ -35,7 +36,7 @@ const resolved: ResolvedSubWorkflow = {
 	resolveErrorWorkflowOnFailure: false,
 };
 
-const source: ResolveErrorWorkflowRequest['source'] = {
+const source: ErrorWorkflowSource = {
 	executionId: '01a03900-0000-7000-8000-00000000000a',
 	workflowId: 'failed-wf',
 	workflow: { id: 'failed-wf', nodes: [] },
@@ -43,7 +44,7 @@ const source: ResolveErrorWorkflowRequest['source'] = {
 	hasParent: false,
 };
 
-const errorRequest: ResolveErrorWorkflowRequest = {
+const errorRequest: ResolveWorkflowCall = {
 	kind: 'error-workflow',
 	executionId: '01a03900-0000-7000-8000-000000000002',
 	source,

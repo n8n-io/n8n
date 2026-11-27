@@ -36,6 +36,7 @@ import { NodeTypesProxy } from '@n8n/backend-services';
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
+import { createErrorWorkflowResolver } from './engine-error-workflow-resolver';
 import { EngineWorkflowResolveClient } from './engine-workflow-resolve-client';
 import { EngineMtls } from './engine-mtls';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
@@ -177,6 +178,11 @@ export class EngineV2Runtime {
 					await this.binaryDataService.deleteMany([
 						FileLocation.ofExecution(workflowId, executionId),
 					]),
+				resolveErrorWorkflow: createErrorWorkflowResolver(
+					this.workflowResolveClient,
+					this.logger,
+					stopping.signal,
+				),
 				v1StepExecutor: new V1StepExecutor({
 					nodeTypes: this.nodeTypes,
 					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),

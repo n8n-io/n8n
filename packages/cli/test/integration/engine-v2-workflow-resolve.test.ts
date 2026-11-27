@@ -10,7 +10,7 @@ import type { IWorkflowDb, User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mintActionToken } from '@n8n/engine';
-import type { JsonObject } from '@n8n/engine';
+import type { ErrorWorkflowSource, JsonObject } from '@n8n/engine';
 import { ErrorTrigger } from 'n8n-nodes-base/nodes/ErrorTrigger/ErrorTrigger.node';
 import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node';
 import type {
@@ -26,10 +26,7 @@ import { UserError } from '@n8n/errors';
 import { EngineControlPlaneServer } from '@/modules/engine-v2/engine-control-plane-server';
 import { WORKFLOWS_RESOLVE_PATH } from '@/modules/engine-v2/engine-v2.constants';
 import { EngineWorkflowResolveClient } from '@/modules/engine-v2/engine-workflow-resolve-client';
-import type {
-	ResolveErrorWorkflowRequest,
-	ResolveSubWorkflowRequest,
-} from '@/modules/engine-v2/engine-workflow-resolve.contract';
+import type { ResolveSubWorkflowRequest } from '@/modules/engine-v2/engine-workflow-resolve.contract';
 
 import { saveCredential } from './shared/db/credentials';
 import { createMember } from './shared/db/users';
@@ -317,7 +314,7 @@ describe('Engine v2 workflow resolve (integration)', () => {
 			);
 
 		/** The failed execution of the parent workflow, whose stored settings name the error workflow. */
-		const source = (settings: Record<string, string>): ResolveErrorWorkflowRequest['source'] => ({
+		const source = (settings: Record<string, string>): ErrorWorkflowSource => ({
 			executionId: FAILED_EXECUTION_ID,
 			workflowId: parent.id,
 			workflow: {
@@ -331,7 +328,7 @@ describe('Engine v2 workflow resolve (integration)', () => {
 			failedStep: { nodeName: 'Set', error: { name: 'Error', message: 'boom' } },
 		});
 
-		const resolveError = async (errorSource: ResolveErrorWorkflowRequest['source']) =>
+		const resolveError = async (errorSource: ErrorWorkflowSource) =>
 			await Container.get(EngineWorkflowResolveClient).resolve(
 				{ kind: 'error-workflow', executionId: ERROR_EXECUTION_ID, source: errorSource },
 				new AbortController().signal,
