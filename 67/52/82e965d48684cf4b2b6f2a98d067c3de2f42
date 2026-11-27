@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/experiments/quickjsExpressionShadow/compare.test.ts
+  s_413ec925079a3f::t_0d8b9abd7b2111 1,3
+packages/workflow/src/expressions/native-evaluation.ts
+  s_413ec925079a3f::t_4b490e5447ac33 13,37
+packages/@n8n/expression-runtime/src/native-evaluation/canonicalize.ts
+  s_413ec925079a3f::t_f679089d6a0e46 85,88-93,95-106,108,110-115
+  s_413ec925079a3f::t_4efe0735c271e2 17,32-33,36,38,107,109
+  s_413ec925079a3f::t_5d6c2dd718b660 34
+  h_32d8cd6a0d6aad 25,27,47,49
+  s_413ec925079a3f::t_e63db3488216ac 1-16,18-24,26,28-31,35,37,39-46,48,50-84,86-87,94,116
+packages/@n8n/expression-runtime/src/native-evaluation/__tests__/canonicalize.test.ts
+  s_413ec925079a3f::t_1c1976fb89807e 67-69
+  s_413ec925079a3f::t_4efe0735c271e2 63-66
+  s_413ec925079a3f::t_e63db3488216ac 1-62,70-74
+packages/frontend/editor-ui/src/experiments/quickjsExpressionShadow/shadowRunner.ts
+  s_413ec925079a3f::t_0d8b9abd7b2111 11
+  s_413ec925079a3f::t_4b490e5447ac33 7
+packages/workflow/src/index.ts
+  s_413ec925079a3f::t_4b490e5447ac33 31
+packages/@n8n/expression-runtime/src/native-evaluation/verify.ts
+  s_413ec925079a3f::t_4efe0735c271e2 124-125
+  s_413ec925079a3f::t_4b490e5447ac33 3,123,126-127,129
+packages/@n8n/expression-runtime/src/native-evaluation/index.ts
+  s_413ec925079a3f::t_92e5bcaac9614f 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "675282e965d48684cf4b2b6f2a98d067c3de2f42",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_413ec925079a3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d20f7262-98f7-4454-aab4-3e0f75705dcc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

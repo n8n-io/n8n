@@ -1,0 +1,19 @@
+packages/cli/src/__tests__/controller.registry.test.ts
+  s_1f81abe09807b5::t_afff93c630778f 571-575
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f455e1e4a8222f54fa1f83d1d8b6442f8947dbf",
+  "prompts": {},
+  "sessions": {
+    "s_1f81abe09807b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66abfa0d-c819-44a1-b320-43149bbebabb",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
