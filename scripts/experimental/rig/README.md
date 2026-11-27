@@ -171,6 +171,32 @@ pnpm rig up --split    # one tmux pane for each n8n process
 `--split` adds a window in tmux. Outside tmux, it creates and attaches the
 session `rig-<env>`.
 
+To use another terminal multiplexer, get the panes from `rig panes`. Run the
+`prepare` command once, then open one pane for each entry of `panes`. Each
+pane runs `argv` in `cwd`, with `env` added to the env of the user.
+
+```bash
+pnpm rig panes                  # JSON
+pnpm rig panes --format shell   # one command line for each pane
+pnpm rig panes --inspect        # the same flags as `rig up --split`
+```
+
+### Scripts and editor integrations
+
+`pnpm rig status --format json` prints the services, the components, and the
+URLs of an environment:
+
+| Field | Content |
+|---|---|
+| `schemaVersion` | `1`. A new version removes or changes a field. New fields keep the version |
+| `env`, `topology`, `slot` | The name of the environment, a summary of its topology, and its port slot |
+| `source` | The checkout that a start from the current directory uses |
+| `urls` | `editor`, `mail`, and `public`. `null` when the environment does not have it |
+| `services[]` | `name`, `state` (`stopped` when there is no container), `health` (`null` without a health check), `ports`, `address` |
+| `components[]` | `name`, `kind`, `role`, `state` (`stopped`, `starting`, `ready`), `pid`, `ports`, `inspectPort`, `url` (mains), `startedAt`, `owner` (`null` in the background), `drift`, `source` |
+
+`rig panes --format json` has a `schemaVersion` too.
+
 ### Debugging
 
 ```bash
@@ -423,7 +449,8 @@ saves it in `secrets.backend` in the global config:
 | Command | Function |
 |---|---|
 | `create`, `ls`, `use`, `reset`, `destroy`, `clone` | Manage environments |
-| `up`, `run`, `stop`, `restart`, `status`, `logs`, `open` | Run components |
+| `up`, `run`, `stop`, `restart`, `status`, `logs`, `open` | Run components. `status --format json` is for scripts |
+| `panes` | Print the panes of `up --split` for another terminal multiplexer |
 | `services up\|down` | Start or stop only the containers |
 | `env browse\|set\|unset\|edit\|ls\|explain\|diff` | Read and change env vars |
 | `profile ls\|on\|off` | Turn profiles on or off |
