@@ -308,6 +308,17 @@ describe('ParameterInputFull.vue', () => {
 		const inputRect = { left: 100, top: 200, width: 300, height: 30 };
 		const charWidth = 6;
 		const ghostWidth = 40;
+		const ghostHeight = 20;
+		const fieldStyle = {
+			paddingLeft: '11px',
+			borderLeftWidth: '1px',
+			paddingTop: '4px',
+			borderTopWidth: '1px',
+			lineHeight: '18px',
+		};
+		const textStartX = 11 + 1;
+		const textStartY = 4 + 1;
+		const lineHeight = 18;
 
 		const fieldsParameter = createTestNodeProperties({
 			displayName: 'Fields To Include',
@@ -336,18 +347,30 @@ describe('ParameterInputFull.vue', () => {
 				isDragging: true,
 				type: 'mapping',
 				data: '{{ $json.age }}',
-				dimensions: { width: ghostWidth, height: 20 },
+				dimensions: { width: ghostWidth, height: ghostHeight },
 				activeTarget: null,
 				stickyPosition: null,
 			} as never;
 			mockNdvState.setDraggableTarget = vi.fn();
 		};
 
-		const hoverDropTarget = async (value: string, parameter = fieldsParameter) => {
+		const hoverDropTarget = async (
+			value: string,
+			{
+				parameter = fieldsParameter,
+				rect = inputRect,
+			}: { parameter?: typeof fieldsParameter; rect?: typeof inputRect } = {},
+		) => {
 			startMappingDrag();
 			const { getByTestId } = renderComponent({
 				props: { path: parameter.name, parameter, value },
 			});
+
+			// jsdom applies no stylesheet, so give the field fixed box metrics
+			const field = document.querySelector<HTMLElement>('input, textarea');
+			if (field) {
+				Object.assign(field.style, fieldStyle);
+			}
 
 			// The DraggableTarget root is the direct child of the input label
 			const inputLabel = getByTestId('input-label');
@@ -356,11 +379,11 @@ describe('ParameterInputFull.vue', () => {
 				dropTarget = dropTarget.parentElement;
 			}
 			vi.spyOn(dropTarget, 'getBoundingClientRect').mockReturnValue({
-				...inputRect,
-				x: inputRect.left,
-				y: inputRect.top,
-				right: inputRect.left + inputRect.width,
-				bottom: inputRect.top + inputRect.height,
+				...rect,
+				x: rect.left,
+				y: rect.top,
+				right: rect.left + rect.width,
+				bottom: rect.top + rect.height,
 				toJSON: () => ({}),
 			});
 
@@ -386,14 +409,31 @@ describe('ParameterInputFull.vue', () => {
 			// The ghost must not cover the existing "name, email" text at the start of the input
 			expect(stickyPosition![0]).toBeGreaterThan(inputRect.left + 3);
 			// The drop appends ", <field>", so the ghost sits where the new field lands
-			const { paddingLeft, borderLeftWidth } = window.getComputedStyle(
-				document.querySelector('input')!,
-			);
-			const textStart = parseFloat(paddingLeft) + parseFloat(borderLeftWidth);
 			expect(stickyPosition).toEqual([
-				inputRect.left + textStart + 'name, email, '.length * charWidth,
+				inputRect.left + textStartX + 'name, email, '.length * charWidth,
 				inputRect.top + 3,
 			]);
+		});
+
+		it('snaps the ghost after the last line of a multiline value', async () => {
+			const textareaRect = { ...inputRect, height: 100 };
+			const stickyPosition = await hoverDropTarget('name,\nemail', { rect: textareaRect });
+
+			expect(document.querySelector('textarea')).not.toBeNull();
+			expect(stickyPosition).toEqual([
+				textareaRect.left + textStartX + 'email, '.length * charWidth,
+				textareaRect.top + textStartY + lineHeight,
+			]);
+		});
+
+		it('keeps the ghost inside the textarea when the value has more lines than it shows', async () => {
+			const textareaRect = { ...inputRect, height: 100 };
+			const stickyPosition = await hoverDropTarget(
+				Array.from({ length: 10 }, (_, i) => `field${i}`).join(',\n'),
+				{ rect: textareaRect },
+			);
+
+			expect(stickyPosition![1]).toBe(textareaRect.top + textareaRect.height - ghostHeight - 3);
 		});
 
 		it('keeps the ghost inside the input when the existing fields are wider than it', async () => {
@@ -406,16 +446,15 @@ describe('ParameterInputFull.vue', () => {
 		});
 
 		it('keeps the ghost at the start of a field whose value is replaced on drop', async () => {
-			const stickyPosition = await hoverDropTarget(
-				'name',
-				createTestNodeProperties({
+			const stickyPosition = await hoverDropTarget('name', {
+				parameter: createTestNodeProperties({
 					displayName: 'Field To Split Out',
 					name: 'fieldToSplitOut',
 					type: 'string',
 					default: '',
 					requiresDataPath: 'single',
 				}),
-			);
+			});
 
 			expect(stickyPosition).toEqual([inputRect.left + 3, inputRect.top + 3]);
 		});
