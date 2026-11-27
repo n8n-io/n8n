@@ -751,8 +751,7 @@ export class EvalAgentExecutionService {
 				},
 			});
 			// Same agent, before it is closed: the next request builds a new runtime.
-			if (memoryTurn?.awaitMemory)
-				memoryError = await this.memoryNotSettled(agent, memoryTurn, deadline);
+			if (memoryTurn) memoryError = await this.settleMemory(agent, memoryTurn, deadline);
 		} catch (error) {
 			// Flush so the failure result carries the recorded response bodies too.
 			await recorder.flush();
@@ -787,24 +786,38 @@ export class EvalAgentExecutionService {
 	}
 
 	/**
-	 * Wait for the turn's background memory work, then check no flagged memory
-	 * is left pending (an episodic task skipped on a held lock leaves them).
-	 * The reason the next session could not rely on memory, or undefined.
+	 * Wait for the turn's background memory work, so its side-call usage
+	 * reports are in. With `awaitMemory`, also check no flagged memory is left
+	 * pending (an episodic task skipped on a held lock leaves them). The reason
+	 * the next session could not rely on memory, or undefined; never a reason
+	 * without `awaitMemory`.
 	 */
-	private async memoryNotSettled(
+	private async settleMemory(
 		agent: RuntimeAgent,
-		{ agentId, persistence }: MemoryTurn,
+		memoryTurn: MemoryTurn,
 		deadline: number,
 	): Promise<string | undefined> {
-		try {
-			await agent.waitForBackgroundTasks({ timeoutMs: Math.max(1, deadline - Date.now()) });
-		} catch (error) {
-			return `memory not settled: ${error instanceof Error ? error.message : String(error)}`;
-		}
+		const waitError = await this.waitForMemoryTasks(agent, deadline);
+		if (!memoryTurn.awaitMemory) return undefined;
+		if (waitError) return `memory not settled: ${waitError}`;
+		const { agentId, persistence } = memoryTurn;
 		const reader = Container.get(EvalAgentMemoryReader);
 		const pending = await reader.pendingCandidateCount(agentId, persistence.resourceId);
 		if (pending === 0) return undefined;
 		return `memory not settled: ${String(pending)} flagged memories are still pending for ${persistence.resourceId}`;
+	}
+
+	/** Why the agent's background tasks did not settle in the turn budget, or undefined. */
+	private async waitForMemoryTasks(
+		agent: RuntimeAgent,
+		deadline: number,
+	): Promise<string | undefined> {
+		try {
+			await agent.waitForBackgroundTasks({ timeoutMs: Math.max(1, deadline - Date.now()) });
+			return undefined;
+		} catch (error) {
+			return error instanceof Error ? error.message : String(error);
+		}
 	}
 
 	private async closeRuntime(agent: RuntimeAgent) {

@@ -3,8 +3,14 @@ import type { Mock } from 'vitest';
 
 import { InMemoryMemory } from '../../runtime/memory/memory-store';
 import type { MemoryTaskEvent } from '../../runtime/memory/scoped-memory-task-runner';
+import type { SideCallUsageReport } from '../../types/sdk/agent';
 import { Agent } from '../agent';
 import { Memory } from '../memory';
+
+vi.mock(import('../catalog.js'), async (importOriginal) => ({
+	...(await importOriginal()),
+	getModelCost: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('@ai-sdk/openai', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@ai-sdk/openai')>()),
@@ -53,7 +59,9 @@ function makeGenerateSuccess(text: string) {
 }
 
 /** An episodic Agent with one pending candidate, whose embedding waits for `release`. */
-async function setUpEpisodicAgent() {
+async function setUpEpisodicAgent(
+	onSideCallUsage?: (report: SideCallUsageReport) => Promise<void>,
+) {
 	const store = new InMemoryMemory();
 	await store.episodic.enqueueCaptureCandidate({
 		...PERSISTENCE,
@@ -88,7 +96,7 @@ async function setUpEpisodicAgent() {
 			if (event.type === 'started' && event.task.taskKind === 'episodic') markStarted();
 		});
 
-	const run = agent.generate('Hi', { persistence: PERSISTENCE });
+	const run = agent.generate('Hi', { persistence: PERSISTENCE, onSideCallUsage });
 	await started;
 	return { agent, store, run, release, events };
 }
@@ -161,5 +169,28 @@ describe('Agent.waitForBackgroundTasks', () => {
 
 		const episodic = events.filter((event) => event.task.taskKind === 'episodic');
 		expect(episodic.map((event) => event.type)).toEqual(['queued', 'started', 'completed']);
+	});
+
+	it('waits for the side-call usage reports of memory tasks', async () => {
+		let releaseReport!: () => void;
+		const reportGate = new Promise<void>((resolve) => (releaseReport = resolve));
+		const reports: SideCallUsageReport[] = [];
+		const { agent, run, release } = await setUpEpisodicAgent(async (report) => {
+			await reportGate;
+			reports.push(report);
+		});
+		let settled = false;
+
+		const waiting = agent.waitForBackgroundTasks({ timeoutMs: 5_000 }).then(() => {
+			settled = true;
+		});
+		release();
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(settled).toBe(false);
+
+		releaseReport();
+		await waiting;
+		await run;
+		expect(reports.map((report) => report.task)).toContain('episodic');
 	});
 });

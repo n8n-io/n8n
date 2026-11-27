@@ -233,8 +233,31 @@ describe('EvalAgentExecutionService with memory (AGENT-1666)', () => {
 		expect(close).toHaveBeenCalled();
 	});
 
-	it('does not wait for memory without awaitMemory', async () => {
+	it('without awaitMemory, waits for side-call reports but never fails the turn on memory', async () => {
 		generate.mockResolvedValueOnce(reply('Noted.'));
+		waitForBackgroundTasks.mockRejectedValue(new Error('Background tasks still running: episodic'));
+		memoryReader.pendingCandidateCount.mockResolvedValue(2);
+
+		const result = await buildService().executeWithLlmMock(
+			'agent-1',
+			user,
+			turn(THREAD_A, 'user-a', 'Hi'),
+		);
+
+		expect(waitForBackgroundTasks).toHaveBeenCalled();
+		expect(result.success).toBe(true);
+	});
+
+	it('does not wait for background tasks when memory is off', async () => {
+		agentEvaluation.prepare.mockResolvedValue({
+			preparation: {
+				config: { ...config, memory: undefined },
+				tools: [],
+				skippedFeatures: [],
+				buildRuntime,
+			},
+		});
+		generate.mockResolvedValueOnce(reply('Hi.'));
 
 		await buildService().executeWithLlmMock('agent-1', user, turn(THREAD_A, 'user-a', 'Hi'));
 

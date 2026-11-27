@@ -1133,7 +1133,7 @@ export class MemoryOrchestrator {
 							// priced even when post-processing throws.
 							onUsage: onSideCallUsage
 								? (model, usage) => {
-										void this.forwardSideCallUsage(onSideCallUsage, 'observer', model, usage);
+										this.trackSideCallUsage(onSideCallUsage, 'observer', model, usage);
 									}
 								: undefined,
 						}),
@@ -1293,7 +1293,7 @@ export class MemoryOrchestrator {
 					// priced even when post-processing throws.
 					onUsage: onSideCallUsage
 						? (model, usage) => {
-								void this.forwardSideCallUsage(onSideCallUsage, 'reflector', model, usage);
+								this.trackSideCallUsage(onSideCallUsage, 'reflector', model, usage);
 							}
 						: undefined,
 				});
@@ -1362,7 +1362,7 @@ export class MemoryOrchestrator {
 					// Returning usageReports here would double-count.
 					onUsage: onSideCallUsage
 						? (model, usage) => {
-								void this.forwardSideCallUsage(onSideCallUsage, 'episodic', model, usage);
+								this.trackSideCallUsage(onSideCallUsage, 'episodic', model, usage);
 							}
 						: undefined,
 				});
@@ -1506,6 +1506,14 @@ export class MemoryOrchestrator {
 		return {
 			observationScopeId: persistence.threadId,
 		};
+	}
+
+	/** Forward a side-call report as a background task, so a host waiting for
+	 *  the runtime's background tasks also waits for its usage reports. */
+	private trackSideCallUsage(
+		...args: Parameters<MemoryOrchestrator['forwardSideCallUsage']>
+	): void {
+		this.backgroundTasks.track(this.forwardSideCallUsage(...args));
 	}
 
 	/**
