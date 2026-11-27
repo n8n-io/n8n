@@ -1449,6 +1449,27 @@ describe('WorkflowExecutionService', () => {
 					expect(result).toEqual({ executionId: 'fake-execution-id' });
 				});
 
+				test('passes the telemetry metadata to the run', async () => {
+					const workflowData = toWorkflowData([formTriggerNode]);
+					const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
+						destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+					};
+					defaultTestWebhooks.needsTriggerEvent.mockResolvedValue(false);
+					workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+					await workflowExecutionService.executeManually({
+						workflowData,
+						payload: runPayload,
+						user,
+						waitForWebhook: false,
+						telemetryMetadata: { origin: { caller: 'public_api' } },
+					});
+
+					expect(workflowRunner.run).toHaveBeenCalledWith(
+						expect.objectContaining({ telemetryMetadata: { origin: { caller: 'public_api' } } }),
+					);
+				});
+
 				test('throws a 409 conflict for a run from a known trigger and registers no webhook', async () => {
 					const workflowData = toWorkflowData([formTriggerNode]);
 					const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {

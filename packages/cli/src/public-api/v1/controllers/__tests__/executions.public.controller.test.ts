@@ -85,6 +85,14 @@ describe('ExecutionsPublicController', () => {
 
 			expect(ctxPassed()).toBeUndefined();
 		});
+
+		it('marks the retry as started by the public API', async () => {
+			await retryExecution(undefined);
+
+			expect(executionService.retry.mock.calls[0][0].telemetryMetadata).toEqual({
+				origin: { caller: 'public_api' },
+			});
+		});
 	});
 
 	describe('getExecutions', () => {
