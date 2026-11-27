@@ -467,6 +467,7 @@ describe('Login', () => {
 
 		expect(data.recoveryCodes).not.toBeDefined();
 		expect(data.mfaSecret).not.toBeDefined();
+		expect(data.sessionGeneration).not.toBeDefined();
 	});
 
 	test('POST /login with email/password should fail when mfa is enabled', async () => {

@@ -136,13 +136,56 @@ describe('PersonRepository', () => {
 			);
 		});
 
-		it('disables MFA', async () => {
+		it('enables MFA and increments sessionGeneration', async () => {
+			const updated = Object.assign(new Person(), { id: 'id-1', mfaEnabled: true });
+			entityManager.update.mockResolvedValueOnce({ affected: 1, raw: [], generatedMaps: [] });
+			entityManager.findOne.mockResolvedValueOnce(updated);
+
+			const result = await repository.enableMfa('id-1');
+
+			expect(result).toBe(updated);
+			expect(entityManager.update).toHaveBeenCalledWith(
+				Person,
+				{ id: 'id-1' },
+				{ mfaEnabled: true, sessionGeneration: expect.any(Function) },
+			);
+			const updatePayload = entityManager.update.mock.calls[0][2] as {
+				sessionGeneration: () => string;
+			};
+			expect(updatePayload.sessionGeneration()).toBe('"sessionGeneration" + 1');
+			expect(entityManager.findOne).toHaveBeenCalledWith(Person, {
+				where: { id: 'id-1' },
+				relations: ['role'],
+			});
+		});
+
+		it('returns null from enableMfa when no person row is affected', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 0, raw: [], generatedMaps: [] });
+
+			const result = await repository.enableMfa('missing-id');
+
+			expect(result).toBeNull();
+			expect(entityManager.findOne).not.toHaveBeenCalled();
+		});
+
+		it('disables MFA and increments sessionGeneration when MFA was enabled', async () => {
 			await repository.disableMfa('id-1');
 
 			expect(entityManager.update).toHaveBeenCalledWith(
 				Person,
 				{ id: 'id-1' },
-				{ mfaEnabled: false, mfaSecret: null, mfaRecoveryCodes: [] },
+				{
+					mfaEnabled: false,
+					mfaSecret: null,
+					mfaRecoveryCodes: [],
+					sessionGeneration: expect.any(Function),
+				},
+			);
+			const updatePayload = entityManager.update.mock.calls[0][2] as {
+				sessionGeneration: () => string;
+			};
+			expect(updatePayload.sessionGeneration()).toBe(
+				'CASE WHEN "mfaEnabled" THEN "sessionGeneration" + 1 ELSE "sessionGeneration" END',
 			);
 		});
 	});

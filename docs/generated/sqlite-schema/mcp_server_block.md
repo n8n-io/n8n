@@ -69,6 +69,7 @@ erDiagram
   varchar password
   TEXT personalizationAnswers
   varchar_128_ roleSlug FK
+  INTEGER sessionGeneration
   TEXT settings
   datetime_3_ updatedAt
 }

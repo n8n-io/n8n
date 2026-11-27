@@ -119,6 +119,49 @@ describe('PersonRepository', () => {
 	});
 
 	describe('writes', () => {
+		it('enables MFA and increments sessionGeneration for a person, but not a service account', async () => {
+			const person = await createMember();
+			const serviceAccount = await createServiceAccount();
+			expect(person.sessionGeneration).toBe(0);
+
+			const updated = await personRepository.enableMfa(person.id);
+
+			expect(updated).not.toBeNull();
+			expect(updated?.mfaEnabled).toBe(true);
+			expect(updated?.sessionGeneration).toBe(1);
+			expect(updated?.role?.slug).toBe(GLOBAL_MEMBER_ROLE.slug);
+
+			expect(await personRepository.enableMfa(serviceAccount.id)).toBeNull();
+			expect(await readStoredMfaEnabled(serviceAccount.id)).toBe(false);
+		});
+
+		it('disables MFA and increments sessionGeneration only when MFA was enabled', async () => {
+			const { user } = await createUserWithMfaEnabled();
+			expect(user.sessionGeneration).toBe(0);
+
+			await personRepository.disableMfa(user.id);
+
+			const afterDisable = await reloadPerson(user.id);
+			expect(afterDisable.mfaEnabled).toBe(false);
+			expect(afterDisable.mfaSecret).toBeNull();
+			expect(afterDisable.mfaRecoveryCodes).toEqual([]);
+			expect(afterDisable.sessionGeneration).toBe(1);
+
+			// Clearing a pending setup when MFA is not enabled keeps sessionGeneration unchanged.
+			const pendingPerson = await createMember();
+			pendingPerson.mfaSecret = 'pending-secret';
+			pendingPerson.mfaRecoveryCodes = ['code-1'];
+			await personRepository.save(pendingPerson);
+
+			await personRepository.disableMfa(pendingPerson.id);
+
+			const afterPendingClear = await reloadPerson(pendingPerson.id);
+			expect(afterPendingClear.mfaEnabled).toBe(false);
+			expect(afterPendingClear.mfaSecret).toBeNull();
+			expect(afterPendingClear.mfaRecoveryCodes).toEqual([]);
+			expect(afterPendingClear.sessionGeneration).toBe(0);
+		});
+
 		it('does not disable MFA of a service account', async () => {
 			const serviceAccount = await createServiceAccount();
 			await setStoredMfaEnabled(serviceAccount.id);

@@ -133,10 +133,9 @@ export class MfaService {
 	}
 
 	async enableMfa(userId: string) {
-		const person = await this.personRepository.findByIdWithRole(userId);
+		const person = await this.personRepository.enableMfa(userId);
 		if (!person) throw new NotFoundError('User not found');
-		person.mfaEnabled = true;
-		return await this.personRepository.save(person);
+		return person;
 	}
 
 	async disableMfaWithMfaCode(userId: string, mfaCode: string) {

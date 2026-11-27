@@ -80,3 +80,54 @@ test('mfa:disable keeps a session issued before enabling MFA invalid after disab
 		authService.authenticateUserBasedOnToken(earlierToken, 'GET', '/rest/login', browserId),
 	).rejects.toThrow(AuthError);
 });
+
+test('mfa:disable revokes an active MFA session and allows a newly issued session', async () => {
+	const { user } = await createUserWithMfaEnabled();
+	const authService = Container.get(AuthService);
+	const browserId = 'test-browser-id';
+
+	const mfaToken = authService.issueJWT(user, true, browserId);
+	await expect(
+		authService.authenticateUserBasedOnToken(mfaToken, 'GET', '/rest/login', browserId),
+	).resolves.toMatchObject({ id: user.id });
+
+	await command.run([`--email=${user.email}`]);
+
+	await expect(
+		authService.authenticateUserBasedOnToken(mfaToken, 'GET', '/rest/login', browserId),
+	).rejects.toThrow(AuthError);
+
+	const personAfterDisable = await Container.get(DataSource).manager.findOneOrFail(Person, {
+		where: { id: user.id },
+	});
+	const freshToken = authService.issueJWT(personAfterDisable, false, browserId);
+	await expect(
+		authService.authenticateUserBasedOnToken(freshToken, 'GET', '/rest/login', browserId),
+	).resolves.toMatchObject({ id: user.id });
+});
+
+test('mfa:disable clears a pending MFA setup without invalidating the active session', async () => {
+	const user = await createUser();
+	const authService = Container.get(AuthService);
+	const mfaService = Container.get(MfaService);
+	const browserId = 'test-browser-id';
+
+	const activeToken = authService.issueJWT(user, false, browserId);
+	const secret = mfaService.totp.generateSecret();
+	const recoveryCodes = mfaService.generateRecoveryCodes();
+	await mfaService.saveSecretAndRecoveryCodes(user.id, secret, recoveryCodes);
+
+	await command.run([`--email=${user.email}`]);
+
+	const personAfterDisable = await Container.get(DataSource).manager.findOneOrFail(Person, {
+		where: { id: user.id },
+	});
+	expect(personAfterDisable.mfaEnabled).toBe(false);
+	expect(personAfterDisable.mfaSecret).toBeNull();
+	expect(personAfterDisable.mfaRecoveryCodes).toEqual([]);
+	expect(personAfterDisable.sessionGeneration).toBe(0);
+
+	await expect(
+		authService.authenticateUserBasedOnToken(activeToken, 'GET', '/rest/login', browserId),
+	).resolves.toMatchObject({ id: user.id });
+});

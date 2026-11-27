@@ -210,8 +210,16 @@ export class UserService {
 	/** The fields of the account without its secrets. */
 	private publicFields(user: User): Omit<PublicUser, 'role' | 'isOwner'> {
 		if (isPerson(user)) {
-			const { password, updatedAt, authIdentities, mfaRecoveryCodes, mfaSecret, role, ...rest } =
-				user;
+			const {
+				password,
+				updatedAt,
+				authIdentities,
+				mfaRecoveryCodes,
+				mfaSecret,
+				sessionGeneration,
+				role,
+				...rest
+			} = user;
 			return { ...rest, signInType: authIdentities?.[0]?.providerType ?? 'email' };
 		}
 

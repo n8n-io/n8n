@@ -65,6 +65,7 @@ erDiagram
   varchar_255_ password
   json personalizationAnswers
   varchar_128_ roleSlug FK
+  integer sessionGeneration
   json settings
   timestamp_3__with_time_zone updatedAt
 }

@@ -42,9 +42,7 @@ export class DisableMFACommand extends BaseCommand<z.infer<typeof flagsSchema>> 
 			return;
 		}
 
-		Object.assign(person, { mfaSecret: null, mfaRecoveryCodes: [], mfaEnabled: false });
-
-		await repository.save(person);
+		await repository.disableMfa(person.id);
 
 		this.reportSuccess(flags.email);
 	}

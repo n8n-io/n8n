@@ -137,6 +137,48 @@ describe('AuthService', () => {
 
 			expect(withSecret('U2FsdGVkX1+first')).not.toEqual(withSecret('U2FsdGVkX1+second'));
 		});
+
+		it('should include sessionGeneration when non-zero and preserve existing hashes at generation 0', () => {
+			const base = authService.createJWTHash(
+				mock<Person>({
+					email: person.email,
+					password: person.password,
+					mfaEnabled: false,
+					sessionGeneration: 0,
+				}),
+			);
+			const gen1 = authService.createJWTHash(
+				mock<Person>({
+					email: person.email,
+					password: person.password,
+					mfaEnabled: false,
+					sessionGeneration: 1,
+				}),
+			);
+			const gen2 = authService.createJWTHash(
+				mock<Person>({
+					email: person.email,
+					password: person.password,
+					mfaEnabled: false,
+					sessionGeneration: 2,
+				}),
+			);
+			const withNumericSecret = authService.createJWTHash(
+				mock<Person>({
+					email: person.email,
+					password: person.password,
+					mfaEnabled: true,
+					mfaSecret: '1',
+					sessionGeneration: 0,
+				}),
+			);
+
+			expect(base).toEqual(authService.createJWTHash(person));
+			expect(gen1).not.toEqual(base);
+			expect(gen2).not.toEqual(base);
+			expect(gen2).not.toEqual(gen1);
+			expect(gen1).not.toEqual(withNumericSecret);
+		});
 	});
 
 	describe('createAuthMiddleware', () => {

@@ -168,7 +168,7 @@ describe('MfaService', () => {
 	describe('person lookups', () => {
 		it('should throw NotFoundError when no person has the id', async () => {
 			mockPersonRepository.findById.mockResolvedValue(null);
-			mockPersonRepository.findByIdWithRole.mockResolvedValue(null);
+			mockPersonRepository.enableMfa.mockResolvedValue(null);
 
 			await expect(mfaService.getSecretAndRecoveryCodes('id-1')).rejects.toThrow(NotFoundError);
 			await expect(mfaService.validateMfa('id-1', '123456', undefined)).rejects.toThrow(
@@ -176,6 +176,16 @@ describe('MfaService', () => {
 			);
 			await expect(mfaService.enableMfa('id-1')).rejects.toThrow(NotFoundError);
 			expect(mockPersonRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('should delegate enableMfa to PersonRepository.enableMfa', async () => {
+			const updated = mock<Awaited<ReturnType<PersonRepository['enableMfa']>>>();
+			mockPersonRepository.enableMfa.mockResolvedValue(updated);
+
+			const result = await mfaService.enableMfa('id-1');
+
+			expect(result).toBe(updated);
+			expect(mockPersonRepository.enableMfa).toHaveBeenCalledWith('id-1');
 		});
 	});
 
