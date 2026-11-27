@@ -45,6 +45,17 @@ const graph: WorkflowGraph = {
 
 const secret = 'a'.repeat(32);
 
+/** A deadline wait that the sweep fires soon, but well after the suspension has finished. */
+function soonWait() {
+	return {
+		resumeAt: new Date(Date.now() + 500).toISOString(),
+		outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+	};
+}
+
+const executionWaits = (events: LifecycleEvent[]) =>
+	events.filter(({ type }) => type === 'execution:waiting');
+
 type Concurrency = { step: number; orchestration: number };
 
 /** Cases with parallel branches or sub-executions run at both limits. */
@@ -312,7 +323,7 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { execution, steps } = await runWorkflow(executor, [{}], {
+		const { executionId, execution, steps, events } = await runWorkflow(executor, [{}], {
 			workflowId: 'wf-wait',
 			graph: waitGraph,
 			resolveOn: 'suspend',
@@ -321,6 +332,20 @@ describe('step execution (integration)', () => {
 		// nothing settled the step, so the execution has no outcome to record
 		expect(execution.status).toBe('waiting');
 		expect(execution.finishedAt).toBeNull();
+		expect(events.map(({ type }) => type)).toEqual([
+			'execution:started',
+			'step:started',
+			'step:waiting',
+			'execution:waiting',
+		]);
+		expect(events[3]).toEqual({
+			type: 'execution:waiting',
+			executionId,
+			workflowId: 'wf-wait',
+			at: execution.updatedAt.toISOString(),
+			awaitsRequest: false,
+			lastDeadline: wait.resumeAt,
+		});
 
 		const waiting = steps.find(({ nodeId }) => nodeId === 'node-a');
 		expect(waiting?.status).toBe('waiting');
@@ -341,11 +366,7 @@ describe('step execution (integration)', () => {
 				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
 			],
 		};
-		// already past, so the first sweep finds it due
-		const wait = {
-			resumeAt: '2020-01-01T00:00:00.000Z',
-			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
-		};
+		const wait = soonWait();
 		const requests: StepExecutionRequest[] = [];
 		const executor: IStepExecutor = {
 			execute: async (request) => {
@@ -369,6 +390,7 @@ describe('step execution (integration)', () => {
 			'execution:started',
 			'step:started',
 			'step:waiting',
+			'execution:waiting',
 			'step:started',
 			'step:completed',
 			'step:started',
@@ -389,6 +411,99 @@ describe('step execution (integration)', () => {
 		expect(requests[1].inputs).toEqual([[{ json: { passed: 'through' } }]]);
 		expect(steps.find(({ nodeId }) => nodeId === 'node-b')?.status).toBe('completed');
 	});
+
+	it('announces each new wait of an execution that waits, resumes and waits again', async () => {
+		const chainGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				if (request.node.id === 'node-b') {
+					// A resume leaves the status `waiting`. The settlement of A makes it `running`.
+					await vi.waitFor(async () => {
+						const execution = await dataSource
+							.getRepository(WorkflowExecution)
+							.findOneOrFail({ where: { id: request.context.executionId } });
+						expect(execution.status).toBe('running');
+					});
+				}
+				return { wait: soonWait() };
+			},
+		};
+
+		const { events } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-wait-twice',
+			graph: chainGraph,
+			waitSweepIntervalMs: 20,
+		});
+
+		expect(events.map(({ type }) => type)).toEqual([
+			'execution:started',
+			'step:started',
+			'step:waiting',
+			'execution:waiting',
+			'step:started',
+			'step:completed',
+			'step:started',
+			'step:waiting',
+			'execution:waiting',
+			'step:started',
+			'step:completed',
+			'execution:completed',
+		]);
+	});
+
+	it.each(concurrencies)(
+		'announces the wait when a parallel branch settles after the other branch suspended (concurrency $step)',
+		announcesWaitFromSettlement,
+	);
+	async function announcesWaitFromSettlement(concurrency: Concurrency) {
+		const forkGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'trigger', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				await Promise.resolve();
+				if (request.node.id === 'node-a') return { wait: soonWait() };
+				await vi.waitFor(async () => {
+					const nodeA = await dataSource.getRepository(WorkflowStepExecution).findOne({
+						where: { executionId: request.context.executionId, nodeId: 'node-a' },
+					});
+					expect(nodeA?.status).toBe('waiting');
+				});
+				return { outputs: [[{ json: { ran: 'node-b' } }]] };
+			},
+		};
+
+		const { events } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-wait-fork',
+			concurrency,
+			graph: forkGraph,
+			waitSweepIntervalMs: 20,
+		});
+
+		// B ran while A suspended, so only the settlement of B leaves nothing that can run.
+		const types = events.map(({ type }) => type);
+		expect(executionWaits(events)).toHaveLength(1);
+		expect(types.indexOf('execution:waiting')).toBe(types.indexOf('step:completed') + 1);
+		expect(types.at(-1)).toBe('execution:completed');
+	}
 
 	it.each(concurrencies)(
 		'cancels a waiting step when a sibling branch fails (concurrency $step)',
@@ -812,7 +927,7 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { executionId, execution, steps } = await runWorkflow(executor, [{}], {
+		const { executionId, execution, steps, events } = await runWorkflow(executor, [{}], {
 			workflowId: 'wf-parent',
 			concurrency,
 			graph: parentGraph,
@@ -820,6 +935,16 @@ describe('step execution (integration)', () => {
 		});
 
 		expect(execution.status).toBe('completed');
+		// The sub-execution has no subscription, so every event is the parent's.
+		expect(executionWaits(events)).toEqual([
+			{
+				type: 'execution:waiting',
+				executionId,
+				workflowId: 'wf-parent',
+				at: expect.any(String) as string,
+				awaitsRequest: false,
+			},
+		]);
 		const call = steps.find(({ nodeId }) => nodeId === 'call');
 		expect(call?.status).toBe('completed');
 		expect(call?.waitDeclaration).toEqual({

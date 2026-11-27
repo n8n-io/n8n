@@ -82,6 +82,10 @@ export class EngineLifecycleEventPushRelay {
 				return this.onExecutionFinished(update.executionId, update.workflowId, 'error', session);
 			case 'execution:cancelled':
 				return this.onExecutionFinished(update.executionId, update.workflowId, 'canceled', session);
+			case 'execution:waiting':
+				// The editor shows a wait on its node from `step:waiting`, and has no
+				// message for a waiting execution.
+				return;
 		}
 	}
 

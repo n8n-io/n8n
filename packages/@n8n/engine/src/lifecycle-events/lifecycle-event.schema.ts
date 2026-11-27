@@ -48,6 +48,14 @@ export const lifecycleEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('execution:completed'), ...executionFields }),
 	z.object({ type: z.literal('execution:failed'), ...executionFields }),
 	z.object({ type: z.literal('execution:cancelled'), ...executionFields }),
+	z.object({
+		type: z.literal('execution:waiting'),
+		...executionFields,
+		/** A waiting step accepts a resume request: a webhook, a form, an approval. */
+		awaitsRequest: z.boolean(),
+		/** The latest deadline among the waiting steps that only a deadline can end, ISO-8601. */
+		lastDeadline: z.string().datetime().optional(),
+	}),
 	z.object({ type: z.literal('step:started'), ...stepFields }),
 	z.object({
 		type: z.literal('step:completed'),

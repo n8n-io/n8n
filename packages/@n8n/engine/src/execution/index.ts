@@ -36,6 +36,7 @@ export type {
 	CreateExecutionResult,
 	ExecutionRecord,
 	ExecutionStore,
+	ExecutionWaitSummary,
 	NewExecutionRecord,
 	PrunableExecution,
 	PrunableExecutionQuery,

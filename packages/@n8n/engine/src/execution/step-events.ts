@@ -1,7 +1,7 @@
 import type { GraphNode } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
-import type { ExecutionRecord } from './execution-store';
+import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import type { StepError } from './execution.types';
 import type { StepRecord } from './step-store';
 
@@ -38,5 +38,23 @@ export async function announceStepFailed(
 		type: 'step:settled',
 		executionId: execution.id,
 		stepId: step.id,
+	});
+}
+
+export async function refreshLiveStatusAndAnnounceWait(
+	executionStore: ExecutionStore,
+	lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
+	execution: ExecutionRecord,
+): Promise<void> {
+	const wait = await executionStore.refreshLiveStatus(execution.id);
+	if (!wait) return;
+
+	lifecycleEventPublisherFactory.create(execution).publish({
+		type: 'execution:waiting',
+		executionId: execution.id,
+		workflowId: execution.workflowId,
+		at: wait.at.toISOString(),
+		awaitsRequest: wait.awaitsRequest,
+		...(wait.lastDeadline ? { lastDeadline: wait.lastDeadline.toISOString() } : {}),
 	});
 }

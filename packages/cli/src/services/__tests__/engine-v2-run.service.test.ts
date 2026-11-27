@@ -23,6 +23,12 @@ const data = {
 } as IWorkflowExecutionDataProcess;
 const options = { timeoutMs: 1_000 };
 const success: EngineV2RunOutcome = { kind: 'finished', status: 'success' };
+const paused: EngineV2RunOutcome = { kind: 'paused' };
+const at = '2026-11-27T10:00:00.000Z';
+const after = (ms: number) => new Date(Date.parse(at) + ms).toISOString();
+
+type Wait = { awaitsRequest: boolean; lastDeadline?: string };
+type Emitted = LifecycleEvent['type'] | Wait;
 
 describe('EngineV2RunService', () => {
 	const runner = mock<WorkflowRunner>();
@@ -34,18 +40,18 @@ describe('EngineV2RunService', () => {
 	let listener: LifecycleEventListener | undefined;
 
 	const listenedId = () => subscriptions.listen.mock.calls[0][0];
-	const emit = (type: LifecycleEvent['type']) =>
+	const emit = (event: Emitted) =>
 		listener?.({
-			type,
 			executionId: listenedId(),
 			workflowId: 'wf-1',
-			at: '2026-11-27T10:00:00.000Z',
+			at,
 			mode: 'manual',
 			hostMode: 'manual',
+			...(typeof event === 'string' ? { type: event } : { type: 'execution:waiting', ...event }),
 		} as LifecycleEvent);
-	const emitWhileStarting = (...types: Array<LifecycleEvent['type']>) =>
+	const emitWhileStarting = (...events: Emitted[]) =>
 		runner.run.mockImplementation(async ({ engineV2ExecutionId }) => {
-			for (const type of types) emit(type);
+			for (const event of events) emit(event);
 			return engineV2ExecutionId ?? '';
 		});
 	const until = async (done: () => boolean) => {
@@ -58,7 +64,7 @@ describe('EngineV2RunService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 		listener = undefined;
 		dispatcher.routesToEngineV2.mockReturnValue(true);
 		proxy.isAvailable.mockReturnValue(true);
@@ -212,8 +218,125 @@ describe('EngineV2RunService', () => {
 		).resolves.toMatchObject({ outcome: success });
 	});
 
+	describe('when the run starts to wait', () => {
+		beforeEach(() => vi.setSystemTime(new Date('2030-01-01T00:00:00Z')));
+
+		it.each<[string, Wait]>([
+			['a request', { awaitsRequest: true }],
+			[
+				'a request beside a short deadline-only wait',
+				{ awaitsRequest: true, lastDeadline: after(1) },
+			],
+			[
+				'a deadline at the end of the timeout',
+				{ awaitsRequest: false, lastDeadline: after(options.timeoutMs) },
+			],
+		])('resolves as paused when the run waits for %s', async (_name, wait) => {
+			emitWhileStarting();
+			const result = runs.runAndWait(data, options);
+			await untilWaiting();
+
+			emit(wait);
+
+			await expect(result).resolves.toMatchObject({ outcome: paused });
+		});
+
+		it.each<[string, Wait]>([
+			[
+				'a deadline 1 ms before the end of the timeout',
+				{ awaitsRequest: false, lastDeadline: after(options.timeoutMs - 1) },
+			],
+			['neither a request nor a deadline', { awaitsRequest: false }],
+		])(
+			'keeps waiting when the run waits for %s, and reports the later end',
+			async (_name, wait) => {
+				emitWhileStarting();
+				let settled = false;
+				const result = runs.runAndWait(data, options).finally(() => (settled = true));
+				await untilWaiting();
+
+				emit(wait);
+				await new Promise(setImmediate);
+				expect(settled).toBe(false);
+				emit('execution:completed');
+
+				await expect(result).resolves.toMatchObject({ outcome: success });
+			},
+		);
+
+		it.each<[string, number, EngineV2RunOutcome]>([
+			['at the end of the full timeout as a pause', options.timeoutMs, paused],
+			['1 ms before the end of the full timeout as no pause', options.timeoutMs - 1, success],
+		])(
+			'judges a deadline that arrives while a slow start runs %s',
+			async (_name, deadlineMs, outcome) => {
+				runner.run.mockImplementation(async ({ engineV2ExecutionId }) => {
+					await new Promise((resolve) => setTimeout(resolve, 500));
+					emit({ awaitsRequest: false, lastDeadline: after(deadlineMs) });
+					return engineV2ExecutionId ?? '';
+				});
+				const result = runs.runAndWait(data, options);
+				await untilWaiting();
+
+				await vi.advanceTimersByTimeAsync(500);
+				emit('execution:completed');
+
+				await expect(result).resolves.toMatchObject({ outcome });
+			},
+		);
+
+		it('judges a deadline that arrives after the start against the time that is left', async () => {
+			emitWhileStarting();
+			const result = runs.runAndWait(data, options);
+			await untilWaiting();
+
+			await vi.advanceTimersByTimeAsync(400);
+			emit({ awaitsRequest: false, lastDeadline: after(700) });
+
+			await expect(result).resolves.toMatchObject({ outcome: paused });
+		});
+
+		it('resolves as paused when a wait that is a pause follows a wait that is not', async () => {
+			emitWhileStarting();
+			const result = runs.runAndWait(data, options);
+			await untilWaiting();
+
+			emit({ awaitsRequest: false, lastDeadline: after(1) });
+			emit({ awaitsRequest: true });
+
+			await expect(result).resolves.toMatchObject({ outcome: paused });
+		});
+
+		it('keeps the end when a wait arrives after it', async () => {
+			emitWhileStarting('execution:completed', { awaitsRequest: true });
+
+			await expect(runs.runAndWait(data, options)).resolves.toMatchObject({ outcome: success });
+		});
+
+		it('keeps the pause when an end arrives after it while the run starts', async () => {
+			emitWhileStarting({ awaitsRequest: true }, 'execution:completed');
+
+			await expect(runs.runAndWait(data, options)).resolves.toMatchObject({ outcome: paused });
+		});
+
+		it('reports a pause that arrived while the run started, although the signal aborted then too, and cancels nothing', async () => {
+			const controller = new AbortController();
+			runner.run.mockImplementation(async ({ engineV2ExecutionId }) => {
+				emit({ awaitsRequest: true });
+				controller.abort();
+				return engineV2ExecutionId ?? '';
+			});
+
+			await expect(
+				runs.runAndWait(data, { ...options, abortSignal: controller.signal }),
+			).resolves.toMatchObject({ outcome: paused });
+			expect(proxy.cancelExecution).not.toHaveBeenCalled();
+		});
+	});
+
 	it.each<[string, (controller: AbortController) => unknown]>([
 		['the run ends', () => emit('execution:completed')],
+		['the run pauses', () => emit({ awaitsRequest: true })],
 		['the time runs out', async () => await vi.advanceTimersByTimeAsync(options.timeoutMs)],
 		['the signal aborts', (controller) => controller.abort()],
 	])(

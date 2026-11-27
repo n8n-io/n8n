@@ -95,6 +95,19 @@ export interface PrunableExecutionQuery {
 	after?: Pick<PrunableExecution, 'id' | 'finishedAt'>;
 }
 
+/**
+ * What an execution waits for, over all of its steps that are `waiting` when
+ * the store writes the `waiting` status.
+ */
+export interface ExecutionWaitSummary {
+	/** When the store wrote the `waiting` status. */
+	at: Date;
+	/** A waiting step accepts a resume request, with or without a deadline. */
+	awaitsRequest: boolean;
+	/** The latest deadline of the waiting steps that only a deadline can end, or `null` for none. */
+	lastDeadline: Date | null;
+}
+
 /** Thrown by `loadExecution` when no execution exists for the given id. */
 export class ExecutionNotFoundError extends Error {
 	constructor(readonly executionId: string) {
@@ -203,8 +216,12 @@ export interface ExecutionStore {
 	 * The refresh takes no lock, so it can lose a race and confuse `running`
 	 * with `waiting`. Callers may test whether the execution ended, as both step
 	 * handlers do. Read the step rows to tell `running` from `waiting`.
+	 *
+	 * Returns what the execution waits for only when this call changed the
+	 * status to `waiting`, and `undefined` otherwise. The same race can make
+	 * the summary wrong.
 	 */
-	refreshLiveStatus(id: string): Promise<void>;
+	refreshLiveStatus(id: string): Promise<ExecutionWaitSummary | undefined>;
 
 	/**
 	 * The ids of the sub-executions of an execution that have not ended: `queued`,
