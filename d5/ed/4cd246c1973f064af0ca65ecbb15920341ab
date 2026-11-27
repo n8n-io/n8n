@@ -1,0 +1,20 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_c31897b8137f11::t_518a94471e9163 3885-3894,3896-3906,3908-3930,3932,3934-3935,3937-3944
+  s_c31897b8137f11::t_be594ff06da335 3895
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d5ed4cd246c1973f064af0ca65ecbb15920341ab",
+  "prompts": {},
+  "sessions": {
+    "s_c31897b8137f11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb5f86fa-130e-4207-a53b-8bac78d594b7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+.github/WORKFLOWS.md
+  h_52a137d26d774c 543,613-616,621-624
+.github/workflows/ci-pull-requests.yml
+  h_52a137d26d774c 694-702
+.github/workflows/release-publish.yml
+  h_52a137d26d774c 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1d3b40b7b230ab9ac5d88861826ab1aea7e556b4",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
