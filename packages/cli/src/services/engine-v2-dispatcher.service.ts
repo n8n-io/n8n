@@ -1,3 +1,4 @@
+import { ExecutionsConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import type { SeededSteps, StartExecutionRequest } from '@n8n/engine';
 import {
@@ -38,6 +39,7 @@ import {
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 import { toEngineWorkflowPayload } from '@/services/engine-v2-workflow-payload';
+import { determineWorkflowDeadline, toIsoDeadline } from '@/workflows/workflow-deadline';
 import { toResponseExpectation } from '@/webhooks/engine-v2-response-expectation';
 
 /** The trigger that fired and the payload it produced. */
@@ -92,6 +94,7 @@ export class EngineV2Dispatcher {
 		private readonly pushRegistry: EngineV2PushRegistry,
 		private readonly payloadFiles: EngineV2PayloadFiles,
 		private readonly manualRunPlanner: EngineV2ManualRunPlanner,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {}
 
 	/**
@@ -282,6 +285,10 @@ export class EngineV2Dispatcher {
 				responseExpectation: toResponseExpectation(data.engineV2Response?.responseMode),
 				// Only a run with a push ref has an editor session to relay events to.
 				lifecycleEventSubscription: data.pushRef ? { kind: 'all' } : undefined,
+				// The v1 timeout rules. The engine enforces the deadline and reads no setting.
+				deadline: toIsoDeadline(
+					determineWorkflowDeadline(Date.now(), workflowData.settings, this.executionsConfig),
+				),
 			},
 		};
 	}

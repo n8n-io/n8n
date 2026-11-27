@@ -35,6 +35,7 @@ import { toEngineWorkflowPayload } from '@/services/engine-v2-workflow-payload';
 import type { EngineWorkflowPayload } from '@/services/engine-v2-workflow-payload';
 import { OwnershipService } from '@/services/ownership.service';
 import { findSubworkflowStart, withExpressionIsolate } from '@/utils';
+import { determineWorkflowDeadline, toIsoDeadline } from '@/workflows/workflow-deadline';
 import {
 	findErrorTrigger,
 	findErrorWorkflowTarget,
@@ -78,6 +79,7 @@ type Resolved = EngineWorkflowPayload & {
 	workflowData: IWorkflowBase;
 	workflowId: string;
 	resolveErrorWorkflowOnFailure: boolean;
+	deadline: string | null;
 };
 
 /** Get the node that called this sub-workflow, for policy checks. */
@@ -221,6 +223,16 @@ export class EngineWorkflowResolveService {
 				target.mode,
 				this.errorTriggerType,
 			),
+			// The v1 timeout rules, from the new execution's own settings. The engine
+			// caps a sub-execution at its parent's deadline.
+			deadline:
+				toIsoDeadline(
+					determineWorkflowDeadline(
+						Date.now(),
+						workflowData.settings,
+						this.globalConfig.executions,
+					),
+				) ?? null,
 		};
 	}
 

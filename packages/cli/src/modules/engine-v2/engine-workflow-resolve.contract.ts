@@ -105,6 +105,8 @@ interface ResolvedWorkflow {
 	triggerOutputs: TriggerOutputs | null;
 	/** Whether a failure of the new execution resolves an error workflow. */
 	resolveErrorWorkflowOnFailure: boolean;
+	/** When the engine cancels the new execution, ISO-8601, from its workflow's timeout settings. `null` means none. */
+	deadline: string | null;
 }
 
 export interface ResolvedSubWorkflow extends ResolvedWorkflow {
@@ -151,6 +153,7 @@ const resolvedWorkflowFields = {
 	workflow: jsonObjectSchema,
 	triggerOutputs: triggerOutputsSchema.nullable(),
 	resolveErrorWorkflowOnFailure: z.boolean(),
+	deadline: z.string().datetime({ offset: true }).nullable(),
 };
 
 /** The response as the engine's start would accept it. */
