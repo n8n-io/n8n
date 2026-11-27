@@ -1,5 +1,6 @@
 import type {
 	CreateRuntimeCredentialRuleDto,
+	ReplaceRuntimeCredentialRulePublicDto,
 	RuntimeCredentialRule,
 	UpdateRuntimeCredentialRuleDto,
 } from '@n8n/api-types';
@@ -35,6 +36,10 @@ export class RuntimeCredentialRulesService {
 		return this.rulesService
 			.getCredentialRules()
 			.map(([alias, rule]) => this.toResponse(alias, rule));
+	}
+
+	get(alias: string): RuntimeCredentialRule {
+		return this.toResponse(alias, this.requireRule(alias));
 	}
 
 	async create(dto: CreateRuntimeCredentialRuleDto): Promise<RuntimeCredentialRule> {
@@ -84,6 +89,30 @@ export class RuntimeCredentialRulesService {
 
 		await this.afterChange();
 		return this.toResponse(alias, this.requireRule(alias));
+	}
+
+	/**
+	 * Replaces every editable value of a rule. An absent `transform` or `allowedDomains` clears
+	 * it. The alias and the credential type cannot change: a value that differs is rejected.
+	 */
+	async replace(
+		alias: string,
+		dto: ReplaceRuntimeCredentialRulePublicDto,
+	): Promise<RuntimeCredentialRule> {
+		const row = await this.requireDatabaseRule(alias);
+		if (dto.alias !== undefined && dto.alias !== alias) {
+			throw new BadRequestError('The alias of a rule cannot change');
+		}
+		if (dto.credentialType !== undefined && dto.credentialType !== row.credentialType) {
+			throw new BadRequestError('The credentialType of a rule cannot change');
+		}
+
+		return await this.update(alias, {
+			nodeType: dto.nodeType,
+			path: dto.path,
+			transform: dto.transform ?? null,
+			allowedDomains: dto.allowedDomains ?? null,
+		});
 	}
 
 	/** The stub credential stays, because workflows reference it. */

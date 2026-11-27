@@ -88,3 +88,7 @@ export const credentialTypePolicyIdParamSchema = stringIdParamSchema(
 export const credentialTypePolicyScopeIdParamSchema = stringIdParamSchema(
 	'The ID of the credential type policy scope.',
 );
+
+export const runtimeCredentialRuleAliasParamSchema = stringIdParamSchema(
+	'The alias of the run-time input rule.',
+);

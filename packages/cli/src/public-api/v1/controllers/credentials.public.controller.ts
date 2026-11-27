@@ -44,6 +44,7 @@ import { getExternalSecretExpressionPaths } from '@/credentials/external-secrets
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { getRuntimeRuleAlias } from '@/credentials/runtime-rule-alias';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
@@ -94,6 +95,7 @@ function toCredentialPublicDto(
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
 		isRuntime: credential.isRuntime,
+		...(credential.isRuntime && { ruleAlias: getRuntimeRuleAlias(credential.id) }),
 		resolvableAllowFallback: credential.resolvableAllowFallback ?? false,
 		resolverId: credential.resolverId ?? null,
 		createdAt: credential.createdAt.toISOString(),

@@ -147,7 +147,7 @@ describe('CredentialsController', () => {
 			async (forAgent) => {
 				const fixed = mock<
 					Awaited<ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>>[number]
-				>({ id: 'fixed', isResolvable: false });
+				>({ id: 'fixed', isResolvable: false, isRuntime: false });
 				const getUsableCredentials = vi
 					.spyOn(credentialsService, 'getCredentialsAUserCanUseInAWorkflow')
 					.mockResolvedValue([fixed]);

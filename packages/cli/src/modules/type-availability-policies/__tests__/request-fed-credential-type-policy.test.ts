@@ -207,6 +207,40 @@ describe('RequestFedCredentialTypePolicy', () => {
 		});
 	});
 
+	describe('getBlockedTypes', () => {
+		it('names the scope that blocks each denied type and leaves allowed types out', async () => {
+			givenScope(null, [rule('r1', 'deny', 'name', 'slackApi')]);
+			givenScope(PROJECT_ID, [rule('r2', 'deny', 'name', 'googleOAuth2Api')]);
+
+			const blocked = await policy.getBlockedTypes(
+				['slackApi', 'googleOAuth2Api', 'oAuth2Api'],
+				PROJECT_ID,
+			);
+
+			expect(Object.fromEntries(blocked)).toEqual({
+				slackApi: 'instance',
+				googleOAuth2Api: 'project',
+			});
+		});
+
+		it('ignores the project policy of another project', async () => {
+			givenScope(PROJECT_ID, [rule('r1', 'deny', 'name', 'slackApi')]);
+
+			expect((await policy.getBlockedTypes(['slackApi'], 'project-2')).size).toBe(0);
+		});
+
+		it('blocks nothing when the policy is inactive or unlicensed', async () => {
+			givenScope(null, [rule('r1', 'deny', 'name', 'slackApi')]);
+
+			licenseState.isLicensed.mockReturnValue(false);
+			expect((await policy.getBlockedTypes(['slackApi'], PROJECT_ID)).size).toBe(0);
+
+			licenseState.isLicensed.mockReturnValue(true);
+			RequestFedCredentialTypePolicy.isActive = false;
+			expect((await policy.getBlockedTypes(['slackApi'], PROJECT_ID)).size).toBe(0);
+		});
+	});
+
 	describe('rule writes', () => {
 		it('accepts an extends rule', async () => {
 			policyRepository.createPolicy.mockResolvedValue(mock());

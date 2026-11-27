@@ -27,21 +27,40 @@ export class RequestFedCredentialTypePolicy {
 
 	/** Throws when the instance or the project policy denies the type. */
 	async assertAllowed(credentialType: string, projectId: string | null): Promise<void> {
-		if (!RequestFedCredentialTypePolicy.isActive) return;
+		const blocked = await this.getBlockedTypes([credentialType], projectId);
+		const scope = blocked.get(credentialType);
+		if (!scope) return;
+
+		const by = scope === 'instance' ? 'an instance policy' : 'a project policy';
+		throw new UserError(
+			`Credential type "${credentialType}" cannot receive a value from the request: it is blocked by ${by}`,
+		);
+	}
+
+	/**
+	 * The scope that blocks each denied type. A type that is allowed is not in the map. Returns an
+	 * empty map when the policy is inactive or unlicensed, because then nothing is enforced.
+	 */
+	async getBlockedTypes(
+		credentialTypes: readonly string[],
+		projectId: string | null,
+	): Promise<Map<string, 'instance' | 'project'>> {
+		const blocked = new Map<string, 'instance' | 'project'>();
+		if (!RequestFedCredentialTypePolicy.isActive) return blocked;
 		// An expired license stops enforcing, matching the routes that author the policy.
-		if (!this.licenseState.isLicensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)) return;
+		if (!this.licenseState.isLicensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)) return blocked;
+		if (credentialTypes.length === 0) return blocked;
 
 		const { verdicts } = await this.service.evaluateComposedTypesFor(
 			REQUEST_FED_CREDENTIAL_TYPES_KIND,
 			projectId,
-			[credentialType],
+			credentialTypes,
 		);
-		const denied = verdicts.find((verdict) => verdict.action === 'deny');
-		if (!denied) return;
-
-		const by = denied.scope === 'instance' ? 'an instance policy' : 'a project policy';
-		throw new UserError(
-			`Credential type "${credentialType}" cannot receive a value from the request: it is blocked by ${by}`,
-		);
+		for (const verdict of verdicts) {
+			if (verdict.action === 'deny') {
+				blocked.set(verdict.name, verdict.scope === 'instance' ? 'instance' : 'project');
+			}
+		}
+		return blocked;
 	}
 }
