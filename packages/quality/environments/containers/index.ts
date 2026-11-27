@@ -40,3 +40,15 @@ export {
 	type LocalStackS3Config,
 	type S3ObjectSummary,
 } from './services/localstack';
+export {
+	RedisClusterHelper,
+	isClusterInfoHealthy,
+	isClusterTopologyComplete,
+	type RedisClusterInfo,
+	type RedisClusterMeta,
+	type RedisClusterNode,
+	type RedisClusterResult,
+	type RedisClusterSlotRange,
+	type RedisClusterSlotRoutingResult,
+	type RedisMovedRedirect,
+} from './services/redis-cluster';
