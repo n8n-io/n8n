@@ -5,6 +5,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY, CLOUD_N8N_CONNECT_TOP_UP_PATH } from '@/app/constants';
 import { useAiGatewayTopUp } from './useAiGatewayTopUp';
 
@@ -127,23 +128,23 @@ describe('useAiGatewayTopUp', () => {
 
 	describe('openUpgrade', () => {
 		it.each(['premiumModels', 'requestLimit'] as const)(
-			'opens the %s upgrade dialog for the owner',
-			(reason) => {
-				const usersStore = mockedStore(useUsersStore);
+			'opens the %s upgrade dialog for users who can upgrade',
+			(variant) => {
 				const uiStore = mockedStore(useUIStore);
-				usersStore.isInstanceOwner = true;
+				mockedStore(useAiGatewayStore).canUpgrade = true;
 
-				useAiGatewayTopUp().openUpgrade(reason);
+				useAiGatewayTopUp().openUpgrade(variant);
 
 				expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 					name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-					data: { variant: 'ownerTrial', reason },
+					data: { variant },
 				});
 			},
 		);
 
-		it('does not open a dialog for other users', () => {
+		it('does not open a dialog for users who cannot upgrade', () => {
 			const uiStore = mockedStore(useUIStore);
+			mockedStore(useAiGatewayStore).canUpgrade = false;
 
 			useAiGatewayTopUp().openUpgrade('requestLimit');
 

@@ -5,6 +5,7 @@ import type { AiGatewayConfigDto, AiGatewayUsageEntry } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { isRecord } from '@n8n/utils/is-record';
 
 import {
@@ -116,11 +117,15 @@ export function isGatewayTrialRequestCostLimitError(error: {
 export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
 
 	const isTrialOrFreePlan = computed(() => {
 		const planGroup = settingsStore.settings.license?.planGroup;
 		return planGroup === 'trial' || planGroup === 'free';
 	});
+
+	/** Whether the current user can upgrade the plan to remove Gateway credits limits. */
+	const canUpgrade = computed(() => usersStore.isInstanceOwner);
 
 	const config = ref<AiGatewayConfigDto | null>(null);
 	const balance = ref<number | undefined>(undefined);
@@ -342,6 +347,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		budget,
 		hasEverToppedUp,
 		creditsLabelKey,
+		canUpgrade,
 		usageEntries,
 		usageTotal,
 		fetchError,

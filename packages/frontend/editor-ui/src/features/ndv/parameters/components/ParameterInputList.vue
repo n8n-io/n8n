@@ -44,7 +44,6 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
-import { useUsersStore } from '@n8n/stores/users.store';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import {
 	getParameterTypeOption,
@@ -127,7 +126,6 @@ const {
 } = useCalloutHelpers();
 const aiGateway = useAiGateway();
 const aiGatewayStore = useAiGatewayStore();
-const usersStore = useUsersStore();
 const { openUpgrade: openAiGatewayUpgrade } = useAiGatewayTopUp();
 
 const MODEL_PARAMETER_NAMES = new Set(['modelId', 'model', 'modelName']);
@@ -1082,7 +1080,7 @@ watch(
 				theme="info"
 				:content="
 					i18n.baseText(
-						usersStore.isInstanceOwner
+						aiGatewayStore.canUpgrade
 							? 'aiGateway.premiumModels.notice'
 							: 'aiGateway.premiumModels.notice.member',
 					)

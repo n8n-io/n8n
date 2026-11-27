@@ -9,10 +9,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
-import type {
-	AiGatewayTopUpVariant,
-	AiGatewayUpgradeReason,
-} from '@/app/composables/useAiGatewayTopUp';
+import type { AiGatewayTopUpVariant } from '@/app/composables/useAiGatewayTopUp';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import AiGatewayTopUpModal from './AiGatewayTopUpModal.vue';
@@ -52,12 +49,10 @@ const renderComponent = createComponentRenderer(AiGatewayTopUpModal);
 
 function renderModal({
 	variant,
-	reason,
 	allUsers = [],
 	fetchUsers,
 }: {
 	variant: AiGatewayTopUpVariant;
-	reason?: AiGatewayUpgradeReason;
 	allUsers?: IUser[];
 	fetchUsers?: () => Promise<void>;
 }) {
@@ -69,7 +64,7 @@ function renderModal({
 	usersStore.fetchUsers = fetchUsers
 		? vi.fn().mockImplementation(fetchUsers)
 		: vi.fn().mockResolvedValue(undefined);
-	renderComponent({ pinia, props: { variant, reason } });
+	renderComponent({ pinia, props: { variant } });
 	return { usersStore, uiStore };
 }
 
@@ -175,23 +170,23 @@ describe('AiGatewayTopUpModal.vue', () => {
 
 	it.each([
 		{
-			reason: 'premiumModels',
+			variant: 'premiumModels',
 			title: 'Upgrade your plan to use premium models',
 			description: /Premium models aren't available with Gateway credits on a trial/,
 			source: 'ai-gateway-premium-models',
 			campaign: 'upgrade-ai-gateway-premium-models',
 		},
 		{
-			reason: 'requestLimit',
+			variant: 'requestLimit',
 			title: 'Upgrade your plan to send larger requests',
 			description: /each request with Gateway credits can cost up to \$0\.50/,
 			source: 'ai-gateway-request-limit',
 			campaign: 'upgrade-ai-gateway-request-limit',
 		},
 	] as const)(
-		'shows the $reason upgrade copy without services',
-		async ({ reason, title, description, source, campaign }) => {
-			const { usersStore } = renderModal({ variant: 'ownerTrial', reason });
+		'shows the $variant upgrade copy without services',
+		async ({ variant, title, description, source, campaign }) => {
+			const { usersStore } = renderModal({ variant });
 
 			expect(screen.getByText(title)).toBeInTheDocument();
 			expect(screen.getByText(description)).toBeInTheDocument();

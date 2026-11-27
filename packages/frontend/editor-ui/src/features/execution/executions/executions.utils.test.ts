@@ -67,10 +67,11 @@ vi.mock('@n8n/i18n', () => ({
 	},
 }));
 
-const usersStore = vi.hoisted(() => ({ isInstanceOwner: false }));
+const aiGatewayStore = vi.hoisted(() => ({ canUpgrade: false }));
 
-vi.mock('@n8n/stores/users.store', () => ({
-	useUsersStore: () => usersStore,
+vi.mock('@/app/stores/aiGateway.store', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/app/stores/aiGateway.store')>()),
+	useAiGatewayStore: () => aiGatewayStore,
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
@@ -540,8 +541,8 @@ describe('getExecutionErrorToastConfiguration', () => {
 			node: { name: 'OpenAI Chat Model' },
 		});
 
-		it('links to the upgrade modal for the owner', () => {
-			usersStore.isInstanceOwner = true;
+		it('links to the upgrade modal for users who can upgrade', () => {
+			aiGatewayStore.canUpgrade = true;
 
 			const result = getExecutionErrorToastConfiguration({ error: gatewayLimitError });
 
@@ -551,8 +552,8 @@ describe('getExecutionErrorToastConfiguration', () => {
 			});
 		});
 
-		it('asks other users to contact the owner', () => {
-			usersStore.isInstanceOwner = false;
+		it('asks users who cannot upgrade to contact the owner', () => {
+			aiGatewayStore.canUpgrade = false;
 
 			const result = getExecutionErrorToastConfiguration({ error: gatewayLimitError });
 

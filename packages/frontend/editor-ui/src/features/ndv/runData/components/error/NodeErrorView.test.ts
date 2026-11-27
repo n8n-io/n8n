@@ -14,7 +14,7 @@ import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@n8n/stores/users.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
 const mockRouterResolve = vi.fn(() => ({
@@ -384,8 +384,8 @@ describe('NodeErrorView.vue', () => {
 				context: {},
 			}) as NodeError;
 
-		it('opens the upgrade modal from the Upgrade button for the owner', async () => {
-			mockedStore(useUsersStore).isInstanceOwner = true;
+		it('opens the upgrade modal from the Upgrade button for users who can upgrade', async () => {
+			mockedStore(useAiGatewayStore).canUpgrade = true;
 			const uiStore = mockedStore(useUIStore);
 
 			const { getByTestId } = renderComponent({ props: { error: gatewayLimitError() } });
@@ -393,12 +393,12 @@ describe('NodeErrorView.vue', () => {
 
 			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-				data: { variant: 'ownerTrial', reason: 'requestLimit' },
+				data: { variant: 'requestLimit' },
 			});
 		});
 
-		it('hides the Upgrade button for other users', () => {
-			mockedStore(useUsersStore).isInstanceOwner = false;
+		it('hides the Upgrade button for users who cannot upgrade', () => {
+			mockedStore(useAiGatewayStore).canUpgrade = false;
 
 			const { queryByTestId } = renderComponent({ props: { error: gatewayLimitError() } });
 
@@ -406,7 +406,7 @@ describe('NodeErrorView.vue', () => {
 		});
 
 		it('hides the Upgrade button for other errors', () => {
-			mockedStore(useUsersStore).isInstanceOwner = true;
+			mockedStore(useAiGatewayStore).canUpgrade = true;
 
 			const { queryByTestId } = renderComponent({ props: { error } });
 

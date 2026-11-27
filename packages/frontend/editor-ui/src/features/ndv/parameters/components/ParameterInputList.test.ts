@@ -68,7 +68,6 @@ import { WAIT_NODE_TYPE, AGENT_NODE_TYPE } from '@/app/constants';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@n8n/stores/users.store';
 import { useI18n } from '@n8n/i18n';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
@@ -2424,11 +2423,11 @@ describe('ParameterInputList', () => {
 
 		function setup({
 			hiddenPremiumModels = true,
-			isInstanceOwner = true,
-		}: { hiddenPremiumModels?: boolean; isInstanceOwner?: boolean } = {}) {
+			canUpgrade = true,
+		}: { hiddenPremiumModels?: boolean; canUpgrade?: boolean } = {}) {
 			const aiGatewayStore = mockedStore(useAiGatewayStore);
 			aiGatewayStore.hasHiddenPremiumModels.mockReturnValue(hiddenPremiumModels);
-			mockedStore(useUsersStore).isInstanceOwner = isInstanceOwner;
+			aiGatewayStore.canUpgrade = canUpgrade;
 			ndvStore.activeNode = {
 				...TEST_NODE_NO_ISSUES,
 				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -2504,7 +2503,7 @@ describe('ParameterInputList', () => {
 			expect(queryByTestId('ai-gateway-premium-models-notice')).not.toBeInTheDocument();
 		});
 
-		it('opens the upgrade modal from the notice link for the owner', async () => {
+		it('opens the upgrade modal from the notice link for users who can upgrade', async () => {
 			const { uiStore } = setup();
 			const baseTextSpy = vi
 				.spyOn(useI18n(), 'baseText')
@@ -2523,13 +2522,13 @@ describe('ParameterInputList', () => {
 
 			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-				data: { variant: 'ownerTrial', reason: 'premiumModels' },
+				data: { variant: 'premiumModels' },
 			});
 			baseTextSpy.mockRestore();
 		});
 
-		it('shows the notice without an upgrade link for other users', async () => {
-			setup({ isInstanceOwner: false });
+		it('shows the notice without an upgrade link for users who cannot upgrade', async () => {
+			setup({ canUpgrade: false });
 
 			const { getByTestId } = await render([modelParameter]);
 

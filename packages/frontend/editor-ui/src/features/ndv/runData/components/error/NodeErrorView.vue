@@ -11,7 +11,6 @@ import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@n8n/stores/users.store';
 import type {
 	IDataObject,
 	INodeProperties,
@@ -31,7 +30,10 @@ import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
-import { isGatewayTrialRequestCostLimitError } from '@/app/stores/aiGateway.store';
+import {
+	isGatewayTrialRequestCostLimitError,
+	useAiGatewayStore,
+} from '@/app/stores/aiGateway.store';
 import {
 	N8nInlineAskAssistantButton,
 	N8nButton,
@@ -63,7 +65,7 @@ const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
+const aiGatewayStore = useAiGatewayStore();
 const { openUpgrade: openAiGatewayUpgrade } = useAiGatewayTopUp();
 
 const executionId = computed(() => workflowExecutionStateStore.value.activeExecution?.id);
@@ -526,7 +528,7 @@ async function onInstanceAiHandoffClick() {
 					@click="onOpenErrorNodeDetailClick"
 				/>
 			</div>
-			<div v-if="isAiGatewayRequestLimitError && usersStore.isInstanceOwner">
+			<div v-if="isAiGatewayRequestLimitError && aiGatewayStore.canUpgrade">
 				<N8nButton
 					:label="i18n.baseText('generic.upgrade')"
 					class="node-error-view__button"
