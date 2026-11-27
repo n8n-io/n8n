@@ -110,7 +110,7 @@ import {
 
 /** The model input of a message that has files but no text. */
 export const FILES_ONLY_MESSAGE =
-	'The user attached file(s) without a message. Inspect the first file and give a short summary. Use parse-file for a file that you cannot read directly.';
+	'The user attached file(s) without a message. Inspect the first file and give a short summary. Use your file tools for a file that you cannot read directly.';
 
 type FormattedTurnError = NonNullable<
 	Awaited<ReturnType<NonNullable<SystemAgentTurnHandle['formatError']>>>
