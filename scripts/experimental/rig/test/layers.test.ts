@@ -14,6 +14,10 @@ import { envsDir, globalSecretsFile, profileFile } from '../src/config/paths';
 import { PRESETS } from '../src/config/presets';
 import { diffResolved } from '../src/env/resolve';
 import { envPaths, RigEnv } from '../src/environment';
+import { writeLicense } from '../src/licenses';
+import { topologyWarnings } from '../src/topology/validate';
+
+const LICENSE_KEY = '0b2c5a8e-1f3d-4c6b-9a7e-2d4f6b8c0e1a';
 
 function makeEnv(name: string, input: Omit<TopologyInput, 'name'> = {}): RigEnv {
 	const paths = envPaths(name);
@@ -103,6 +107,47 @@ describe('secrets', () => {
 		expect(generatedSecretWarning(env, 'shared', 'OPENAI_API_KEY')).toBeUndefined();
 	});
 
+	it('should apply the license after the global secrets and before the profiles', () => {
+		writeLicense('prod', {
+			kind: 'activation-key',
+			value: LICENSE_KEY,
+			tenantId: '1',
+			serverUrl: 'https://license.example.com',
+		});
+		write(globalSecretsFile(), 'N8N_LICENSE_TENANT_ID=9\nN8N_LICENSE_SERVER_URL=global\n');
+		write(profileFile('staging'), 'N8N_LICENSE_SERVER_URL=https://staging.example.com\n');
+		const env = makeEnv('l', { license: 'prod', profiles: ['staging'] });
+		write(env.paths.layerFile('main'), 'N8N_LICENSE_TENANT_ID=3\n');
+		const main = env.component('main-1');
+		if (!main) throw new Error('no main');
+
+		const { env: resolved, trace } = env.resolve(main);
+		expect(resolved).toMatchObject({
+			N8N_LICENSE_ACTIVATION_KEY: LICENSE_KEY,
+			N8N_LICENSE_TENANT_ID: '3',
+			N8N_LICENSE_SERVER_URL: 'https://staging.example.com',
+		});
+		expect(trace.get('N8N_LICENSE_TENANT_ID')?.map((s) => s.layer)).toEqual([
+			'secrets',
+			'license',
+			'role',
+		]);
+		expect(trace.get('N8N_LICENSE_ACTIVATION_KEY')?.at(-1)?.label).toMatch(
+			/licenses\/prod\.env:1$/,
+		);
+	});
+
+	it('should not give the license to direct runners', () => {
+		writeLicense('prod', { kind: 'activation-key', value: LICENSE_KEY, tenantId: '1' });
+		const env = makeEnv('l', {
+			license: 'prod',
+			runners: { mode: 'external', via: 'direct', languages: ['js'] },
+		});
+		const runner = env.components().find((c) => c.kind === 'runner');
+		if (!runner) throw new Error('no runner');
+		expect(env.resolve(runner).env.N8N_LICENSE_ACTIVATION_KEY).toBeUndefined();
+	});
+
 	it('should create secret files with mode 0600', () => {
 		const env = makeEnv('s');
 		expect(statSync(ensureLayerFile(env, 'global-secrets')).mode & 0o777).toBe(0o600);
@@ -159,5 +204,40 @@ describe('secretOverrideChecks with engine v2', () => {
 		const env = makeEnv('e', { ...PRESETS['enginev2-local'].topology });
 		write(env.paths.secrets, 'N8N_ENABLED_MODULES=insights\n');
 		expect(secretOverrideChecks(env)).toEqual([]);
+	});
+});
+
+describe('license warnings', () => {
+	function warningsOf(env: RigEnv): string[] {
+		const main = env.component('main-1');
+		if (!main || main.kind !== 'process') throw new Error('no main');
+		return topologyWarnings(env.topology, env.resolve(main));
+	}
+
+	it('should warn when the license of the environment does not exist', () => {
+		const env = makeEnv('w', { license: 'gone' });
+		expect(warningsOf(env)).toEqual([expect.stringContaining('License "gone" does not exist.')]);
+	});
+
+	it('should warn when multi-main has no license', () => {
+		const env = makeEnv('w', { ...PRESETS['multi-main'].topology });
+		expect(warningsOf(env)).toEqual([expect.stringContaining('Multi-main needs a license.')]);
+	});
+
+	it('should warn when another layer sets the license key of the other kind', () => {
+		writeLicense('prod', { kind: 'activation-key', value: LICENSE_KEY, tenantId: '1' });
+		write(globalSecretsFile(), 'N8N_LICENSE_CERT=abc\n');
+		const env = makeEnv('w', { ...PRESETS['multi-main'].topology, license: 'prod' });
+		expect(warningsOf(env)).toEqual([
+			expect.stringMatching(
+				/^N8N_LICENSE_CERT comes from .*secrets\.env:1, not from license "prod"/,
+			),
+		]);
+	});
+
+	it('should not warn for a valid license setup', () => {
+		writeLicense('prod', { kind: 'activation-key', value: LICENSE_KEY, tenantId: '1' });
+		const env = makeEnv('w', { ...PRESETS['multi-main'].topology, license: 'prod' });
+		expect(warningsOf(env)).toEqual([]);
 	});
 });

@@ -25,6 +25,12 @@ import {
 	releaseBinaryPath,
 	releaseMethod,
 } from '../launcher/binary';
+import {
+	describeLicense,
+	licenseExists,
+	readLicenseValues,
+	validateLicenseValues,
+} from '../licenses';
 import { isPortFree, portOwner } from '../runtime/health';
 import { liveState } from '../runtime/state';
 import { browserLabel, installedBrowsers } from '../integrations/browser';
@@ -390,6 +396,57 @@ export function secretOverrideChecks(env: RigEnv): Check[] {
 	return [...overrides.values()];
 }
 
+export function licenseChecks(env: RigEnv | undefined): Check[] {
+	const checks: Check[] = [];
+	const configured = loadGlobalConfig().license.default;
+	if (configured && !licenseExists(configured)) {
+		checks.push({
+			status: 'warn',
+			label: 'Default',
+			detail: `license "${configured}" does not exist`,
+			hint: `Set another with \`${RIG} license default <name>\`.`,
+		});
+	} else {
+		checks.push({
+			status: 'info',
+			label: 'Default',
+			detail: configured ?? `none · ${RIG} create uses no license`,
+		});
+	}
+	const name = env?.topology.license;
+	if (!env || !name) {
+		if (env) checks.push({ status: 'info', label: env.name, detail: 'no license' });
+		return checks;
+	}
+	if (!licenseExists(name)) {
+		checks.push({
+			status: 'warn',
+			label: env.name,
+			detail: `license "${name}" does not exist`,
+			hint: `Add it with \`${RIG} license add ${name}\`, or run \`${RIG} license use <name>\`.`,
+		});
+		return checks;
+	}
+	let problems: string[];
+	try {
+		problems = validateLicenseValues(readLicenseValues(name));
+	} catch {
+		// The "Secrets encryption" section reports a key that rig cannot read.
+		return checks;
+	}
+	checks.push(
+		problems.length > 0
+			? {
+					status: 'warn',
+					label: env.name,
+					detail: `${name} is not valid: ${problems.join(' ')}`,
+					hint: 'n8n can reject it. Keep it only to test an invalid license.',
+				}
+			: { status: 'ok', label: env.name, detail: describeLicense(name) },
+	);
+	return checks;
+}
+
 function toolChecks(): Check[] {
 	const { browser, editor } = loadGlobalConfig();
 	const browsers = installedBrowsers().map((b) => b.label);
@@ -500,7 +557,8 @@ function printSection(title: string, checks: Check[]): void {
 export const doctorCommand = defineCommand({
 	meta: {
 		name: 'doctor',
-		description: 'Check the tools, the checkout, the launcher, ports, and secrets encryption',
+		description:
+			'Check the tools, the checkout, the launcher, ports, licenses, and secrets encryption',
 	},
 	args: { ...envArg },
 	async run({ args }) {
@@ -547,6 +605,7 @@ export const doctorCommand = defineCommand({
 				],
 			]);
 		}
+		sections.push(['Licenses', licenseChecks(env)]);
 		sections.push(['Secrets encryption', secretsChecks()]);
 		sections.push(['Browser and editor', toolChecks()]);
 

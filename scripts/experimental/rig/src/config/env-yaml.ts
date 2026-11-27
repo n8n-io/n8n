@@ -6,6 +6,7 @@ import { RigError } from '../errors';
 
 export const ENV_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 export const PROFILE_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
+export const LICENSE_NAME_PATTERN = PROFILE_NAME_PATTERN;
 
 const serviceSchema = (defaultPort: number) =>
 	z
@@ -111,6 +112,11 @@ export const topologySchema = z
 		profiles: z
 			.array(z.string().regex(PROFILE_NAME_PATTERN, 'use lowercase letters, digits, - and _'))
 			.default([]),
+		/** A license from ~/.config/rig/licenses. It sits between the global secrets and the profiles. */
+		license: z
+			.string()
+			.regex(LICENSE_NAME_PATTERN, 'use lowercase letters, digits, - and _')
+			.optional(),
 		services: z
 			.object({
 				postgres: serviceSchema(5432),
@@ -208,6 +214,7 @@ export function describeTopology(topology: Topology): string {
 		parts.push(`tunnel: ${topology.tunnel.hostname ?? 'cloudflare quick tunnel'}`);
 	}
 	if (topology.mail.provider === 'mailpit') parts.push('mail: mailpit');
+	if (topology.license) parts.push(`license: ${topology.license}`);
 	if (topology.slot > 0) parts.push(`slot ${topology.slot}`);
 	return parts.join(' · ');
 }

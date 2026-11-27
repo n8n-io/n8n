@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import pc from 'picocolors';
 
 import {
@@ -15,6 +15,7 @@ import {
 	displayPath,
 	envsDir,
 	globalSecretsFile,
+	licensesDir,
 	profilesDir,
 	secretsKeyFile,
 } from '../config/paths';
@@ -259,12 +260,15 @@ function assertNotOff(file: string, entries: DotenvEntry[]): void {
 	}
 }
 
-/** A secrets.env file: rig encrypts all its values. */
+/** A secrets.env file or a stored license: rig encrypts all its values. */
 function isSecretsFile(file: string): boolean {
-	return basename(file) === SECRETS_FILE_NAME;
+	return basename(file) === SECRETS_FILE_NAME || dirname(file) === licensesDir();
 }
 
-/** Whether a value must be encrypted: every value of secrets.env, and sensitive keys in any file. */
+/**
+ * Whether a value must be encrypted: every value of secrets.env and of a
+ * license, and sensitive keys in any file.
+ */
 export function mustEncrypt(file: string, name: string): boolean {
 	return isSecretsFile(file) || isSensitiveKey(name);
 }
@@ -395,10 +399,10 @@ function envFilesIn(dir: string): string[] {
 
 /**
  * Every env file that can hold encrypted values, when it exists: the global
- * secrets, the profiles, and the secrets and layers of each environment.
+ * secrets, the licenses, the profiles, and the secrets and layers of each environment.
  */
 export function envFiles(): string[] {
-	const files = [globalSecretsFile(), ...envFilesIn(profilesDir())];
+	const files = [globalSecretsFile(), ...envFilesIn(licensesDir()), ...envFilesIn(profilesDir())];
 	if (existsSync(envsDir())) {
 		for (const name of readdirSync(envsDir()).sort()) {
 			const root = join(envsDir(), name);
