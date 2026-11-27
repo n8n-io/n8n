@@ -43,6 +43,9 @@ Spread the picks across domains and components (Data Tables, MCP, skills, web
 search, memory). Prefer an English source when two candidates are equal. The
 scrub translates the rest.
 
+Check the language in the snapshot itself: read the instructions. A pick list
+or the thread's first prompt can name the wrong language.
+
 Check how the Agent's model resolves. The harness picks the first route that
 works ([`credentials/model-resolver.ts`](../../../packages/@n8n/instance-ai/evaluations/credentials/model-resolver.ts)):
 
@@ -67,10 +70,14 @@ Skip what the harness cannot run:
 - MCP servers on the SSE transport. Streamable HTTP is fine.
 - Orchestrators with sub-agents. The harness runs one Agent. Pick
   single-agent threads.
-- Workflow tools, until it is confirmed how the harness treats them. The
-  snapshot has the tool reference but not the sub-workflow.
 
 Note, do not skip:
+
+- Workflow tools work. The snapshot has the reference, not the sub-workflow,
+  so you write a synthetic one ([building.md](building.md#3b-workflow-tools)).
+- Knowledge files (`find_file`, `search_text`, `read_file`) can't be seeded.
+  The Agent runs without documents. Pick it only if it has behavior worth
+  grading without them, such as referrals or "I can't confirm".
 
 - Channel integrations (Telegram, WhatsApp, Slack) are dropped in direct mode.
   Channel-only formatting rules in the instructions may not apply. Write

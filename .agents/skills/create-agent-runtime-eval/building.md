@@ -27,6 +27,16 @@ Map the snapshot to one seed entry: `{ id, config, skills }`.
 - Keep `[redacted]` credentials. The restore blanks them, and the model
   resolver binds real keys. The resolver also adds the model credential types
   the case needs. Declare at most one credential of each model type.
+- **Node tool credentials** are an object keyed by credential type, never the
+  bare string `"[redacted]"`:
+  `"credentials": { "whatsAppApi": { "id": "[redacted]", "name": "WhatsApp account" } }`.
+  The snapshot often has the bare string. Find the type in the node's
+  definition.
+- **The `n8n_chat` integration** takes `"credentialId": ""`. Other
+  integrations keep `"[redacted]"`.
+- **Drop `config.tasks`.** The seed refuses it. Note in the case
+  `description` that the Agent had tasks, so a reader knows they are missing.
+- Add the case-level `complexity` (`simple`, `medium`, or `complex`).
 
 Create the case with `create_test_case`:
 
@@ -71,7 +81,12 @@ The rules (from the C1 rewrite spec):
   topics, which you rewrite), `config.config`, node types, versions,
   operations, filter conditions, `providerTools`, `personalisation`,
   `[redacted]` values.
-- **Skill ids must match** between `config.skills[]` and the `skills` map.
+- **Skill ids go through the rename map too.** An id can carry a real name
+  (`skill_acme_returns`). Replace it the same way in `config.skills[].id`, the
+  `skills` map keys, and every mention in the instructions. The ids must still
+  match between `config.skills[]` and the `skills` map.
+- **Instructions that name a tool the Agent doesn't have** stay as written.
+  The user built it that way. Don't write a scenario that needs that tool.
 
 ## Check the rewrite
 
@@ -79,7 +94,9 @@ Do this after every scrub, by hand or by L1.
 
 - **Leaks:** build a list of the originals (names, ids, numbers, URLs, table
   names, non-English identifier words). Search the case for each one. Zero
-  hits. Then read the whole case once for real-world detail.
+  hits. Match whole words. Match short tokens (4 letters or fewer)
+  case-sensitively, or `Ana` hits every `analysis`. Then read the whole case
+  once for real-world detail.
 - **Structure:** compare the keys and types of every leaf before and after.
   Same tools, same rule count, same skill names, same array lengths.
 - **Names line up:** every tool name in the instructions exists in `tools`.
@@ -105,16 +122,48 @@ For every Data Table the Agent's tools use, add a `seed.dataTables` entry:
 Before each scenario, every seed table is reset to its seed rows. Use a
 scenario's `seedDataTables` only when that scenario needs different rows.
 
+Dates: if the instructions have date rules ("only items from this week",
+"remind 2 days before"), put seed dates far from today, for example years
+before or after. Then the rule gives the same answer on any run date. Write
+the expectations so they hold either way (see Scenarios).
+
 Write the tables with `update_test_case` (`seed`). **Pending L2** for
 `rows`: LangTracer stores seed tables as schema only today.
+
+## 3b. Workflow tools
+
+A tool with `"type": "workflow"` calls a sub-workflow. The snapshot has the
+reference, not the workflow. Write a synthetic one in `seed.workflows`:
+
+- The first node is an Execute Workflow Trigger (`n8n-nodes-base.executeWorkflowTrigger`)
+  with the inputs the tool passes.
+- No Wait node and no human-in-the-loop node. The run can't resume.
+- Not an Engine v2 workflow. Test runs refuse those.
+- Its `name` equals the tool's `workflow`.
+- The tool's `workflowId` is absent, or equals this seed workflow's `id`.
+  Never keep the snapshot's real workflow id.
+- Keep it small. Outbound calls (HTTP, Gmail, …) go through the LLM mock, so
+  say what they return in `dataSetup`.
+- It may use seed Data Tables. The restore remaps the table ids inside seed
+  workflows too.
 
 ## 4. Scenarios
 
 Write 1–3 scenarios. Each tests one behavior the user built the Agent for.
 
-- `dataSetup`: the world prompt. What the tables hold, what each mocked tool
-  returns, and any system marker the first message carries (for example
-  `[Customer WhatsApp number: ...]`). Use the same marker as the instructions.
+- `name`: unique in the case. No ` › ` in a name or an expectation: the
+  harness uses it as a key separator. The case is refused otherwise.
+- `description`: required. One line on what the scenario tests.
+- `dataSetup`: the world prompt. Keep two parts apart:
+  - What the user knows: who they are, and any marker their first message
+    carries (for example `[Customer WhatsApp number: ...]`, the same marker
+    the instructions use).
+  - What only the backend knows. Label it: "Mock world for <tool> (the user
+    has not seen this data): …". This stops the simulated user from quoting
+    data it can't know.
+- **Channel metadata.** Direct mode has no channel. A Telegram chat id or
+  sender name, for example, does not exist. If the instructions need one, put
+  an explicit marker in the opening message through the goal or `dataSetup`.
 - `userTurns`: `{ goal, maxTurns }` (default 6, max 20). The goal guides the
   simulated user. Write it as a person: who they are, what they ask, in what
   order, when they agree or refuse, and when to stop. Omit `userTurns` for a
@@ -127,6 +176,18 @@ Write 1–3 scenarios. Each tests one behavior the user built the Agent for.
 
 Tool outbound calls go through the LLM mock. Data Tables are real. Say in
 `dataSetup` what a mocked tool returns when the scenario depends on it.
+
+Things the run doesn't have:
+
+- **Knowledge files** (`find_file`, `search_text`, `read_file`) can't be
+  seeded. An Agent that relies on them runs without documents. Say so in
+  `dataSetup`. Grade what it should do without them: say it can't confirm,
+  refer to a person, not invent a rule. Don't grade an answer that needs a
+  document.
+- **Tools the instructions name but the Agent lacks.** Don't rely on them.
+- **Date-dependent rules.** The run date changes. Write expectations that hold
+  on any date, for example "does not present the March item as new", not
+  "lists 2 items from this week".
 
 Write the scenarios with `update_test_case` (`scenarios`, the full set,
 matched by name). **Pending L3** for `expectations`, `userTurns`, and
@@ -146,7 +207,10 @@ matched by name). **Pending L3** for `expectations`, `userTurns`, and
 - `agent`: the seed id of the Agent under test. Default: the first seeded
   Agent.
 - `keepMemory`, `configOverrides`: see
-  [Memory cases](SKILL.md#memory-cases). **Pending N4.**
+  [Memory cases](SKILL.md#memory-cases).
+- `configOverrides` can't set credentials or models. Keys that start with
+  `credential` or end in `Model`, and `model` and `modelsByDifficulty`, are
+  refused. The resolver owns them.
 
 Write it with `update_test_case`. **Pending L2** for `mode` and `agent`,
 **L3** for `keepMemory` and `configOverrides`.
@@ -166,6 +230,27 @@ the case's `tags`).
 
 ## Validate
 
-The local smoke run validates the case: the loader is strict. It fails on
-unknown keys, on rows that don't fit the columns, and on a scenario with no
-expectation. See [calibrating.md](calibrating.md#run-locally-smoke-test).
+Check the case against the schema before the local smoke run. It takes about
+a second and needs no instance. Save the case to a scratch file, then run this
+from `packages/@n8n/instance-ai` in an n8n checkout that has N1–N4 (the stack
+head):
+
+```bash
+pnpm exec tsx -e "
+import { readFileSync } from 'node:fs';
+import { EvalTestCaseSchema } from './evaluations/harness/schema';
+import { remapSeedArtifactIds } from './evaluations/harness/conversation-seed';
+for (const file of process.argv.slice(1)) {
+  const parsed = EvalTestCaseSchema.safeParse(JSON.parse(readFileSync(file, 'utf8')));
+  if (!parsed.success) { console.log('FAIL', file, JSON.stringify(parsed.error.issues.map(i => i.path.join('.') + ': ' + i.message))); process.exitCode = 1; continue; }
+  if (parsed.data.seed) remapSeedArtifactIds(parsed.data.seed);
+  console.log('ok  ', file);
+}
+" /path/to/case.json
+```
+
+It catches unknown keys, a bare `"[redacted]"` node credential, an `n8n_chat`
+`credentialId` that isn't `""`, rows that don't fit the columns, a missing
+`description` or `complexity`, ` › ` in names, and duplicate seed ids. It does
+not run anything. The local smoke run is next
+([calibrating.md](calibrating.md#run-locally-smoke-test)).

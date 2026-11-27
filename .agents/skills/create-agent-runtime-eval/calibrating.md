@@ -7,6 +7,9 @@ from a disk file: do not use `eval:langtracer-push` for runtime cases.
 
 ## Run locally (smoke test)
 
+Run the schema check in [building.md](building.md#validate) first. It
+catches most case errors in a second, without an instance.
+
 Locally, everything runs on Anthropic. Non-Anthropic Agents run on a
 comparable Anthropic model, and episodic cases are skipped with "no embedding
 key". A local green is not a calibration.

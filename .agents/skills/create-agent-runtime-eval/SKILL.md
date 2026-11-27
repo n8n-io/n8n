@@ -37,8 +37,8 @@ you start. Each step below is marked with the work it waits on.
 |---|---|---|
 | N1 (AGENT-1665) | `agentRun.mode: "direct"`, `seed.dataTables[].rows`, scenario `expectations` | in the stack |
 | N2 (AGENT-1676) | runs each Agent on its own model (`modelResolution`) | in the stack |
-| N3 (AGENT-1666) | `userTurns`, `sessions`, one verdict per expectation | pending |
-| N4 (AGENT-1666) | `keepMemory`, `configOverrides`, memory settles between sessions, memory in the judge input | pending |
+| N3 (AGENT-1666) | `userTurns`, `sessions`, one verdict per expectation | in the stack |
+| N4 (AGENT-1666) | `keepMemory`, `configOverrides`, memory settles between sessions, memory in the judge input | in the stack |
 | L1 (AGENT-1675) | `scrub_test_case` rewrites `seed.agents` | pending |
 | L2 (AGENT-1665/1676) | lang-tracer carries `agentRun` and seed rows; OpenRouter key on CI | pending |
 | L3 (AGENT-1666) | lang-tracer carries `userTurns`, `sessions`, `expectations` | pending |
@@ -109,6 +109,10 @@ Rules:
 - Use the names and values after the rewrite: tool names, hours, prices.
   Finish the rename map first.
 - Tie numbers to the seed rows, so the judge checks data and does not guess.
+- Make date-dependent expectations hold on any run date. Put seed dates far
+  from today.
+- Don't grade what the run can't have: knowledge files, channel metadata, or
+  tools the instructions name but the Agent lacks.
 - Every conditional expectation needs proof that its precondition happened.
   "Does not save after the customer refuses" passes vacuously if the customer
   never refused. Write the refusal into the user goal.
@@ -154,11 +158,12 @@ Memory is Agent config (`memory.observationalMemory`,
 case only says whether to keep it.
 
 - **`agentRun.keepMemory: true`** keeps the seeded memory config. Set it when
-  the snapshot had memory on and the scenario needs it: more than a few turns,
-  or more than one session. Omit it for a single-turn scenario. Memory then
-  stays out of the result. (N4)
+  the snapshot had memory on. It works for every scenario shape: a
+  single-turn scenario runs as a one-turn thread with memory on. Omit it only
+  to test the Agent with memory stripped. (N4)
 - **Variants** use `agentRun.configOverrides`, a deep merge onto the seeded
-  config. A variant is a second case with the same seed and a different
+  config. It can't set credentials or models (see
+  [building.md](building.md#5-agentrun)). A variant is a second case with the same seed and a different
   override. Examples:
   - Episodic off: `{ "memory": { "episodicMemory": { "enabled": false } } }`.
   - Force compaction in a short run:
