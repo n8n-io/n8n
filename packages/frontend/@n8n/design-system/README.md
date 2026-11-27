@@ -250,8 +250,10 @@ export const Clock: Story = {
 };
 ```
 
-Make each story deterministic. Use fixed dates and fixed data, not `Date.now()` or random
-values. The tests turn off transitions, animations, and the text caret.
+Make each story deterministic. Use fixed data, not random values. The tests turn off
+transitions, animations, and the text caret. They also fix `Date` at `2026-01-01T12:00:00Z`, so
+`new Date()` and `Date.now()` give the same value on each run. Timers such as `setTimeout` stay
+real.
 
 #### Add states with `parameters.visual`
 

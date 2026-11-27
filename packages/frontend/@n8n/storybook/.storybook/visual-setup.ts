@@ -5,7 +5,7 @@
  * `vitest/browser` only works inside a Vitest browser run.
  */
 import { isRecord } from '@n8n/utils/is-record';
-import { afterEach, expect, inject } from 'vitest';
+import { afterEach, expect, inject, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
 type VisualState = {
@@ -144,6 +144,14 @@ freezeStyle.textContent = `
 }
 `;
 document.head.appendChild(freezeStyle);
+
+/*
+ * A fixed `Date`, so a story that shows the time matches a baseline made at
+ * another time. Without fake timers, Vitest fakes only `Date` and `Temporal`,
+ * and their clock does not move. Timers stay real. Set here, before the stories
+ * load, so code that reads the date at import time gets it too.
+ */
+vi.setSystemTime(new Date('2026-01-01T12:00:00Z'));
 
 afterEach(async (context) => {
 	// Report the story's own failure, not a screenshot of a broken render.
