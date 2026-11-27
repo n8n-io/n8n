@@ -353,7 +353,9 @@ onBeforeUnmount(() => {
 				:icon="{ type: 'icon', value: 'triangle-alert' }"
 				:heading="i18n.baseText('apps.preview.error.heading')"
 				:description="i18n.baseText('apps.preview.error.description')"
+				:button-text="i18n.baseText('apps.preview.error.reload')"
 				data-test-id="app-preview-error"
+				@click:button="reload"
 			/>
 			<iframe
 				v-else-if="preview"
@@ -376,11 +378,12 @@ onBeforeUnmount(() => {
 			/>
 			<N8nEmptyState
 				v-else-if="awaitingRun"
-				:icon="{ type: 'icon', value: 'play' }"
-				:heading="i18n.baseText('apps.preview.confirm.heading')"
+				:icon="{ type: 'icon', value: 'circle-play' }"
+				:heading="
+					i18n.baseText('apps.preview.confirm.heading', { interpolate: { name: app.name } })
+				"
 				:description="i18n.baseText('apps.preview.confirm.description')"
 				:button-text="i18n.baseText('apps.preview.confirm.run')"
-				button-icon="play"
 				data-test-id="app-preview-confirm"
 				@click:button="run"
 			/>
@@ -409,7 +412,7 @@ onBeforeUnmount(() => {
 			/>
 			<N8nEmptyState
 				v-else
-				:icon="{ type: 'icon', value: 'eye' }"
+				:icon="{ type: 'icon', value: 'layout-template' }"
 				:heading="i18n.baseText('apps.preview.empty.heading')"
 				:description="i18n.baseText('apps.preview.empty.description')"
 				data-test-id="app-preview-empty"
@@ -507,6 +510,11 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	max-width: 32rem;
+}
+
+// Apps show empty states without the default dashed outline.
+.stage > :global(.n8n-empty-state) {
+	border: 0;
 }
 
 .frame {

@@ -181,6 +181,7 @@ async function onAppDeleted(appId: string) {
 		</template>
 		<template #empty>
 			<N8nEmptyState
+				:class="$style.emptyState"
 				:icon="{ type: 'icon', value: 'layout-template' }"
 				:heading="i18n.baseText('apps.empty.heading')"
 				:description="i18n.baseText('apps.empty.description')"
@@ -195,3 +196,10 @@ async function onAppDeleted(appId: string) {
 		</template>
 	</component>
 </template>
+
+<style lang="scss" module>
+// Apps show empty states without the default dashed outline.
+.emptyState:global(.n8n-empty-state) {
+	border: 0;
+}
+</style>

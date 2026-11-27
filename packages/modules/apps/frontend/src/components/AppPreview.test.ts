@@ -139,7 +139,7 @@ describe('AppPreview', () => {
 		it('runs the version on confirmation and does not ask again for it', async () => {
 			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
 			const first = renderComponent();
-			await userEvent.click(await first.findByRole('button', { name: 'Run preview' }));
+			await userEvent.click(await first.findByRole('button', { name: 'Run app' }));
 
 			expect(await first.findByTestId('app-preview-frame')).toHaveAttribute(
 				'src',
@@ -154,7 +154,7 @@ describe('AppPreview', () => {
 		it('asks again when a new version replaces a running one', async () => {
 			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
 			const { findByRole, findByTestId, queryByTestId } = renderComponent();
-			await userEvent.click(await findByRole('button', { name: 'Run preview' }));
+			await userEvent.click(await findByRole('button', { name: 'Run app' }));
 			await findByTestId('app-preview-frame');
 
 			vi.mocked(listAppVersions).mockResolvedValue([
