@@ -172,6 +172,7 @@ jobs:
               scripts/cloud-session*.mjs
               scripts/codespace-env.mjs
               scripts/codespace-preview/**
+              scripts/format.mjs
               scripts/licenses/**
               scripts/mutation-health/**
               scripts/telemetry/**
