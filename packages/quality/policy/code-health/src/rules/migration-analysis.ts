@@ -20,6 +20,13 @@ export interface AddedMigration {
 	dialect: MigrationDialect;
 }
 
+/** Branches that ship patch releases. A migration lands on them only as a backport from master. */
+const RELEASE_BRANCH = /^(?:release-candidate\/|release\/|1\.x$)/;
+
+export function isReleaseBranch(branch: string | undefined): boolean {
+	return branch !== undefined && RELEASE_BRANCH.test(branch.replace(/^refs\/heads\//, ''));
+}
+
 export function skillLink(anchor: string, heading: string): string {
 	return `See ${SKILL_PATH}#${anchor} ("${heading}").`;
 }

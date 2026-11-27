@@ -69,6 +69,8 @@ const ALWAYS_ASK_TOOLS: ReadonlySet<string> = new Set([
 	DOMAIN_TOOL_IDS.ARCHIVE_WORKFLOW,
 	DOMAIN_TOOL_IDS.UNPUBLISH_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESTORE_WORKFLOW_VERSION,
+	// Archiving an Agent unpublishes it and stops its channels and schedules.
+	DOMAIN_TOOL_IDS.ARCHIVE_AGENT,
 ]);
 
 const LOW_RISK_TOOLS: ReadonlySet<string> = new Set([
@@ -147,8 +149,9 @@ export function readPendingApproval(
 ): PendingApproval | undefined {
 	if (!isRecord(payload)) return undefined;
 
-	// The SDK approval gate of an MCP tool. Other tools that use this gate
-	// belong to the Agent Builder, which keeps its own approvals.
+	// The SDK approval gate of an MCP tool. The Agent Builder also uses this gate
+	// when a test run of an agent reaches one of the agent's own approvals. The
+	// agent's settings ask a person there, so the card always shows.
 	const gate = APPROVAL_SUSPEND_SCHEMA.safeParse(payload);
 	if (gate.success) {
 		if (tool.mcpTool !== true) return undefined;

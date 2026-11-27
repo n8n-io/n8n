@@ -2,6 +2,7 @@
 import type { PolicyAction, TypeUsage } from '@n8n/api-types';
 import {
 	N8nButton,
+	N8nCheckbox,
 	N8nDataTableServer,
 	N8nDropdownMenu,
 	N8nEmptyState,
@@ -21,6 +22,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 import type { TypeIcon } from './instancePolicyTable.types';
+import PolicySelectionBar from '../components/PolicySelectionBar.vue';
 import type { InstanceTypeAccessRow } from './useInstanceTypeAccess';
 
 export type InstancePolicyTableRow = InstanceTypeAccessRow & {
@@ -37,12 +39,22 @@ const props = defineProps<{
 	loading: boolean;
 	searchPlaceholder: string;
 	noMatchText: string;
+	/** A bulk change of the selection is in progress. */
+	bulkBusy?: boolean;
 }>();
 
 const emit = defineEmits<{
 	change: [name: string, access: PolicyAction, label: string];
+	/** The admin gives the selected types the same access. */
+	bulkChange: [types: Array<{ name: string; label: string }>, access: PolicyAction];
 	open: [name: string];
 }>();
+
+/**
+ * The names of the selected types. It is kept when the page, the search or the filter changes, so
+ * the bar counts the selected rows that are hidden too.
+ */
+const selection = defineModel<string[]>('selection', { default: () => [] });
 
 const i18n = useI18n();
 
@@ -78,6 +90,16 @@ const PAGE_SIZES = [10, 25, 50, 100];
 const itemsPerPage = ref(25);
 
 const headers = computed<Array<TableHeader<InstancePolicyTableRow>>>(() => [
+	{
+		// The table's own select column has no accessible names, and its header checkbox counts the
+		// rows of every page, so this column renders the checkboxes.
+		title: '',
+		key: 'select',
+		value: () => undefined,
+		width: 40,
+		disableSort: true,
+		resize: false,
+	},
 	{
 		title: i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.name'),
 		key: 'displayName',
@@ -253,6 +275,99 @@ watch(
 
 defineExpose({ returnFocus });
 
+const rowsByName = computed(() => new Map(props.rows.map((row) => [row.name, row])));
+const selectedRows = computed(() =>
+	selection.value.flatMap((name) => rowsByName.value.get(name) ?? []),
+);
+
+// A reload can remove a type, or a rule can make it read-only, so the selection keeps only the
+// rows that the admin can still change.
+watch(rowsByName, (rows) => {
+	if (rows.size === 0) return;
+	const kept = selection.value.filter((name) => rows.get(name)?.editable === true);
+	if (kept.length !== selection.value.length) selection.value = kept;
+});
+
+const selectedNames = computed(() => new Set(selection.value));
+
+/** Adds the names to the selection, or takes them out. The other selected names stay. */
+function setSelected(names: string[], selected: boolean) {
+	if (selected) {
+		selection.value = [...new Set([...selection.value, ...names])];
+	} else {
+		const removed = new Set(names);
+		selection.value = selection.value.filter((name) => !removed.has(name));
+	}
+}
+
+// The page checkbox shows the state of this page only, so rows selected on other pages do not
+// make it look checked.
+const pageSelectableNames = computed(() =>
+	pageRows.value.filter((row) => row.editable).map((row) => row.name),
+);
+const pageSelectedCount = computed(
+	() => pageSelectableNames.value.filter((name) => selectedNames.value.has(name)).length,
+);
+const pageAllSelected = computed(
+	() =>
+		pageSelectableNames.value.length > 0 &&
+		pageSelectedCount.value === pageSelectableNames.value.length,
+);
+const pageSomeSelected = computed(() => pageSelectedCount.value > 0 && !pageAllSelected.value);
+
+// This selects the rows of every page that the search and the filter show, so with neither it
+// selects all the types.
+const selectableRows = computed(() => filteredRows.value.filter((row) => row.editable));
+const allSelected = computed(() =>
+	selectableRows.value.every((row) => selectedNames.value.has(row.name)),
+);
+
+function selectAll() {
+	setSelected(
+		selectableRows.value.map((row) => row.name),
+		true,
+	);
+}
+
+const canRestrict = computed(() => selectedRows.value.some((row) => row.access !== 'deny'));
+const canAllow = computed(() => selectedRows.value.some((row) => row.access !== 'allow'));
+
+const selectRowLabel = (row: InstancePolicyTableRow) =>
+	i18n.baseText('typeAvailabilityPolicies.instancePolicy.bulk.selectRow', {
+		interpolate: { name: row.displayName },
+	});
+
+function onBulkChange(access: PolicyAction) {
+	emit(
+		'bulkChange',
+		selectedRows.value.map((row) => ({ name: row.name, label: row.displayName })),
+		access,
+	);
+}
+
+/**
+ * The bar leaves the DOM with the selection, so the focus goes to the checkbox of the page. A
+ * disabled checkbox cannot take the focus, so then it goes to the filter.
+ */
+function focusSelectAll() {
+	const selectPage = root.value?.querySelector<HTMLButtonElement>(
+		'[data-test-id="instance-policy-select-page"]',
+	);
+	if (selectPage && !selectPage.disabled) selectPage.focus();
+	else focusFilter();
+}
+
+watch(
+	() => selection.value.length,
+	async (count) => {
+		if (count > 0 || !root.value?.contains(document.activeElement)) return;
+		const focused = document.activeElement;
+		await nextTick();
+		if (focused && !focused.isConnected) focusSelectAll();
+	},
+	{ flush: 'pre' },
+);
+
 // This page sets only Allowed and Restricted. A row that the default action leaves open to project
 // opt-in can still move to either. One list for each current access keeps the menus' props stable.
 function menuItems(current: PolicyAction): Array<DropdownMenuItemProps<PolicyAction>> {
@@ -310,6 +425,24 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 				@update:model-value="onFilterChange"
 			/>
 		</div>
+		<!-- Focusable when disabled: a click that selects everything must not lose the focus. -->
+		<N8nButton
+			v-if="selectableRows.length > 0"
+			:class="$style.selectAllButton"
+			variant="ghost"
+			size="small"
+			:disabled="allSelected"
+			focusable-when-disabled
+			data-test-id="instance-policy-select-all"
+			data-attr="instance-policy-select-all"
+			:label="
+				i18n.baseText('typeAvailabilityPolicies.instancePolicy.bulk.selectAllPages', {
+					adjustToNumber: selectableRows.length,
+					interpolate: { count: String(selectableRows.length) },
+				})
+			"
+			@click="selectAll"
+		/>
 		<!-- The reload after a save must not swap the message, and its clear button, for skeleton rows. -->
 		<N8nDataTableServer
 			v-model:sort-by="sortBy"
@@ -318,7 +451,7 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 			:items-length="filteredRows.length"
 			:loading="loading && !noMatch"
 			item-value="name"
-			:pin-columns="1"
+			:pin-columns="2"
 			:pagination="false"
 			data-test-id="instance-policy-table"
 			:row-props="{ class: $style.row }"
@@ -334,6 +467,27 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 					data-test-id="instance-policy-no-match"
 					@click:button="clearSearchAndFilter"
 				/>
+			</template>
+			<template #[`header.select`]>
+				<N8nCheckbox
+					:model-value="pageAllSelected"
+					:indeterminate="pageSomeSelected"
+					:disabled="pageSelectableNames.length === 0"
+					:aria-label="i18n.baseText('typeAvailabilityPolicies.instancePolicy.bulk.selectPage')"
+					data-test-id="instance-policy-select-page"
+					@update:model-value="(value: boolean) => setSelected(pageSelectableNames, value)"
+				/>
+			</template>
+			<template #[`item.select`]="{ item }">
+				<!-- A click on the checkbox selects the row and does not also open it. -->
+				<div :class="$style.select" @click.stop>
+					<N8nCheckbox
+						:model-value="selectedNames.has(item.name)"
+						:disabled="!item.editable"
+						:aria-label="selectRowLabel(item)"
+						@update:model-value="(value: boolean) => setSelected([item.name], value)"
+					/>
+				</div>
 			</template>
 			<template #[`item.displayName`]="{ item }">
 				<!-- A row is not focusable, so the name is the button that keyboard users reach. -->
@@ -402,6 +556,15 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 				@update:page="(value: number) => (page = value - 1)"
 			/>
 		</div>
+		<PolicySelectionBar
+			:count="selectedRows.length"
+			:can-restrict="canRestrict"
+			:can-allow="canAllow"
+			:busy="bulkBusy"
+			@restrict="onBulkChange('deny')"
+			@allow="onBulkChange('allow')"
+			@clear="selection = []"
+		/>
 	</div>
 </template>
 
@@ -432,8 +595,18 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 	margin-inline-start: auto;
 }
 
+.selectAllButton {
+	align-self: flex-start;
+}
+
 .row {
 	cursor: pointer;
+}
+
+.select {
+	display: flex;
+	align-items: center;
+	cursor: default;
 }
 
 .name,

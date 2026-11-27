@@ -4,6 +4,7 @@ import fg from 'fast-glob';
 import * as path from 'node:path';
 
 import type { CodeHealthContext } from '../context.js';
+import { isReleaseBranch } from './migration-analysis.js';
 
 const DEFAULT_MIGRATION_GLOBS = [
 	'packages/@n8n/db/src/migrations/common/*.ts',
@@ -37,7 +38,9 @@ export class MigrationTimestampRule extends BaseRule<CodeHealthContext> {
 	readonly severity = 'error' as const;
 
 	async analyze(context: CodeHealthContext): Promise<Violation[]> {
-		const { rootDir, addedFiles } = context;
+		const { rootDir, addedFiles, baseBranch } = context;
+		// Backports can merge in a different order than on master. `migration-backport` keeps master's order.
+		const checkOrdering = !isReleaseBranch(baseBranch);
 		const options = this.getOptions();
 
 		const globs = Array.isArray(options.migrationGlobs)
@@ -116,7 +119,7 @@ export class MigrationTimestampRule extends BaseRule<CodeHealthContext> {
 
 			const isAdded = addedFilesSet?.has(path.normalize(relativePath)) ?? false;
 
-			if (addedFilesSet && isAdded && timestamp <= floor) {
+			if (addedFilesSet && isAdded && checkOrdering && timestamp <= floor) {
 				violations.push(
 					this.createViolation(
 						filePath,

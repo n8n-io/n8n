@@ -7,6 +7,7 @@ import {
 } from '@n8n/frontend-module-sdk';
 import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import merge from 'lodash/merge';
 
 import router from '@/app/router';
@@ -24,6 +25,7 @@ import {
 	IMPORT_CSV_MODAL_KEY,
 } from '@/features/core/dataTable/constants';
 import { defaultSettings } from '@n8n/frontend-test-utils';
+import { useUserHelpers } from '@/app/composables/useUserHelpers';
 
 it('keeps Agents settings reachable while the Agents routes are disabled', () => {
 	setActivePinia(createPinia());
@@ -52,6 +54,67 @@ it('keeps Agents settings reachable while the Agents routes are disabled', () =>
 	const next = vi.fn();
 	expect(check?.({ to: { ...settingsRoute, name: AGENTS_SETTINGS_VIEW }, from, next })).toBe(true);
 	expect(check?.({ to: { ...agentsRoute, name: AGENTS_LIST_VIEW }, from, next })).toBe(false);
+});
+
+// No backend module has the id `api-keys`, so the module is never active. Its page must
+// still open for every signed-in user, as it did when the route was in the shell.
+describe('API keys settings route', () => {
+	const createTestRouter = () => {
+		const stub = { render: () => null };
+		return createRouter({
+			history: createMemoryHistory(),
+			routes: [
+				{ path: '/settings', name: VIEWS.SETTINGS, component: stub },
+				{ path: '/projects/:projectId', name: VIEWS.PROJECT_DETAILS, component: stub },
+			],
+		});
+	};
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		useSettingsStore().setSettings(merge({}, defaultSettings, { activeModules: [] }));
+	});
+
+	it('resolves under settings at the same path', () => {
+		const testRouter = createTestRouter();
+		registerModuleRoutes(testRouter);
+
+		expect(testRouter.resolve({ name: VIEWS.API_SETTINGS }).path).toBe('/settings/api');
+	});
+
+	it('runs no module availability check while the module is inactive', () => {
+		expect(useSettingsStore().isModuleActive('api-keys')).toBe(false);
+		const testRouter = createTestRouter();
+		registerModuleRoutes(testRouter);
+
+		const route = testRouter.resolve({ name: VIEWS.API_SETTINGS });
+
+		expect(route.meta.moduleName).toBe('api-keys');
+		expect(route.meta.middleware).toEqual(['authenticated']);
+		expect(route.meta.middlewareOptions?.custom).toBeUndefined();
+	});
+
+	it('is open to a signed-in user and closed to a visitor', () => {
+		const testRouter = createTestRouter();
+		registerModuleRoutes(testRouter);
+		const { canUserAccessRouteByName } = useUserHelpers(testRouter);
+
+		expect(canUserAccessRouteByName(VIEWS.API_SETTINGS)).toBe(false);
+
+		const usersStore = useUsersStore();
+		usersStore.addUsers([
+			{
+				id: 'user-1',
+				email: 'user@example.com',
+				firstName: 'Test',
+				lastName: 'User',
+				isPending: false,
+			},
+		]);
+		usersStore.currentUserId = 'user-1';
+
+		expect(canUserAccessRouteByName(VIEWS.API_SETTINGS)).toBe(true);
+	});
 });
 
 describe('registerModuleModals', () => {

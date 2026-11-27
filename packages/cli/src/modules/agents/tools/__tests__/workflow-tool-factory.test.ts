@@ -1852,7 +1852,7 @@ describe('workflow tool → workflow that a skill mentions', () => {
 	});
 
 	it('builds a tool that runs the workflow of a link in the skill body', async () => {
-		const config = withSkillWorkflowTools(
+		const { config } = withSkillWorkflowTools(
 			{
 				name: 'Agent',
 				model: 'anthropic/claude-sonnet-5-5',

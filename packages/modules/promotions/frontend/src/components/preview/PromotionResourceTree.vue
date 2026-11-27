@@ -23,9 +23,6 @@ const props = withDefaults(
 		graph: SelectionGraph;
 		selected: ReadonlySet<ResourceKey>;
 		inclusion: Inclusion;
-		/** Included changes, out of the total in the tab above the tree. */
-		includedChanges: number;
-		totalChanges: number;
 		inspectedKey?: ResourceKey;
 		/** Blocked workflows, which users cannot add. */
 		disabled: DisabledKeys;
@@ -112,16 +109,6 @@ function onToggle(resource: PromotionResource) {
 				<N8nText step="xs" bold color="text-dark" :class="$style.selectAllLabel">
 					{{ i18n.baseText('promotions.preview.tree.selectAll') }}
 				</N8nText>
-				<N8nText step="xs" color="text-light" data-test-id="promotion-preview-counts">
-					{{
-						i18n.baseText('promotions.preview.tree.selectedOfTotal', {
-							interpolate: {
-								selected: String(includedChanges),
-								total: String(totalChanges),
-							},
-						})
-					}}
-				</N8nText>
 			</div>
 			<span :class="$style.separator" aria-hidden="true" />
 		</template>
@@ -159,18 +146,10 @@ function onToggle(resource: PromotionResource) {
 					/>
 					<N8nText step="xs" bold color="text-dark" :class="$style.groupLabel">
 						{{ item.label }}
-					</N8nText>
-					<N8nText
-						v-if="selectable && group"
-						step="2xs"
-						color="text-light"
-						data-test-id="promotion-preview-group-count"
-					>
-						{{
-							i18n.baseText('promotions.preview.tree.selectedOfTotal', {
-								interpolate: { selected: String(group.included), total: String(group.total) },
-							})
-						}}
+						<!-- Inside the label, so the total looks like part of the group name. -->
+						<span v-if="group" data-test-id="promotion-preview-group-total"
+							>({{ group.total }})</span
+						>
 					</N8nText>
 				</li>
 				<li
@@ -178,7 +157,10 @@ function onToggle(resource: PromotionResource) {
 					:class="[
 						$style.row,
 						$style.resource,
-						{ [$style.inspected]: inspectedKey === item.id, [$style.blocked]: marker.blocked },
+						{
+							[$style.inspected]: inspectedKey === item.id,
+							[$style.blocked]: marker.blocked,
+						},
 					]"
 					data-test-id="promotion-preview-tree-row"
 					:data-resource-key="item.id"
@@ -194,7 +176,7 @@ function onToggle(resource: PromotionResource) {
 					/>
 					<button
 						type="button"
-						:class="$style.name"
+						:class="[$style.name, { [$style.muted]: selectable && check.disabled }]"
 						:style="{ '--preview-tree--indent': indent }"
 						:aria-current="inspectedKey === item.id ? 'true' : undefined"
 						@click="emit('inspect', item.id)"
@@ -350,6 +332,12 @@ function onToggle(resource: PromotionResource) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/* The checkbox mutes its own label when disabled. The name and its icon are a separate button, so they need the same token. */
+.muted .icon,
+.muted .label {
+	color: var(--checkbox--label--color--disabled);
 }
 
 .blockerMarker {

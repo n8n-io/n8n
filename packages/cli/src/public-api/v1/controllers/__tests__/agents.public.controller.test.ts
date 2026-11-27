@@ -27,6 +27,8 @@ describe('AgentsPublicController route metadata', () => {
 			'createAgent',
 			'deleteAgent',
 			'getAgent',
+			'getAgentVersion',
+			'listAgentVersions',
 			'listAgents',
 			'publishAgent',
 			'unarchiveAgent',
@@ -109,6 +111,22 @@ describe('AgentsPublicController route metadata', () => {
 		expect(route?.successStatus).toBe(200);
 		expect(route?.responseDto).toBeDefined();
 		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+	});
+
+	it('listAgentVersions requires the agent:read API key scope and project RBAC check', () => {
+		expect(routes.get('listAgentVersions')?.apiKeyScope).toBe('agent:read');
+		expect(routes.get('listAgentVersions')?.accessScope).toEqual({
+			scope: 'agent:read',
+			globalOnly: false,
+		});
+	});
+
+	it('getAgentVersion requires the agent:read API key scope and project RBAC check', () => {
+		expect(routes.get('getAgentVersion')?.apiKeyScope).toBe('agent:read');
+		expect(routes.get('getAgentVersion')?.accessScope).toEqual({
+			scope: 'agent:read',
+			globalOnly: false,
+		});
 	});
 
 	it('listAgents requires the agent:list API key scope and no path-param RBAC check', () => {
@@ -695,6 +713,115 @@ describe('AgentsPublicController deleteAgent', () => {
 		agentsService.delete.mockResolvedValue(null);
 
 		await expect(controller.deleteAgent(req, res, 'missing-agent')).rejects.toThrow(NotFoundError);
+	});
+});
+
+describe('AgentsPublicController agent versions', () => {
+	const agentsService = mock<AgentsService>();
+	const agentPublishService = mock<AgentPublishService>();
+	const controller = new AgentsPublicController(
+		agentsService,
+		mock<AgentResponseMapper>(),
+		mock<AgentDefaultModelResolverService>(),
+		mock<AgentCustomToolsService>(),
+		mock<AgentConfigService>(),
+		agentPublishService,
+	);
+	const req = mock<AuthenticatedRequest>();
+	const res = mock<Response>();
+
+	const version = {
+		versionId: 'version-1',
+		agentId: 'agent-1',
+		name: 'Support',
+		description: null,
+		author: 'Ada Lovelace',
+		createdAt: '2025-01-03T00:00:00.000Z',
+		updatedAt: '2025-01-03T00:00:00.000Z',
+		isActive: true,
+		isCurrent: false,
+		includesN8nChat: true,
+	};
+
+	beforeEach(() => {
+		agentsService.findById.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' } as never);
+	});
+
+	it('returns one cursor page and drops editor-only list fields', async () => {
+		agentPublishService.listVersions.mockResolvedValue([
+			version,
+			{ ...version, versionId: 'version-2' },
+			{ ...version, versionId: 'version-3' },
+		]);
+
+		const result = await controller.listAgentVersions(req, res, 'agent-1', { limit: 2 });
+
+		expect(agentPublishService.listVersions).toHaveBeenCalledWith('agent-1', 'project-1', 3, 0);
+		expect(result.data).toHaveLength(2);
+		expect(result.data[0]).toEqual({
+			versionId: 'version-1',
+			agentId: 'agent-1',
+			name: 'Support',
+			description: null,
+			author: 'Ada Lovelace',
+			createdAt: '2025-01-03T00:00:00.000Z',
+			updatedAt: '2025-01-03T00:00:00.000Z',
+			isActive: true,
+			isCurrent: false,
+		});
+		expect(result.data[0]).not.toHaveProperty('includesN8nChat');
+		expect(result.nextCursor).toEqual(expect.any(String));
+	});
+
+	it('returns a null cursor on the last page', async () => {
+		agentPublishService.listVersions.mockResolvedValue([version]);
+
+		const result = await controller.listAgentVersions(req, res, 'agent-1', { limit: 2 });
+
+		expect(result.data).toHaveLength(1);
+		expect(result.nextCursor).toBeNull();
+	});
+
+	it('answers 404 when the agent has no project', async () => {
+		agentsService.findById.mockResolvedValue(null);
+
+		await expect(controller.listAgentVersions(req, res, 'missing', { limit: 10 })).rejects.toThrow(
+			NotFoundError,
+		);
+		expect(agentPublishService.listVersions).not.toHaveBeenCalled();
+	});
+
+	it('returns the saved document and omits editor-only fields', async () => {
+		agentPublishService.getVersionSummary.mockResolvedValue(version);
+		agentPublishService.getVersion.mockResolvedValue({
+			definition: {
+				schema: { name: 'Support', model: '', instructions: 'Help users.' },
+				tools: { lookup: { code: 'return 1;', descriptor: { name: 'lookup' } } },
+				skills: {
+					writing: { name: 'Writing', description: 'Write', instructions: 'Write well.' },
+				},
+				tasks: new Map([['task-1', { name: 'Daily' }]]),
+			},
+		} as never);
+
+		const result = await controller.getAgentVersion(req, res, 'agent-1', 'version-1');
+
+		expect(result).toEqual({
+			versionId: 'version-1',
+			agentId: 'agent-1',
+			name: 'Support',
+			description: null,
+			author: 'Ada Lovelace',
+			createdAt: '2025-01-03T00:00:00.000Z',
+			updatedAt: '2025-01-03T00:00:00.000Z',
+			isActive: true,
+			isCurrent: false,
+			config: { name: 'Support', model: '', instructions: 'Help users.' },
+			tools: { lookup: { code: 'return 1;', descriptor: { name: 'lookup' } } },
+			skills: { writing: { name: 'Writing', description: 'Write', instructions: 'Write well.' } },
+		});
+		expect(result).not.toHaveProperty('includesN8nChat');
+		expect(result).not.toHaveProperty('tasks');
 	});
 });
 

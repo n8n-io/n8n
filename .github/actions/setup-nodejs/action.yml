@@ -7,9 +7,9 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Pinned to 26.13.0 by default for reproducible builds.'
+    description: 'Node.js version to use. Empty uses NODE_VERSION of docker/docker-bake.hcl, the Node of the images.'
     required: false
-    default: '26.13.0'
+    default: ''
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -49,9 +49,34 @@ runs:
       shell: bash
       run: node .github/scripts/resolve-pnpm-version.mjs
 
+    # A Node update then changes one line of docker/docker-bake.hcl. The steps
+    # below need the version, so resolve it first.
+    - name: Resolve Node.js version
+      id: node-version
+      shell: bash
+      env:
+        REQUESTED_NODE_VERSION: ${{ inputs.node-version }}
+      run: node .github/scripts/resolve-node-version.mjs
+
+    # Skip cache restores when the machine image already bakes the pinned versions.
+    - name: Check preinstalled tools
+      id: preinstalled
+      shell: bash
+      env:
+        PNPM_VERSION: ${{ steps.pnpm-version.outputs.version }}
+        NODE_VERSION: ${{ steps.node-version.outputs.version }}
+      run: |
+        if [ "$(pnpm --version 2>/dev/null)" = "$PNPM_VERSION" ]; then
+          echo "pnpm=true" >> "$GITHUB_OUTPUT"
+          echo "PNPM_HOME=$(dirname "$(command -v pnpm)")" >> "$GITHUB_ENV"
+        fi
+        [ -f "/opt/hostedtoolcache/node/${NODE_VERSION}/x64.complete" ] && echo "node=true" >> "$GITHUB_OUTPUT"
+        "$HOME/.safe-chain/bin/safe-chain" -v 2>/dev/null | grep -Fq "Current safe-chain version: 1.5.29" && echo "safe-chain=true" >> "$GITHUB_OUTPUT"
+        true
+
     # Windows cannot activate a POSIX home path from the restored cache.
     - name: Restore pnpm executable
-      if: runner.os != 'Windows'
+      if: runner.os != 'Windows' && steps.preinstalled.outputs.pnpm != 'true'
       id: cache-pnpm-exe
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
@@ -60,7 +85,7 @@ runs:
 
     - name: Setup pnpm
       id: setup-pnpm
-      if: steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      if: steps.preinstalled.outputs.pnpm != 'true' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
       continue-on-error: true
       uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
       with:
@@ -76,7 +101,7 @@ runs:
 
     # Cache hits restore files but not the per-job environment.
     - name: Activate cached pnpm executable
-      if: steps.cache-pnpm-exe.outputs.cache-hit == 'true'
+      if: steps.preinstalled.outputs.pnpm != 'true' && steps.cache-pnpm-exe.outputs.cache-hit == 'true'
       shell: bash
       run: |
         PNPM_DEST="$HOME/setup-pnpm"
@@ -98,7 +123,7 @@ runs:
 
     # Save before later job failures can prevent cache creation.
     - name: Save pnpm executable
-      if: runner.os != 'Windows' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      if: runner.os != 'Windows' && steps.preinstalled.outputs.pnpm != 'true' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/setup-pnpm
@@ -117,16 +142,16 @@ runs:
     # quietly takes over. Caching the parent version dir captures the marker
     # alongside the toolchain. Key bumped to v2 to invalidate stale entries.
     - name: Restore Node.js Toolcache
-      if: runner.os == 'Linux' && runner.arch == 'X64'
+      if: runner.os == 'Linux' && runner.arch == 'X64' && steps.preinstalled.outputs.node != 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
-        path: /opt/hostedtoolcache/node/${{ inputs.node-version }}
-        key: node-toolcache-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.node-version }}
+        path: /opt/hostedtoolcache/node/${{ steps.node-version.outputs.version }}
+        key: node-toolcache-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.node-version.outputs.version }}
 
     - name: Setup Node.js
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
-        node-version: ${{ inputs.node-version }}
+        node-version: ${{ steps.node-version.outputs.version }}
         # A job that installs nothing must not participate in the pnpm-store
         # cache. Its post step would save an empty store, and cache keys are
         # write-once — so if it lost the race to a real installer, every other
@@ -140,7 +165,7 @@ runs:
     - name: Verify Node.js Version
       shell: bash
       env:
-        EXPECTED_NODE_VERSION: ${{ inputs.node-version }}
+        EXPECTED_NODE_VERSION: ${{ steps.node-version.outputs.version }}
       run: |
         ACTUAL_NODE_VERSION="$(node --version)"
         if [ "${ACTUAL_NODE_VERSION#v}" != "${EXPECTED_NODE_VERSION#v}" ]; then
@@ -190,6 +215,7 @@ runs:
     # radius across jobs, retry covers the first-job-per-key case where the
     # CDN must be hit. Keep the version in sync with the download step below.
     - name: Restore Aikido SafeChain Binary
+      if: steps.preinstalled.outputs.safe-chain != 'true'
       id: cache-safe-chain
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
@@ -201,7 +227,7 @@ runs:
     # script also runs `setup-ci`, so on a cache miss this both downloads AND
     # activates; the Activate step below then re-runs `setup-ci` idempotently.
     - name: Download Aikido SafeChain
-      if: steps.cache-safe-chain.outputs.cache-hit != 'true'
+      if: steps.preinstalled.outputs.safe-chain != 'true' && steps.cache-safe-chain.outputs.cache-hit != 'true'
       run: |
         VERSION="1.5.29"
         EXPECTED_SHA256="e9bfa05430bca0efcf26e5a0f06d09b9da8cc21de2e0ffab03f512dde649ebbe"

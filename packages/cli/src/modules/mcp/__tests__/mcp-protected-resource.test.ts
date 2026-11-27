@@ -1,4 +1,4 @@
-import { INSTANCE_ACTIVITY_CONTEXT_FLAG, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
+import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
@@ -35,8 +35,10 @@ const makeGlobalConfig = ({
 	builderEnabled = true,
 	tagsDisabled = false,
 	managedByEnv = false,
+	activityLogEnabled = true,
 } = {}) =>
 	({
+		activityLog: { enabled: activityLogEnabled },
 		endpoints: { mcpBuilderEnabled: builderEnabled },
 		tags: { disabled: tagsDisabled },
 		instanceSettingsLoader: { communityPackagesManagedByEnv: managedByEnv },
@@ -207,37 +209,30 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 		});
 
-		it('withholds all context tools from consent when the instance flag is off', async () => {
-			moduleRegistry.isActive.mockReturnValue(true);
-			postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
+		it('keeps only the index tools in consent when the activity log is off', async () => {
+			const scopeTools = await new McpProtectedResource(
+				urlService,
+				mcpSettingsService,
+				mcpConfig,
+				makeGlobalConfig({ activityLogEnabled: false }),
+				moduleRegistry,
+				licenseState,
+				postHogClient,
+			).getScopeTools();
 
-			const scopeTools = await resource.getScopeTools();
-
-			for (const tool of INSTANCE_CONTEXT_TOOLS) {
+			for (const tool of ACTIVITY_LOG_TOOLS) {
 				expect(scopeTools['workflow:read']).not.toContain(tool);
 			}
+			expect(scopeTools['workflow:read']).toContain('get_node_usage');
+			expect(scopeTools['workflow:read']).toContain('get_dependencies');
 		});
 
-		it('withholds all context tools when the instance flag cannot be read', async () => {
-			postHogClient.getFeatureFlagForInstance.mockRejectedValue(new Error('Flag unavailable'));
-
-			const scopeTools = await resource.getScopeTools();
-
-			for (const tool of INSTANCE_CONTEXT_TOOLS) {
-				expect(scopeTools['workflow:read']).not.toContain(tool);
-			}
-		});
-
-		it('checks each instance flag once without a user argument', async () => {
+		it('checks the credential descriptions flag once without a user argument', async () => {
 			await resource.getScopeTools();
 
-			for (const flag of [INSTANCE_ACTIVITY_CONTEXT_FLAG, CREDENTIAL_DESCRIPTIONS_FLAG]) {
-				expect(
-					postHogClient.getFeatureFlagForInstance.mock.calls.filter(
-						([requested]) => requested === flag,
-					),
-				).toEqual([[flag]]);
-			}
+			expect(postHogClient.getFeatureFlagForInstance.mock.calls).toEqual([
+				[CREDENTIAL_DESCRIPTIONS_FLAG],
+			]);
 		});
 
 		it('should drop tools this instance does not expose', async () => {

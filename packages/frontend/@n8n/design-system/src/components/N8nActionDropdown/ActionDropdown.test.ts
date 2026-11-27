@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
+import { nextTick } from 'vue';
 
 import N8nActionDropdown from './ActionDropdown.vue';
 
@@ -247,6 +248,66 @@ describe('components', () => {
 				const editItem = document.querySelector('[data-test-id="action-edit"]');
 				expect(editItem?.className).not.toContain('destructive');
 			});
+		});
+
+		it('explains a disabled item with a tooltip while the pointer is over the item', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: {
+					items: [
+						{ id: 'edit', label: 'Edit' },
+						{
+							id: 'publish',
+							label: 'Publish',
+							disabled: true,
+							tooltip: 'Fix the node issues first',
+						},
+					],
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+			const publishItem = await waitFor(() => {
+				const item = document.querySelector<HTMLElement>('[data-test-id="action-publish"]');
+				expect(item).toBeInTheDocument();
+				return item!;
+			});
+			// No icon: the item is the only trigger.
+			expect(publishItem.querySelector('svg')).toBeNull();
+
+			await userEvent.hover(publishItem);
+			expect(await wrapper.findByText('Fix the node issues first')).toBeVisible();
+
+			// Moving the pointer off the disabled item closes the tooltip, and hovering again reopens it.
+			publishItem.dispatchEvent(
+				new MouseEvent('pointerleave', { bubbles: false, clientX: 100, clientY: 100 }),
+			);
+			await nextTick();
+			const editItem = document.querySelector<HTMLElement>('[data-test-id="action-edit"]')!;
+			editItem.dispatchEvent(
+				new MouseEvent('pointermove', { bubbles: true, clientX: 500, clientY: 500 }),
+			);
+			await waitFor(() => {
+				expect(wrapper.queryByText('Fix the node issues first')).not.toBeInTheDocument();
+			});
+
+			await userEvent.hover(publishItem);
+			expect(await wrapper.findByText('Fix the node issues first')).toBeVisible();
+		});
+
+		it('shows no tooltip for an item without one', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: { items: [{ id: 'edit', label: 'Edit' }] },
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+			const editItem = await waitFor(() => {
+				const item = document.querySelector<HTMLElement>('[data-test-id="action-edit"]');
+				expect(item).toBeInTheDocument();
+				return item!;
+			});
+			await userEvent.hover(editItem);
+
+			expect(document.querySelector('[role="tooltip"]')).toBeNull();
 		});
 
 		it('should render footer content', async () => {

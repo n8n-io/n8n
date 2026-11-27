@@ -26,6 +26,17 @@ You can add more than one label. The workflow creates one backport PR for each l
 
 To run a backport again, start the `Util: Backport pull request changes` workflow manually with the number of the original PR.
 
+## Migrations
+
+You can backport a fix that adds a migration. Obey these rules:
+
+- Merge the migration to `master` first. Backport it from there.
+- Keep the file name, the class name and the content identical to `master`. TypeORM records a migration by its name. An instance that runs the patch release does not run the migration again when it upgrades. A changed copy makes its database different from the databases of other instances.
+- Keep the migration small. Do not rebuild a large table.
+- On upgrade, the `master` migrations that are older than the backported migration run after it. Make sure that the backported migration does not depend on them, and that they do not fail when it ran first.
+
+The `migration-backport` code-health rule (CI "Static Analysis") checks the first two rules on PRs into release branches.
+
 ## Minor releases
 
 A minor release moves the `stable` tag to the old beta line. The release workflow then updates the labels on open PRs:

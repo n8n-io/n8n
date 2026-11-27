@@ -100,6 +100,7 @@ describe('engine v2 executions', () => {
 		graph: { nodes: [], edges: [], seeded: [] },
 		workflow: { id: 'wf-1', name: 'v2', nodes: [], connections: {} },
 		parent: null,
+		errorSource: null,
 		createdAt: '2026-08-25T10:00:00.000Z',
 		updatedAt: '2026-08-25T10:00:00.000Z',
 		finishedAt: null,

@@ -674,8 +674,9 @@ watch(
 						output_first_connector_runs: maxOutputRun.value,
 						selected_view_inputs: isTriggerNode.value
 							? 'trigger'
-							: ndvStore.value.inputPanelDisplayMode,
-						selected_view_outputs: ndvStore.value.outputPanelDisplayMode,
+							: (ndvStore.value.input.shownDisplayMode ?? ndvStore.value.inputPanelDisplayMode),
+						selected_view_outputs:
+							ndvStore.value.output.shownDisplayMode ?? ndvStore.value.outputPanelDisplayMode,
 						input_connectors: parentNodes.value.length,
 						output_connectors: outgoingConnections?.main?.length,
 						input_displayed_run_index: inputRun.value,

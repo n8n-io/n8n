@@ -168,6 +168,15 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(background).toHaveClass('viewOnly');
 		});
 
+		it('blocks every window from session recordings', () => {
+			const { getByTestId } = render(popup);
+
+			expect(getByTestId('instance-ai-browser-preview-frame')).toHaveClass('ph-no-capture');
+			expect(getByTestId('instance-ai-browser-preview-background-frame')).toHaveClass(
+				'ph-no-capture',
+			);
+		});
+
 		it('keeps the window behind view-only while the user has control', () => {
 			const { getByTestId } = render({ ...popup, userHasTakenOver: true });
 
