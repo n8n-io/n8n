@@ -531,7 +531,10 @@ async function handleExecute(
 	const allowedByScope = context.permissions?.executeNode === 'always_allow';
 	const allowedBySessionGrant =
 		grantKey !== null && context.sessionApprovedToolKeys?.has(grantKey) === true;
-	const needsApproval = !allowedByScope && !allowedBySessionGrant;
+	// The node can send the files to an outside service, so the user confirms every run
+	// with files. Grants and the `always_allow` permission cover only runs without files.
+	const carriesFiles = read?.items?.some((item) => item.binary !== undefined) ?? false;
+	const needsApproval = carriesFiles || (!allowedByScope && !allowedBySessionGrant);
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		const labels = await buildExecuteNodeLabels(context, input);
@@ -543,7 +546,13 @@ async function handleExecute(
 		});
 	}
 
-	if (resumeData?.approved && resumeData.scope === 'session' && grantKey !== null) {
+	// A run with files never stores a grant, because it must not approve the next one.
+	if (
+		resumeData?.approved &&
+		resumeData.scope === 'session' &&
+		grantKey !== null &&
+		!carriesFiles
+	) {
 		await context.grantSessionToolApproval?.(grantKey);
 	}
 

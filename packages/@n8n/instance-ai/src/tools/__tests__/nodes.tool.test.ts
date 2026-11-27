@@ -1103,7 +1103,7 @@ describe('nodes tools', () => {
 				fileName: 'a.png',
 			};
 
-			function contextWithFiles() {
+			function contextWithFiles(overrides: Parameters<typeof createMockContext>[0] = {}) {
 				const storedFiles = {
 					read: vi.fn(),
 					readBinary: vi.fn(async (fileId: string) =>
@@ -1114,7 +1114,7 @@ describe('nodes tools', () => {
 				const executeNodeService = {
 					execute: vi.fn().mockResolvedValue({ status: 'success', output: '' }),
 				};
-				const context = createMockContext({ executeNodeService, storedFiles });
+				const context = createMockContext({ executeNodeService, storedFiles, ...overrides });
 				return { context, storedFiles, executeNodeService };
 			}
 
@@ -1210,6 +1210,40 @@ describe('nodes tools', () => {
 				const [first, second] = executeNodeService.execute.mock.calls[0][0].input;
 				expect(first.binary.data).toEqual(pngBinary);
 				expect(first.binary.data).not.toBe(second.binary.data);
+			});
+
+			it.each([
+				[
+					'a session grant for the node type',
+					{ sessionApprovedToolKeys: new Set(['nodes:execute:n8n-nodes-base.set:manual']) },
+				],
+				['always_allow', { permissions: { executeNode: 'always_allow' } as never }],
+			])('asks for every node run with files, also with %s', async (_, overrides) => {
+				const { context, executeNodeService } = contextWithFiles(overrides);
+				const suspendFn = vi.fn();
+
+				await executeTool(
+					createExecuteNodeTool(context),
+					{ ...executeInput, input: [{ json: {}, files: { data: 'file-1' } }] } as never,
+					{ suspend: suspendFn } as never,
+				);
+
+				expect(suspendFn).toHaveBeenCalled();
+				expect(executeNodeService.execute).not.toHaveBeenCalled();
+			});
+
+			it('does not store a grant when the user approves a node run with files for the session', async () => {
+				const grantSessionToolApproval = vi.fn();
+				const { context, executeNodeService } = contextWithFiles({ grantSessionToolApproval });
+
+				await executeTool(
+					createExecuteNodeTool(context),
+					{ ...executeInput, input: [{ json: {}, files: { data: 'file-1' } }] } as never,
+					{ resumeData: { approved: true, scope: 'session' } } as never,
+				);
+
+				expect(grantSessionToolApproval).not.toHaveBeenCalled();
+				expect(executeNodeService.execute).toHaveBeenCalled();
 			});
 
 			it('does not read the files when the user denied the run', async () => {

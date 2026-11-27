@@ -136,6 +136,12 @@ describe('routeApproval', () => {
 			routeApproval({ toolName: 'run_workflow', args: { workflowId: 'wf-1', files: {} } }),
 		).toBe('judge');
 		expect(routeApproval({ toolName: 'run_workflow', args: { workflowId: 'wf-1' } })).toBe('judge');
+		expect(
+			routeApproval({
+				toolName: 'execute_node',
+				args: { type: 'n8n-nodes-base.set', input: [{ json: {}, files: { data: 'f1' } }] },
+			}),
+		).toBe('always-ask');
 	});
 
 	it('always asks before a skill is deleted, and lets the judge decide other skill changes', () => {
