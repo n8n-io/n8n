@@ -518,7 +518,17 @@ onBeforeUnmount(() => {
 					{{ label }}
 				</N8nText>
 			</slot>
-			<slot name="item-trailing" :item="props" :ui="trailingProps" />
+			<!-- A consumer's trailing content, such as a switch, replaces the check. -->
+			<slot name="item-trailing" :item="props" :ui="trailingProps">
+				<Icon
+					v-if="checked"
+					icon="check"
+					:class="$style['item-check']"
+					size="large"
+					:color="disabled ? 'text-xlight' : 'text-dark'"
+					data-test-id="dropdown-menu-item-check"
+				/>
+			</slot>
 		</DropdownMenuCheckboxItem>
 
 		<!-- Regular item without children -->

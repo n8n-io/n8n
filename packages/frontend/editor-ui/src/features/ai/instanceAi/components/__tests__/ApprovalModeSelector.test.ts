@@ -82,8 +82,8 @@ describe('ApprovalModeSelector', () => {
 
 		const current = getByRole('menuitemcheckbox', { name: /Approve for me/ });
 		const other = getByRole('menuitemcheckbox', { name: /Ask for approval/ });
-		expect(within(current).getByTestId('instance-ai-approval-mode-check')).toBeInTheDocument();
-		expect(within(other).queryByTestId('instance-ai-approval-mode-check')).not.toBeInTheDocument();
+		expect(within(current).getByTestId('dropdown-menu-item-check')).toBeInTheDocument();
+		expect(within(other).queryByTestId('dropdown-menu-item-check')).not.toBeInTheDocument();
 	});
 
 	it('saves a new mode and tracks the change', async () => {

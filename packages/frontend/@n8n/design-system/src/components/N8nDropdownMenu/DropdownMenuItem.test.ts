@@ -533,4 +533,41 @@ describe('N8nDropdownMenuItem', () => {
 			});
 		});
 	});
+
+	describe('checkbox item check', () => {
+		it('shows a check on a checked checkbox item', async () => {
+			renderMenuItem({ id: 'test', label: 'Checked', checkbox: true, checked: true });
+
+			await waitFor(() => {
+				expect(
+					document.querySelector('[data-test-id="dropdown-menu-item-check"]'),
+				).toBeInTheDocument();
+			});
+		});
+
+		it('shows no check on an unchecked checkbox item', async () => {
+			renderMenuItem({ id: 'test', label: 'Unchecked', checkbox: true, checked: false });
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menuitemcheckbox"]')).toBeInTheDocument();
+			});
+			expect(
+				document.querySelector('[data-test-id="dropdown-menu-item-check"]'),
+			).not.toBeInTheDocument();
+		});
+
+		it('shows custom item-trailing content instead of the check', async () => {
+			renderMenuItem(
+				{ id: 'test', label: 'Toggle', checkbox: true, checked: true },
+				{ slots: { 'item-trailing': '<span data-test-id="custom-switch">On</span>' } },
+			);
+
+			await waitFor(() => {
+				expect(document.querySelector('[data-test-id="custom-switch"]')).toBeInTheDocument();
+			});
+			expect(
+				document.querySelector('[data-test-id="dropdown-menu-item-check"]'),
+			).not.toBeInTheDocument();
+		});
+	});
 });

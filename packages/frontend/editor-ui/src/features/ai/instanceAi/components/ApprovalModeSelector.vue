@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useCssModule } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import { instanceAiApprovalModeSchema, type InstanceAiApprovalMode } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -25,7 +25,6 @@ const props = defineProps<{
 
 type ModeItem = DropdownMenuItemProps<InstanceAiApprovalMode, { description: string }>;
 
-const $style = useCssModule();
 const settingsStore = useInstanceAiSettingsStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -42,7 +41,6 @@ const items = computed<ModeItem[]>(() => [
 	{
 		id: 'manual',
 		label: i18n.baseText('instanceAi.approvalMode.manual'),
-		class: $style.item,
 		checkbox: true,
 		checked: settingsStore.approvalMode === 'manual',
 		data: { description: i18n.baseText('instanceAi.approvalMode.manual.description') },
@@ -50,7 +48,6 @@ const items = computed<ModeItem[]>(() => [
 	{
 		id: 'auto',
 		label: i18n.baseText('instanceAi.approvalMode.auto'),
-		class: $style.item,
 		checkbox: true,
 		checked: settingsStore.approvalMode === 'auto',
 		data: { description: i18n.baseText('instanceAi.approvalMode.auto.description') },
@@ -114,23 +111,13 @@ async function onSelect(value: unknown) {
 
 			<template #item-label="{ item }">
 				<span :class="$style.itemStack">
-					<N8nText tag="span" step="sm" color="text-dark" :bold="item.checked">
+					<N8nText tag="span" step="sm" color="text-dark">
 						{{ item.label }}
 					</N8nText>
 					<N8nText tag="span" step="xs" color="text-base">
 						{{ item.data?.description }}
 					</N8nText>
 				</span>
-			</template>
-			<template #item-trailing="{ item }">
-				<N8nIcon
-					v-if="item.checked"
-					icon="check"
-					size="large"
-					color="text-dark"
-					:class="$style.check"
-					data-test-id="instance-ai-approval-mode-check"
-				/>
 			</template>
 		</N8nDropdownMenu>
 	</div>
@@ -157,19 +144,6 @@ async function onSelect(value: unknown) {
 	color: var(--text-color--subtle);
 }
 
-// Doubled to win over the shared menu item padding.
-.item.item {
-	padding: var(--spacing--xs);
-	gap: var(--spacing--xs);
-
-	// The current mode keeps its fill, also under the pointer.
-	&[aria-checked='true'],
-	&[aria-checked='true'][data-highlighted] {
-		background-color: var(--background--active);
-	}
-}
-
-// Fills the row so the check sits at the right edge, whatever the text length.
 .itemStack {
 	display: flex;
 	flex: 1;
@@ -177,9 +151,5 @@ async function onSelect(value: unknown) {
 	gap: var(--spacing--4xs);
 	min-width: 0;
 	white-space: normal;
-}
-
-.check {
-	flex-shrink: 0;
 }
 </style>
