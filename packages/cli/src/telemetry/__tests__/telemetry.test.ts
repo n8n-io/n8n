@@ -770,20 +770,9 @@ describe('Telemetry', () => {
 		});
 
 		test('should count calls per client', () => {
-			telemetry.trackInternalApiInvocation({
-				route: 'GET /rest/workflows',
-				client: 'other',
-			});
-
-			telemetry.trackInternalApiInvocation({
-				route: 'GET /rest/workflows',
-				client: 'editor_ui',
-			});
-
-			telemetry.trackInternalApiInvocation({
-				route: 'GET /rest/credentials',
-				client: 'other',
-			});
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'other' });
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'editor_ui' });
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/credentials', client: 'other' });
 
 			const buffer = telemetry.getInternalApiInvocationsBuffer();
 
@@ -793,33 +782,23 @@ describe('Telemetry', () => {
 			});
 		});
 
-		test('should add route rows for non-editor callers only', () => {
-			telemetry.trackInternalApiInvocation({
-				route: 'GET /rest/workflows',
-				client: 'editor_ui',
-			});
-
-			telemetry.trackInternalApiInvocation({
-				route: 'GET /rest/workflows',
-				client: 'other',
-			});
+		test('should add one route row with the calls of each client', () => {
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'editor_ui' });
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'other' });
 
 			const buffer = telemetry.getInternalApiInvocationsBuffer();
 
-			expect([...buffer!.routeCalls]).toStrictEqual([['GET /rest/workflows', 1]]);
+			expect([...buffer!.routeCalls.values()]).toStrictEqual([
+				{ route: 'GET /rest/workflows', editor_ui: 1, other: 1 },
+			]);
 		});
 
-		test('should count calls to the same route in one row', () => {
+		test('should add the calls to the same route row', () => {
 			telemetry.trackInternalApiInvocation({
 				route: 'GET /rest/workflows/{workflowId}',
 				client: 'other',
 			});
-
-			telemetry.trackInternalApiInvocation({
-				route: 'GET /rest/credentials',
-				client: 'other',
-			});
-
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/credentials', client: 'other' });
 			telemetry.trackInternalApiInvocation({
 				route: 'GET /rest/workflows/{workflowId}',
 				client: 'other',
@@ -827,9 +806,9 @@ describe('Telemetry', () => {
 
 			const buffer = telemetry.getInternalApiInvocationsBuffer();
 
-			expect([...buffer!.routeCalls]).toStrictEqual([
-				['GET /rest/workflows/{workflowId}', 2],
-				['GET /rest/credentials', 1],
+			expect([...buffer!.routeCalls.values()]).toStrictEqual([
+				{ route: 'GET /rest/workflows/{workflowId}', editor_ui: 0, other: 2 },
+				{ route: 'GET /rest/credentials', editor_ui: 0, other: 1 },
 			]);
 		});
 
@@ -837,10 +816,7 @@ describe('Telemetry', () => {
 			// @ts-expect-error Assigning to private property
 			telemetry.rudderStack = undefined;
 
-			telemetry.trackInternalApiInvocation({
-				route: 'GET /rest/workflows',
-				client: 'other',
-			});
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'other' });
 
 			expect(telemetry.getInternalApiInvocationsBuffer()).toBeUndefined();
 		});
@@ -1410,11 +1386,7 @@ describe('Telemetry', () => {
 				route: 'GET /rest/workflows/{workflowId}',
 				client: 'other',
 			});
-
-			telemetry.trackInternalApiInvocation({
-				route: 'GET /rest/workflows',
-				client: 'editor_ui',
-			});
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'editor_ui' });
 
 			telemetry.flushBuffers();
 
@@ -1428,7 +1400,10 @@ describe('Telemetry', () => {
 			expect(report).toMatchObject({
 				total_calls: 2,
 				clients: JSON.stringify({ editor_ui: 1, other: 1 }),
-				routes: JSON.stringify([{ route: 'GET /rest/workflows/{workflowId}', calls: 1 }]),
+				routes: JSON.stringify([
+					{ route: 'GET /rest/workflows/{workflowId}', editor_ui: 0, other: 1 },
+					{ route: 'GET /rest/workflows', editor_ui: 1, other: 0 },
+				]),
 			});
 			expect(report).not.toHaveProperty('user_id');
 			expect(telemetry.getInternalApiInvocationsBuffer()).toBeUndefined();
@@ -1443,11 +1418,8 @@ describe('Telemetry', () => {
 			);
 		});
 
-		test('should send one totals-only report when the editor is the only caller', () => {
-			telemetry.trackInternalApiInvocation({
-				route: 'GET /rest/workflows',
-				client: 'editor_ui',
-			});
+		test('should send editor route rows when the editor is the only caller', () => {
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'editor_ui' });
 			telemetry.trackInternalApiInvocation({
 				route: 'GET /rest/workflows/{workflowId}',
 				client: 'editor_ui',
@@ -1461,7 +1433,10 @@ describe('Telemetry', () => {
 			expect(reports).toHaveLength(1);
 			expect(reports[0]).toMatchObject({
 				total_calls: 2,
-				routes: '[]',
+				routes: JSON.stringify([
+					{ route: 'GET /rest/workflows', editor_ui: 1, other: 0 },
+					{ route: 'GET /rest/workflows/{workflowId}', editor_ui: 1, other: 0 },
+				]),
 				clients: JSON.stringify({ editor_ui: 2, other: 0 }),
 			});
 			for (const [field, schema] of Object.entries(INTERNAL_API_USAGE_JSON_FIELDS)) {
@@ -1471,10 +1446,9 @@ describe('Telemetry', () => {
 
 		test('should split a large route report into events that each fit the size limit', () => {
 			for (let i = 0; i < 250; i++) {
-				telemetry.trackInternalApiInvocation({
-					route: `GET /rest/resource-${i}/${'x'.repeat(100)}/{resourceId}`,
-					client: 'other',
-				});
+				const route = `GET /rest/resource-${i}/${'x'.repeat(100)}/{resourceId}`;
+				telemetry.trackInternalApiInvocation({ route, client: 'editor_ui' });
+				telemetry.trackInternalApiInvocation({ route, client: 'other' });
 			}
 
 			telemetry.flushBuffers();
@@ -1488,8 +1462,8 @@ describe('Telemetry', () => {
 			for (const report of reports) {
 				expect(Buffer.byteLength(JSON.stringify(report), 'utf8')).toBeLessThan(32 << 10);
 			}
-			expect(reports.map((report) => report.total_calls)).toEqual([250, 0, 0]);
-			expect(jsonParse(reports[0].clients as string)).toEqual({ editor_ui: 0, other: 250 });
+			expect(reports.map((report) => report.total_calls)).toEqual([500, 0, 0]);
+			expect(jsonParse(reports[0].clients as string)).toEqual({ editor_ui: 250, other: 250 });
 		});
 
 		test('should send nothing when RudderStack is not initialized', () => {

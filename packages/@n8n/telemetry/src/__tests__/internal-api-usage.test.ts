@@ -6,8 +6,8 @@ const report = {
 	total_calls: 4,
 	first: '2026-11-16T10:00:00.000Z',
 	routes: JSON.stringify([
-		{ route: 'GET /rest/workflows/{workflowId}', calls: 2 },
-		{ route: 'GET /rest/credentials', calls: 1 },
+		{ route: 'GET /rest/workflows/{workflowId}', editor_ui: 1, other: 2 },
+		{ route: 'GET /rest/credentials', editor_ui: 0, other: 1 },
 	]),
 	clients: JSON.stringify({ editor_ui: 1, other: 3 }),
 };
@@ -38,8 +38,14 @@ describe('Internal API usage', () => {
 		expect(INTERNAL_API_USAGE.getValidationError(followUp)).toBeNull();
 	});
 
-	it('rejects a route row without a positive call count', () => {
-		const row = { route: 'GET /rest/workflows', calls: 0 };
+	it('rejects a route row without a call count for each client', () => {
+		const row = { route: 'GET /rest/workflows', editor_ui: 1 };
+
+		expect(INTERNAL_API_USAGE_JSON_FIELDS.routes.safeParse([row]).success).toBe(false);
+	});
+
+	it('rejects a negative call count', () => {
+		const row = { route: 'GET /rest/workflows', editor_ui: -1, other: 0 };
 
 		expect(INTERNAL_API_USAGE_JSON_FIELDS.routes.safeParse([row]).success).toBe(false);
 	});

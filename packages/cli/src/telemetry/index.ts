@@ -95,17 +95,18 @@ interface IInternalApiInvocationProperties {
 	client: InternalApiClient;
 }
 
-/** Route rows count calls from `other` only, because the editor makes most Internal API calls. */
+/** One row for each route, with the calls from each client. A flat list is easier to query in Hex. */
 interface IInternalApiRouteCalls {
 	route: string;
-	calls: number;
+	editor_ui: number;
+	other: number;
 }
 
 interface IInternalApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	clients: Record<InternalApiClient, number>;
-	routeCalls: Map<string, number>;
+	routeCalls: Map<string, IInternalApiRouteCalls>;
 }
 
 /**
@@ -311,8 +312,7 @@ export class Telemetry implements TelemetryTracker {
 		const entry = this.internalApiInvocationsBuffer;
 		if (!entry) return;
 
-		const routeRows = [...entry.routeCalls].map(([route, calls]) => ({ route, calls }));
-		const routeBatches = batchRouteRows(routeRows);
+		const routeBatches = batchRouteRows([...entry.routeCalls.values()]);
 
 		routeBatches.forEach((routes, index) => {
 			// Totals go on the first event only, so summing a window's events counts each call once.
@@ -472,10 +472,9 @@ export class Telemetry implements TelemetryTracker {
 		entry.total_calls++;
 		entry.clients[client]++;
 
-		// The editor makes most Internal API calls. Only its total is kept, to bound the payload.
-		if (client === 'editor_ui') return;
-
-		entry.routeCalls.set(route, (entry.routeCalls.get(route) ?? 0) + 1);
+		const routeRow = entry.routeCalls.get(route) ?? { route, editor_ui: 0, other: 0 };
+		routeRow[client]++;
+		entry.routeCalls.set(route, routeRow);
 	}
 
 	isEnabled(): boolean {

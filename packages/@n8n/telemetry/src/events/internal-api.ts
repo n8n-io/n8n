@@ -6,7 +6,8 @@ export const INTERNAL_API_USAGE_JSON_FIELDS = {
 	routes: z.array(
 		z.object({
 			route: z.string(),
-			calls: z.number().int().positive(),
+			editor_ui: z.number().int().nonnegative(),
+			other: z.number().int().nonnegative(),
 		}),
 	),
 	clients: z.object({
@@ -19,7 +20,7 @@ export const INTERNAL_API_TELEMETRY = defineTelemetryEvents({
 	INTERNAL_API_USAGE: {
 		name: 'Internal API usage',
 		description:
-			'Six-hourly pulse of Internal API calls, one event for each main process that served a call in the window, also sent on shutdown. The event carries no user. A large window can send several events for one process. Only the first event carries total_calls and clients, and the others carry zeros, so summing a window counts each call once. Routes are named by their pattern, for example `GET /rest/workflows/{workflowId}`, never by the URL that was called. Per-route rows exclude the Editor UI to keep the payload bounded.',
+			'Six-hourly pulse of Internal API calls, one event for each main process that served a call in the window, also sent on shutdown. The event carries no user. A large window can send several events for one process. Only the first event carries total_calls and clients, and the others carry zeros, so summing a window counts each call once. Routes are named by their pattern, for example `GET /rest/workflows/{workflowId}`, never by the URL that was called. Route rows give the calls to each route from the Editor UI and from other clients.',
 		properties: z.object({
 			total_calls: z
 				.number()
@@ -30,7 +31,7 @@ export const INTERNAL_API_TELEMETRY = defineTelemetryEvents({
 			routes: z
 				.string()
 				.describe(
-					'JSON text. One row per route, for calls from clients other than the Editor UI: [{"route": "GET /rest/workflows/{workflowId}", "calls": 3}]',
+					'JSON text. One row for each route, with its calls from each client. editor_ui is the Editor UI. other is every other client: [{"route": "POST /rest/credentials/test", "editor_ui": 39960, "other": 40}]',
 				),
 			clients: z
 				.string()
