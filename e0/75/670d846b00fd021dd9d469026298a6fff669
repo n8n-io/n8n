@@ -1,0 +1,41 @@
+OWNERS
+  s_2e2a32582e9660::t_b9091ef54099f4 186
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.test.ts
+  s_2e2a32582e9660::t_96ecd76b0be156 10,28,59-96,98-103,115-117
+  s_2e2a32582e9660::t_4ee3f91cbd4037 97,104-114
+  s_2e2a32582e9660::t_dd2c747bc81d54 118-119
+packages/frontend/editor-ui/src/app/composables/usePrefetchModals.test.ts
+  s_2e2a32582e9660::t_71d6958c3f9cb7 5-11,280-344
+  s_2e2a32582e9660::t_266055374592a9 345
+packages/frontend/editor-ui/src/app/capabilities.manifest.test.ts
+  s_2e2a32582e9660::t_e3743b417f0988 14,117-131
+  s_2e2a32582e9660::t_eb0c048e20700a 132
+packages/frontend/editor-ui/src/app/extractionRatchet.test.ts
+  s_2e2a32582e9660::t_89daa5aa08e7be 30
+  s_2e2a32582e9660::t_ac0da3c1468b91 31-32
+packages/modules/api-keys/frontend/src/api-keys.module.test.ts
+  s_2e2a32582e9660::t_3e137796ceaa4c 3-23,35-62,67-68
+  s_2e2a32582e9660::t_ab64bdd3ee6fb4 24-34
+  s_2e2a32582e9660::t_cb733f974302d1 1-2,63-66
+packages/frontend/editor-ui/oxlint.config.mts
+  s_2e2a32582e9660::t_89daa5aa08e7be 37-41,44-49,51-52,92-95,116,137-140
+  s_2e2a32582e9660::t_7d2b80d42e72eb 50
+packages/modules/api-keys/frontend/README.md
+  s_2e2a32582e9660::t_1032c459e769e8 6-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e075670d846b00fd021dd9d469026298a6fff669",
+  "prompts": {},
+  "sessions": {
+    "s_2e2a32582e9660": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e590c789-6598-459e-b5fa-8bff2d978551",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

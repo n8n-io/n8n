@@ -1,0 +1,14 @@
+.github/workflows/release-publish-post-release.yml
+  h_52a137d26d774c 38,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6abe52f50f90f16523c2b8809b5a610c161eeb37",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
