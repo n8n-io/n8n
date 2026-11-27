@@ -1498,6 +1498,9 @@ describe('ExecutionService', () => {
 					executionPersistence.findSingleExecution.mockImplementation(
 						async (id: string) => executions.find((e) => e.id === id) as never,
 					);
+					executionPersistence.findStatusesByIds.mockImplementation(async (ids: string[]) =>
+						executions.filter((e) => ids.includes(e.id)).map(({ id, status }) => ({ id, status })),
+					);
 				};
 
 				const stoppedIds = () =>
@@ -1538,16 +1541,30 @@ describe('ExecutionService', () => {
 					expect(stoppedIds()).toEqual(['parent', 'child', 'grandchild']);
 				});
 
-				it('skips a child that has already ended', async () => {
+				it('skips a child that has already ended without loading its data', async () => {
 					arrange(execution('parent', 'waiting', ['child']), [execution('child', 'success')]);
 
 					await executionService.stop('parent', ['workflow-of-parent']);
 
 					expect(stoppedIds()).toEqual(['parent']);
+					expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+				});
+
+				it('keeps the parent stopped when the children cannot be found', async () => {
+					arrange(execution('parent', 'waiting', ['child']), [execution('child', 'waiting')]);
+					executionPersistence.findStatusesByIds.mockRejectedValueOnce(
+						new Error('database unavailable'),
+					);
+
+					const result = await executionService.stop('parent', ['workflow-of-parent']);
+
+					expect(result.status).toBe('canceled');
+					expect(stoppedIds()).toEqual(['parent']);
 				});
 
 				it('stops the other children when one child fails to stop', async () => {
 					arrange(execution('parent', 'waiting', ['child-1', 'child-2']), [
+						execution('child-1', 'waiting'),
 						execution('child-2', 'waiting'),
 					]);
 					executionPersistence.findSingleExecution.mockRejectedValueOnce(

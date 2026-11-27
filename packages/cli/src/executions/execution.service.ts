@@ -673,7 +673,20 @@ export class ExecutionService {
 	 * a child's workflow. The child is stopped anyway, because it only runs for the parent.
 	 */
 	private async stopWaitingChildren(parentId: string, childIds: string[]) {
-		for (const childId of childIds) {
+		if (childIds.length === 0) return;
+
+		let unfinishedIds: string[];
+		try {
+			unfinishedIds = await this.findUnfinishedIds(childIds);
+		} catch (error) {
+			this.logger.warn('Failed to find the sub-executions of a stopped parent', {
+				parentExecutionId: parentId,
+				error: ensureError(error).message,
+			});
+			return;
+		}
+
+		for (const childId of unfinishedIds) {
 			try {
 				const child = await this.executionPersistence.findSingleExecution(childId, {
 					includeData: true,
@@ -690,6 +703,12 @@ export class ExecutionService {
 				});
 			}
 		}
+	}
+
+	/** Reads only the status column, so the data of executions that ended is never loaded. */
+	private async findUnfinishedIds(executionIds: string[]) {
+		const statuses = await this.executionPersistence.findStatusesByIds(executionIds);
+		return statuses.filter(({ status }) => !isTerminalExecutionStatus(status)).map(({ id }) => id);
 	}
 
 	private assertStoppable(execution: IExecutionResponse) {
