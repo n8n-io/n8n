@@ -433,7 +433,7 @@ describe('SalesforceTrigger', () => {
 			await expect(trigger.poll.call(mockPollFunctions)).rejects.toThrow('API Error');
 		});
 
-		it('should log error and rethrow in trigger mode with lastTimeChecked', async () => {
+		it('should rethrow in trigger mode without an error-level log', async () => {
 			const mockWorkflowData: IDataObject = { lastTimeChecked: '2023-01-01T00:00:00.000Z' };
 			mockPollFunctions.getWorkflowStaticData.mockReturnValue(mockWorkflowData);
 
@@ -444,12 +444,11 @@ describe('SalesforceTrigger', () => {
 
 			await expect(trigger.poll.call(mockPollFunctions)).rejects.toThrow('API Error');
 
-			expect(mockPollFunctions.logger.error).toHaveBeenCalledWith(
-				expect.stringContaining(
-					"There was a problem in 'Salesforce Trigger Test' node in workflow 'test-workflow'",
-				),
+			expect(mockPollFunctions.logger.error).not.toHaveBeenCalled();
+			expect(mockPollFunctions.logger.debug).toHaveBeenCalledWith(
+				expect.stringContaining('There was a problem in'),
 				expect.objectContaining({
-					node: 'Salesforce Trigger Test',
+					node: mockNode.name,
 					workflowId: 'test-workflow',
 					error: expect.objectContaining({ message: 'API Error' }),
 				}),
