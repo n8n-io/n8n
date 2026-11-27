@@ -32,6 +32,7 @@ import {
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { assistantAnsweredQuestionsExtension } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
+import { assistantAutoApprovalExtension } from '@/features/ai/instanceAi/assistantAgent/assistantAutoApproval';
 import { assistantConfirmationExtension } from '../assistantAgent/assistantConfirmation';
 import {
 	ASSISTANT_PREFERENCE_CARDS,
@@ -51,6 +52,7 @@ import {
 	useAssistantAgentSetupSavedTelemetry,
 } from '../assistantAgent/useAssistantAgentSetupSavedTelemetry';
 import { useAssistantArtifactThread } from '../assistantAgent/useAssistantArtifactThread';
+import ApprovalModeSelector from '@/features/ai/instanceAi/components/ApprovalModeSelector.vue';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import InstanceAiResourceChip from '../components/InstanceAiResourceChip.vue';
 import { useAgentMutationRefresh } from '../composables/useAgentMutationRefresh';
@@ -259,6 +261,7 @@ watch(
 const interactionExtensions = [
 	assistantConfirmationExtension,
 	assistantAnsweredQuestionsExtension,
+	assistantAutoApprovalExtension,
 	assistantPreferenceCardExtension,
 	assistantSharedFilesExtension,
 	provideAssistantArtifactCards(thread),
@@ -354,6 +357,9 @@ defineExpose({
 		</template>
 		<template v-if="slots['composer-start']" #composer-start>
 			<slot name="composer-start" />
+		</template>
+		<template #footer-start>
+			<ApprovalModeSelector :thread-id="props.threadId" />
 		</template>
 		<template v-if="slots['composer-footer']" #composer-footer>
 			<slot name="composer-footer" />
