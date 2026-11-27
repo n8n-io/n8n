@@ -1,0 +1,55 @@
+packages/modules/api-keys/frontend/src/api-keys.store.test.ts
+  s_2e2a32582e9660::t_5c55d509897f6f 1-13
+packages/frontend/editor-ui/tsconfig.json
+  s_2e2a32582e9660::t_5c55d509897f6f 28-29
+packages/frontend/@n8n/frontend-vite-config/index.ts
+  s_2e2a32582e9660::t_5c55d509897f6f 47
+packages/modules/api-keys/frontend/vite.config.ts
+  s_2e2a32582e9660::t_5c55d509897f6f 1-52
+packages/modules/api-keys/frontend/package.json
+  s_2e2a32582e9660::t_5c55d509897f6f 1-60
+packages/modules/api-keys/frontend/stylelint.config.mjs
+  s_2e2a32582e9660::t_5c55d509897f6f 1-9
+packages/frontend/editor-ui/package.json
+  s_2e2a32582e9660::t_5c55d509897f6f 57
+packages/modules/api-keys/frontend/tsconfig.json
+  s_2e2a32582e9660::t_5c55d509897f6f 1-21
+packages/modules/api-keys/frontend/src/__tests__/setup.ts
+  s_2e2a32582e9660::t_5c55d509897f6f 1-4
+packages/modules/api-keys/frontend/README.md
+  s_2e2a32582e9660::t_5c55d509897f6f 1-52
+packages/modules/api-keys/frontend/vize-lint.config.mjs
+  s_2e2a32582e9660::t_5c55d509897f6f 1-3
+packages/modules/api-keys/frontend/src/api-keys.store.ts
+  s_2e2a32582e9660::t_5c55d509897f6f 1-16
+packages/modules/api-keys/frontend/src/__tests__/design-system-icons.test.ts
+  s_2e2a32582e9660::t_5c55d509897f6f 1-24
+packages/modules/api-keys/frontend/src/api-keys.module.ts
+  s_2e2a32582e9660::t_5c55d509897f6f 1-31
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_2e2a32582e9660::t_5c55d509897f6f 19,55
+packages/modules/api-keys/frontend/biome.jsonc
+  s_2e2a32582e9660::t_5c55d509897f6f 1-4
+packages/modules/api-keys/frontend/oxlint.config.mts
+  s_2e2a32582e9660::t_5c55d509897f6f 1-4
+packages/modules/api-keys/frontend/src/index.ts
+  s_2e2a32582e9660::t_5c55d509897f6f 1-5
+pnpm-lock.yaml
+  s_2e2a32582e9660::t_9d803b3555b44b 7164-7166,7585-7687,32127,44993,44997-45001,45026,45033-45043
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8da75512c345c4cd24182571482bf76b6d90fc0e",
+  "prompts": {},
+  "sessions": {
+    "s_2e2a32582e9660": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e590c789-6598-459e-b5fa-8bff2d978551",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

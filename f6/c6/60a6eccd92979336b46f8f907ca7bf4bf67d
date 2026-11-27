@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/Airtable/test/v2/utils.test.ts
+  h_4c8e80a8dcef63 5,303-321
+packages/nodes-base/nodes/Airtable/v2/helpers/utils.ts
+  h_4c8e80a8dcef63 52-59
+packages/nodes-base/nodes/Airtable/v2/actions/record/upsert.operation.ts
+  h_4c8e80a8dcef63 12-17,131
+packages/nodes-base/nodes/Airtable/test/v2/node/record/upsert.test.ts
+  h_4c8e80a8dcef63 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6c660a6eccd92979336b46f8f907ca7bf4bf67d",
+  "prompts": {},
+  "humans": {
+    "h_4c8e80a8dcef63": {
+      "author": "Ville Halminen <ville.halminen@n8n.io>"
+    }
+  }
+}

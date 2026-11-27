@@ -1,0 +1,21 @@
+packages/@n8n/db/src/repositories/binary-data.repository.ts
+  s_319b9a55768bfb::t_bdf05fdaba858f 3,53-74
+packages/cli/src/binary-data/database.manager.ts
+  s_319b9a55768bfb::t_bdf05fdaba858f 179-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3a0f033a612e10a2314cd9cdb52d21010896a955",
+  "prompts": {},
+  "sessions": {
+    "s_319b9a55768bfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc6ae560-d599-4c21-8a44-d5f519bed682",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
