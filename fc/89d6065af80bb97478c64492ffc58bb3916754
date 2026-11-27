@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_19ab425362d81a::t_277be4506fe726 490,3554-3617
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc89d6065af80bb97478c64492ffc58bb3916754",
+  "prompts": {},
+  "sessions": {
+    "s_19ab425362d81a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a21e77-4616-7189-a485-8efd37e48533",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
