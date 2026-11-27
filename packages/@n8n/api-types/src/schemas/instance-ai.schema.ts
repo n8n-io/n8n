@@ -3239,6 +3239,27 @@ export interface InstanceAiEvalThreadMemoryResponse {
 	cursor: { lastObservedMessageId: string; lastObservedAt: string } | null;
 }
 
+export const instanceAiEvalAgentThreadTurnSchema = z.object({
+	threadId: z.string().uuid(),
+	/** The simulated user. A plain id: integration-style ids turn episodic memory off. */
+	resourceId: z.string().min(1).max(255),
+	/** The user's message. Required to continue a thread. Omitted on a thread's
+	 *  first turn: the seed's generated opening message is sent. */
+	message: z.string().min(1).max(20_000).optional(),
+});
+
+export type InstanceAiEvalAgentThreadTurn = z.infer<typeof instanceAiEvalAgentThreadTurnSchema>;
+
+/** Where a multi-turn run's turn landed. */
+export interface InstanceAiEvalAgentThreadEcho {
+	threadId: string;
+	resourceId: string;
+	/** 1-based count of user messages in the thread, this one included. */
+	turn: number;
+	/** The message the Agent received this turn. */
+	userMessage: string;
+}
+
 export interface InstanceAiEvalAgentExecutionResult {
 	runId: string;
 	/** The run completed without framework/model errors. Tool-level errors live on toolCalls[].error. */
@@ -3256,6 +3277,8 @@ export interface InstanceAiEvalAgentExecutionResult {
 	mockedCredentials: InstanceAiEvalMockedCredential[];
 	/** Model usage of the seed and the mocks for this run. The agent's own model call is in `usage`. */
 	llmUsage?: InstanceAiEvalLlmUsage[];
+	/** Set on a multi-turn request (`thread`). */
+	thread?: InstanceAiEvalAgentThreadEcho;
 }
 
 export class InstanceAiEvalAgentExecutionRequest extends Z.class({
@@ -3267,6 +3290,13 @@ export class InstanceAiEvalAgentExecutionRequest extends Z.class({
 	 * variant's ceiling — the old 900_000 cap truncated a `complex` case's budget.
 	 */
 	timeoutMs: z.number().int().min(30_000).max(3_600_000).optional(),
+	/**
+	 * Multi-turn runs (AGENT-1666). Omitted: one turn, as before. Set: the turn is
+	 * part of an eval thread the server keeps between requests. A new `threadId`
+	 * opens a thread; a known one continues it. Every thread of one `resourceId`
+	 * (the simulated user) shares one generated world (seed + tool mocks).
+	 */
+	thread: instanceAiEvalAgentThreadTurnSchema.optional(),
 }) {}
 
 export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
