@@ -39,7 +39,7 @@ const paginationRows = (count: number) =>
 
 const renderTable = createComponentRenderer(InstancePolicyTable);
 
-const setup = (rows = ROWS) =>
+const setup = (rows = ROWS, props: { communityFilter?: boolean } = {}) =>
 	renderTable({
 		pinia: createTestingPinia(),
 		props: {
@@ -47,6 +47,7 @@ const setup = (rows = ROWS) =>
 			loading: false,
 			searchPlaceholder: 'Search credentials',
 			noMatchText: 'No credentials match your search or filter',
+			...props,
 		},
 	});
 
@@ -71,17 +72,7 @@ describe('InstancePolicyTable community filter', () => {
 		},
 	] satisfies InstancePolicyTableRow[];
 
-	const setupCommunity = (communityFilter = true) =>
-		renderTable({
-			pinia: createTestingPinia(),
-			props: {
-				rows: COMMUNITY_ROWS,
-				loading: false,
-				searchPlaceholder: 'Search nodes',
-				noMatchText: 'No nodes match your search or filter',
-				communityFilter,
-			},
-		});
+	const setupCommunity = (communityFilter = true) => setup(COMMUNITY_ROWS, { communityFilter });
 
 	it('counts the community rows, and leaves the uninstalled ones out of the other options', async () => {
 		const { getByRole } = setupCommunity();
@@ -121,7 +112,7 @@ describe('InstancePolicyTable community filter', () => {
 	it('finds no uninstalled row when the search runs outside Community', async () => {
 		const { getByTestId, getByPlaceholderText } = setupCommunity();
 
-		await userEvent.type(getByPlaceholderText('Search nodes'), 'browserless');
+		await userEvent.type(getByPlaceholderText('Search credentials'), 'browserless');
 
 		await waitFor(() => expect(getByTestId('instance-policy-no-match')).toBeInTheDocument());
 	});
@@ -129,7 +120,7 @@ describe('InstancePolicyTable community filter', () => {
 	it('counts and finds an uninstalled row under Community while a search runs', async () => {
 		const { getByTestId, getByRole, getByPlaceholderText } = setupCommunity();
 
-		await userEvent.type(getByPlaceholderText('Search nodes'), 'browserless');
+		await userEvent.type(getByPlaceholderText('Search credentials'), 'browserless');
 		await openFilter(getByRole);
 
 		expect(await findPopupItem(OPTION, 'All (0)')).toBeInTheDocument();

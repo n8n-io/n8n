@@ -68,12 +68,15 @@ export class TypeAvailabilityPolicyInstanceController {
 	@GlobalScope('nodeTypePolicy:manage')
 	async getInstanceAccess(): Promise<InstanceTypeAccessResponse> {
 		const installedNames = Object.keys(this.nodeTypes.getKnownTypes());
-		const catalogNodes = await this.uninstalledCommunityNodes.list(new Set(installedNames));
+		const [catalogNodes, listTypes] = await Promise.all([
+			this.uninstalledCommunityNodes.list(new Set(installedNames)),
+			this.listedNodeTypes.filter(),
+		]);
 		// One evaluation for both lists, so that the `version` of the response holds for each row.
 		const access = await this.service.getInstanceAccess(
 			NODE_TYPES_KIND,
 			[...installedNames, ...catalogNodes.map((node) => node.name)],
-			await this.listedNodeTypes.filter(),
+			listTypes,
 		);
 
 		return withUninstalledCommunityTypes(access, catalogNodes);

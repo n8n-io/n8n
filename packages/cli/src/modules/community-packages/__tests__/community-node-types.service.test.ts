@@ -999,12 +999,18 @@ describe('CommunityNodeTypesService', () => {
 			expect(result.map((n) => n.name)).toEqual(['package-1.node1', 'package-2.searchTool']);
 		});
 
-		it('returns the current entries and refreshes a stale catalog in the background', () => {
+		// A stale catalog whose fetch runs until the test finishes it.
+		function stubPendingFetch() {
 			(service as any).lastUpdateTimestamp = 0;
 			let finishFetch = () => {};
 			const fetchSpy = vi
 				.spyOn(service as any, 'fetchNodeTypes')
 				.mockReturnValue(new Promise<void>((resolve) => (finishFetch = resolve)));
+			return { fetchSpy, finishFetch: () => finishFetch() };
+		}
+
+		it('returns the current entries and refreshes a stale catalog in the background', () => {
+			const { fetchSpy, finishFetch } = stubPendingFetch();
 
 			const result = service.getCachedCommunityNodeTypes();
 
@@ -1014,12 +1020,8 @@ describe('CommunityNodeTypesService', () => {
 		});
 
 		it('shares one fetch with a caller that waits for the refresh', async () => {
-			(service as any).lastUpdateTimestamp = 0;
 			communityPackagesServiceMock.getAllInstalledPackages = vi.fn().mockResolvedValue([]);
-			let finishFetch = () => {};
-			const fetchSpy = vi
-				.spyOn(service as any, 'fetchNodeTypes')
-				.mockReturnValue(new Promise<void>((resolve) => (finishFetch = resolve)));
+			const { fetchSpy, finishFetch } = stubPendingFetch();
 
 			service.getCachedCommunityNodeTypes();
 			const waiting = service.getCommunityNodeTypes();

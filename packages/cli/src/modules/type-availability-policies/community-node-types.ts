@@ -1,8 +1,8 @@
-import type { InstanceTypeAccessResponse, UninstalledCommunityNodeAccess } from '@n8n/api-types';
+import type { CommunityCatalogNode, InstanceTypeAccessResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 
-type CatalogNode = Omit<UninstalledCommunityNodeAccess, 'access' | 'matchedRuleId'>;
+type CatalogNode = CommunityCatalogNode & { name: string };
 
 /**
  * The verified community nodes that this instance has not installed. The only class of this

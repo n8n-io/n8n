@@ -2,10 +2,11 @@ import type { InstanceTypeAccess, InstanceTypeAccessResponse } from '@n8n/api-ty
 import { ResponseError } from '@n8n/rest-api-client';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { isCommunityPackageName } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { shallowReactive } from 'vue';
 
-import { installedCommunityNode, type CommunityNodeInfo } from './communityNode';
+import type { CommunityNodeInfo } from './communityNode';
 import { useTypeUsage } from './useTypeUsage';
 import {
 	fetchCredentialTypeUsage,
@@ -58,8 +59,11 @@ function toTypeAccess(response: InstanceTypeAccessResponse): TypeAccessSnapshot 
 	const types = new Map<string, TypeAccessEntry>();
 
 	for (const type of response.types) {
-		const community = installedCommunityNode(type.name);
-		types.set(type.name, community ? { ...type, community } : type);
+		// A generated tool variant has the name of its package too.
+		types.set(
+			type.name,
+			isCommunityPackageName(type.name) ? { ...type, community: { installed: true } } : type,
+		);
 	}
 	for (const {
 		displayName,

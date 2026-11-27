@@ -34,20 +34,28 @@ const decorations = computed(() => {
 	return byName;
 });
 
+// Changes only with a new read of the access, not with each change of access.
+const catalogDecorations = computed(() => {
+	const byName = new Map<string, Pick<InstancePolicyTableRow, 'displayName' | 'icon'>>();
+	for (const type of instancePolicy.typeAccess.node?.types.values() ?? []) {
+		const catalogNode = catalogNodeOf(type);
+		if (!catalogNode) continue;
+		byName.set(type.name, {
+			displayName: catalogNode.displayName,
+			icon: catalogNodeIcon(catalogNode, theme.value),
+		});
+	}
+	return byName;
+});
+
 const rows = computed<InstancePolicyTableRow[]>(() => {
 	const summaries = typeSummaries.value;
 	if (!summaries) return [];
 
 	return types.value.map((type) => {
-		const catalogNode = catalogNodeOf(type);
-		if (catalogNode) {
-			return {
-				...type,
-				displayName: catalogNode.displayName,
-				icon: catalogNodeIcon(catalogNode, theme.value),
-				usage: null,
-			};
-		}
+		const catalogDecoration = catalogDecorations.value.get(type.name);
+		// A node that is not installed has no usage of its own to count.
+		if (catalogDecoration) return { ...type, ...catalogDecoration, usage: null };
 
 		// An unknown one shows its name, as the Credential types tab does.
 		return {

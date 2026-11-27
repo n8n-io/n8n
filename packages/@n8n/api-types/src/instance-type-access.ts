@@ -11,11 +11,15 @@ export type InstanceTypeAccess = {
 };
 
 /**
- * A verified community node that is not installed. The instance has no description of it, so
- * the display name and the icon come from the community node catalog.
+ * The display data of a verified community node that is not installed. The instance has no
+ * description of it, so this comes from the community node catalog.
  */
-export type UninstalledCommunityNodeAccess = InstanceTypeAccess &
-	Pick<INodeTypeDescription, 'displayName' | 'icon' | 'iconUrl' | 'iconColor'>;
+export type CommunityCatalogNode = Pick<
+	INodeTypeDescription,
+	'displayName' | 'icon' | 'iconUrl' | 'iconColor'
+>;
+
+export type UninstalledCommunityNodeAccess = InstanceTypeAccess & CommunityCatalogNode;
 
 /**
  * Response of `GET /node-type-policies/instance/access` and

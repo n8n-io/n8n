@@ -11,7 +11,8 @@ import {
 	type RelatedTypes,
 } from '../../related-types/relatedTypes';
 import type { RestrictedTypeKind } from '../../type-availability-policies.constants';
-import { catalogNodeOf } from '../communityNode';
+import { useAppliedTheme } from '../../composables/useAppliedTheme';
+import { catalogNodeIcon, catalogNodeOf } from '../communityNode';
 import type { TypeIcon } from '../instancePolicyTable.types';
 import { useInstancePolicy } from '../useInstancePolicy';
 
@@ -45,6 +46,7 @@ export function useRelatedTypeIndex() {
 	const toast = useToast();
 	const typeDescriptions = capabilityRegistry.use(capabilities.typeDescriptions);
 	const instancePolicy = useInstancePolicy();
+	const theme = useAppliedTheme();
 
 	// Until the types load, the index is empty and every type would look unrelated.
 	const typesLoaded = ref(false);
@@ -66,6 +68,10 @@ export function useRelatedTypeIndex() {
 		catalogNodeOf(instancePolicy.typeAccess.node?.types.get(name));
 	const nodeLabel = (name: string) =>
 		nodeTypeOf(name)?.displayName ?? catalogNodeOfName(name)?.displayName ?? name;
+	const catalogIconOf = (name: string) => {
+		const catalogNode = catalogNodeOfName(name);
+		return catalogNode ? catalogNodeIcon(catalogNode, theme.value) : undefined;
+	};
 	const credentialLabel = (name: string) =>
 		typeDescriptions.credentialTypeDisplayName(name) ?? name;
 
@@ -96,7 +102,7 @@ export function useRelatedTypeIndex() {
 		typesLoaded,
 		index,
 		nodeTypeOf,
-		catalogNodeOf: catalogNodeOfName,
+		catalogIconOf,
 		nodeLabel,
 		credentialLabel,
 		toSections,

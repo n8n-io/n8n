@@ -45,22 +45,23 @@ export class CommunityNodeTypesService {
 	 * The loader builds AI tool copies from loaded base nodes, so a copy follows its base node.
 	 */
 	private isLoadable(nodeTypeName: string) {
-		const loaderName = this.isToolCopy(nodeTypeName)
-			? nodeTypeName.slice(0, -'Tool'.length)
-			: nodeTypeName;
+		const loaderName = this.toolCopyBase(nodeTypeName) ?? nodeTypeName;
 
 		const { exclude, include } = this.globalConfig.nodes;
 		if (exclude.includes(loaderName)) return false;
 		return include.length === 0 || include.includes(loaderName);
 	}
 
-	/** An AI tool copy that `createAiTools` made from a base entry, not an entry of the catalog. */
-	private isToolCopy(nodeTypeName: string) {
-		return (
-			nodeTypeName.endsWith('Tool') &&
-			this.communityNodeTypes.get(nodeTypeName.slice(0, -'Tool'.length))?.nodeDescription
-				.usableAsTool === true
-		);
+	/**
+	 * The base entry name of an AI tool copy that `createAiTools` made, or `undefined` for an entry
+	 * of the catalog.
+	 */
+	private toolCopyBase(nodeTypeName: string): string | undefined {
+		if (!nodeTypeName.endsWith('Tool')) return undefined;
+		const baseName = nodeTypeName.slice(0, -'Tool'.length);
+		return this.communityNodeTypes.get(baseName)?.nodeDescription.usableAsTool === true
+			? baseName
+			: undefined;
 	}
 
 	private async detectUpdates(
@@ -272,7 +273,8 @@ export class CommunityNodeTypesService {
 		if (this.updateRequired()) void this.refreshNodeTypes();
 
 		return Array.from(this.communityNodeTypes.values()).filter(
-			(nodeType) => this.isLoadable(nodeType.name) && !this.isToolCopy(nodeType.name),
+			(nodeType) =>
+				this.toolCopyBase(nodeType.name) === undefined && this.isLoadable(nodeType.name),
 		);
 	}
 
