@@ -1321,7 +1321,11 @@ function viewPreviewTrace() {
 	});
 }
 
+/** Counts the user's own session choices, so a slow schedule test does not override one. */
+let sessionChoice = 0;
+
 function startNewPreviewSession() {
+	sessionChoice++;
 	// A schedule test that was not sent yet must not move into the new chat.
 	taskPreviewPrompt.value = undefined;
 	onNewChat();
@@ -1329,6 +1333,7 @@ function startNewPreviewSession() {
 
 /** An unsent prompt belongs to the session it was made for, not to the picked one. */
 function pickPreviewSession(sessionId: string) {
+	sessionChoice++;
 	taskPreviewPrompt.value = undefined;
 	onSessionPick(sessionId);
 }
@@ -1377,9 +1382,14 @@ async function onOpenPreview(
 }
 
 /** Tests a schedule in a new Preview session, so the run does not mix with an open chat. */
-async function onPreviewTask({ objective, taskId, timezone, source }: AgentTaskTestRequest) {
+async function onPreviewTask(
+	{ objective, taskId, timezone, source }: AgentTaskTestRequest,
+	choice = sessionChoice,
+) {
 	const target = { projectId: projectId.value, agentId: agentId.value };
 	if (!(await onOpenPreview(source, target))) return;
+	// The user picked a session or started a chat while Preview opened.
+	if (choice !== sessionChoice) return;
 
 	// Reset first so the same objective can be tested more than once.
 	taskPreviewPrompt.value = undefined;
@@ -1396,9 +1406,9 @@ async function onPreviewTask({ objective, taskId, timezone, source }: AgentTaskT
 async function onRunScheduleTestAgain(taskId: string) {
 	const target = { projectId: projectId.value, agentId: agentId.value };
 	// The user can pick another session or start a chat while the tasks load.
-	const sessionId = effectiveSessionId.value;
+	const choice = sessionChoice;
 	const isStale = () =>
-		isStaleAgentTarget(target.projectId, target.agentId) || effectiveSessionId.value !== sessionId;
+		isStaleAgentTarget(target.projectId, target.agentId) || choice !== sessionChoice;
 	let task;
 	try {
 		const tasks = await getAgentTasks(rootStore.restApiContext, target.projectId, target.agentId);
@@ -1415,7 +1425,7 @@ async function onRunScheduleTestAgain(taskId: string) {
 		});
 		return;
 	}
-	await onPreviewTask({ objective: task.objective, taskId, source: 'schedule_rerun' });
+	await onPreviewTask({ objective: task.objective, taskId, source: 'schedule_rerun' }, choice);
 }
 
 function getBuilderQuery() {

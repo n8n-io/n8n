@@ -2997,6 +2997,26 @@ describe('AgentBuilderView — preview routing', () => {
 			expect(preview.props('initialPrompt')).toBeUndefined();
 		});
 
+		it('does not start a schedule test when the user picks a session while Preview opens', async () => {
+			fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+			const wrapper = await renderView();
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			editor.vm.$emit('open-preview');
+			await flushPromises();
+			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+			editor.vm.$emit('preview-task', {
+				objective: 'Summarize the inbox',
+				taskId: 'task-1',
+				source: 'schedule',
+			});
+			// Preview flushes the autosave before it starts the test.
+			preview.vm.$emit('session-select', 'thread-1');
+			await flushPromises();
+
+			expect(preview.props('effectiveSessionId')).toBe('thread-1');
+			expect(preview.props('initialPrompt')).toBeUndefined();
+		});
+
 		it('drops an unsent schedule test when the user picks another session', async () => {
 			fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
 			const wrapper = await renderView();
