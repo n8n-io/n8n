@@ -1,0 +1,26 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_23d60aac2fe72e 10393-10395
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.test.ts
+  h_23d60aac2fe72e 124-137
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  h_23d60aac2fe72e 91,296,574-577
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  h_23d60aac2fe72e 25-29,98-104,125-130,132-144,146,216-217,284-287,324-328,1007-1110
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  h_23d60aac2fe72e 93-97,119-132,147,150-157,165-166,186,188,191,207,279,381,397-398,404,537-541,551-558,594-596,615,621,625-629,667
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.test.ts
+  h_23d60aac2fe72e 849-863
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  h_23d60aac2fe72e 75-77,288-291,403-405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "755bcf59651dad7a1db8f8fa3e9381a157d069fe",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

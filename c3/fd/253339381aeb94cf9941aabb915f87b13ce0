@@ -1,0 +1,20 @@
+packages/@n8n/instance-ai/src/skills/context-cues/intent-recognition.cues.ts
+  s_fd920c0cdf4c72::t_7a386b7a75bdea 33
+  s_fd920c0cdf4c72::t_2769eb1a816e83 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3fd253339381aeb94cf9941aabb915f87b13ce0",
+  "prompts": {},
+  "sessions": {
+    "s_fd920c0cdf4c72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "67285622-6611-4bf1-8c20-69176b1815f8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
