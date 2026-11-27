@@ -2526,4 +2526,506 @@ describe('Canvas', () => {
 			);
 		});
 	});
+
+	// Regression tests for CAP-231: Touchscreen on canvas stops working after sending any keystroke
+	describe('touchscreen interaction on mobile devices (CAP-231)', () => {
+		const IPAD_USER_AGENT =
+			'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+
+		type TouchPoint = { identifier: number; clientX: number; clientY: number };
+
+		let userAgentSpy: ReturnType<typeof vi.spyOn>;
+		let originalMaxTouchPoints: PropertyDescriptor | undefined;
+		let originalMatchMedia: typeof window.matchMedia;
+
+		function dispatchTouchEvent(
+			target: Element,
+			type: 'touchstart' | 'touchmove' | 'touchend',
+			touches: TouchPoint[],
+			changedTouches: TouchPoint[] = touches,
+		) {
+			const toTouchList = (points: TouchPoint[]) =>
+				points.map((point) => ({
+					...point,
+					pageX: point.clientX,
+					pageY: point.clientY,
+					target,
+				}));
+
+			const event = new Event(type, { bubbles: true, cancelable: true });
+			Object.defineProperties(event, {
+				touches: { value: toTouchList(touches) },
+				changedTouches: { value: toTouchList(changedTouches) },
+			});
+			target.dispatchEvent(event);
+			return event;
+		}
+
+		function performTouchDrag(
+			pane: Element,
+			from: { x: number; y: number },
+			to: { x: number; y: number },
+		) {
+			const startPoint = { identifier: 1, clientX: from.x, clientY: from.y };
+			const endPoint = { identifier: 1, clientX: to.x, clientY: to.y };
+
+			dispatchTouchEvent(pane, 'touchstart', [startPoint]);
+			const moveEvent = dispatchTouchEvent(pane, 'touchmove', [endPoint]);
+			dispatchTouchEvent(pane, 'touchend', [], [endPoint]);
+
+			return moveEvent;
+		}
+
+		function performPinchZoom(pane: Element) {
+			// Spread two touches from 100px apart to 150px apart (1.5x zoom).
+			const startTouches: TouchPoint[] = [
+				{ identifier: 1, clientX: 100, clientY: 100 },
+				{ identifier: 2, clientX: 200, clientY: 100 },
+			];
+			const spreadTouches: TouchPoint[] = [
+				{ identifier: 1, clientX: 75, clientY: 100 },
+				{ identifier: 2, clientX: 225, clientY: 100 },
+			];
+
+			dispatchTouchEvent(pane, 'touchstart', startTouches);
+			const moveEvent = dispatchTouchEvent(pane, 'touchmove', spreadTouches);
+			dispatchTouchEvent(pane, 'touchend', [], spreadTouches);
+
+			return moveEvent;
+		}
+
+		beforeEach(() => {
+			userAgentSpy = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(IPAD_USER_AGENT);
+			originalMaxTouchPoints = Object.getOwnPropertyDescriptor(navigator, 'maxTouchPoints');
+			Object.defineProperty(navigator, 'maxTouchPoints', {
+				value: 5,
+				configurable: true,
+			});
+			originalMatchMedia = window.matchMedia;
+			window.matchMedia = vi.fn((query: string) => ({
+				matches: query === '(any-pointer: coarse)',
+				media: query,
+				onchange: null,
+				addListener: vi.fn(),
+				removeListener: vi.fn(),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+				dispatchEvent: vi.fn(),
+			})) as unknown as typeof window.matchMedia;
+		});
+
+		afterEach(() => {
+			userAgentSpy.mockRestore();
+			if (originalMaxTouchPoints) {
+				Object.defineProperty(navigator, 'maxTouchPoints', originalMaxTouchPoints);
+			} else {
+				Reflect.deleteProperty(navigator, 'maxTouchPoints');
+			}
+			window.matchMedia = originalMatchMedia;
+		});
+
+		it('pans and pinch-zooms the canvas repeatedly via touch before any keystroke', async () => {
+			const { container } = renderComponent({
+				props: {
+					nodes: [createCanvasNodeElement()],
+					initialViewport: { x: 0, y: 0, zoom: 1 },
+				},
+			});
+
+			const pane = container.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			const { getViewport } = useVueFlow(canvasId);
+			await waitFor(() => expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 }));
+
+			const firstDragMove = performTouchDrag(pane, { x: 100, y: 100 }, { x: 200, y: 150 });
+			expect(getViewport()).toEqual({ x: 100, y: 50, zoom: 1 });
+			expect(firstDragMove.defaultPrevented).toBe(true);
+
+			const secondDragMove = performTouchDrag(pane, { x: 100, y: 100 }, { x: 250, y: 200 });
+			expect(getViewport()).toEqual({ x: 250, y: 150, zoom: 1 });
+			expect(secondDragMove.defaultPrevented).toBe(true);
+
+			const firstPinchMove = performPinchZoom(pane);
+			expect(getViewport().zoom).toBeCloseTo(1.5, 5);
+			expect(firstPinchMove.defaultPrevented).toBe(true);
+
+			const secondPinchMove = performPinchZoom(pane);
+			expect(getViewport().zoom).toBeCloseTo(2.25, 5);
+			expect(secondPinchMove.defaultPrevented).toBe(true);
+		});
+
+		it.each(['a', ' '])('keeps touch drag panning working after pressing "%s"', async (key) => {
+			const { container } = renderComponent({
+				props: {
+					nodes: [createCanvasNodeElement()],
+					initialViewport: { x: 0, y: 0, zoom: 1 },
+				},
+			});
+
+			const pane = container.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			const { getViewport } = useVueFlow(canvasId);
+			await waitFor(() => expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 }));
+
+			// Touch dragging pans the canvas on initial load.
+			const initialMoveEvent = performTouchDrag(pane, { x: 100, y: 100 }, { x: 200, y: 150 });
+			expect(getViewport()).toEqual({ x: 100, y: 50, zoom: 1 });
+			expect(initialMoveEvent.defaultPrevented).toBe(true);
+
+			// Press a key on a physical or virtual keyboard.
+			await fireEvent.keyDown(document, { key });
+			await fireEvent.keyUp(document, { key });
+
+			// Touch dragging must continue to pan the canvas instead of scrolling the page.
+			const moveEventAfterKey = performTouchDrag(pane, { x: 100, y: 100 }, { x: 250, y: 200 });
+			expect(getViewport()).toEqual({ x: 250, y: 150, zoom: 1 });
+			expect(moveEventAfterKey.defaultPrevented).toBe(true);
+		});
+
+		it.each(['a', ' '])(
+			'keeps two-finger pinch-to-zoom working after pressing "%s"',
+			async (key) => {
+				const { container } = renderComponent({
+					props: {
+						nodes: [createCanvasNodeElement()],
+						initialViewport: { x: 0, y: 0, zoom: 1 },
+					},
+				});
+
+				const pane = container.querySelector('.vue-flow__pane');
+				if (!pane) throw new Error('VueFlow pane not found');
+
+				const { getViewport } = useVueFlow(canvasId);
+				await waitFor(() => expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 }));
+
+				// Two-finger pinch zooms the canvas on initial load.
+				const initialPinchEvent = performPinchZoom(pane);
+				const zoomBeforeKey = getViewport().zoom;
+				expect(zoomBeforeKey).toBeCloseTo(1.5, 5);
+				expect(initialPinchEvent.defaultPrevented).toBe(true);
+
+				// Press a key on a physical or virtual keyboard.
+				await fireEvent.keyDown(document, { key });
+				await fireEvent.keyUp(document, { key });
+
+				// Two-finger pinch must continue to zoom the canvas instead of the whole page.
+				const pinchEventAfterKey = performPinchZoom(pane);
+				expect(getViewport().zoom).toBeCloseTo(zoomBeforeKey * 1.5, 5);
+				expect(pinchEventAfterKey.defaultPrevented).toBe(true);
+			},
+		);
+
+		it('keeps the pane draggable instead of switching to selection mode after keystrokes and window blur', async () => {
+			const { container } = renderComponent({
+				props: {
+					nodes: [createCanvasNodeElement()],
+					initialViewport: { x: 0, y: 0, zoom: 1 },
+				},
+			});
+
+			const pane = container.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			const { getViewport } = useVueFlow(canvasId);
+			await waitFor(() => expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 }));
+
+			expect(pane.classList.contains('draggable')).toBe(true);
+			expect(pane.classList.contains('selection')).toBe(false);
+
+			for (const key of ['a', ' ', 'Meta', 'Control']) {
+				await fireEvent.keyDown(document, { key });
+				await fireEvent.keyUp(document, { key });
+				expect(pane.classList.contains('draggable')).toBe(true);
+				expect(pane.classList.contains('selection')).toBe(false);
+			}
+
+			window.dispatchEvent(new Event('blur'));
+			await waitFor(() => {
+				expect(pane.classList.contains('draggable')).toBe(true);
+				expect(pane.classList.contains('selection')).toBe(false);
+			});
+
+			const moveAfterBlur = performTouchDrag(pane, { x: 100, y: 100 }, { x: 220, y: 160 });
+			expect(getViewport()).toEqual({ x: 120, y: 60, zoom: 1 });
+			expect(moveAfterBlur.defaultPrevented).toBe(true);
+
+			const pinchAfterBlur = performPinchZoom(pane);
+			expect(getViewport().zoom).toBeCloseTo(1.5, 5);
+			expect(pinchAfterBlur.defaultPrevented).toBe(true);
+		});
+
+		it('restores touch panning and pinch-to-zoom after releasing Shift or blurring while Shift is held', async () => {
+			const { container } = renderComponent({
+				props: {
+					nodes: [createCanvasNodeElement()],
+					initialViewport: { x: 0, y: 0, zoom: 1 },
+				},
+			});
+
+			const pane = container.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			const { getViewport } = useVueFlow(canvasId);
+			await waitFor(() => expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 }));
+
+			// Holding Shift on an attached keyboard activates selection mode temporarily.
+			await fireEvent.keyDown(document, { key: 'Shift', code: 'ShiftLeft', shiftKey: true });
+			await waitFor(() => expect(pane.classList.contains('selection')).toBe(true));
+
+			await fireEvent.keyUp(document, { key: 'Shift', code: 'ShiftLeft' });
+			await waitFor(() => expect(pane.classList.contains('selection')).toBe(false));
+
+			const moveAfterShift = performTouchDrag(pane, { x: 100, y: 100 }, { x: 180, y: 140 });
+			expect(getViewport()).toEqual({ x: 80, y: 40, zoom: 1 });
+			expect(moveAfterShift.defaultPrevented).toBe(true);
+
+			// Blurring the window while Shift is held must also return to touch panning.
+			await fireEvent.keyDown(document, { key: 'Shift', code: 'ShiftLeft', shiftKey: true });
+			await waitFor(() => expect(pane.classList.contains('selection')).toBe(true));
+
+			window.dispatchEvent(new Event('blur'));
+			await waitFor(() => expect(pane.classList.contains('selection')).toBe(false));
+
+			const pinchAfterShiftBlur = performPinchZoom(pane);
+			expect(getViewport().zoom).toBeCloseTo(1.5, 5);
+			expect(pinchAfterShiftBlur.defaultPrevented).toBe(true);
+		});
+
+		it('keeps touch panning and pinch-to-zoom working on iPad in desktop mode after keystrokes', async () => {
+			userAgentSpy.mockReturnValue(
+				'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+			);
+			// Simulate an iPad with an attached trackpad (both coarse and fine pointers present).
+			window.matchMedia = vi.fn((query: string) => ({
+				matches: query === '(any-pointer: coarse)' || query === '(any-pointer: fine)',
+				media: query,
+				onchange: null,
+				addListener: vi.fn(),
+				removeListener: vi.fn(),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+				dispatchEvent: vi.fn(),
+			})) as unknown as typeof window.matchMedia;
+
+			const { container } = renderComponent({
+				props: {
+					nodes: [createCanvasNodeElement()],
+					initialViewport: { x: 0, y: 0, zoom: 1 },
+				},
+			});
+
+			const pane = container.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			const { getViewport } = useVueFlow(canvasId);
+			await waitFor(() => expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 }));
+
+			const initialDrag = performTouchDrag(pane, { x: 100, y: 100 }, { x: 200, y: 150 });
+			expect(getViewport()).toEqual({ x: 100, y: 50, zoom: 1 });
+			expect(initialDrag.defaultPrevented).toBe(true);
+
+			await fireEvent.keyDown(document, { key: 'a' });
+			await fireEvent.keyUp(document, { key: 'a' });
+			window.dispatchEvent(new Event('blur'));
+
+			const dragAfterKey = performTouchDrag(pane, { x: 100, y: 100 }, { x: 250, y: 200 });
+			expect(getViewport()).toEqual({ x: 250, y: 150, zoom: 1 });
+			expect(dragAfterKey.defaultPrevented).toBe(true);
+
+			// Two-finger trackpad scroll / mouse wheel pans without zooming.
+			const wheelEvent = new WheelEvent('wheel', {
+				deltaX: 40,
+				deltaY: 60,
+				clientX: 100,
+				clientY: 100,
+				bubbles: true,
+				cancelable: true,
+			});
+			pane.dispatchEvent(wheelEvent);
+			expect(wheelEvent.defaultPrevented).toBe(true);
+			expect(getViewport()).toEqual({ x: 230, y: 120, zoom: 1 });
+
+			const pinchAfterKey = performPinchZoom(pane);
+			expect(getViewport().zoom).toBeCloseTo(1.5, 5);
+			expect(pinchAfterKey.defaultPrevented).toBe(true);
+		});
+
+		it('pans on wheel scroll and zooms on Meta+wheel or trackpad pinch on iPad in desktop mode', async () => {
+			userAgentSpy.mockReturnValue(
+				'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+			);
+			window.matchMedia = vi.fn((query: string) => ({
+				matches: query === '(any-pointer: coarse)' || query === '(any-pointer: fine)',
+				media: query,
+				onchange: null,
+				addListener: vi.fn(),
+				removeListener: vi.fn(),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+				dispatchEvent: vi.fn(),
+			})) as unknown as typeof window.matchMedia;
+
+			const { container } = renderComponent({
+				props: {
+					nodes: [createCanvasNodeElement()],
+					initialViewport: { x: 0, y: 0, zoom: 1 },
+				},
+			});
+
+			const pane = container.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			const { getViewport } = useVueFlow(canvasId);
+			await waitFor(() => expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 }));
+
+			// Plain wheel scroll pans the canvas while keeping zoom at 1.
+			const panWheel = new WheelEvent('wheel', {
+				deltaX: 40,
+				deltaY: 60,
+				clientX: 100,
+				clientY: 100,
+				bubbles: true,
+				cancelable: true,
+			});
+			pane.dispatchEvent(panWheel);
+			expect(panWheel.defaultPrevented).toBe(true);
+			expect(getViewport()).toEqual({ x: -20, y: -30, zoom: 1 });
+
+			// Holding Meta (controlKeyCode on iPadOS) switches wheel to zoom.
+			await fireEvent.keyDown(document, { key: 'Meta', code: 'MetaLeft', metaKey: true });
+			const metaWheel = new WheelEvent('wheel', {
+				deltaY: -100,
+				clientX: 100,
+				clientY: 100,
+				metaKey: true,
+				bubbles: true,
+				cancelable: true,
+			});
+			pane.dispatchEvent(metaWheel);
+			expect(metaWheel.defaultPrevented).toBe(true);
+			const zoomedAfterMeta = getViewport().zoom;
+			expect(zoomedAfterMeta).toBeGreaterThan(1);
+
+			// Releasing Meta returns wheel to panning without changing zoom.
+			await fireEvent.keyUp(document, { key: 'Meta', code: 'MetaLeft' });
+			const viewportBeforeSecondPan = { ...getViewport() };
+			const panAfterMeta = new WheelEvent('wheel', {
+				deltaX: 20,
+				deltaY: 40,
+				clientX: 100,
+				clientY: 100,
+				bubbles: true,
+				cancelable: true,
+			});
+			pane.dispatchEvent(panAfterMeta);
+			expect(getViewport().x).not.toBe(viewportBeforeSecondPan.x);
+			expect(getViewport().y).not.toBe(viewportBeforeSecondPan.y);
+			expect(getViewport().zoom).toBeCloseTo(zoomedAfterMeta, 5);
+
+			// Trackpad pinch (wheel with ctrlKey: true) zooms the canvas.
+			const trackpadPinch = new WheelEvent('wheel', {
+				deltaY: -20,
+				clientX: 100,
+				clientY: 100,
+				ctrlKey: true,
+				bubbles: true,
+				cancelable: true,
+			});
+			pane.dispatchEvent(trackpadPinch);
+			expect(trackpadPinch.defaultPrevented).toBe(true);
+			expect(getViewport().zoom).toBeGreaterThan(zoomedAfterMeta);
+		});
+
+		it('keeps touch panning and pinch-to-zoom working on touch-only devices in desktop mode after keystrokes', async () => {
+			userAgentSpy.mockReturnValue(
+				'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+			);
+
+			const { container } = renderComponent({
+				props: {
+					nodes: [createCanvasNodeElement()],
+					initialViewport: { x: 0, y: 0, zoom: 1 },
+				},
+			});
+
+			const pane = container.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			const { getViewport } = useVueFlow(canvasId);
+			await waitFor(() => expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 }));
+
+			await fireEvent.keyDown(document, { key: 'a' });
+			await fireEvent.keyUp(document, { key: 'a' });
+			window.dispatchEvent(new Event('blur'));
+
+			const dragAfterKey = performTouchDrag(pane, { x: 100, y: 100 }, { x: 200, y: 150 });
+			expect(getViewport()).toEqual({ x: 100, y: 50, zoom: 1 });
+			expect(dragAfterKey.defaultPrevented).toBe(true);
+
+			const pinchAfterKey = performPinchZoom(pane);
+			expect(getViewport().zoom).toBeCloseTo(1.5, 5);
+			expect(pinchAfterKey.defaultPrevented).toBe(true);
+		});
+
+		it('preserves Space-to-pan and blur-to-selection switching on desktop devices', async () => {
+			userAgentSpy.mockReturnValue(
+				'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+			);
+			Object.defineProperty(navigator, 'maxTouchPoints', {
+				value: 0,
+				configurable: true,
+			});
+			window.matchMedia = vi.fn((query: string) => ({
+				matches: query === '(any-pointer: fine)',
+				media: query,
+				onchange: null,
+				addListener: vi.fn(),
+				removeListener: vi.fn(),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+				dispatchEvent: vi.fn(),
+			})) as unknown as typeof window.matchMedia;
+
+			const { container } = renderComponent({
+				props: {
+					nodes: [createCanvasNodeElement()],
+					initialViewport: { x: 0, y: 0, zoom: 1 },
+				},
+			});
+
+			const pane = container.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			await waitFor(() => {
+				expect(pane.classList.contains('selection')).toBe(true);
+				expect(pane.classList.contains('draggable')).toBe(false);
+			});
+
+			// Holding Space switches desktop canvas to panning mode.
+			await fireEvent.keyDown(document, { key: ' ' });
+			await waitFor(() => {
+				expect(pane.classList.contains('draggable')).toBe(true);
+				expect(pane.classList.contains('selection')).toBe(false);
+			});
+
+			// Releasing Space switches back to selection mode.
+			await fireEvent.keyUp(document, { key: ' ' });
+			await waitFor(() => {
+				expect(pane.classList.contains('selection')).toBe(true);
+				expect(pane.classList.contains('draggable')).toBe(false);
+			});
+
+			// Blurring the window while holding Space also resets back to selection mode.
+			await fireEvent.keyDown(document, { key: ' ' });
+			await waitFor(() => expect(pane.classList.contains('draggable')).toBe(true));
+
+			window.dispatchEvent(new Event('blur'));
+			await waitFor(() => {
+				expect(pane.classList.contains('selection')).toBe(true);
+				expect(pane.classList.contains('draggable')).toBe(false);
+			});
+		});
+	});
 });
