@@ -229,6 +229,7 @@ export class AgentMessageQueueService {
 				kind: dispatch.kind,
 				...(dispatch.stopReportId ? { stopReportId: dispatch.stopReportId } : {}),
 				...(dispatch.options ? { options: dispatch.options } : {}),
+				...(dispatch.mode ? { mode: dispatch.mode } : {}),
 			};
 
 			if (dispatch.hidden) origin.hidden = true;
@@ -401,6 +402,11 @@ export class AgentMessageQueueService {
 			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
 			if (item?.payload.kind !== input.kind || isHidden(item))
 				throw new ConflictError('This message is no longer available');
+			// Steering skips the checks a turn of its own makes. A message that asked for a test
+			// run must never join a live run, so only a test chat's run can take it.
+			if (item.payload.mode === 'test' && !thread.testChat) {
+				throw new ConflictError('This chat runs live. Start a new chat to run a test.');
+			}
 			const execution = await this.steering.findEligible(thread, ctx);
 			if (
 				execution?.id !== input.executionId ||

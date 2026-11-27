@@ -267,6 +267,7 @@ const agentPageRoute = computed(() => {
 					</div>
 					<N8nText
 						v-if="agent.description"
+						:class="$style.description"
 						color="text-light"
 						data-testid="agent-n8n-chat-description"
 					>
@@ -297,10 +298,17 @@ const agentPageRoute = computed(() => {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
+	justify-content: safe center;
+	overflow-y: auto;
 	padding-bottom: var(--spacing--lg);
 	gap: var(--spacing--3xs);
 	text-align: center;
+}
+
+.description {
+	max-inline-size: min(100%, 65ch);
+	text-wrap: pretty;
+	overflow-wrap: anywhere;
 }
 
 .nameRow {

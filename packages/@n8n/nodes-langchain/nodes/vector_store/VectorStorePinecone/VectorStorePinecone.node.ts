@@ -1,7 +1,12 @@
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
-import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INodeProperties,
+	type ISupplyDataFunctions,
+} from 'n8n-workflow';
 
 import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
@@ -62,6 +67,44 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
+async function getValidatedIndex(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	itemIndex: number,
+) {
+	const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
+		extractValue: true,
+	}) as string;
+	const credentials = await context.getCredentials('pineconeApi');
+	const apiKey = credentials.apiKey as string;
+	const client = new Pinecone({ apiKey });
+	const { indexes } = await client.listIndexes();
+
+	if (!indexes?.some((entry) => entry.name === index)) {
+		throw new NodeOperationError(context.getNode(), `Index ${index} not found`, {
+			itemIndex,
+			description: 'Please check that the index exists in your vector store',
+		});
+	}
+
+	await assertPineconeIndexAcceptsVectors(
+		{ context, credentialType: 'pineconeApi', apiKey },
+		index,
+	);
+	return client.Index(index);
+}
+
+async function clearNamespace(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	index: ReturnType<Pinecone['Index']>,
+	namespace: string,
+) {
+	try {
+		await index.namespace(namespace).deleteAll();
+	} catch (error) {
+		context.logger.info(`Namespace ${namespace} does not exist yet`);
+	}
+}
+
 export class VectorStorePinecone extends createVectorStoreNode<VectorStore>({
 	meta: {
 		displayName: 'Pinecone Vector Store',
@@ -107,43 +150,29 @@ export class VectorStorePinecone extends createVectorStoreNode<VectorStore>({
 			},
 		);
 	},
-	async populateVectorStore(context, embeddings, documents, itemIndex) {
-		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
-			extractValue: true,
-		}) as string;
+	async beforeInsert(context, _embeddings, itemIndex) {
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			pineconeNamespace?: string;
 			clearNamespace?: boolean;
 		};
-		const credentials = await context.getCredentials('pineconeApi');
+		if (!options.pineconeNamespace || !options.clearNamespace) return;
 
-		const client = new Pinecone({
-			apiKey: credentials.apiKey as string,
-		});
+		const index = await getValidatedIndex(context, itemIndex);
+		await clearNamespace(context, index, options.pineconeNamespace);
+	},
+	async populateVectorStore(context, embeddings, documents, itemIndex) {
+		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			pineconeNamespace?: string;
+			clearNamespace?: boolean;
+		};
+		const pineconeIndex = await getValidatedIndex(context, itemIndex);
 
-		const indexes = ((await client.listIndexes()).indexes ?? []).map((i) => i.name);
-
-		if (!indexes.includes(index)) {
-			throw new NodeOperationError(context.getNode(), `Index ${index} not found`, {
-				itemIndex,
-				description: 'Please check that the index exists in your vector store',
-			});
-		}
-
-		await assertPineconeIndexAcceptsVectors(
-			{ context, credentialType: 'pineconeApi', apiKey: credentials.apiKey as string },
-			index,
-		);
-		const pineconeIndex = client.Index(index);
-
-		if (options.pineconeNamespace && options.clearNamespace) {
-			const namespace = pineconeIndex.namespace(options.pineconeNamespace);
-			try {
-				await namespace.deleteAll();
-			} catch (error) {
-				// Namespace doesn't exist yet
-				context.logger.info(`Namespace ${options.pineconeNamespace} does not exist yet`);
-			}
+		if (
+			options.pineconeNamespace &&
+			options.clearNamespace &&
+			context.getNode().typeVersion < 1.1
+		) {
+			await clearNamespace(context, pineconeIndex, options.pineconeNamespace);
 		}
 
 		await PineconeStore.fromDocuments(documents, embeddings, {

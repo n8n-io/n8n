@@ -62,6 +62,8 @@ import PromotionProviderList from './commands/promotion-provider/list';
 import PromotionProviderListBranches from './commands/promotion-provider/list-branches';
 import PromotionProviderListRepositories from './commands/promotion-provider/list-repositories';
 import PromotionProviderUpdate from './commands/promotion-provider/update';
+import PromotionReviewGet from './commands/promotion-review/get';
+import PromotionReviewList from './commands/promotion-review/list';
 import PromotionSettingsGet from './commands/promotion-settings/get';
 import PromotionSettingsUpdate from './commands/promotion-settings/update';
 import SkillInstall from './commands/skill/install';
@@ -141,6 +143,9 @@ export const commands = {
 
 	'promotion-settings:get': PromotionSettingsGet,
 	'promotion-settings:update': PromotionSettingsUpdate,
+
+	'promotion-review:list': PromotionReviewList,
+	'promotion-review:get': PromotionReviewGet,
 
 	'credential:list': CredentialList,
 	'credential:get': CredentialGet,

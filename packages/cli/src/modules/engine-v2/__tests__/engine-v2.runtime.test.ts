@@ -1,7 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { EngineConfig } from '@n8n/config';
+import type { EngineConfig, ExecutionsConfig, PrometheusMetricsConfig } from '@n8n/config';
+import { readPoolStats } from '@n8n/db';
 import {
 	mintApprovalCallback,
 	mintResumeToken,
@@ -13,6 +14,7 @@ import {
 import type { V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
 import type { BinaryDataService } from 'n8n-core';
 import type { DataTableProxyProvider } from 'n8n-workflow';
+import { Registry } from 'prom-client';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -20,13 +22,13 @@ import type { CredentialsHelper } from '@/credentials-helper';
 import type { NodeTypesProxy } from '@n8n/backend-services';
 
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
-import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
-import type { EngineCredentialsClient } from '../engine-credentials-client';
-import type { EngineSubWorkflowClient } from '../engine-workflow-resolve-client';
+import type { EngineControlPlaneTransport } from '../control-plane/engine-control-plane-transport';
+import type { EngineCredentialsClient } from '../credentials/engine-credentials-client';
+import type { EngineWorkflowResolveClient } from '../workflow-resolve/engine-workflow-resolve-client';
 import type { EngineMtls } from '../engine-mtls';
 import { EngineV2Runtime } from '../engine-v2.runtime';
-import { RemoteCredentialsHelper } from '../remote-credentials-helper';
-import { RemoteDataTableProxyProvider } from '../remote-data-table-proxy-provider';
+import { RemoteCredentialsHelper } from '../credentials/remote-credentials-helper';
+import { RemoteDataTableProxyProvider } from '../data-tables/remote-data-table-proxy-provider';
 
 // Hoisted so the `vi.mock` factories below, which vitest lifts above the imports,
 // can close over them.
@@ -125,6 +127,10 @@ vi.mock('@n8n/node-engine-compatibility', () => ({
 	createEngineStepDataLoader: mocks.createEngineStepDataLoader,
 	V1StepExecutor: mocks.V1StepExecutor,
 }));
+vi.mock('@n8n/db', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/db')>()),
+	readPoolStats: vi.fn(() => ({ active: 1, idle: 2, waiting: 3 })),
+}));
 
 describe('EngineV2Runtime', () => {
 	const engineConfig = (databaseUrl: string, overrides: Partial<EngineConfig> = {}) =>
@@ -143,7 +149,7 @@ describe('EngineV2Runtime', () => {
 	let credentialsClient: EngineCredentialsClient;
 	let transport: EngineControlPlaneTransport;
 	let dataTablesHttp: HttpRequestClient;
-	let subWorkflowClient: EngineSubWorkflowClient;
+	let workflowResolveClient: EngineWorkflowResolveClient;
 	const credentialsHelper = mock<CredentialsHelper>();
 	const credentialTypes = mock<CredentialTypes>();
 	const additionalDataBuilder = mock<EngineAdditionalDataBuilder>();
@@ -159,20 +165,29 @@ describe('EngineV2Runtime', () => {
 	const newRuntime = (
 		databaseUrl = 'postgres://engine',
 		config: Partial<EngineConfig> = {},
+		executions: Partial<ExecutionsConfig> = {},
 		logger: Logger = mockLogger(),
+		metrics: Partial<PrometheusMetricsConfig> = {},
 	) =>
 		new EngineV2Runtime(
 			engineConfig(databaseUrl, config),
+			mock<ExecutionsConfig>({
+				pruneData: true,
+				pruneDataMaxAge: 336,
+				pruneDataMaxCount: 10_000,
+				...executions,
+			}),
 			{ enabled: false, createServer: mocks.createServer } as unknown as EngineMtls,
 			nodeTypes,
 			logger,
 			credentialsClient,
 			transport,
-			subWorkflowClient,
+			workflowResolveClient,
 			credentialsHelper,
 			credentialTypes,
 			additionalDataBuilder,
 			binaryDataService,
+			mock<PrometheusMetricsConfig>({ prefix: 'n8n_', includeDbPoolMetrics: true, ...metrics }),
 		);
 
 	const stepContext = {
@@ -204,7 +219,7 @@ describe('EngineV2Runtime', () => {
 		credentialsClient = mock<EngineCredentialsClient>();
 		dataTablesHttp = mock<HttpRequestClient>();
 		transport = mock<EngineControlPlaneTransport>({ forScope: vi.fn(() => dataTablesHttp) });
-		subWorkflowClient = mock<EngineSubWorkflowClient>();
+		workflowResolveClient = mock<EngineWorkflowResolveClient>();
 		additionalDataBuilder.build.mockImplementation(
 			(_context, helper, dataTableProxyProvider) =>
 				({
@@ -236,7 +251,7 @@ describe('EngineV2Runtime', () => {
 			const scopedLogger = mock<Logger>();
 			const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
-			await newRuntime('postgres://engine', {}, logger).init(initOptions());
+			await newRuntime('postgres://engine', {}, {}, logger).init(initOptions());
 
 			const logged = scopedLogger.info.mock.calls.findIndex(([message]) =>
 				message.includes('migration lock'),
@@ -302,6 +317,25 @@ describe('EngineV2Runtime', () => {
 				expect(SharedSecretIdentityVerifier).toHaveBeenCalledTimes(verifies ? 1 : 0);
 			},
 		);
+
+		it('maps EXECUTIONS_DATA_MAX_AGE and EXECUTIONS_DATA_PRUNE_MAX_COUNT to the retention policy', async () => {
+			await newRuntime(
+				'postgres://engine',
+				{},
+				{ pruneDataMaxAge: 24, pruneDataMaxCount: 500 },
+			).init(initOptions());
+
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ retention: { maxAgeMs: 86_400_000, maxCount: 500 } }),
+			);
+		});
+
+		it('maps EXECUTIONS_DATA_PRUNE=false to no retention policy', async () => {
+			await newRuntime('postgres://engine', {}, { pruneData: false }).init(initOptions());
+
+			const options = mocks.createEngineRuntime.mock.calls[0][0] as { retention?: unknown };
+			expect(options.retention).toBeUndefined();
+		});
 
 		it('starts the engine', async () => {
 			await newRuntime().init(initOptions());
@@ -425,15 +459,15 @@ describe('EngineV2Runtime', () => {
 			await newRuntime().init(initOptions());
 			externalDependencies({ executionStore: {}, stepStore: {} });
 			const request = { workflowId: 'sub-execution' };
-			vi.mocked(subWorkflowClient.resolve).mockResolvedValue({
+			vi.mocked(workflowResolveClient.resolve).mockResolvedValue({
 				workflowId: 'sub-execution',
 			} as never);
 
 			const resolved = await mocks.V1StepExecutor.mock.calls[0][0].resolveSubWorkflow(request);
 
 			expect(resolved).toEqual({ workflowId: 'sub-execution' });
-			expect(subWorkflowClient.resolve).toHaveBeenCalledExactlyOnceWith(
-				request,
+			expect(workflowResolveClient.resolve).toHaveBeenCalledExactlyOnceWith(
+				{ kind: 'sub-workflow', ...request },
 				expect.any(AbortSignal),
 			);
 		});
@@ -559,6 +593,48 @@ describe('EngineV2Runtime', () => {
 			mocks.engine.stop.mockRejectedValueOnce(new Error('stop failed'));
 
 			await expect(newRuntime().init(initOptions())).rejects.toThrow('listen failed');
+		});
+	});
+
+	describe('metrics', () => {
+		const valueOf = async (registry: Registry, name: string) =>
+			(await registry.getSingleMetric(name)?.get())?.values[0]?.value;
+
+		it('reports the data plane pool on the registry it is given', async () => {
+			const registry = new Registry();
+
+			await newRuntime('postgres://engine', { databasePoolSize: 25 }).init({
+				...initOptions(),
+				metricsRegistry: registry,
+			});
+
+			expect(await valueOf(registry, 'n8n_engine_db_pool_requests_pending')).toBe(3);
+			expect(await valueOf(registry, 'n8n_engine_db_pool_connections_max')).toBe(25);
+			expect(readPoolStats).toHaveBeenCalledWith(mocks.dataSource);
+		});
+
+		it('reports no pool when N8N_METRICS_INCLUDE_DB_POOL_METRICS is off', async () => {
+			const registry = new Registry();
+
+			await newRuntime('postgres://engine', {}, {}, mockLogger(), {
+				includeDbPoolMetrics: false,
+			}).init({ ...initOptions(), metricsRegistry: registry });
+
+			expect(await registry.getMetricsAsJSON()).toEqual([]);
+		});
+
+		it('registers the pool again when init runs after a rollback', async () => {
+			const registry = new Registry();
+			const runtime = newRuntime();
+			mocks.listen.error = new Error('listen failed');
+			await expect(runtime.init({ ...initOptions(), metricsRegistry: registry })).rejects.toThrow(
+				'listen failed',
+			);
+			mocks.listen.error = undefined;
+
+			await runtime.init({ ...initOptions(), metricsRegistry: registry });
+
+			expect(await valueOf(registry, 'n8n_engine_db_pool_connections_max')).toBe(10);
 		});
 	});
 

@@ -15,7 +15,8 @@ const MAX_GENERATOR_ATTEMPTS = 2;
 /**
  * Generate JSON with the eval agent and validate its shape, retrying once on
  * unusable output. Returns undefined when both attempts fail — callers supply
- * their own degraded fallback.
+ * their own degraded fallback. An aborted `signal` cancels the model call and
+ * stops the retries.
  */
 export async function generateJson<T>(
 	agentName: string,
@@ -23,13 +24,16 @@ export async function generateJson<T>(
 	userPrompt: string,
 	validate: (parsed: unknown) => T | undefined,
 	logger: Logger,
+	signal?: AbortSignal,
 ): Promise<T | undefined> {
 	for (let attempt = 1; attempt <= MAX_GENERATOR_ATTEMPTS; attempt++) {
+		if (signal?.aborted) break;
 		try {
+			const timeout = AbortSignal.timeout(GENERATOR_TIMEOUT_MS);
 			const agent = createEvalAgent(agentName, { instructions });
 			const result = await agent.generate(userPrompt, {
 				providerOptions: { anthropic: { maxTokens: 4096 } },
-				abortSignal: AbortSignal.timeout(GENERATOR_TIMEOUT_MS),
+				abortSignal: signal ? AbortSignal.any([signal, timeout]) : timeout,
 			});
 			const parsed = jsonParse<unknown>(extractJsonCandidate(extractText(result)), {
 				fallbackValue: undefined,

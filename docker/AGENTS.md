@@ -58,7 +58,12 @@ refreshes therefore pin `RUNTIME_IMAGE` only and do not recompile Node.
   branch.
 - A dispatch on master with `push` always publishes. Use it when a publish run
   failed, when only the workflow changed, or to get patched OS packages. Then
-  pin the new digest.
+  pin the new digest. Set `targets` to build only some bases, so the tags of
+  the other bases stay on their digests.
+- `sec-base-image-refresh.yml` dispatches `build-base-image.yml` for a base
+  when a package that the base installs has a fix. If the rebuilt base has
+  fewer findings, it pins the base 24 hours later (a manual run does not
+  wait). Otherwise, it sends an alert.
 
 The `node-patched-26` target uses the same Node version as `node-pc`, with
 pointer compression off. The workflow publishes `-dev` tags for Node 24 and
@@ -69,7 +74,10 @@ a multi-arch manifest for each tag.
 
 1. Change `DHI_REF`, `DEBIAN_DHI_REF`, `NODE_VERSION`, `BUILDER_IMAGE`, and
    `DEBIAN_BUILDER_IMAGE`. Master publishes the new bases (`n8nio/base`),
-   `n8nio/node-pc:*-dev`, and `n8nio/node-patched:*-dev`.
+   `n8nio/node-pc:*-dev`, and `n8nio/node-patched:*-dev`. CI reads
+   `NODE_VERSION`, so no workflow changes. For a newer patch of the same
+   minor, `sec-base-image-refresh.yml` opens this PR
+   (`build: Update Node to <version>`) when every pin publishes the patch.
 2. Pin `RUNTIME_IMAGE`, `DEBIAN_RUNTIME_IMAGE`, `N8N_BUILDER_IMAGE`, and
    `PC_BUILDER_IMAGE`.
 

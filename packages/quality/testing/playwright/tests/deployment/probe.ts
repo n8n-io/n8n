@@ -1,3 +1,4 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import { expect, request, test, type APIRequestContext, type APIResponse } from '@playwright/test';
@@ -11,6 +12,8 @@ import { nanoid } from 'nanoid';
 
 const OWNER_EMAIL = 'deployment-probe@example.com';
 const OWNER_PASSWORD = 'DeploymentProbe123';
+const STANDARD_RUNNER_TITLE = 'n8n task runners';
+const STANDARD_RUNNER_USER = 'runner';
 const DISTROLESS_RUNNER_TITLE = 'n8n task runners (distroless)';
 const DISTROLESS_RUNNER_USER = '65532:65532';
 
@@ -70,6 +73,7 @@ export interface BinaryRoundTripResult {
 export interface ContainerImageInfo {
 	containerImage: string;
 	imageId: string;
+	architecture: string;
 	user: string;
 	labels: Record<string, string>;
 	repoDigests: string[];
@@ -86,6 +90,7 @@ export interface DeploymentCellOptions<TProbeOutput = unknown> {
 	stack?: N8NConfig;
 	probe: (ctx: DeploymentCellContext) => Promise<TProbeOutput>;
 	check: (ctx: DeploymentCellContext & { probeOutput: TProbeOutput }) => Promise<void>;
+	cleanup?: (stack: N8NStack) => Promise<void>;
 }
 
 function normalizeBaseUrl(baseUrl: string): string {
@@ -106,8 +111,14 @@ function resolveReachableBaseUrl(stack: N8NStack): string {
 }
 
 function normalizeArch(arch: string): string {
-	if (arch === 'x64') return 'amd64';
-	return arch;
+	const normalized = arch.trim().toLowerCase();
+	if (normalized === 'x64' || normalized === 'x86_64') return 'amd64';
+	if (normalized === 'aarch64') return 'arm64';
+	return normalized;
+}
+
+export function getExpectedArch(): string {
+	return normalizeArch(process.env.DEPLOYMENT_ARCH || process.arch);
 }
 
 function unwrapData(body: unknown): Record<string, unknown> {
@@ -224,6 +235,27 @@ export class DeploymentProbe {
 			throw new Error(`POST rest/workflows returned no workflow id: ${text.slice(0, 400)}`);
 		}
 		return { id, versionId };
+	}
+
+	async createCredential(credential: {
+		name: string;
+		type: string;
+		data: Record<string, unknown>;
+	}): Promise<{ id: string; name: string }> {
+		const response = await this.fetch('rest/credentials', {
+			method: 'POST',
+			data: credential,
+		});
+		const { body, text } = await parseJsonBody(response);
+		if (!response.ok()) {
+			throw new Error(`POST rest/credentials failed (${response.status()}): ${text.slice(0, 400)}`);
+		}
+		const data = unwrapData(body);
+		const id = toIdString(data.id);
+		if (!id) {
+			throw new Error(`POST rest/credentials returned no credential id: ${text.slice(0, 400)}`);
+		}
+		return { id, name: credential.name };
 	}
 
 	async activateWorkflow(workflowId: string, versionId: string): Promise<void> {
@@ -767,6 +799,10 @@ export function inspectContainerImage(containerId: string): ContainerImageInfo {
 	const rawImage = execFileSync('docker', ['image', 'inspect', imageId], { encoding: 'utf8' });
 	const imageList: unknown = JSON.parse(rawImage);
 	const imageEntry = Array.isArray(imageList) ? imageList[0] : null;
+	const architecture =
+		isRecord(imageEntry) && typeof imageEntry.Architecture === 'string'
+			? normalizeArch(imageEntry.Architecture)
+			: '';
 	const repoDigests =
 		isRecord(imageEntry) && Array.isArray(imageEntry.RepoDigests)
 			? imageEntry.RepoDigests.filter((entry): entry is string => typeof entry === 'string')
@@ -776,13 +812,14 @@ export function inspectContainerImage(containerId: string): ContainerImageInfo {
 			? imageEntry.RepoTags.filter((entry): entry is string => typeof entry === 'string')
 			: [];
 
-	return { containerImage, imageId, user, labels, repoDigests, repoTags };
+	return { containerImage, imageId, architecture, user, labels, repoDigests, repoTags };
 }
 
 export function assertContainerImage(
 	containerId: string,
 	expectedImage: string,
 	role: string,
+	expectedArch = getExpectedArch(),
 ): ContainerImageInfo {
 	const info = inspectContainerImage(containerId);
 	expect(info.containerImage, `Expected ${role} container to boot image "${expectedImage}"`).toBe(
@@ -795,6 +832,32 @@ export function assertContainerImage(
 			`Expected ${role} image digests to include pinned ref "${expectedImage}"`,
 		).toContain(expectedImage);
 	}
+
+	const normalizedExpectedArch = normalizeArch(expectedArch);
+	expect(
+		info.architecture,
+		`Expected ${role} container image "${info.containerImage}" to have architecture "${normalizedExpectedArch}", got "${info.architecture}"`,
+	).toBe(normalizedExpectedArch);
+
+	return info;
+}
+
+export function assertStandardRunner(stack: N8NStack): ContainerImageInfo {
+	const runner = stack.serviceResults.taskRunner?.container;
+	expect(runner, 'Expected an external task-runner container in the stack').toBeDefined();
+
+	const expectedImage = TEST_CONTAINER_IMAGES.taskRunner;
+	const info = assertContainerImage(runner!.getId(), expectedImage, 'task-runner');
+
+	expect(
+		info.labels['org.opencontainers.image.title'],
+		`Expected standard runner image label "${STANDARD_RUNNER_TITLE}", got "${info.labels['org.opencontainers.image.title'] ?? ''}" (image: ${info.containerImage})`,
+	).toBe(STANDARD_RUNNER_TITLE);
+
+	expect(
+		info.user,
+		`Expected standard runner user "${STANDARD_RUNNER_USER}", got "${info.user}"`,
+	).toBe(STANDARD_RUNNER_USER);
 
 	return info;
 }
@@ -913,7 +976,7 @@ export async function runDeploymentCell<TProbeOutput = unknown>(
 ): Promise<void> {
 	const testInfo = test.info();
 	const channel = process.env.DEPLOYMENT_CHANNEL ?? 'local';
-	const arch = process.env.DEPLOYMENT_ARCH ?? normalizeArch(process.arch);
+	const arch = getExpectedArch();
 	const n8nImage = options.stack?.image ?? TEST_CONTAINER_IMAGES.n8n;
 	const runnersImage =
 		options.stack?.env?.N8N_RUNNERS_MODE === 'internal'
@@ -929,6 +992,7 @@ export async function runDeploymentCell<TProbeOutput = unknown>(
 
 	let stack: N8NStack | undefined;
 	let probe: DeploymentProbe | undefined;
+	let cleanupError: Error | undefined;
 
 	try {
 		await test.step('Start stack', async () => {
@@ -962,7 +1026,18 @@ export async function runDeploymentCell<TProbeOutput = unknown>(
 		await attachFailureLogs(stack, error);
 		throw error;
 	} finally {
+		if (stack && options.cleanup) {
+			try {
+				await options.cleanup(stack);
+			} catch (error) {
+				cleanupError = ensureError(error);
+			}
+		}
 		await probe?.dispose().catch(() => undefined);
 		await stack?.stop().catch(() => undefined);
+	}
+
+	if (cleanupError !== undefined) {
+		throw cleanupError;
 	}
 }

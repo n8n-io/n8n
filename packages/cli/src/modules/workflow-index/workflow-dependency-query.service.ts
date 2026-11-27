@@ -510,6 +510,7 @@ export class WorkflowDependencyQueryService {
 		for (const resourceId of resourceIds) {
 			const dependencies: ResolvedDependency[] = [];
 			let inaccessibleCount = 0;
+			const inaccessibleAffectedIds = new Set<string>();
 
 			const versionsOf = (type: ResolvedDependency['type'], id: string) => {
 				if (!includeVersions) return {};
@@ -532,6 +533,7 @@ export class WorkflowDependencyQueryService {
 					});
 				} else {
 					inaccessibleCount++;
+					inaccessibleAffectedIds.add(`agent:${id}`);
 				}
 			}
 
@@ -579,6 +581,9 @@ export class WorkflowDependencyQueryService {
 						});
 					} else {
 						inaccessibleCount++;
+						if (type === 'workflowParent' || type === 'errorWorkflowParent') {
+							inaccessibleAffectedIds.add(`workflow:${id}`);
+						}
 					}
 				}
 			};
@@ -610,7 +615,13 @@ export class WorkflowDependencyQueryService {
 				}
 			}
 
-			result[resourceId] = { dependencies, inaccessibleCount };
+			result[resourceId] = {
+				dependencies,
+				inaccessibleCount,
+				...(inaccessibleAffectedIds.size > 0
+					? { inaccessibleAffectedCount: inaccessibleAffectedIds.size }
+					: {}),
+			};
 		}
 
 		return result;

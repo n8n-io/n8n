@@ -129,6 +129,7 @@ export function toExecutionSnapshot(
 		graph: record.graph,
 		workflow: record.workflow,
 		parent: record.parent,
+		errorSource: record.errorSource,
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
 		finishedAt: record.finishedAt?.toISOString() ?? null,

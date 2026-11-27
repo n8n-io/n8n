@@ -1,12 +1,23 @@
 import { N8nDialog } from '@n8n/design-system';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 
 import RestrictReviewDialog from './RestrictReviewDialog.vue';
-import { useRestrictReviewStore, type RestrictReviewRequest } from './restrict-review.store';
+import {
+	useRestrictReviewStore,
+	type BulkRestrictReviewRequest,
+	type RestrictReviewRequest,
+} from './restrict-review.store';
+
+const { track } = vi.hoisted(() => ({ track: vi.fn() }));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost', pushRef: 'test' } }),
@@ -141,6 +152,83 @@ describe('RestrictReviewDialog', () => {
 		await waitFor(() => expect(resolve).toHaveBeenCalledWith(false));
 	});
 
+	describe('telemetry', () => {
+		const reviewedEvent = TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_REVIEWED_TYPE_RESTRICTION;
+
+		it('reports a confirm with the type and its usage', async () => {
+			open(notion);
+
+			await userEvent.click(await screen.findByRole('button', { name: 'Restrict' }));
+
+			expect(track).toHaveBeenCalledTimes(1);
+			expect(track).toHaveBeenCalledWith(reviewedEvent, {
+				kind: 'node-types',
+				type_name: 'n8n-nodes-base.notion',
+				decision: 'confirm',
+				use_count: 3,
+				workflow_count: 2,
+				active_workflow_count: 0,
+			});
+		});
+
+		it('reports a cancel by Escape, with unknown counts', async () => {
+			open({ ...notion, kind: 'credential', name: 'notionApi', usage: null });
+
+			await screen.findByTestId('restrict-review-dialog');
+			await userEvent.keyboard('{Escape}');
+
+			await waitFor(() =>
+				expect(track).toHaveBeenCalledWith(reviewedEvent, {
+					kind: 'credential-types',
+					type_name: 'notionApi',
+					decision: 'cancel',
+					use_count: null,
+					workflow_count: null,
+					active_workflow_count: null,
+				}),
+			);
+			expect(track).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			[
+				'the Cancel button',
+				async () => {
+					await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+				},
+			],
+			['a click outside', clickReviewOverlay],
+		])('reports a cancel by %s, with the usage', async (_, cancel) => {
+			open(notion);
+
+			await cancel();
+
+			await waitFor(() =>
+				expect(track).toHaveBeenCalledWith(reviewedEvent, {
+					kind: 'node-types',
+					type_name: 'n8n-nodes-base.notion',
+					decision: 'cancel',
+					use_count: 3,
+					workflow_count: 2,
+					active_workflow_count: 0,
+				}),
+			);
+			expect(track).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not report a review that the page cancels', async () => {
+			open(notion);
+			await screen.findByTestId('restrict-review-dialog');
+
+			useRestrictReviewStore().cancelAll();
+
+			await waitFor(() =>
+				expect(screen.queryByTestId('restrict-review-dialog')).not.toBeInTheDocument(),
+			);
+			expect(track).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('above an access dialog', () => {
 		function openStacked() {
 			const review = useRestrictReviewStore();
@@ -180,5 +268,76 @@ describe('RestrictReviewDialog', () => {
 		await userEvent.keyboard('{Escape}');
 
 		expect(resolve).toHaveBeenCalledWith(false);
+	});
+
+	describe('bulk restriction', () => {
+		const bulk: BulkRestrictReviewRequest = {
+			kind: 'node',
+			total: 5,
+			items: [
+				{ name: 'n8n-nodes-base.notion', label: 'Notion', usage: notion.usage },
+				{ name: 'n8n-nodes-base.slack', label: 'Slack', usage: null },
+			],
+		};
+
+		function openBulk(request: BulkRestrictReviewRequest) {
+			const review = useRestrictReviewStore();
+			review.bulkRequest = request;
+			const resolve = vi.spyOn(review, 'resolve');
+			renderComponent();
+			return { resolve };
+		}
+
+		it('lists each type in use with its usage, and the types with no known usage', async () => {
+			openBulk(bulk);
+
+			await waitFor(() => expect(screen.getByText('Restrict 5 nodes?')).toBeInTheDocument());
+			expect(
+				screen.getByText(
+					// Slack has its own line, but its usage is not known, so it does not count as in use.
+					"Users won't be able to add or use these nodes. 1 of the 5 selected items is currently used:",
+				),
+			).toBeInTheDocument();
+			expect(
+				screen.getByText('Notion: 3 uses across 2 workflows, 0 active workflows'),
+			).toBeInTheDocument();
+			expect(
+				screen.getByText('Slack: the usage could not be loaded, so it may be in use'),
+			).toBeInTheDocument();
+		});
+
+		it('counts each type in use', async () => {
+			openBulk({
+				...bulk,
+				items: bulk.items.map((item) => ({ ...item, usage: notion.usage })),
+			});
+
+			expect(
+				await screen.findByText(
+					"Users won't be able to add or use these nodes. 2 of the 5 selected items are currently used:",
+				),
+			).toBeInTheDocument();
+		});
+
+		it('uses the credential text', async () => {
+			openBulk({ ...bulk, kind: 'credential' });
+
+			expect(await screen.findByText('Restrict 5 credential types?')).toBeInTheDocument();
+		});
+
+		it('confirms with the count, and reports no single-type review', async () => {
+			const { resolve } = openBulk(bulk);
+
+			await userEvent.click(await screen.findByRole('button', { name: 'Restrict 5' }));
+			expect(resolve).toHaveBeenCalledWith(true);
+			expect(track).not.toHaveBeenCalled();
+		});
+
+		it('cancels with Cancel', async () => {
+			const { resolve } = openBulk(bulk);
+
+			await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+			expect(resolve).toHaveBeenCalledWith(false);
+		});
 	});
 });

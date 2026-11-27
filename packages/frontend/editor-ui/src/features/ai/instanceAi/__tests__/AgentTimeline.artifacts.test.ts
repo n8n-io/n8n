@@ -9,7 +9,7 @@ import { INSTANCE_AI_EMBED_SUBJECT_KEY } from '../embed/instanceAiEmbed.types';
 const renderComponent = createThreadComponentRenderer(AgentTimeline, {
 	global: {
 		stubs: {
-			ThinkingBlock: { template: '<div />' },
+			AiActivityTrace: { template: '<div />' },
 			AgentSection: { template: '<div />' },
 			TimelineTextSegment: { template: '<div />' },
 		},
@@ -123,7 +123,7 @@ describe('AgentTimeline artifact cards', () => {
 			props: { agentNode },
 			global: {
 				stubs: {
-					ThinkingBlock: { template: '<div data-test-id="activity" />' },
+					AiActivityTrace: { template: '<div data-test-id="activity" />' },
 					TimelineTextSegment: {
 						props: ['entry'],
 						template: '<div data-test-id="answer-text">{{ entry.content }}</div>',
