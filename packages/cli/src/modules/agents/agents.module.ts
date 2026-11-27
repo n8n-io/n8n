@@ -288,6 +288,7 @@ export class AgentsModule implements ModuleInterface {
 			sandboxEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
 			sandboxEgressPolicy: config.sandboxEgressPolicy,
 			proxyEnabled,
+			maxImportBytes: config.maxImportMb * 1024 * 1024,
 		};
 	}
 

@@ -141,6 +141,19 @@ function warningKey(warning: AgentChatWarning): string {
 	return JSON.stringify([warning.code ?? '', warning.server ?? '', warning.message]);
 }
 
+/** The `message` of a JSON error response, such as a rejected upload. */
+async function readErrorMessage(response: Response): Promise<string | undefined> {
+	if (!response.headers.get('content-type')?.includes('application/json')) return undefined;
+	try {
+		const body: unknown = await response.json();
+		return isRecord(body) && typeof body.message === 'string' && body.message
+			? body.message
+			: undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
 	const extensions = params.interactionExtensions ?? [];
@@ -1708,7 +1721,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	async function postAndConsume(
 		url: string,
-		body: Record<string, unknown>,
+		body: Record<string, unknown> | FormData,
 		onAccepted?: (queueId?: string) => void,
 		userMessage?: ChatMessage,
 		waitForStart = false,
@@ -1746,17 +1759,26 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 		try {
 			const browserId = localStorage.getItem('n8n-browserId') ?? '';
+			const isForm = body instanceof FormData;
 			const response = await fetch(url, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', 'browser-id': browserId },
+				// The browser sets the multipart Content-Type with its boundary.
+				headers: isForm
+					? { 'browser-id': browserId }
+					: { 'Content-Type': 'application/json', 'browser-id': browserId },
 				credentials: 'include',
-				body: JSON.stringify(body),
+				body: isForm ? body : JSON.stringify(body),
 				signal: controller.signal,
 			});
 			if (!isCurrent() || controller.signal.aborted) return { outcome: 'aborted' };
 			if (!response.ok || !response.body) {
 				handleEvent(
-					{ type: 'error', message: response.statusText || 'Failed to reach agent' },
+					{
+						type: 'error',
+						message:
+							(await readErrorMessage(response)) ??
+							(response.statusText || 'Failed to reach agent'),
+					},
 					session,
 				);
 				return { outcome: 'failed' };
@@ -1855,7 +1877,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (newSession) body.newSession = true;
 		}
 		if (clientContext) body.clientContext = clientContext;
-		if (files?.length) {
+		if (files?.length && channel.value === 'system') {
+			// System agents take files as multipart parts, so files can be larger than
+			// the JSON body limit and skip the base64 encoding.
+			const form = new FormData();
+			form.append('payload', JSON.stringify(body));
+			for (const file of files) form.append('files', file, file.name);
+			if (disposed || target !== targetKey()) return { outcome: 'aborted' };
+			return await finishChatRequest(await postAndConsume(url, form, onAccepted, userMessage));
+		} else if (files?.length) {
 			body.attachments = await Promise.all(
 				files.map(async (file) => {
 					const encoded = await convertFileToBinaryData(file);
@@ -1870,17 +1900,21 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			);
 		}
 		if (disposed || target !== targetKey()) return { outcome: 'aborted' };
-		const result = await postAndConsume(url, body, onAccepted, userMessage);
-		if (
-			newSession &&
-			params.newSession?.value === true &&
-			sessionId &&
-			sessionId === params.continueSessionId?.value &&
-			sessionId !== acknowledgedSessionId
-		) {
-			await refreshHistory({ silent: true });
+		return await finishChatRequest(await postAndConsume(url, body, onAccepted, userMessage));
+
+		/** A new session refreshes its history once the server knows it. */
+		async function finishChatRequest(result: { outcome: StreamOutcome }) {
+			if (
+				newSession &&
+				params.newSession?.value === true &&
+				sessionId &&
+				sessionId === params.continueSessionId?.value &&
+				sessionId !== acknowledgedSessionId
+			) {
+				await refreshHistory({ silent: true });
+			}
+			return result;
 		}
-		return result;
 	}
 
 	/**
