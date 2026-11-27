@@ -135,10 +135,15 @@ describe('AgentTestChatPage', () => {
 	it('sends an explicit initialPrompt when provided', async () => {
 		mountPage({
 			showTestScenarios: true,
-			initialPrompt: 'Run scheduled check',
+			initialPrompt: { text: 'Run scheduled check' },
 		});
 		await flushPromises();
 
-		expect(sendMessageFromOutsideMock).toHaveBeenCalledWith('Run scheduled check');
+		expect(sendMessageFromOutsideMock).toHaveBeenCalledWith(
+			'Run scheduled check',
+			undefined,
+			undefined,
+			undefined,
+		);
 	});
 });

@@ -906,6 +906,16 @@ const agentPreviewChatMessageShape = {
 	 * stays one. Absent or `live` runs the draft against real services.
 	 */
 	mode: agentChatModeSchema.optional(),
+	/**
+	 * Test a schedule. The server sends the message as that task's scheduled run
+	 * would, and runs the turn without background tasks. Needs `newSession`.
+	 */
+	taskId: z.string().min(1).optional(),
+	/**
+	 * The unsaved timezone of the tested task. `null` is the instance timezone.
+	 * Omit it to use the saved timezone.
+	 */
+	taskTimezone: agentTaskSchema.shape.timezone,
 };
 
 /** Rules that every chat message DTO applies on top of its shape. */
@@ -936,33 +946,18 @@ const hasTaskIdForTaskTimezone = {
 	options: { message: 'A task timezone needs a task ID', path: ['taskTimezone'] },
 };
 
-const projectAgentChatMessageShape = {
-	...agentChatMessageShape,
-	/**
-	 * Preview only: test a schedule. The server sends the message as that
-	 * task's scheduled run would, and runs the turn without background tasks.
-	 * Needs `newSession`. n8n Chat ignores it.
-	 */
-	taskId: z.string().min(1).optional(),
-	/**
-	 * The unsaved timezone of the tested task. `null` is the instance timezone.
-	 * Omit it to use the saved timezone.
-	 */
-	taskTimezone: agentTaskSchema.shape.timezone,
-};
-
 const agentChatMessageSchema = z
-	.object(projectAgentChatMessageShape)
+	.object(agentChatMessageShape)
+	.refine(hasMessageContent.check, hasMessageContent.options)
+	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
+
+const agentPreviewChatMessageSchema = z
+	.object(agentPreviewChatMessageShape)
 	.refine(hasMessageContent.check, hasMessageContent.options)
 	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options)
 	.refine(hasNewSessionForTaskId.check, hasNewSessionForTaskId.options)
 	.refine(hasOnlyObjectiveForTaskId.check, hasOnlyObjectiveForTaskId.options)
 	.refine(hasTaskIdForTaskTimezone.check, hasTaskIdForTaskTimezone.options);
-
-const agentPreviewChatMessageSchema = z
-	.object(agentPreviewChatMessageShape)
-	.refine(hasMessageContent.check, hasMessageContent.options)
-	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
 
 /**
  * A UUID in canonical lowercase form. Use it where an id becomes part of a
@@ -1009,7 +1004,7 @@ const systemAgentChatMessageSchema = z
  * static cannot hold the refinement (a `ZodEffects` is not assignable to the
  * base class's `ZodObject`) and misses the text-or-attachment invariant.
  */
-export class AgentChatMessageDto extends Z.class(projectAgentChatMessageShape) {
+export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 	constructor(data: z.infer<typeof agentChatMessageSchema>) {
 		super(agentChatMessageSchema.parse(data));
 	}

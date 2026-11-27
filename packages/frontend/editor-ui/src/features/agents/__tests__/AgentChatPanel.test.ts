@@ -3565,6 +3565,7 @@ describe('AgentChatPanel', () => {
 			undefined,
 			expect.any(Function),
 			undefined,
+			undefined,
 		);
 		sendMessageMock.mock.lastCall?.[2]?.();
 		response.resolve('sent');
@@ -3595,6 +3596,7 @@ describe('AgentChatPanel', () => {
 			'Handed off prompt',
 			undefined,
 			expect.any(Function),
+			undefined,
 			undefined,
 		);
 		const onAccepted = sendMessageMock.mock.lastCall?.[2];
