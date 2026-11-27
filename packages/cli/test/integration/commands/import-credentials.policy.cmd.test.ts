@@ -3,7 +3,13 @@
  * so a second `init()` in the same file would throw.
  */
 import { Logger } from '@n8n/backend-common';
-import { getPersonalProject, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getPersonalProject,
+	mockInstance,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES, type BooleanLicenseFeature } from '@n8n/constants';
 import { PolicyCheckMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -50,7 +56,8 @@ afterAll(async () => {
 test('import:credentials skips blocked credentials and imports the rest', async () => {
 	const owner = await createOwner();
 	const ownerProject = await getPersonalProject(owner);
-	const otherProject = await getPersonalProject(await createMember());
+	// A team project, because only a team project can have a policy.
+	const otherProject = await createTeamProject('Other project', await createMember());
 	await createCredentials(
 		{ id: 'stored-github', name: 'old', type: BLOCKED, data: '' },
 		ownerProject,
