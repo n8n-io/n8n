@@ -14,7 +14,7 @@ import { render } from '@testing-library/vue';
  */
 describe('design-system icons', () => {
 	it.each([
-		['a lucide icon', 'box'],
+		['a lucide icon', 'gem'],
 		['a custom svg icon', 'webhook'],
 	])('renders %s', (_case, icon) => {
 		const { container } = render(N8nIcon, { props: { icon } });
