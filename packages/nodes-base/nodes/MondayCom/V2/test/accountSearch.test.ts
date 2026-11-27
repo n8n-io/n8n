@@ -4,7 +4,6 @@ import {
 	flattenSearchResults,
 	SEARCH_MAX_LIMIT,
 	SEARCH_OPERATION_ENTITY,
-	SEARCH_OPERATION_VALUES,
 } from '../helpers/accountSearch';
 
 describe('accountSearch', () => {
@@ -31,8 +30,9 @@ describe('accountSearch', () => {
 		});
 
 		it('maps every operation value to a known entity with query support', () => {
-			expect(SEARCH_OPERATION_VALUES).toHaveLength(3);
-			for (const operation of SEARCH_OPERATION_VALUES) {
+			const operations = Object.keys(SEARCH_OPERATION_ENTITY);
+			expect(operations).toHaveLength(3);
+			for (const operation of operations) {
 				const entity = SEARCH_OPERATION_ENTITY[operation];
 				const plan = buildAccountSearchPlan('q', [entity], false, 5);
 				expect(plan.query).toContain(`${entity}(query: $q, limit: $limit)`);

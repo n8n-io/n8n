@@ -1,11 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
-import { boardFields, boardOperations } from './board/BoardDescription';
-import { columnFields, columnOperations } from './column/ColumnDescription';
-import { groupFields, groupOperations } from './group/GroupDescription';
-import { itemFields, itemOperations } from './item/ItemDescription';
-import { updateFields, updateOperations } from './update/UpdateDescription';
+import * as board from './board';
+import * as column from './column';
+import * as group from './group';
+import * as item from './item';
+import * as update from './update';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Monday.com',
@@ -74,15 +74,10 @@ export const versionDescription: INodeTypeDescription = {
 			],
 			default: 'item',
 		},
-		...boardOperations,
-		...columnOperations,
-		...groupOperations,
-		...itemOperations,
-		...updateOperations,
-		...boardFields,
-		...columnFields,
-		...groupFields,
-		...itemFields,
-		...updateFields,
+		...board.description,
+		...column.description,
+		...group.description,
+		...item.description,
+		...update.description,
 	],
 };

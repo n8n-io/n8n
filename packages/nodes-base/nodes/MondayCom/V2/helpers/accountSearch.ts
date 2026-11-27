@@ -39,9 +39,6 @@ export const SEARCH_OPERATION_ENTITY: Record<string, string> = {
 	searchUpdatesAccount: 'updates',
 };
 
-/** All Search operation values — for shared displayOptions in the node. */
-export const SEARCH_OPERATION_VALUES = Object.keys(SEARCH_OPERATION_ENTITY);
-
 /** SearchStrategy enum (introspected live). */
 export const SEARCH_STRATEGY_OPTIONS: INodePropertyOptions[] = [
 	{
