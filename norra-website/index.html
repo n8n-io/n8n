@@ -4122,7 +4122,7 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
     </div>
   </div>
 </footer>
-<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = 'd618799a73';</script>
+<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = '4c666a5980';</script>
 <script>
 /* ===== src/core.js ===== */
 /* =========================================================================
@@ -9994,17 +9994,17 @@ NORRA.start.INDUSTRIES = [
   ['Physiotherapie', 'users', 'praxis', 'praxen', 'Absagen hinterlassen leere Plätze.',
     [['v', 'Füllt Absagen aus der Warteliste.'], ['c', 'Klärt Verordnung und Anfahrt.'], ['v', 'Erinnert vor dem Termin.']], 38, 'vc'],
   ['Autowerkstätten', 'startWrench', 'werkstatt', 'werkstatt', 'In der Halle hört niemand das Telefon.',
-    [['v', 'Fragt Kennzeichen ab und bucht.'], ['c', 'Auskunft zu Service und Reifen.'], ['v', 'Meldet, wenn das Auto fertig ist.']], 44, 'vc'],
+    [['v', 'Fragt Kennzeichen ab und bucht.'], ['c', 'Auskunft zu Service und Reifen.'], ['v', 'Meldet, wenn das Auto fertig ist.']], 38, 'vc'],
   ['Handwerksbetriebe', 'building', 'handwerk', 'handwerk', 'Auf der Baustelle bleibt das Telefon stumm.',
     [['v', 'Erkennt Notfälle, leitet sofort weiter.'], ['c', 'Erfasst Ort, Gewerk, Dringlichkeit.'], ['v', 'Fasst bei Angeboten nach.']], 36, 'vc'],
   ['Immobilienmakler', 'startHome', 'makler', 'immobilien', 'Jedes Inserat bringt dieselben Fragen.',
-    [['v', 'Vergibt Besichtigungstermine.'], ['c', 'Qualifiziert nach Budget vor.'], ['s', 'Antwortet unter Objektbeiträgen.']], 46, 'vcs'],
+    [['v', 'Vergibt Besichtigungstermine.'], ['c', 'Qualifiziert nach Budget vor.'], ['s', 'Antwortet unter Objektbeiträgen.']], 38, 'vcs'],
   ['Fitnessstudios', 'startDumbbell', 'fitness', 'fitness', 'Das Team betreut Mitglieder, nicht das Telefon.',
-    [['c', 'Bucht das Probetraining.'], ['s', 'Beantwortet DMs zum Kursplan.'], ['v', 'Nimmt Anrufe ausserhalb der Zeiten an.']], 33, 'csv'],
+    [['c', 'Bucht das Probetraining.'], ['s', 'Beantwortet DMs zum Kursplan.'], ['v', 'Nimmt Anrufe ausserhalb der Zeiten an.']], 31, 'csv'],
   ['Kanzleien & Steuerberatung', 'scroll', 'kanzlei', 'kanzleien', 'Erstanfragen binden das Sekretariat.',
-    [['v', 'Prüft, ob das Rechtsgebiet passt.'], ['c', 'Erklärt Ablauf und Kosten.'], ['v', 'Erinnert an fehlende Unterlagen.']], 30, 'vc'],
+    [['v', 'Prüft, ob das Rechtsgebiet passt.'], ['c', 'Erklärt Ablauf und Kosten.'], ['v', 'Erinnert an fehlende Unterlagen.']], 24, 'vc'],
   ['Tierarztpraxen', 'heart', 'praxis', 'tierarzt', 'Besorgte Halter brauchen sofort Auskunft.',
-    [['v', 'Erkennt Notfälle, verbindet sofort.'], ['c', 'Beantwortet Fragen zu Impfungen.'], ['v', 'Erinnert an Impftermine, mit Einwilligung.']], 41, 'vc']
+    [['v', 'Erkennt Notfälle, verbindet sofort.'], ['c', 'Beantwortet Fragen zu Impfungen.'], ['v', 'Erinnert an Impftermine, mit Einwilligung.']], 38, 'vc']
 ];
 NORRA.start.indPanel = function (n) {
   var A = NORRA.start.AGENTS;
@@ -13149,10 +13149,10 @@ NORRA.branchen.DATA.forEach(function (n) {
     ],
     uses: [['voice-agent', 'Anrufe in der Sprechstunde', 'Termine gebucht, Dringendes ans Team.'],
       ['chatbot', 'Rezeptwünsche und Fragen', 'Aufgenommen und ans Team übergeben.'],
-      ['chatbot', 'Erinnerung und Recall', 'Per WhatsApp, frei gewordene Termine neu vergeben.']],
+      ['chatbot', 'Erinnerung und Recall', 'Per WhatsApp mit Einwilligung, frei gewordene Termine neu vergeben.']],
     recs: [['voice-agent', 'Erste Wahl', 'Nimmt Anrufe an, bucht und verschiebt.'], ['chatbot', 'Empfohlen', 'Öffnungszeiten, Rezeptwünsche, Erinnerungen.'],
       ['website', 'Ergänzung', 'Praxisseite mit Online-Terminen.']],
-    groups: ['kalender-termine', 'telefonie-rufnummern'], save: { hours: 38, rate: 55 }, typeFor: 'für eine Arzt- oder Therapiepraxis'
+    groups: ['kalender-termine', 'nachrichten-kanaele'], save: { hours: 38, rate: 55 }, typeFor: 'für eine Arzt- oder Therapiepraxis'
   };
 
   n.description = n.lede;
@@ -13164,7 +13164,7 @@ NORRA.branchen.DATA.forEach(function (n) {
   /* Short note on medical limits at the end of the stage section (same .br-safe-note as Tierarzt and Kanzleien). */
   B.praxenGuard = function () {
     return '<p class="note center br-safe-note">' + NORRA.ico('shield', 14) +
-      '<span>Der Agent stellt keine Diagnosen und gibt keinen medizinischen Rat. Dringendes geht an Ihr Team oder an den Notruf. ' +
+      '<span>Der Agent stellt keine Diagnosen und gibt keinen medizinischen Rat. Dringendes geht an Ihr Team, bei Notfällen verweist er auf den Notruf. ' +
       'Gesundheitsdaten verarbeiten Sie in Ihrer Verantwortung.</span></p>';
   };
 
@@ -13222,7 +13222,7 @@ NORRA.brWerkstatt.build = function (S, CALL) {
       ['social-media', 'Google-Bewertungen', 'Antworten entworfen, Sie geben frei.']],
     recs: [['voice-agent', 'Erste Wahl', 'Nimmt Anrufe an, während Sie schrauben.'], ['chatbot', 'Empfohlen', 'Status und Termine per WhatsApp und Website.'],
       ['website', 'Ergänzung', 'Leistungen und Online-Termin an einem Ort.'], ['social-media', 'Ergänzung', 'Antwortet auf Bewertungen, mit Freigabe.']],
-    groups: ['kalender-termine', 'nachrichten-kanaele'], save: { hours: 38, rate: 60 }, typeFor: 'für eine Autowerkstatt'
+    groups: ['kalender-termine', 'nachrichten-kanaele'], save: { hours: 38, rate: 70 }, typeFor: 'für eine Autowerkstatt'
   };
 };
 
@@ -13281,7 +13281,7 @@ NORRA.brHandwerk.build = function (S, CALL) {
       ['chatbot', 'Offerten nachfassen', 'Fragen gesammelt, ans Büro übergeben.']],
     recs: [['voice-agent', 'Erste Wahl', 'Nimmt Anrufe an, während Sie arbeiten.'], ['chatbot', 'Empfohlen', 'Erfasst Aufträge mit Fotos.'],
       ['website', 'Empfohlen', 'Leistungen, Region und Anfrage an einem Ort.'], ['social-media', 'Ergänzung', 'Zeigt Arbeiten, beantwortet DMs.']],
-    groups: ['kalender-termine', 'nachrichten-kanaele'], save: { hours: 36, rate: 80 }, typeFor: 'für einen Handwerksbetrieb'
+    groups: ['kalender-termine', 'nachrichten-kanaele'], save: { hours: 36, rate: 75 }, typeFor: 'für einen Handwerksbetrieb'
   };
 };
 
@@ -13316,7 +13316,7 @@ if (NORRA.branchen && NORRA.branchen.S && NORRA.branchen.renderPage) {
   NORRA.branchen.immobilienBuild = function (S, CALL) {
     return {
       slug: 'immobilien', persona: 'immobilien-talwiese', name: 'Immobilien', icon: 'building', color: 'var(--chart-2)', tint: 'mist',
-      tagline: 'Jede Objektanfrage beantwortet.', summary: 'Objektanfragen, Besichtigungen und Mieteranliegen, rund um die Uhr.',
+      tagline: 'Objektanfragen beantwortet, auch abends.', summary: 'Objektanfragen, Besichtigungen und Mieteranliegen, rund um die Uhr.',
       lede: 'Anfragen, Besichtigungen und Mieteranliegen, rund um die Uhr.',
       problem: 'Interessenten melden sich abends, nicht zu Bürozeiten.',
       heroGradient: 'linear-gradient(140deg, hsl(212 56% 93%) 0%, hsl(200 36% 93%) 55%, hsl(44 30% 92%) 100%)',
@@ -13436,7 +13436,7 @@ if (NORRA.branchen && NORRA.branchen.S && !NORRA.industryBySlug('kanzleien')) {
 
   NORRA.branchen.kanzleien = {
     slug: 'kanzleien', persona: 'kanzlei-steinmatt', name: 'Kanzleien und Treuhand', icon: 'scroll', color: 'var(--chart-1)', tint: 'mist',
-    tagline: 'Neue Mandate, sauber aufgenommen.', summary: 'Mandatsanfragen aufgenommen, Erstgespräche gebucht.',
+    tagline: 'Mandatsanfragen, sauber aufgenommen.', summary: 'Mandatsanfragen aufgenommen, Erstgespräche gebucht.',
     lede: 'Anliegen, Fristen und Unterlagen erfasst, bevor Sie zum Hörer greifen.',
     problem: 'In der Fristensaison klingelt es, während Sie Akten bearbeiten.',
     heroGradient: 'linear-gradient(140deg, hsl(212 40% 93%) 0%, hsl(212 56% 94%) 55%, hsl(40 24% 92%) 100%)',
@@ -13453,7 +13453,7 @@ if (NORRA.branchen && NORRA.branchen.S && !NORRA.industryBySlug('kanzleien')) {
         'a:Das beurteilt Ihr Treuhänder. Ich melde Sie für einen Rückruf morgen früh an.|Norra Chatbot',
         'n:Keine Rechts- oder Steuerauskunft durch den Agent'], { icon: 'shield', text: 'An Ihr Team' })
     ],
-    uses: [['voice-agent', 'Neue Mandate aufnehmen', 'Anliegen, Frist und Kontakt erfasst.'],
+    uses: [['voice-agent', 'Mandatsanfragen aufnehmen', 'Anliegen, Frist und Kontakt erfasst.'],
       ['chatbot', 'Unterlagen vorbereitet', 'Checkliste vor dem Erstgespräch.'],
       ['chatbot', 'Fragen in der Hochsaison', 'Keine Auskunft, sauber weitergeleitet.']],
     recs: [['voice-agent', 'Erste Wahl', 'Nimmt Mandatsanfragen auf und bucht Erstgespräche.'],
@@ -13473,7 +13473,7 @@ if (NORRA.branchen && NORRA.branchen.S && !NORRA.industryBySlug('kanzleien')) {
     var B = NORRA.branchen, n = B.kanzleien;
     /* short limits note at the end of the stage section (same .br-safe-note as Praxen and Tierarzt) */
     var stage = B.stageSection(n).replace(/<\/section>$/, '<p class="note center br-safe-note">' + NORRA.ico('shield', 14) +
-      '<span>Der Agent gibt keine Rechts- oder Steuerauskunft, er nimmt auf und bucht.</span></p></section>');
+      '<span>Der Agent gibt keine Rechts- oder Steuerauskunft, er nimmt auf und bucht. Mandantendaten verarbeiten Sie in Ihrer Verantwortung.</span></p></section>');
     el.innerHTML = B.hero(n) + stage + B.recs(n) + B.results(n) +
       NORRA.ctaBlock({ title: 'Bereit für Ihren ersten Agent?',
         primary: { label: 'Demo anfragen', href: '#kontakt', arrow: true, attrs: B.prefill(n.slug) },
@@ -13508,7 +13508,7 @@ NORRA.personas['praxis-am-bach'] = NORRA.personas['praxis-am-bach'] ||
 NORRA.tierarzt.build = function (S, CALL) {
   return {
     slug: 'tierarzt', persona: 'praxis-am-bach', name: 'Tierarztpraxen', icon: 'paw', color: 'var(--chart-5)', tint: 'sand',
-    tagline: 'Erreichbar, auch nach der Sprechstunde.', summary: 'Termine, Impferinnerungen und Notfälle richtig weitergeleitet.',
+    tagline: 'Erreichbar, auch nach der Sprechstunde.', summary: 'Termine, Impferinnerungen und Notfälle direkt weitergeleitet.',
     lede: 'Termine gebucht, Impfungen erinnert, Notfälle sofort weitergeleitet.',
     problem: 'Während der Behandlung bleibt das Telefon liegen.',
     heroGradient: 'linear-gradient(140deg, hsl(160 30% 92%) 0%, hsl(212 56% 94%) 55%, hsl(40 36% 93%) 100%)',
@@ -13522,7 +13522,7 @@ NORRA.tierarzt.build = function (S, CALL) {
     ],
     uses: [['voice-agent', 'Nach Praxisschluss', 'Notfälle direkt an den Notfalldienst.'],
       ['chatbot', 'Fragen von Tierhaltern', 'Allgemeines beantwortet, Medizinisches ans Team.'],
-      ['chatbot', 'Impferinnerungen', 'Per WhatsApp, mit Terminvorschlag.']],
+      ['chatbot', 'Impferinnerungen', 'Per WhatsApp, mit Einwilligung und Terminvorschlag.']],
     recs: [['voice-agent', 'Erste Wahl', 'Nimmt Anrufe an, leitet Notfälle weiter.'], ['chatbot', 'Empfohlen', 'Beantwortet Fragen, erinnert an Impfungen.'],
       ['website', 'Ergänzung', 'Praxisseite mit Online-Termin.']],
     safety: 'Der Agent stellt keine Diagnosen und gibt keine medizinischen Ratschläge. Dringendes geht an Ihr Team oder den Notfalldienst. Die Daten Ihrer Kundschaft verarbeiten Sie in eigener Verantwortung.',
