@@ -3,7 +3,11 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
-import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '@/app/constants';
+import {
+	MANUAL_TRIGGER_NODE_TYPE,
+	SET_NODE_TYPE,
+	SPLIT_IN_BATCHES_NODE_TYPE,
+} from '@/app/constants';
 import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -433,7 +437,178 @@ describe(useNodeDirtiness, () => {
 				c: CanvasNodeDirtiness.PARAMETERS_UPDATED,
 			});
 		});
+
+		// CAP-232: Changing a node downstream of a completed loop must not mark the loop dirty.
+		it('should not mark a completed loop as dirty when a node directly downstream of the loop is modified', () => {
+			setupCompletedLoopWorkflow();
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.afterLoop.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				afterLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		// CAP-232: Changing a node further downstream of a completed loop must not mark the loop dirty.
+		it('should not mark a completed loop as dirty when a node further downstream of the loop is modified', () => {
+			setupCompletedLoopWorkflow();
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.finalNode.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				finalNode: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should mark the loop entry node as dirty when a node inside a completed loop is modified', () => {
+			setupCompletedLoopWorkflow();
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.inLoop.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				loop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				inLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
 	});
+
+	/**
+	 * Sets up a workflow with a completed SplitInBatches loop and downstream nodes:
+	 * trigger -> loop --(done: 0)--> afterLoop -> finalNode
+	 *                 --(loop: 1)--> inLoop -> loop
+	 */
+	function setupCompletedLoopWorkflow() {
+		const trigger = createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE });
+		const loop = createTestNode({ name: 'loop', type: SPLIT_IN_BATCHES_NODE_TYPE });
+		const inLoop = createTestNode({ name: 'inLoop', type: SET_NODE_TYPE });
+		const afterLoop = createTestNode({ name: 'afterLoop', type: SET_NODE_TYPE });
+		const finalNode = createTestNode({ name: 'finalNode', type: SET_NODE_TYPE });
+
+		const connections: IConnections = {
+			trigger: {
+				[NodeConnectionTypes.Main]: [[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }]],
+			},
+			loop: {
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'afterLoop', type: NodeConnectionTypes.Main, index: 0 }],
+					[{ node: 'inLoop', type: NodeConnectionTypes.Main, index: 0 }],
+				],
+			},
+			inLoop: {
+				[NodeConnectionTypes.Main]: [[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }]],
+			},
+			afterLoop: {
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'finalNode', type: NodeConnectionTypes.Main, index: 0 }],
+				],
+			},
+		};
+
+		const runData: IRunData = {
+			trigger: [
+				{
+					startTime: +NODE_RUN_AT,
+					executionTime: 0,
+					executionIndex: 0,
+					executionStatus: 'success',
+					source: [],
+					data: {
+						[NodeConnectionTypes.Main]: [[{ json: { value: 1 } }]],
+					},
+				},
+			],
+			loop: [
+				{
+					startTime: +NODE_RUN_AT,
+					executionTime: 0,
+					executionIndex: 1,
+					executionStatus: 'success',
+					source: [{ previousNode: 'trigger' }],
+					data: {
+						[NodeConnectionTypes.Main]: [[], [{ json: { value: 1 } }]],
+					},
+				},
+				{
+					startTime: +NODE_RUN_AT,
+					executionTime: 0,
+					executionIndex: 3,
+					executionStatus: 'success',
+					source: [{ previousNode: 'inLoop' }],
+					data: {
+						[NodeConnectionTypes.Main]: [[{ json: { value: 1 } }], []],
+					},
+				},
+			],
+			inLoop: [
+				{
+					startTime: +NODE_RUN_AT,
+					executionTime: 0,
+					executionIndex: 2,
+					executionStatus: 'success',
+					source: [{ previousNode: 'loop', previousNodeOutput: 1, previousNodeRun: 0 }],
+					data: {
+						[NodeConnectionTypes.Main]: [[{ json: { value: 1 } }]],
+					},
+				},
+			],
+			afterLoop: [
+				{
+					startTime: +NODE_RUN_AT,
+					executionTime: 0,
+					executionIndex: 4,
+					executionStatus: 'success',
+					source: [{ previousNode: 'loop', previousNodeOutput: 0, previousNodeRun: 1 }],
+					data: {
+						[NodeConnectionTypes.Main]: [[{ json: { value: 1 } }]],
+					},
+				},
+			],
+			finalNode: [
+				{
+					startTime: +NODE_RUN_AT,
+					executionTime: 0,
+					executionIndex: 5,
+					executionStatus: 'success',
+					source: [{ previousNode: 'afterLoop' }],
+					data: {
+						[NodeConnectionTypes.Main]: [[{ json: { value: 1 } }]],
+					},
+				},
+			],
+		};
+
+		const workflow = createTestWorkflow({
+			nodes: [trigger, loop, inLoop, afterLoop, finalNode],
+			connections,
+		});
+
+		const documentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		documentStore.setNodes(workflow.nodes);
+		documentStore.setConnections(workflow.connections);
+
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData({
+			id: workflow.id,
+			finished: true,
+			mode: 'manual',
+			status: 'success',
+			workflowData: workflow,
+			startedAt: NODE_RUN_AT,
+			createdAt: NODE_RUN_AT,
+			data: createRunExecutionData({ resultData: { runData } }),
+		});
+
+		vi.setSystemTime(WORKFLOW_UPDATED_AT);
+	}
 
 	/**
 	 * Setup test data in the workflow store using given diagram.
