@@ -72,6 +72,13 @@ export interface StartExecutionRequest {
 	 * still answer `none`. Defaults to `false`.
 	 */
 	resolveErrorWorkflowOnFailure?: boolean;
+	/**
+	 * When the engine cancels the execution if it has not ended, ISO-8601. The
+	 * host works it out from its timeout settings, which the engine does not
+	 * read. A sub-execution never outlives the deadline of its parent. Missing
+	 * means no timeout.
+	 */
+	deadline?: string;
 }
 
 export interface StartExecutionResult {
@@ -159,6 +166,7 @@ export class StartExecutionService {
 				errorSource: request.errorSource ?? null,
 				resolveErrorWorkflowOnFailure: request.resolveErrorWorkflowOnFailure ?? false,
 				lifecycleEventSubscription: request.lifecycleEventSubscription,
+				deadline: await this.deadlineFor(request),
 			});
 		} catch (error) {
 			endedParentAsInvalid(error);
@@ -176,6 +184,21 @@ export class StartExecutionService {
 		});
 
 		return { executionId };
+	}
+
+	/**
+	 * The requested deadline, or the parent's when that comes first. A
+	 * sub-execution ends with its parent, so it cannot outlive the parent's
+	 * deadline. When the parent's deadline cancels it, the sub-execution also
+	 * reads as timed out.
+	 */
+	private async deadlineFor({ deadline, parent }: StartExecutionRequest): Promise<Date | null> {
+		const own = deadline === undefined ? null : new Date(deadline);
+		if (!parent) return own;
+		const parentDeadline = await this.executionStore.loadDeadline(parent.executionId);
+		if (own === null) return parentDeadline;
+		if (parentDeadline === null) return own;
+		return own < parentDeadline ? own : parentDeadline;
 	}
 
 	/**

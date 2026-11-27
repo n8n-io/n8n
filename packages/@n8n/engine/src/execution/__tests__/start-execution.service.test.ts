@@ -42,6 +42,7 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
+		loadDeadline: vi.fn().mockResolvedValue(null),
 		findStaleQueuedExecutions: vi.fn(),
 		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
@@ -99,6 +100,7 @@ describe('StartExecutionService', () => {
 			parent: null,
 			errorSource: null,
 			resolveErrorWorkflowOnFailure: false,
+			deadline: null,
 		});
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'execution:enqueued',

@@ -23,6 +23,7 @@ function makeExecutionStore(): ExecutionStore {
 		transitionStatus: vi.fn(),
 		finishExecution: vi.fn(),
 		cancelExecution: vi.fn(),
+		loadDeadline: vi.fn().mockResolvedValue(null),
 		findStaleQueuedExecutions: vi.fn(),
 		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),

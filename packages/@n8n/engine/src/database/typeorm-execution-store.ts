@@ -67,6 +67,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			...record,
 			...toParentColumns(parent),
 			...toErrorSourceColumns(errorSource),
+			deadline: record.deadline ?? null,
 			finishedAt: null,
 			staleAfter: this.staleAfterFor(record.status),
 		});
@@ -197,6 +198,12 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		const row = await this.repo.findOne({ select: { status: true }, where: { id } });
 		if (!row) throw new ExecutionNotFoundError(id);
 		return row.status;
+	}
+
+	async loadDeadline(id: string): Promise<Date | null> {
+		const row = await this.repo.findOne({ select: { deadline: true }, where: { id } });
+		if (!row) throw new ExecutionNotFoundError(id);
+		return row.deadline;
 	}
 
 	async transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean> {

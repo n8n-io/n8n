@@ -50,6 +50,8 @@ export type NewExecutionRecord = BaseExecutionRecord & {
 	errorSource: ErrorSourceLink | null;
 	/** Whether a failure of this execution resolves an error workflow. See `StartExecutionRequest`. */
 	resolveErrorWorkflowOnFailure: boolean;
+	/** When the engine cancels the execution if it has not ended. Missing or `null` means no timeout. */
+	deadline?: Date | null;
 };
 
 /**
@@ -149,6 +151,9 @@ export interface ExecutionStore {
 
 	/** Load only an execution's status. Throws `ExecutionNotFoundError` if absent. */
 	loadExecutionStatus(id: string): Promise<ExecutionStatus>;
+
+	/** Load only an execution's deadline, `null` for none. Throws `ExecutionNotFoundError` if absent. */
+	loadDeadline(id: string): Promise<Date | null>;
 
 	/**
 	 * The outputs the caller seeded for the given steps, by step key id. A key
