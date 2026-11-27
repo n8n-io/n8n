@@ -20,6 +20,7 @@ import {
 	type SkillTarget,
 } from '../utils/skill-content';
 import { withSkillWorkflowMentionHint } from '../utils/skill-workflow-mention-hint';
+import { hasWorkflowMentions } from '../utils/skill-workflow-mentions';
 import { SkillAccessService } from './skill-access.service';
 import { WorkflowsInSkillsFlagGate } from './workflows-in-skills-flag-gate';
 
@@ -61,8 +62,7 @@ export class SkillRuntimeService {
 			description: version.description,
 			versionId: version.id,
 			version: version.version,
-			instructions: (await this.withWorkflowMentionHint({ instructions: version.instructions }))
-				.instructions,
+			instructions: await this.withWorkflowMentionHint(version.instructions, skill.projectId),
 			frontmatter: version.frontmatter,
 			files: files.map(({ path }) => ({ path })),
 		};
@@ -86,16 +86,13 @@ export class SkillRuntimeService {
 			skillId,
 			versionId,
 			path: row.file.path,
-			content: (await this.withWorkflowMentionHint({ instructions: row.file.content }))
-				.instructions,
+			content: await this.withWorkflowMentionHint(row.file.content, row.skill.projectId),
 		};
 	}
 
-	async withWorkflowMentionHint<T extends Pick<AgentSkill, 'instructions' | 'references'>>(
-		skill: T,
-	): Promise<T> {
-		if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return skill;
-		return withSkillWorkflowMentionHint(skill);
+	private async withWorkflowMentionHint(text: string, projectId: string | null): Promise<string> {
+		if (projectId === null || !(await this.workflowsInSkillsFlagGate.isEnabled())) return text;
+		return withSkillWorkflowMentionHint({ instructions: text }).instructions;
 	}
 
 	/**
@@ -116,11 +113,13 @@ export class SkillRuntimeService {
 		return new Map<string, SkillTarget>(skills.map(({ id, projectId }) => [id, { projectId }]));
 	}
 
-	async withoutInstanceSkills(
+	async withoutInstanceSkillsWithWorkflows(
 		skills: Record<string, AgentSkill>,
 		ctx: OperationContext = {},
 	): Promise<Record<string, AgentSkill>> {
-		const targets = await this.findTargets(Object.keys(skills), ctx);
+		const mentioningIds = Object.keys(skills).filter((id) => hasWorkflowMentions(skills[id]));
+		if (mentioningIds.length === 0) return skills;
+		const targets = await this.findTargets(mentioningIds, ctx);
 		return Object.fromEntries(
 			Object.entries(skills).filter(([id]) => targets.get(id)?.projectId !== null),
 		);

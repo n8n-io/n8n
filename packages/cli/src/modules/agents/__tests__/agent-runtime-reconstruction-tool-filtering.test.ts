@@ -178,7 +178,7 @@ function makeService(overrides: {
 	const credentialsService = overrides.credentialsService ?? mock<CredentialsService>();
 	const workflowsInSkillsFlagGate = mock<WorkflowsInSkillsFlagGate>();
 	const skillRuntime = mock<SkillRuntimeService>();
-	skillRuntime.withoutInstanceSkills.mockImplementation(async (skills) => skills);
+	skillRuntime.withoutInstanceSkillsWithWorkflows.mockImplementation(async (skills) => skills);
 
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
@@ -1410,13 +1410,13 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 	it('adds no tool and no hint for a mention in an instance skill', async () => {
 		const { service, workflowsInSkillsFlagGate, skillRuntime } = makeService({});
 		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
-		skillRuntime.withoutInstanceSkills.mockResolvedValue({});
+		skillRuntime.withoutInstanceSkillsWithWorkflows.mockResolvedValue({});
 		buildFromJsonResolvingTools([]);
 		const source = makeSkillAgentEntity();
 
 		await service.reconstructFromAgentEntity(source, mock<CredentialProvider>(), 'production');
 
-		expect(skillRuntime.withoutInstanceSkills).toHaveBeenCalledWith(source.skills);
+		expect(skillRuntime.withoutInstanceSkillsWithWorkflows).toHaveBeenCalledWith(source.skills);
 		expect(resolveWorkflowToolMock).not.toHaveBeenCalled();
 		expect(skillInstructionsPassedToBuildFromJson()).toBe(source.skills['skill-1'].instructions);
 	});

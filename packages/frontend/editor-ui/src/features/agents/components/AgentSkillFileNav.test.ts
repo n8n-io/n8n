@@ -138,11 +138,18 @@ describe('AgentSkillFileNav', () => {
 	it('disables the add workflow button of an instance skill and keeps its workflows', () => {
 		flag.enabled = true;
 		const { container } = renderComponent({
-			props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md', instanceSkill: true },
+			props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md' },
 		});
 
 		const disabled = byTestId(container, 'skill-workflow-mention-disabled');
-		expect(disabled?.querySelector('button')).toBeDisabled();
+		expect(disabled).toHaveAttribute('aria-disabled', 'true');
+		expect(disabled).toHaveAttribute(
+			'aria-describedby',
+			byTestId(container, 'agent-skill-workflows-project-only')?.id,
+		);
+		expect(byTestId(container, 'agent-skill-workflows-project-only')).toHaveTextContent(
+			'Workflows work only in project skills.',
+		);
 		expect(byTestId(container, 'picker-stub')).toBeNull();
 		expect(container.querySelectorAll('[data-testid="agent-skill-workflow-item"]')).toHaveLength(2);
 	});
@@ -153,12 +160,12 @@ describe('AgentSkillFileNav', () => {
 			props: {
 				skill: MENTIONING_SKILL,
 				selectedPath: 'SKILL.md',
-				instanceSkill: true,
 				readOnly: true,
 			},
 		});
 
 		expect(byTestId(container, 'skill-workflow-mention-disabled')).toBeNull();
+		expect(byTestId(container, 'agent-skill-workflows-project-only')).toBeNull();
 		expect(byTestId(container, 'picker-stub')).toBeNull();
 	});
 
@@ -375,6 +382,7 @@ describe('AgentSkillFileNav', () => {
 			props: {
 				skill: { ...MENTIONING_SKILL, instructions: 'No links', references: [] },
 				selectedPath: 'SKILL.md',
+				mentionProjectId: 'p1',
 			},
 		});
 
@@ -384,7 +392,7 @@ describe('AgentSkillFileNav', () => {
 	it('emits the workflow that the user adds', async () => {
 		flag.enabled = true;
 		const { container, emitted } = renderComponent({
-			props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md' },
+			props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md', mentionProjectId: 'p1' },
 		});
 
 		await fireEvent.click(byTestId(container, 'picker-stub')!);

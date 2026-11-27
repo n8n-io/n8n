@@ -455,7 +455,7 @@ export class AgentValidationService {
 		}
 		return findSkillWorkflowTools(
 			ctx.config,
-			await this.skillRuntime.withoutInstanceSkills(ctx.skills),
+			await this.skillRuntime.withoutInstanceSkillsWithWorkflows(ctx.skills),
 		);
 	}
 

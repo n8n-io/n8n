@@ -821,7 +821,7 @@ export class AgentRuntimeReconstructionService {
 			legacyRefs,
 			projectId,
 		);
-		const projectSkills = await this.skillRuntime.withoutInstanceSkills(skills);
+		const projectSkills = await this.skillRuntime.withoutInstanceSkillsWithWorkflows(skills);
 		const withTools = withSkillWorkflowTools(config, projectSkills, legacyWorkflows);
 		return {
 			config: withTools.config,

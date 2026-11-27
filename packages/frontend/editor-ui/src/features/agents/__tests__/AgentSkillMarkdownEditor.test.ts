@@ -315,10 +315,11 @@ describe('AgentSkillMarkdownEditor', () => {
 	});
 
 	it('types a plain @ in an instance skill', async () => {
-		const { editor } = await mountEditor({ mentionProjectId: undefined });
+		const { wrapper, editor } = await mountEditor({ mentionProjectId: undefined });
 
 		await typeMentionTrigger(editor);
 
+		expect(wrapper.findComponent(PickerStub).exists()).toBe(false);
 		expect(editor.getMarkdown()).toBe('Intro @');
 	});
 

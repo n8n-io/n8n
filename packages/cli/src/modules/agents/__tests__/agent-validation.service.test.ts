@@ -91,7 +91,7 @@ function makeService() {
 	const workflowsInSkillsFlagGate = mock<WorkflowsInSkillsFlagGate>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const skillRuntime = mock<SkillRuntimeService>();
-	skillRuntime.withoutInstanceSkills.mockImplementation(async (skills) => skills);
+	skillRuntime.withoutInstanceSkillsWithWorkflows.mockImplementation(async (skills) => skills);
 	return {
 		service: new AgentValidationService(
 			agentRepository,
@@ -1870,7 +1870,7 @@ describe('AgentValidationService — structured issues', () => {
 		it('reports nothing for a workflow that an instance skill mentions', async () => {
 			const { service, workflowRepository, skillRuntime } = mentionSetup();
 			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([draftWorkflow] as never);
-			skillRuntime.withoutInstanceSkills.mockResolvedValue({});
+			skillRuntime.withoutInstanceSkillsWithWorkflows.mockResolvedValue({});
 
 			const result = await validateMentionPublish(service, user);
 

@@ -1045,17 +1045,18 @@ export class SkillService {
 		contentAfterMove: SkillMoveOptions['contentAfterMove'],
 		ctx: OperationContext,
 	): Promise<void> {
-		const [skill] = await this.skillRepository.findByIds([skillId], ctx);
-		if (!skill || skill.projectId === null || skill.projectId === target.projectId) return;
-		const latest = (await this.skillRepository.findLatestSaved([skillId], ctx)).get(skillId);
-		if (!latest) return;
+		if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return;
+		const latest = (
+			await this.skillRepository.findLatestSaved([skillId], ctx, { textOnly: true })
+		).get(skillId);
+		const projectId = latest?.skill.projectId;
+		if (!latest || projectId === null || projectId === target.projectId) return;
 		const stored = toAgentSkill(latest);
 		const content = {
 			instructions: contentAfterMove?.instructions ?? stored.instructions,
 			references: contentAfterMove?.references ?? stored.references,
 		};
 		if (!hasWorkflowMentions(content)) return;
-		if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return;
 		throw new ConflictError(skillWithWorkflowsMoveMessage(target.projectId === null));
 	}
 
@@ -1227,6 +1228,6 @@ function withMentionHint(
 	content: McpSkillContent,
 	hintsWorkflowMentions: boolean,
 ): McpSkillContent {
-	if (!hintsWorkflowMentions) return content;
+	if (!hintsWorkflowMentions || content.projectId === null) return content;
 	return { ...content, skill: withSkillWorkflowMentionHint(content.skill) };
 }

@@ -1598,13 +1598,9 @@ describe('SkillService', () => {
 			function useSkill(
 				instructions: string,
 				files: Array<{ path: string; content: string }> = [],
+				projectId: string | null = 'project-1',
 			) {
-				const row = versionRow(
-					skillRow('skill-4', { projectId: 'project-1' }),
-					1,
-					{ instructions },
-					files,
-				);
+				const row = versionRow(skillRow('skill-4', { projectId }), 1, { instructions }, files);
 				row.skill.availableToMCP = true;
 				projectScope.getProjectIds.mockResolvedValue(['project-1']);
 				skills.findLatestSaved.mockResolvedValue(new Map([['skill-4', row]]));
@@ -1621,6 +1617,16 @@ describe('SkillService', () => {
 				expect((await service.readForMcp(user, 'skill-4'))?.skill.instructions).toBe(expected);
 				expect((await service.listForMcp(user, 0, 50)).skills[0].content?.skill.instructions).toBe(
 					expected,
+				);
+			});
+
+			it('adds no workflow hint to an instance skill', async () => {
+				workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+				useSkill(mentioning, [], null);
+
+				expect((await service.readForMcp(user, 'skill-4'))?.skill.instructions).toBe(mentioning);
+				expect((await service.listForMcp(user, 0, 50)).skills[0].content?.skill.instructions).toBe(
+					mentioning,
 				);
 			});
 

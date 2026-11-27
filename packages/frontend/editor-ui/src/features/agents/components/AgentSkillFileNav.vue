@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 import { useRouter } from 'vue-router';
 import { parseAgentSkillWorkflowMentions, type SkillWorkflowMention } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { VIEWS } from '@/app/constants';
@@ -42,7 +42,6 @@ const props = withDefaults(
 		changeCounts?: Record<string, FileChange>;
 		mentionProjectId?: string;
 		mentionProjectName?: string;
-		instanceSkill?: boolean;
 		availableToMcp?: boolean;
 		outsideProjectWorkflowIds?: string[];
 		agentContext?: boolean;
@@ -53,7 +52,6 @@ const props = withDefaults(
 		invalidPaths: () => [],
 		mentionProjectId: undefined,
 		mentionProjectName: undefined,
-		instanceSkill: false,
 		availableToMcp: false,
 		outsideProjectWorkflowIds: () => [],
 		agentContext: false,
@@ -80,6 +78,10 @@ const workflowMentionsEnabled = computed(() =>
 	),
 );
 const addWorkflowOpen = ref(false);
+const projectSkillsOnlyId = useId();
+const showProjectSkillsOnly = computed(
+	() => props.mentionProjectId === undefined && !props.readOnly,
+);
 const mentionedWorkflows = computed(() => parseAgentSkillWorkflowMentions(props.skill));
 const mentionedWorkflowIds = computed(() =>
 	mentionedWorkflows.value.map(({ workflowId }) => workflowId),
@@ -252,20 +254,23 @@ function testIdForPath(path: string) {
 					{{ i18n.baseText('agents.builder.skills.workflowMentions.title') }}
 				</N8nText>
 				<N8nTooltip
-					v-if="!props.readOnly && props.instanceSkill"
+					v-if="showProjectSkillsOnly"
+					as-child
 					:content="i18n.baseText('agents.builder.skills.workflowMentions.projectSkillsOnly')"
 					placement="top"
 				>
-					<span data-testid="skill-workflow-mention-disabled">
-						<N8nIconButton
-							:class="$style.addReference"
-							icon="plus"
-							variant="ghost"
-							size="xsmall"
-							disabled
-							:aria-label="i18n.baseText('agents.builder.skills.workflowMentions.add')"
-						/>
-					</span>
+					<N8nButton
+						:class="$style.addReference"
+						variant="ghost"
+						size="xsmall"
+						icon-only
+						icon="plus"
+						disabled
+						focusable-when-disabled
+						:aria-label="i18n.baseText('agents.builder.skills.workflowMentions.add')"
+						:aria-describedby="projectSkillsOnlyId"
+						data-testid="skill-workflow-mention-disabled"
+					/>
 				</N8nTooltip>
 				<SkillWorkflowMentionPicker
 					v-else-if="!props.readOnly"
@@ -278,7 +283,17 @@ function testIdForPath(path: string) {
 				/>
 			</div>
 			<N8nText
-				v-if="mentionedWorkflows.length === 0"
+				v-if="showProjectSkillsOnly"
+				:id="projectSkillsOnlyId"
+				size="small"
+				color="text-light"
+				:class="$style.sectionTitle"
+				data-testid="agent-skill-workflows-project-only"
+			>
+				{{ i18n.baseText('agents.builder.skills.workflowMentions.projectSkillsOnly') }}
+			</N8nText>
+			<N8nText
+				v-else-if="mentionedWorkflows.length === 0"
 				size="small"
 				color="text-light"
 				:class="$style.sectionTitle"

@@ -2114,11 +2114,23 @@ describe('AgentSkillModal with workflows in skills', () => {
 		).not.toBeInTheDocument();
 	});
 
+	it('keeps the saved scope enabled after a pending move and a new workflow', async () => {
+		const { findByTestId, getByTestId } = renderSettingsSkill('Keep it short.');
+		await fireEvent.click(await findByTestId('agent-skill-menu-scope-option-project:team-2'));
+
+		await fireEvent.update(
+			getByTestId('agent-skill-instructions-editor'),
+			'Run [Report](n8n://workflow/wf1).',
+		);
+
+		expect(getByTestId('agent-skill-menu-scope-option-project:team-1')).toBeEnabled();
+		expect(getByTestId('agent-skill-menu-scope-option-instance')).toBeDisabled();
+	});
+
 	it('disables the add workflow button of an instance skill', async () => {
 		const { findByTestId, queryByTestId } = renderSettingsSkill('Keep it short.', 'instance');
 
-		const disabled = await findByTestId('skill-workflow-mention-disabled');
-		expect(disabled.querySelector('button')).toBeDisabled();
+		expect(await findByTestId('skill-workflow-mention-disabled')).toBeDisabled();
 		expect(queryByTestId('skill-workflow-mention-button')).not.toBeInTheDocument();
 	});
 });
