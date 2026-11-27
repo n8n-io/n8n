@@ -546,39 +546,59 @@ describe('Request from agent workflow approval', () => {
 	});
 
 	it.each([
-		['n8n_chat', true, false, false],
-		['n8n_chat', false, true, false],
-		['slack', false, false, false],
-		['slack', false, false, true],
-		['telegram', false, false, false],
-		['discord', false, false, false],
+		['n8n_chat', true, false, 'workflow', true, true],
+		['n8n_chat', false, true, 'channel', true, true],
+		['slack', false, false, 'workflow', false, false],
+		['slack', false, false, 'workflow', true, true],
+		['slack', false, false, 'channel', true, true],
+		['telegram', false, false, 'workflow', true, true],
+		['discord', false, false, 'channel', true, true],
+		['webhook', false, false, 'workflow', true, false],
 	] as const)(
-		'asks the requester before external review in %s (preview=%s, publishedChat=%s, background=%s)',
-		async (integrationType, previewChat, publishedN8nChat, background) => {
+		'asks the requester before review in %s (preview=%s, publishedChat=%s, method=%s, enabled=%s, background=%s)',
+		async (integrationType, previewChat, publishedN8nChat, method, enabled, background) => {
 			const { service, tool, jobs, executions, loader, context, suspend, handler, runtimeConfig } =
 				setup();
-			runtimeConfig.backgroundTasksEnabled = background;
+			runtimeConfig.backgroundTasksEnabled = enabled;
 			Container.set(WorkflowRunner, mock<WorkflowRunner>());
 			const execute = vi
 				.spyOn(workflowTools, 'executeWorkflow')
 				.mockResolvedValue({ executionId: 'child', status: 'waiting' });
-			loader.loadWorkflow.mockResolvedValue(
-				mock<WorkflowEntity>({
-					id: 'decision',
-					nodes: [
-						{
-							id: 'trigger',
-							disabled: false,
-							name: 'Request from agent',
-							type: 'n8n-nodes-base.agentDecisionTrigger',
-							typeVersion: 1,
-							position: [0, 0],
-							parameters: {},
-						},
-					],
-					settings: {},
-				}),
-			);
+			const decisionWorkflow = mock<WorkflowEntity>({
+				id: 'decision',
+				nodes: [
+					{
+						id: 'trigger',
+						disabled: false,
+						name: 'Request from agent',
+						type: 'n8n-nodes-base.agentDecisionTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				settings: {},
+			});
+			loader.loadWorkflow.mockResolvedValue(decisionWorkflow);
+			const channels = mock<AgentChannelHitlService>();
+			channels.prepareWorkflow.mockResolvedValue(decisionWorkflow);
+			Container.set(AgentChannelHitlService, channels);
+			const agentConfig: AgentJsonConfig =
+				method === 'workflow'
+					? configuration
+					: {
+							...configuration,
+							hitlConfigurations: [
+								{
+									id: 'review',
+									name: 'Channel approval',
+									method: 'channel',
+									channel: 'slack',
+									credentialId: 'credential',
+									recipient: { kind: 'user', id: 'U1' },
+								},
+							],
+						};
 			jobs.findWorkflowJobByExecutionId.mockResolvedValue(
 				mock<AgentBackgroundJob>({ id: 'job', status: 'running', workflowId: 'decision' }),
 			);
@@ -588,7 +608,7 @@ describe('Request from agent workflow approval', () => {
 			const wrapped = service.wrap(
 				tool,
 				{ type: 'configuration', configurationIds: ['review'] },
-				configuration,
+				agentConfig,
 				{
 					agentId: 'agent',
 					projectId: 'project',
@@ -625,6 +645,7 @@ describe('Request from agent workflow approval', () => {
 			};
 			await wrapped.handler?.({}, initial);
 			expect(execute).not.toHaveBeenCalled();
+			expect(suspend.mock.calls[0][1].continuation).not.toHaveProperty('backgroundApproval');
 			expect(handler).not.toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				type: 'approval',
@@ -661,8 +682,7 @@ describe('Request from agent workflow approval', () => {
 				approval: true,
 				...(background ? { backgroundApproval: true } : {}),
 				displayName: undefined,
-				workflowId: 'decision',
-				workflowExecutionId: 'child',
+				...(method === 'workflow' ? { workflowId: 'decision', workflowExecutionId: 'child' } : {}),
 				title: 'Waiting for approval to run write.',
 				components: [
 					{ type: 'section', text: 'Update the selected record.' },

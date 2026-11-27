@@ -8,6 +8,8 @@ import { getToolApprovalDisplayName, wrapToolForApproval } from '@n8n/agents/too
 import {
 	AGENT_DECISION_TRIGGER_NODE_TYPE,
 	AgentDecisionSchema,
+	N8N_CHAT_INTEGRATION_TYPE,
+	WEBHOOK_INTEGRATION_TYPE,
 	WORKFLOW_WAIT_SUSPEND_TYPE,
 	type AgentApprovalRoute,
 	type AgentJsonConfig,
@@ -52,6 +54,7 @@ interface ApprovalRunIdentity {
 	userId?: string;
 	previewChat?: boolean;
 	publishedN8nChat?: boolean;
+	allowBackgroundTasks?: boolean;
 }
 
 const RESUME_SCHEMA = z.object({ type: z.string().optional(), value: z.string().optional() });
@@ -86,6 +89,16 @@ export class AgentDecisionWorkflowService {
 			toolCodeByName,
 			identity.integrations,
 		);
+		const hasAsyncChat =
+			identity.previewChat === true ||
+			identity.publishedN8nChat === true ||
+			(identity.published &&
+				identity.integrationType !== undefined &&
+				identity.integrationType !== 'task' &&
+				identity.integrationType !== WEBHOOK_INTEGRATION_TYPE &&
+				identity.integrationType !== N8N_CHAT_INTEGRATION_TYPE);
+		const canBackgroundInChat =
+			this.config.backgroundTasksEnabled && identity.allowBackgroundTasks !== false && hasAsyncChat;
 		const handler = tool.handler;
 		const reviewed: BuiltTool = {
 			...tool,
@@ -162,12 +175,7 @@ export class AgentDecisionWorkflowService {
 						identity,
 						definitionHash,
 						workflowVersionId,
-						this.config.backgroundTasksEnabled &&
-							identity.integrationType === 'slack' &&
-							identity.published &&
-							configuration.method === 'workflow' &&
-							configurations.length === 1 &&
-							tool.suspendSchema === undefined,
+						canBackgroundInChat || (pending.success && pending.data.backgroundApproval === true),
 					);
 				};
 				return await review(firstIndex);

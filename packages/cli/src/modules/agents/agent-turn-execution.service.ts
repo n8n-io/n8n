@@ -305,7 +305,12 @@ export class AgentTurnExecutionService {
 	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
 
-		for await (let chunk of streamAgentChunks(stream)) {
+		const chunks = streamAgentChunks(stream);
+		const reportedChunks =
+			turn.type === 'resume' && turn.options.toolCallOnly
+				? withBackgroundApprovalOutcome(chunks, turn.options.toolCallId)
+				: chunks;
+		for await (let chunk of reportedChunks) {
 			if (chunk.type === 'input-boundary') {
 				chunk.acknowledge();
 				continue;
@@ -742,13 +747,11 @@ export class AgentTurnExecutionService {
 				[EXECUTION_METADATA_KEY]: executionId,
 			};
 			turn.options.persistence.persistSettledSuspensions = true;
-			if (turn.recording.source === 'slack') {
-				turn.options.pendingBackgroundToolCallIds =
-					await this.agentExecutionService.findBackgroundApprovalToolCalls(
-						config.context.agentId,
-						config.context.threadId,
-					);
-			}
+			const backgroundCalls = await this.agentExecutionService.findBackgroundApprovalToolCalls(
+				config.context.agentId,
+				config.context.threadId,
+			);
+			if (backgroundCalls?.length) turn.options.pendingBackgroundToolCallIds = backgroundCalls;
 		} else if (turn.type === 'resume') {
 			turn.options.hostMetadata = {
 				...turn.options.hostMetadata,
@@ -829,5 +832,32 @@ export class AgentTurnExecutionService {
 			recorder.record(notice);
 			yield notice;
 		}
+	}
+}
+
+async function* withBackgroundApprovalOutcome(
+	stream: AsyncGenerator<StreamChunk>,
+	toolCallId: string,
+): AsyncGenerator<StreamChunk> {
+	let approved: boolean | undefined;
+	let result: Extract<StreamChunk, { type: 'tool-result' }> | undefined;
+	for await (const chunk of stream) {
+		if (
+			chunk.type === 'tool-approval' &&
+			chunk.toolCallId === toolCallId &&
+			chunk.phase === 'resolved'
+		)
+			approved = chunk.response.approved;
+		if (chunk.type === 'tool-result' && chunk.toolCallId === toolCallId) result = chunk;
+		if (chunk.type === 'finish' && result) {
+			const delta =
+				approved === false
+					? `Approval was declined for ${result.toolName}.`
+					: approved !== true || result.canceled || result.isError
+						? `The pending action for ${result.toolName} did not complete. See the session for details.`
+						: `The approved call to ${result.toolName} finished.`;
+			yield { type: 'text-delta', id: toolCallId, delta };
+		}
+		yield chunk;
 	}
 }
