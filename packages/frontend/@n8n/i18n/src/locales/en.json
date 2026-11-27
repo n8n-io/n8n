@@ -4356,7 +4356,7 @@
 	"settings.context.skills.connect.review.warnings": "{count} warning | {count} warnings",
 	"settings.context.skills.connect.review.empty": "No skills in this tab.",
 	"settings.context.skills.connect.review.noMatch": "No skill matches the search.",
-	"settings.context.skills.connect.review.hiddenLines": "Show {count} hidden line | Show {count} hidden lines",
+	"settings.context.skills.connect.review.unchangedLines": "Show {count} unchanged line | Show {count} unchanged lines",
 	"settings.context.skills.connect.review.skippedFiles": "Files that n8n leaves out",
 	"settings.context.skills.connect.review.skippedScripts": "{count} script that n8n leaves out | {count} scripts that n8n leaves out",
 	"settings.context.skills.connect.review.truncated": "This skill is too large to show in full. Open it in GitHub to read the rest.",

@@ -109,10 +109,10 @@ it('shows the lines around a change, and folds the other lines until the user as
 	// Each folded part says how many lines it hides: 1 to 37, and 45 to 80.
 	const labels = within(diff).getAllByRole('button', { hidden: true });
 	expect(labels.map((label) => label.getAttribute('data-label'))).toEqual([
-		'Show 37 hidden lines',
-		'Show 36 hidden lines',
+		'Show 37 unchanged lines',
+		'Show 36 unchanged lines',
 	]);
-	expect(labels[0]).toHaveAccessibleName('Show 37 hidden lines');
+	expect(labels[0]).toHaveAccessibleName('Show 37 unchanged lines');
 
 	await fireEvent.click(folds[0]);
 
@@ -124,14 +124,14 @@ it('shows the lines around a change, and folds the other lines until the user as
 			within(diff)
 				.getAllByRole('button', { hidden: true })
 				.map((label) => label.getAttribute('data-label')),
-		).toEqual(['Show 36 hidden lines']),
+		).toEqual(['Show 36 unchanged lines']),
 	);
 });
 
 it.each(['click', 'Enter', ' '])('opens a folded part from its label with %s', async (action) => {
 	const view = render({ props: { skill, diffFiles: [longFile()] } });
 	const diff = view.getByTestId('skill-source-file-diff');
-	const label = within(diff).getByRole('button', { name: 'Show 36 hidden lines', hidden: true });
+	const label = within(diff).getByRole('button', { name: 'Show 36 unchanged lines', hidden: true });
 	expect(label).toHaveAttribute('tabindex', '0');
 
 	if (action === 'click') await fireEvent.click(label);
@@ -143,7 +143,7 @@ it.each(['click', 'Enter', ' '])('opens a folded part from its label with %s', a
 	expect(within(diff).queryByText('Line 1', { exact: true })).not.toBeInTheDocument();
 });
 
-it('counts one hidden line as "line", also in a file that ends with a line break', () => {
+it('counts one unchanged line as "line", also in a file that ends with a line break', () => {
 	const lines = Array.from({ length: 9 }, (_, index) => `Line ${index + 1}`);
 	const before = `${lines.join('\n')}\n`;
 	lines[4] = 'Updated line 5';
@@ -154,8 +154,8 @@ it('counts one hidden line as "line", also in a file that ends with a line break
 		hidden: true,
 	});
 	expect(labels.map((label) => label.getAttribute('data-label'))).toEqual([
-		'Show 1 hidden line',
-		'Show 1 hidden line',
+		'Show 1 unchanged line',
+		'Show 1 unchanged line',
 	]);
 });
 

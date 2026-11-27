@@ -260,7 +260,7 @@ function decorateDiff(diff: HTMLElement, file: DiffFile) {
 	const lineCount = file.after.replace(/\n$/, '').split('\n').length;
 	for (const { row, first, last } of foldsOf(diff, lineCount)) {
 		const count = last - first + 1;
-		const label = i18n.baseText('settings.context.skills.connect.review.hiddenLines', {
+		const label = i18n.baseText('settings.context.skills.connect.review.unchangedLines', {
 			interpolate: { count },
 			adjustToNumber: count,
 		});
@@ -658,17 +658,36 @@ function hasPreview(finding: SkillScanFinding): boolean {
 		font-size: 0;
 	}
 
-	/* A folded part is one grey row with the text "Show N hidden lines", not the "> ⋯" of the viewer. */
+	/* A folded part is one grey row: an icon and "Show N unchanged lines", not the "> ⋯" of the viewer. */
 	tr:has(:global(.blob-num-hunk[colspan])) td {
 		background-color: var(--background--subtle);
 		font-size: 0;
 		cursor: pointer;
 
+		&[data-label] {
+			padding-block: var(--spacing--4xs);
+			color: var(--text-color--subtle);
+		}
+
+		/* The chevrons-up-down icon. The viewer owns the row, so the row cannot hold an N8nIcon. */
+		&[data-label]::before {
+			content: '';
+			display: inline-block;
+			width: var(--font-size--2xs);
+			height: var(--font-size--2xs);
+			/* The label starts below the line numbers. */
+			margin-inline: calc(-1 * var(--spacing--xl) - var(--spacing--2xs)) var(--spacing--2xs);
+			vertical-align: middle;
+			background-color: currentColor;
+			mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E")
+				center / contain no-repeat;
+		}
+
 		&[data-label]::after {
 			content: attr(data-label);
-			font-family: var(--font-family);
+			font-family: var(--font-family--monospace);
 			font-size: var(--font-size--2xs);
-			color: var(--text-color--subtle);
+			vertical-align: middle;
 		}
 
 		&:focus-visible {
