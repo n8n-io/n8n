@@ -245,22 +245,6 @@ export class PrototypeApplyCredentialsDto extends Z.class(
 	{ strict: true },
 ) {}
 
-/** Prototype: the branch credentials to create, with the values that the user added. */
-export class PrototypePrepareCredentialsDto extends Z.class(
-	{
-		credentials: z
-			.array(
-				z.object({
-					id: z.string().min(1).max(36),
-					name: z.string().min(1).optional(),
-					data: z.record(z.unknown()).optional(),
-				}),
-			)
-			.max(500),
-	},
-	{ strict: true },
-) {}
-
 /** Prototype: the branch credentials that an Apply created in flight, or found. */
 export class PrototypePreparedCredentialsDto extends Z.class({
 	credentials: z.array(
@@ -280,4 +264,23 @@ export class PrototypePreparedCredentialsDto extends Z.class({
 /** Prototype: the credentials that the discard deleted. */
 export class PrototypeDiscardedCredentialsDto extends Z.class({
 	deleted: z.array(z.string()),
+}) {}
+
+/** Prototype: the values that a user added for a branch credential. */
+export class PrototypeSaveCredentialDraftDto extends Z.class(
+	{ name: z.string().min(1).max(128), data: z.record(z.unknown()) },
+	{ strict: true },
+) {}
+
+/** Prototype: the drafts of the branch credentials of a project. */
+export class PrototypeCredentialDraftsDto extends Z.class({
+	drafts: z.array(
+		z.object({
+			sourceId: z.string(),
+			name: z.string(),
+			data: z.record(z.unknown()),
+			updatedAt: z.string(),
+			updatedBy: z.string().nullable(),
+		}),
+	),
 }) {}

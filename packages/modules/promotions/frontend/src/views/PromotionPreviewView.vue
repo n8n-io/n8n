@@ -614,8 +614,11 @@ const treeResizer = useResizablePanel({
 					v-if="branchCredentials.branchCredentials.value.length > 0"
 					:credentials="branchCredentials.branchCredentials.value"
 					:ready-ids="branchCredentials.readyIds.value"
+					:drafts="branchCredentials.drafts.value"
+					:error="branchCredentials.error.value"
 					:busy="operation.isBusy.value"
 					@add-values="branchCredentials.addValues"
+					@discard-values="branchCredentials.discardValues"
 				/>
 				<N8nCallout v-if="submitBlockedReason && !operation.error.value" theme="warning" slim>
 					{{ submitBlockedReason }}

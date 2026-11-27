@@ -5,8 +5,9 @@ import {
 	ContinueApplyPackageDto,
 	ContinueApplySelectionDto,
 	PrototypeApplyCredentialsDto,
+	PrototypeCredentialDraftsDto,
+	PrototypeSaveCredentialDraftDto,
 	PrototypeDiscardedCredentialsDto,
-	PrototypePrepareCredentialsDto,
 	PrototypePreparedCredentialsDto,
 	CreatePromotionEnvironmentDto,
 	CreatePromotionProviderDto,
@@ -915,7 +916,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Prototype: Create the missing credentials of an Apply from the branch')
 	@ApiDescription(
 		BETA_NOTE +
-			'Prototype. Creates each listed credential that this instance lacks, with the name, type, description, expression values and sharing on the branch, and the values in the request.',
+			'Prototype. Creates each listed credential that this instance lacks, with the name, type, description, expression values and sharing on the branch, and the saved draft values.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PrototypePreparedCredentialsDto)
@@ -923,15 +924,73 @@ export class PromotionsPublicController {
 		req: PublicApiRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
-		@Body input: PrototypePrepareCredentialsDto,
+		@Body input: PrototypeApplyCredentialsDto,
 	) {
 		return {
 			credentials: await (await this.promotionsService()).prepareApplyCredentials(
 				projectId,
 				req.user,
-				input.credentials,
+				input.credentialIds,
 			),
 		};
+	}
+
+	@Get('/projects/:projectId/apply/credential-drafts')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:apply')
+	@GlobalScope('promotions:apply')
+	@ApiSummary('Prototype: List the saved values of branch credentials')
+	@ApiDescription(BETA_NOTE + 'Prototype. Lists the drafts and removes the ones no longer needed.')
+	@ApiTags(tags)
+	@ApiResponse(200, PrototypeCredentialDraftsDto)
+	async listCredentialDrafts(
+		req: PublicApiRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+	) {
+		return {
+			drafts: await (await this.promotionsService()).listCredentialDrafts(projectId, req.user),
+		};
+	}
+
+	@Put('/projects/:projectId/apply/credential-drafts/:sourceId')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:apply')
+	@GlobalScope('promotions:apply')
+	@ApiSummary('Prototype: Save the values of a branch credential')
+	@ApiDescription(BETA_NOTE + 'Prototype. Saves the values, encrypted, until an Apply uses them.')
+	@ApiTags(tags)
+	@ApiResponse(204)
+	async saveCredentialDraft(
+		req: PublicApiRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Param('sourceId', projectIdParamSchema) sourceId: string,
+		@Body input: PrototypeSaveCredentialDraftDto,
+	): Promise<void> {
+		await (await this.promotionsService()).saveCredentialDraft(
+			projectId,
+			req.user,
+			sourceId,
+			input,
+		);
+	}
+
+	@Delete('/projects/:projectId/apply/credential-drafts/:sourceId')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:apply')
+	@GlobalScope('promotions:apply')
+	@ApiSummary('Prototype: Discard the values of a branch credential')
+	@ApiDescription(BETA_NOTE + 'Prototype. Deletes the saved values of the credential.')
+	@ApiTags(tags)
+	@ApiResponse(204)
+	async discardCredentialDraft(
+		_req: PublicApiRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Param('sourceId', projectIdParamSchema) sourceId: string,
+	): Promise<void> {
+		await (await this.promotionsService()).discardCredentialDraft(projectId, sourceId);
 	}
 
 	@Post('/projects/:projectId/apply/credentials/discard')

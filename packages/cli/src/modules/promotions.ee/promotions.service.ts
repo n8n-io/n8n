@@ -28,6 +28,7 @@ import {
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	UserRepository,
 	type OperationContext,
 	type User,
 } from '@n8n/db';
@@ -35,6 +36,7 @@ import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { Cipher } from 'n8n-core';
 import { jsonParse, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -74,6 +76,7 @@ import {
 	instanceApplyRequest,
 } from './apply-preview.service';
 import { PromotionCredentialSelectionService } from './promotion-credential-selection.service';
+import { PromotionCredentialDraftRepository } from './database/repositories/promotion-credential-draft.repository';
 import { PromotePreviewService } from './promote-preview.service';
 import { previewEnvironment, previewSource } from './promotion-preview';
 import { GitCommitPackageReader } from './git-commit-package-reader';
@@ -122,6 +125,18 @@ type PushedPromotion = {
 type ApplyHead = {
 	operation: Omit<Parameters<PromotionsGitService['listBranchTree']>[0], 'pathspecs'>;
 	identity: { environmentId: string; git: { commitSha: string; branchName: string } };
+};
+
+/** Prototype: an unused draft expires after this time. */
+const DRAFT_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Prototype: the values that users added for a branch credential. */
+export type CredentialDraftDto = {
+	sourceId: string;
+	name: string;
+	data: Record<string, unknown>;
+	updatedAt: string;
+	updatedBy: string | null;
 };
 
 /** Prototype: a branch credential that an Apply created in flight, or found. */
@@ -1104,7 +1119,7 @@ export class PromotionsService {
 	async prepareApplyCredentials(
 		projectId: string,
 		actor: User,
-		requested: Array<{ id: string; name?: string; data?: Record<string, unknown> }>,
+		credentialIds: string[],
 	): Promise<PreparedApplyCredential[]> {
 		const input = await this.resolver.resolveForProject(projectId, 'apply');
 		return await this.withEnvironmentLock(
@@ -1116,11 +1131,15 @@ export class PromotionsService {
 				const inventory = await this.inventoryReader.read(new GitCommitPackageReader(files));
 				const credentials = Container.get(CredentialsService);
 				const sharing = Container.get(EnterpriseCredentialsService);
+				const drafts = await this.readCredentialDrafts(projectId);
 				const prepared = this.preparedCredentials.get(actor.id) ?? new Set<string>();
 				this.preparedCredentials.set(actor.id, prepared);
 
 				const result: PreparedApplyCredential[] = [];
-				for (const { id, name, data: values } of requested) {
+				for (const id of new Set(credentialIds)) {
+					const draft = drafts.get(id);
+					const name = draft?.name;
+					const values = draft?.data;
 					const file = inventory.credentials.find(({ credential }) => credential.id === id);
 					if (!file?.projectId) continue;
 					const { credential } = file;
@@ -1166,6 +1185,90 @@ export class PromotionsService {
 				return result;
 			},
 		);
+	}
+
+	/**
+	 * Prototype. The drafts of the project, without the ones that are no longer needed: the
+	 * credential exists here now, the branch no longer holds it, or nobody changed it for 30 days.
+	 */
+	async listCredentialDrafts(projectId: string, _actor: User): Promise<CredentialDraftDto[]> {
+		const input = await this.resolver.resolveForProject(projectId, 'apply');
+		const branchIds = await this.withEnvironmentLock(
+			input,
+			async () => await this.resolver.resolveForProject(projectId, 'apply'),
+			async (current, signal) => {
+				await this.ensureCheckout(current, signal);
+				const { files } = await this.readApplyTip(current, undefined);
+				const inventory = await this.inventoryReader.read(new GitCommitPackageReader(files));
+				return new Set(inventory.credentials.map(({ credential }) => credential.id));
+			},
+		);
+		const repository = Container.get(PromotionCredentialDraftRepository);
+		await repository.deleteOlderThan(projectId, new Date(Date.now() - DRAFT_LIFETIME_MS));
+		const rows = await repository.findByProject(projectId);
+		const finder = Container.get(CredentialsFinderService);
+		const obsolete: string[] = [];
+		for (const { sourceCredentialId } of rows) {
+			if (!branchIds.has(sourceCredentialId) || (await finder.findById(sourceCredentialId))) {
+				obsolete.push(sourceCredentialId);
+			}
+		}
+		await repository.deleteDrafts(projectId, obsolete);
+		const drafts = await this.readCredentialDrafts(projectId);
+		const users = await Container.get(UserRepository).findManyByIds([
+			...new Set(rows.map(({ updatedById }) => updatedById).filter((id) => id !== null)),
+		]);
+		return rows
+			.filter(({ sourceCredentialId }) => !obsolete.includes(sourceCredentialId))
+			.map((row) => {
+				const user = users.find(({ id }) => id === row.updatedById);
+				return {
+					sourceId: row.sourceCredentialId,
+					name: row.name,
+					data: drafts.get(row.sourceCredentialId)?.data ?? {},
+					updatedAt: row.updatedAt.toISOString(),
+					updatedBy:
+						user && isPerson(user)
+							? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email
+							: null,
+				};
+			});
+	}
+
+	/** Prototype. Saves the values that a user added for a branch credential, encrypted. */
+	async saveCredentialDraft(
+		projectId: string,
+		actor: User,
+		sourceCredentialId: string,
+		draft: { name: string; data: Record<string, unknown> },
+	): Promise<void> {
+		await Container.get(PromotionCredentialDraftRepository).upsertDraft({
+			projectId,
+			sourceCredentialId,
+			name: draft.name,
+			data: await Container.get(Cipher).encryptV2(JSON.stringify(draft.data)),
+			updatedById: actor.id,
+		});
+	}
+
+	/** Prototype. Removes the values that users added for a branch credential. */
+	async discardCredentialDraft(projectId: string, sourceCredentialId: string): Promise<void> {
+		await Container.get(PromotionCredentialDraftRepository).deleteDrafts(projectId, [
+			sourceCredentialId,
+		]);
+	}
+
+	private async readCredentialDrafts(
+		projectId: string,
+	): Promise<Map<string, { name: string; data: Record<string, unknown> }>> {
+		const cipher = Container.get(Cipher);
+		const rows = await Container.get(PromotionCredentialDraftRepository).findByProject(projectId);
+		const drafts = new Map<string, { name: string; data: Record<string, unknown> }>();
+		for (const row of rows) {
+			const data: unknown = JSON.parse(await cipher.decryptV2(row.data));
+			drafts.set(row.sourceCredentialId, { name: row.name, data: isRecord(data) ? data : {} });
+		}
+		return drafts;
 	}
 
 	/** Prototype. Deletes the credentials that {@link prepareApplyCredentials} created for this user. */

@@ -376,6 +376,14 @@ paths:
   /promotions/projects/{projectId}/apply/credentials/prepare:
     post:
       $ref: ./handlers/promotions/spec/paths/prepareApplyCredentials.generated.yml
+  /promotions/projects/{projectId}/apply/credential-drafts:
+    get:
+      $ref: ./handlers/promotions/spec/paths/listCredentialDrafts.generated.yml
+  /promotions/projects/{projectId}/apply/credential-drafts/{sourceId}:
+    put:
+      $ref: ./handlers/promotions/spec/paths/saveCredentialDraft.generated.yml
+    delete:
+      $ref: ./handlers/promotions/spec/paths/discardCredentialDraft.generated.yml
   /promotions/projects/{projectId}/apply/credentials/discard:
     post:
       $ref: ./handlers/promotions/spec/paths/discardApplyCredentials.generated.yml

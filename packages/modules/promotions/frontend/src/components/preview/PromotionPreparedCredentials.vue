@@ -4,15 +4,30 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import type { BranchCredential } from '../../composables/usePreparedApplyCredentials';
+import type { CredentialDraft } from '../../promotions.api';
 
 // Prototype: the credentials that Apply creates from the branch, and the values they still need.
 const props = defineProps<{
 	credentials: BranchCredential[];
 	readyIds: ReadonlySet<string>;
+	drafts: ReadonlyMap<string, CredentialDraft>;
+	error: string | null;
 	busy: boolean;
 }>();
 
-const emit = defineEmits<{ addValues: [credential: BranchCredential] }>();
+const emit = defineEmits<{
+	addValues: [credential: BranchCredential];
+	discardValues: [credential: BranchCredential];
+}>();
+
+function savedLabel(draft: CredentialDraft) {
+	const date = new Date(draft.updatedAt).toLocaleString();
+	return draft.updatedBy
+		? i18n.baseText('promotions.prototype.prepared.savedBy', {
+				interpolate: { date, user: draft.updatedBy },
+			})
+		: i18n.baseText('promotions.prototype.prepared.saved', { interpolate: { date } });
+}
 
 const i18n = useI18n();
 const pendingCount = computed(
@@ -33,6 +48,7 @@ const pendingCount = computed(
 				})
 			}}
 		</N8nText>
+		<N8nCallout v-if="error" theme="danger" slim>{{ error }}</N8nCallout>
 		<N8nCallout v-if="pendingCount === 0" theme="success" slim>
 			{{ i18n.baseText('promotions.prototype.prepared.allReady') }}
 		</N8nCallout>
@@ -52,8 +68,21 @@ const pendingCount = computed(
 							})
 						}}
 					</N8nText>
+					<N8nText v-if="drafts.get(credential.sourceId)" step="xs" color="text-light">
+						{{ savedLabel(drafts.get(credential.sourceId)!) }}
+					</N8nText>
 				</div>
 				<div :class="$style.actions">
+					<N8nButton
+						v-if="drafts.has(credential.sourceId)"
+						size="small"
+						variant="ghost"
+						:disabled="busy"
+						data-test-id="promotion-prepared-discard-values"
+						@click="emit('discardValues', credential)"
+					>
+						{{ i18n.baseText('promotions.prototype.prepared.discardValues') }}
+					</N8nButton>
 					<N8nText step="xs" :color="readyIds.has(credential.sourceId) ? 'success' : 'warning'">
 						{{
 							i18n.baseText(

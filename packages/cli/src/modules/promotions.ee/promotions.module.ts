@@ -42,7 +42,11 @@ export class PromotionsModule implements ModuleInterface {
 		);
 		const { PromotionRun } = await import('./database/entities/promotion-run.entity.js');
 		const { PromotionReview } = await import('./database/entities/promotion-review.entity.js');
+		const { PromotionCredentialDraft } = await import(
+			'./database/entities/promotion-credential-draft.entity.js'
+		);
 		return [
+			PromotionCredentialDraft,
 			PromotionProvider,
 			PromotionEnvironment,
 			PromotionEnvironmentProject,

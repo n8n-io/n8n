@@ -152,17 +152,17 @@ export type PreparedApplyCredential = {
 	notShared: string[];
 };
 
-/** Prototype: creates the missing credentials of an Apply from the branch and the added values. */
+/** Prototype: creates the missing credentials of an Apply from the branch and the saved drafts. */
 export async function prepareApplyCredentials(
 	context: PublicApiContext,
 	projectId: string,
-	credentials: Array<{ id: string; name?: string; data?: Record<string, unknown> }>,
+	credentialIds: string[],
 ): Promise<{ credentials: PreparedApplyCredential[] }> {
 	return await makePublicApiRequest(
 		context,
 		'POST',
 		`/promotions/projects/${projectId}/apply/credentials/prepare`,
-		{ credentials },
+		{ credentialIds },
 	);
 }
 
@@ -177,5 +177,54 @@ export async function discardApplyCredentials(
 		'POST',
 		`/promotions/projects/${projectId}/apply/credentials/discard`,
 		{ credentialIds },
+	);
+}
+
+/** Prototype: the values that users saved for a branch credential. */
+export type CredentialDraft = {
+	sourceId: string;
+	name: string;
+	data: Record<string, unknown>;
+	updatedAt: string;
+	updatedBy: string | null;
+};
+
+/** Prototype: lists the saved drafts. The server drops the ones that are no longer needed. */
+export async function getCredentialDrafts(
+	context: PublicApiContext,
+	projectId: string,
+): Promise<{ drafts: CredentialDraft[] }> {
+	return await makePublicApiRequest(
+		context,
+		'GET',
+		`/promotions/projects/${projectId}/apply/credential-drafts`,
+	);
+}
+
+/** Prototype: saves the values of a branch credential on the server, encrypted. */
+export async function saveCredentialDraft(
+	context: PublicApiContext,
+	projectId: string,
+	sourceId: string,
+	draft: { name: string; data: Record<string, unknown> },
+): Promise<void> {
+	await makePublicApiRequest(
+		context,
+		'PUT',
+		`/promotions/projects/${projectId}/apply/credential-drafts/${sourceId}`,
+		draft,
+	);
+}
+
+/** Prototype: discards the saved values of a branch credential. */
+export async function discardCredentialDraft(
+	context: PublicApiContext,
+	projectId: string,
+	sourceId: string,
+): Promise<void> {
+	await makePublicApiRequest(
+		context,
+		'DELETE',
+		`/promotions/projects/${projectId}/apply/credential-drafts/${sourceId}`,
 	);
 }
