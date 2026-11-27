@@ -21,7 +21,8 @@
 		"Transform",
 		"Array",
 		"List",
-		"Item"
+		"Item",
+		"Distinct"
 	],
 	"subcategories": {
 		"Core Nodes": ["Data Transformation"]
