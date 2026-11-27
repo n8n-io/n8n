@@ -103,6 +103,14 @@ export class InstanceAiPage extends BasePage {
 		await this.page.goto(`/assistant/${threadId}`);
 	}
 
+	async gotoAgentChat(agentId: string): Promise<void> {
+		await this.page.goto(`/assistant/agents/${agentId}`);
+	}
+
+	getAgentChatDescription(): Locator {
+		return this.page.locator('[data-testid="agent-n8n-chat-description"]');
+	}
+
 	/** Thread id of the conversation currently open, read from the URL. */
 	getCurrentThreadId(): string {
 		const threadId = new URL(this.page.url()).pathname.split('/').pop();
