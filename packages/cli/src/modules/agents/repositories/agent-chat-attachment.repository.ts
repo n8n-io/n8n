@@ -127,6 +127,24 @@ export class AgentChatAttachmentRepository {
 	}
 
 	/**
+	 * The newest file of a system chat thread with these stored bytes, in the
+	 * scope of `findByIdForSystemAgent`. The caller checks access to the thread.
+	 */
+	async findInSystemThreadByBinaryDataId(
+		threadId: string,
+		binaryDataId: string,
+		scope: { agentId: string; resourceId: string; sources: readonly string[] },
+		ctx: OperationContext,
+	): Promise<AgentChatAttachment | null> {
+		const { agentId, resourceId, sources } = scope;
+		return await this.table.managerFor(ctx).findOne(AgentChatAttachment, {
+			where: { threadId, binaryDataId, agentId, resourceId, source: In([...sources]) },
+			// Two files can have the same createdAt, so the id makes the result stable.
+			order: { createdAt: 'DESC', id: 'DESC' },
+		});
+	}
+
+	/**
 	 * Thread lookup scoped to a project or agent — the scope carries the
 	 * caller's authorization and lets the matching composite index
 	 * ((projectId, threadId) or (agentId, threadId)) serve the query.

@@ -131,7 +131,7 @@ import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { InstanceSettings } from 'n8n-core';
+import { collectBinaryDataIds, InstanceSettings } from 'n8n-core';
 import {
 	type ICredentialsDecrypted,
 	type IDataObject,
@@ -283,6 +283,7 @@ import {
 	pruneUnreachedVerificationPinData,
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
+import { storeRunOutputFiles } from './instance-ai-run-output-files';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { skipTimeBasedWaits } from './skip-time-based-waits';
 import type { TemporaryWorkflowMarkers } from './temporary-workflow-markers';
@@ -2373,17 +2374,26 @@ export class InstanceAiAdapterService {
 		};
 
 		/** The outcome of a run, read back for the agent. Missing data reads as `unknown`. */
-		const readOutcome = async (executionId: string, subNodeTarget?: string) => {
+		const readOutcome = async (
+			executionId: string,
+			subNodeTarget?: string,
+		): Promise<{
+			result: ExecutionResult;
+			telemetryError?: string;
+			execution?: IExecutionResponse;
+		}> => {
 			const execution = await loadExecutionForViewer(executionId, user);
 			if (!execution) {
 				return { result: { executionId, status: 'unknown' } satisfies ExecutionResult };
 			}
-			return await extractExecutionOutcome(
+			const outcome = await extractExecutionOutcome(
 				execution,
 				allowSendingParameterValues,
 				nodeTypes,
 				subNodeTarget,
 			);
+			// A caller can read more from the execution without a second load.
+			return { ...outcome, execution };
 		};
 
 		/**
@@ -2531,6 +2541,12 @@ export class InstanceAiAdapterService {
 					options?.triggerNodeName !== undefined
 						? resolveRequestedTriggerNode(nodes, options.triggerNodeName)
 						: findTriggerNode(nodes);
+				// The files go to the trigger item. Without a trigger, the run would silently drop them.
+				if (options?.binary && !triggerNode) {
+					throw new UserError(
+						'This workflow has no trigger node, so a run cannot take files. Add a trigger to give it files.',
+					);
+				}
 
 				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
@@ -2590,6 +2606,7 @@ export class InstanceAiAdapterService {
 					workflowPinData: workflow.pinData ?? {},
 					verificationPinData: options?.verificationPinData,
 					inputData,
+					binary: options?.binary,
 					triggerNode,
 				});
 				if (pinDataPlan.startNodeName) {
@@ -2665,6 +2682,18 @@ export class InstanceAiAdapterService {
 					});
 				}
 
+				// A node reads a stored binary only when its workflow owns it or the run grants it.
+				// Grant exactly the conversation files that the host resolved for `binary`. A binary
+				// id in `inputData` or in pin data gets no grant, so the core access check applies.
+				const binaryDataAccess = options?.binary
+					? collectBinaryDataIds([{ json: {}, binary: options.binary }])
+					: [];
+				if (binaryDataAccess.length > 0) {
+					runData.binaryDataAccess = binaryDataAccess;
+					// A run that starts from execution data, or runs on a worker, reads the grant there.
+					if (runData.executionData) runData.executionData.binaryDataAccess = binaryDataAccess;
+				}
+
 				const trackBuilderExecutedWorkflow = (
 					status: ExecutionResult['status'],
 					error?: string,
@@ -2726,11 +2755,16 @@ export class InstanceAiAdapterService {
 						return result;
 					}
 
-					const { result, telemetryError } = withCredentialRefusal(
-						await readOutcome(executionId),
-						credentialRefusal,
-					);
+					const outcome = await readOutcome(executionId);
+					const { result, telemetryError } = withCredentialRefusal(outcome, credentialRefusal);
 					await pruneVerificationPins(result.executedNodeNames);
+					// The privacy setting hides the output items, so it keeps their files out of the chat too.
+					const storeOutputFile = allowSendingParameterValues
+						? options?.storeOutputFile
+						: undefined;
+					if (storeOutputFile && outcome.execution && result.status !== 'running') {
+						Object.assign(result, await storeRunOutputFiles(outcome.execution, storeOutputFile));
+					}
 					trackBuilderExecutedWorkflow(result.status, telemetryError);
 					// Saved workflow pins fed this run (they ride every instance-ai run) —
 					// report them so callers don't mistake pin-fed nodes for live ones.

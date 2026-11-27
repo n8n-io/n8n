@@ -68,6 +68,15 @@ describe('buildAlwaysAllowKeys', () => {
 			).toEqual(['executions:run-step:wf-1:HTTP Request']);
 			expect(buildAlwaysAllowKeys('run_workflow_step', { workflowId: 'wf-1' })).toEqual([]);
 		});
+
+		it('never offers Always allow for a run with conversation files, which asks every time', () => {
+			expect(
+				buildAlwaysAllowKeys('run_workflow', { workflowId: 'wf-1', files: { data: 'file-1' } }),
+			).toEqual([]);
+			expect(buildAlwaysAllowKeys('run_workflow', { workflowId: 'wf-1', files: {} })).toEqual([
+				'executions:run:wf-1',
+			]);
+		});
 	});
 
 	describe('workflow edits', () => {

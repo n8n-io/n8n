@@ -125,6 +125,19 @@ describe('routeApproval', () => {
 		expect(routeApproval({ toolName: 'publish_agent', args: {} })).toBe('always-ask');
 	});
 
+	it('always asks before a workflow run with conversation files, and lets the judge decide other runs', () => {
+		expect(
+			routeApproval({
+				toolName: 'run_workflow',
+				args: { workflowId: 'wf-1', files: { data: 'f1' } },
+			}),
+		).toBe('always-ask');
+		expect(
+			routeApproval({ toolName: 'run_workflow', args: { workflowId: 'wf-1', files: {} } }),
+		).toBe('judge');
+		expect(routeApproval({ toolName: 'run_workflow', args: { workflowId: 'wf-1' } })).toBe('judge');
+	});
+
 	it('always asks before a skill is deleted, and lets the judge decide other skill changes', () => {
 		expect(routeApproval({ toolName: 'skills', args: { action: 'delete', skillId: 's1' } })).toBe(
 			'always-ask',

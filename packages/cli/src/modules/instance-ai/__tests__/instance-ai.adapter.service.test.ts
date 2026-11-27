@@ -6100,6 +6100,109 @@ describe('createExecutionAdapter run()', () => {
 		expect(result.binaryOutputNodeNames).toEqual(['Convert to File']);
 	});
 
+	describe('output files', () => {
+		const runFileOutput = async (allowSendingParameterValues: boolean) => {
+			const fileTask = makeTaskData([{}]);
+			fileTask.data!.main[0]![0].binary = { data: { data: 'aGk=', mimeType: 'text/plain' } };
+			const { adapter, mockExecutionPersistence } = createRunAdapterForTests(
+				{ id: 'wf-1', nodes: [] },
+				{
+					execution: makeExecution({
+						status: 'success',
+						runData: { 'Convert to File': [fileTask] },
+					}),
+					allowSendingParameterValues,
+				},
+			);
+			const storeOutputFile = vi.fn(async () => ({
+				fileId: 'file-1',
+				fileName: 'out.txt',
+				mimeType: 'text/plain',
+				sizeBytes: 2,
+			}));
+			const result = await adapter.run('wf-1', undefined, { storeOutputFile });
+			return { result, storeOutputFile, mockExecutionPersistence };
+		};
+
+		it('stores the files of the last node', async () => {
+			const { result, storeOutputFile, mockExecutionPersistence } = await runFileOutput(true);
+
+			expect(storeOutputFile).toHaveBeenCalledTimes(1);
+			expect(result.files).toEqual([expect.objectContaining({ fileId: 'file-1' })]);
+			// The files come from the execution that the result read, without a second load.
+			expect(mockExecutionPersistence.findSingleExecution).toHaveBeenCalledTimes(1);
+		});
+
+		it('stores no files when parameter values must not reach the model', async () => {
+			const { result, storeOutputFile } = await runFileOutput(false);
+
+			expect(storeOutputFile).not.toHaveBeenCalled();
+			expect(result).not.toHaveProperty('files');
+		});
+	});
+
+	it('does not start a run with files when the workflow has no trigger', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [] },
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		await expect(
+			adapter.run('wf-1', undefined, {
+				binary: { data: { data: 'filesystem-v2', id: 'filesystem-v2:a', mimeType: 'image/png' } },
+			}),
+		).rejects.toThrow('This workflow has no trigger node, so a run cannot take files');
+		expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	describe('binary data access of a run', () => {
+		const conversationFileId = 'filesystem-v2:agents/assistant/attachments/file-1/binary_data/b1';
+		const foreignId = 'filesystem-v2:workflows/other-wf/executions/9/binary_data/b2';
+		const foreignBinary = { data: 'filesystem-v2', id: foreignId, mimeType: 'text/plain' };
+		const triggerWorkflow = {
+			id: 'wf-1',
+			nodes: [
+				{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1, position: [0, 0] },
+			],
+			connections: {},
+			// Pin data can name any stored binary, so it must not get a grant.
+			pinData: { Other: [{ json: {}, binary: { data: foreignBinary } }] },
+		};
+
+		it('grants the run exactly the files that the caller resolved', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(triggerWorkflow, {
+				execution: makeExecution({ status: 'success' }),
+			});
+
+			await adapter.run(
+				'wf-1',
+				// A binary in the input JSON comes from the model, so it must not get a grant.
+				{ file: foreignBinary },
+				{
+					binary: {
+						data: { data: 'filesystem-v2', id: conversationFileId, mimeType: 'text/plain' },
+					},
+				},
+			);
+
+			const runData = mockWorkflowRunner.run.mock.calls[0][0];
+			expect(runData.binaryDataAccess).toEqual([conversationFileId]);
+			expect(runData.executionData.binaryDataAccess).toEqual([conversationFileId]);
+		});
+
+		it('grants nothing to a run without files', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(triggerWorkflow, {
+				execution: makeExecution({ status: 'success' }),
+			});
+
+			await adapter.run('wf-1', { file: foreignBinary });
+
+			const runData = mockWorkflowRunner.run.mock.calls[0][0];
+			expect(runData.binaryDataAccess).toBeUndefined();
+			expect(runData.executionData?.binaryDataAccess).toBeUndefined();
+		});
+	});
+
 	it('forces save settings so the agent can read the result back', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',

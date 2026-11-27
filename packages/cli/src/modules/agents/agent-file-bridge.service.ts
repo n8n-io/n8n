@@ -19,6 +19,7 @@ import { BinaryDataAccessService } from '@/binary-data/binary-data-access.servic
 
 import { AgentChatAttachmentService, AgentFileLimitError } from './agent-chat-attachment.service';
 import { AgentSandboxFilesService } from './agent-sandbox-files.service';
+import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 
 /** Optional tool input. The model passes file IDs from the chat or from other tool results. */
@@ -93,20 +94,7 @@ export class AgentFileBridge {
 				threadId,
 			});
 			if (!attachment) throw new UserError(`File "${fileId}" not found in this conversation`);
-			// A sandbox file name is a path in outputs/. A node that writes the file must not create directories.
-			const fileName = posix.basename(attachment.fileName);
-			const fileExtension = hasExtension(fileName)
-				? fileName.slice(fileName.lastIndexOf('.') + 1)
-				: undefined;
-			binary[key] = {
-				id: attachment.binaryDataId,
-				// A stored binary keeps its storage mode in `data`, as BinaryDataService.store does.
-				data: attachment.binaryDataId.split(':')[0],
-				mimeType: attachment.mimeType,
-				fileName,
-				...(fileExtension && { fileExtension }),
-				bytes: attachment.fileSizeBytes,
-			};
+			binary[key] = attachmentToBinaryData(attachment);
 			stored.set(attachment.binaryDataId, {
 				fileId,
 				fileName: attachment.fileName,
@@ -165,15 +153,7 @@ export class AgentFileBridge {
 							continue;
 						}
 					}
-					if (await this.isTooLarge(binary)) {
-						if (binary.id) skipped.add(binary.id);
-						skippedFiles.push({
-							fileName: binary.fileName ?? key,
-							reason: `larger than ${this.attachmentService.maxGeneratedFileBytes / 1024 / 1024} MB`,
-						});
-						continue;
-					}
-					const result = await this.store(binary, scope);
+					const result = await this.adoptBinary(binary, scope, key);
 					if (!result) continue;
 					if ('reason' in result) {
 						if (binary.id) skipped.add(binary.id);
@@ -194,6 +174,25 @@ export class AgentFileBridge {
 		}
 
 		return { items: adopted, files, skippedFiles };
+	}
+
+	/**
+	 * Store one workflow binary as an agent file. Gives a skipped file for a file
+	 * over a cap, and `undefined` when storage fails. A skipped file without a
+	 * name gets `fallbackName`.
+	 */
+	async adoptBinary(
+		binary: IBinaryData,
+		scope: AgentFileScope,
+		fallbackName = 'file',
+	): Promise<AgentToolOutputFile | AgentToolSkippedFile | undefined> {
+		if (await this.isTooLarge(binary)) {
+			return {
+				fileName: binary.fileName ?? fallbackName,
+				reason: `larger than ${this.attachmentService.maxGeneratedFileBytes / 1024 / 1024} MB`,
+			};
+		}
+		return await this.store(binary, scope);
 	}
 
 	/** Delete stored files that nothing refers to. */
@@ -261,6 +260,29 @@ export class AgentFileBridge {
 			return undefined;
 		}
 	}
+}
+
+/**
+ * The binary data entry of a stored agent file. It points to the stored bytes,
+ * so nothing is copied.
+ */
+export function attachmentToBinaryData(
+	attachment: Pick<AgentChatAttachment, 'binaryDataId' | 'fileName' | 'mimeType' | 'fileSizeBytes'>,
+): IBinaryData {
+	// A sandbox file name is a path in outputs/. A node that writes the file must not create directories.
+	const fileName = posix.basename(attachment.fileName);
+	const fileExtension = hasExtension(fileName)
+		? fileName.slice(fileName.lastIndexOf('.') + 1)
+		: undefined;
+	return {
+		id: attachment.binaryDataId,
+		// A stored binary keeps its storage mode in `data`, as BinaryDataService.store does.
+		data: attachment.binaryDataId.split(':')[0],
+		mimeType: attachment.mimeType,
+		fileName,
+		...(fileExtension && { fileExtension }),
+		bytes: attachment.fileSizeBytes,
+	};
 }
 
 /** Replace in place each string that is equal to a binary ID with the file ID of that binary. */

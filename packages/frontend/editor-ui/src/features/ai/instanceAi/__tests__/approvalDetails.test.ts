@@ -469,6 +469,14 @@ describe('approval details', () => {
 		[{ action: 'update-version', version: 'v1' }, 'Update version v1 — set metadata'],
 		[{ action: 'run-workflow' }, 'Run this workflow live'],
 		[{ action: 'run-workflow', summary: 'Send   alert' }, 'Send alert'],
+		[
+			{ action: 'run-workflow', files: ['a.png'] },
+			'Run this workflow live\n\nThe run gets these files: a.png',
+		],
+		[
+			{ action: 'run-workflow', files: ['a.png', 'b.pdf'], moreFiles: 3 },
+			'Run this workflow live\n\nThe run gets these files: a.png, b.pdf, 3 more files',
+		],
 		[{ action: 'edit-workflow', summary: 'Add   alert' }, 'Add alert'],
 		[
 			{ action: 'publish-workflow', selectedVersion: false, supportingCount: 0 },
