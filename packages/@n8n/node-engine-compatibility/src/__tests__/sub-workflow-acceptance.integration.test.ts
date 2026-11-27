@@ -69,6 +69,7 @@ function resolverFor(subWorkflow = subWorkflowFixture()): SubWorkflowResolver {
 			graph: converter.convert(subWorkflow, SUB_WORKFLOW_TRIGGER),
 			workflow: { id: request.workflowId, name: 'Sub-workflow' },
 			triggerOutputs: toStepOutputs([request.items]),
+			resolveErrorWorkflowOnFailure: false,
 		});
 	});
 }

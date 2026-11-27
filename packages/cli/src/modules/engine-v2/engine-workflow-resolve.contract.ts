@@ -1,5 +1,11 @@
 import { jsonObjectSchema, triggerOutputsSchema, workflowGraphSchema } from '@n8n/engine';
-import type { JsonValue, TriggerOutputs, WorkflowDocument, WorkflowGraph } from '@n8n/engine';
+import type {
+	ErrorWorkflowSource,
+	JsonValue,
+	TriggerOutputs,
+	WorkflowDocument,
+	WorkflowGraph,
+} from '@n8n/engine';
 import { isRecord } from '@n8n/utils/is-record';
 import { WorkflowExecuteModeList } from 'n8n-workflow';
 import type { IBinaryData, INodeExecutionData } from 'n8n-workflow';
@@ -94,8 +100,13 @@ export type ResolveErrorWorkflowRequest = Extract<
 >;
 export type ResolveWorkflowKind = ResolveWorkflowRequest['kind'];
 
-/** A request as the data plane sends it. */
-export type ResolveWorkflowCall = ResolveWorkflowRequest;
+/**
+ * A request as the data plane sends it. The error source is the engine's own
+ * type, whose host mode is any string. The control plane validates the mode.
+ */
+export type ResolveWorkflowCall =
+	| ResolveSubWorkflowRequest
+	| { kind: 'error-workflow'; executionId: string; source: ErrorWorkflowSource };
 
 /** What every start of a resolved workflow needs. */
 interface ResolvedWorkflow {

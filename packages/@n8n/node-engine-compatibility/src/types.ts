@@ -93,6 +93,11 @@ export interface SubWorkflowResolveResult {
 	graph: WorkflowGraph;
 	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
+	/**
+	 * Whether a failure of the sub-execution resolves an error workflow. The
+	 * host decides, because the engine does not read the workflow settings.
+	 */
+	resolveErrorWorkflowOnFailure: boolean;
 }
 
 /** The options of `executeWorkflow` that the shim reads. */

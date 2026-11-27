@@ -983,6 +983,7 @@ describe('sub-workflows', () => {
 		graph: subWorkflowGraph,
 		workflow: { id: 'sub-workflow', name: 'Sub-workflow' },
 		triggerOutputs: [[{ json: { a: 1 } }]],
+		resolveErrorWorkflowOnFailure: true,
 	};
 	const input = items({ a: 1 }, { a: 2 });
 	const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -1039,6 +1040,15 @@ describe('sub-workflows', () => {
 				{ json: { a: 2 }, pairedItem: { item: 1 } },
 			],
 		});
+	});
+
+	it('passes resolveErrorWorkflowOnFailure from the host into the declaration', async () => {
+		const { graph, executor } = executorWith('test.runsSubWorkflow');
+
+		const result = await executor.execute(stepRequest(graph, 'n', input));
+
+		// Read through the engine's declaration type, so a renamed field fails to compile.
+		expect(result.subExecution?.resolveErrorWorkflowOnFailure).toBe(true);
 	});
 
 	it('starts a fire-and-forget call as a detached sub-execution and keeps the node outputs', async () => {

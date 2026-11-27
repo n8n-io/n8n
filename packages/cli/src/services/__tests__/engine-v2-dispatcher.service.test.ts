@@ -1,4 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { GlobalConfig } from '@n8n/config';
 import { UUID_V7_PATTERN } from '@n8n/constants';
 import { ConflictError, NotFoundError, NotImplementedError, UserError } from '@n8n/errors';
 import type {
@@ -46,6 +47,8 @@ const MANUAL_TRIGGER = node('trigger-id', 'When clicking Execute', 'n8n-nodes-ba
 const WEBHOOK_TRIGGER = node('webhook-id', 'Webhook', 'n8n-nodes-base.webhook');
 const SCHEDULE_TRIGGER = node('schedule-id', 'Schedule Trigger', 'n8n-nodes-base.scheduleTrigger');
 const SET_NODE = node('set-id', 'Edit Fields', 'n8n-nodes-base.set');
+const ERROR_TRIGGER_TYPE = 'n8n-nodes-base.errorTrigger';
+const ERROR_TRIGGER = node('error-trigger-id', 'Error Trigger', ERROR_TRIGGER_TYPE);
 
 function workflow(overrides: Partial<IWorkflowBase> = {}): IWorkflowBase {
 	return {
@@ -158,6 +161,7 @@ describe('EngineV2Dispatcher', () => {
 			pushRegistry,
 			payloadFiles,
 			manualRunPlanner,
+			mock<GlobalConfig>({ nodes: { errorTriggerType: ERROR_TRIGGER_TYPE } }),
 		);
 	});
 
@@ -569,6 +573,69 @@ describe('EngineV2Dispatcher', () => {
 				await dispatcher.start(triggerRunData());
 
 				expect(pushRegistry.register).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('resolveErrorWorkflowOnFailure', () => {
+			const expected = () => proxy.startExecution.mock.calls[0][0].resolveErrorWorkflowOnFailure;
+			const withErrorTrigger = (data: IWorkflowExecutionDataProcess) => {
+				data.workflowData.nodes.push(ERROR_TRIGGER);
+				return data;
+			};
+			const namingErrorWorkflow = (data: IWorkflowExecutionDataProcess, errorWorkflow: string) => {
+				data.workflowData.settings = { ...data.workflowData.settings, errorWorkflow };
+				return data;
+			};
+
+			it('is true for a production run whose settings name an error workflow', async () => {
+				await dispatcher.start(namingErrorWorkflow(triggerRunData(), 'error-wf'));
+
+				expect(expected()).toBe(true);
+			});
+
+			it('is true for a production run of a workflow with its own Error Trigger', async () => {
+				await dispatcher.start(withErrorTrigger(webhookRunData()));
+
+				expect(expected()).toBe(true);
+			});
+
+			it('is false for a production run with no error workflow', async () => {
+				await dispatcher.start(triggerRunData());
+
+				expect(expected()).toBe(false);
+			});
+
+			it.each(['DEFAULT', '={{ $json.id }}'])(
+				'is false for a setting that names no workflow (%s)',
+				async (errorWorkflow) => {
+					await dispatcher.start(namingErrorWorkflow(triggerRunData(), errorWorkflow));
+
+					expect(expected()).toBe(false);
+				},
+			);
+
+			it('is false for a manual run, as v1 starts no error workflow for one', async () => {
+				await dispatcher.start(namingErrorWorkflow(runData(), 'error-wf'));
+
+				expect(expected()).toBe(false);
+			});
+
+			it('is false for a run whose caller suppressed the error workflow', async () => {
+				const data = namingErrorWorkflow(triggerRunData(), 'error-wf');
+				data.suppressErrorWorkflow = true;
+
+				await dispatcher.start(data);
+
+				expect(expected()).toBe(false);
+			});
+
+			it('reads the suppression kept in the manual data of the run', async () => {
+				const data = namingErrorWorkflow(triggerRunData(), 'error-wf');
+				data.executionData!.manualData = { suppressErrorWorkflow: true };
+
+				await dispatcher.start(data);
+
+				expect(expected()).toBe(false);
 			});
 		});
 

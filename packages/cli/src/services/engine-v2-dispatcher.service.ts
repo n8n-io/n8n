@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import type { SeededSteps, StartExecutionRequest } from '@n8n/engine';
 import {
@@ -19,7 +20,10 @@ import type {
 import { classifyTriggerIdentity, isTriggerNodeType } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { getPushRefUserId } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import {
+	getPushRefUserId,
+	resolveSuppressErrorWorkflow,
+} from '@/execution-lifecycle/execution-lifecycle-hooks';
 import {
 	createExecutionIdV2,
 	type ExecutionIdV2,
@@ -39,6 +43,7 @@ import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 import { toEngineWorkflowPayload } from '@/services/engine-v2-workflow-payload';
 import { toResponseExpectation } from '@/webhooks/engine-v2-response-expectation';
+import { resolvesErrorWorkflowOnFailure } from '@/workflows/error-workflow-id';
 
 /** The trigger that fired and the payload it produced. */
 type FiredTrigger = {
@@ -92,6 +97,7 @@ export class EngineV2Dispatcher {
 		private readonly pushRegistry: EngineV2PushRegistry,
 		private readonly payloadFiles: EngineV2PayloadFiles,
 		private readonly manualRunPlanner: EngineV2ManualRunPlanner,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**
@@ -282,8 +288,21 @@ export class EngineV2Dispatcher {
 				responseExpectation: toResponseExpectation(data.engineV2Response?.responseMode),
 				// Only a run with a push ref has an editor session to relay events to.
 				lifecycleEventSubscription: data.pushRef ? { kind: 'all' } : undefined,
+				resolveErrorWorkflowOnFailure: this.resolvesErrorWorkflowOnFailure(data),
 			},
 		};
+	}
+
+	/** v1 starts no error workflow for a manual run, or for a run whose caller suppressed it. */
+	private resolvesErrorWorkflowOnFailure(data: IWorkflowExecutionDataProcess): boolean {
+		if (data.executionMode === 'manual' || resolveSuppressErrorWorkflow(data) === true)
+			return false;
+
+		return resolvesErrorWorkflowOnFailure(
+			data.workflowData,
+			data.executionMode,
+			this.globalConfig.nodes.errorTriggerType,
+		);
 	}
 
 	/**
