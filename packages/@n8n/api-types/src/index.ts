@@ -166,6 +166,7 @@ export { passwordSchema, createPasswordSchema } from './schemas/password.schema'
 export { n8nIdSchema } from './schemas/id.schema';
 export {
 	agentIdParamSchema,
+	agentVersionIdParamSchema,
 	aiPreferenceIdParamSchema,
 	columnIdParamSchema,
 	communityPackageNameParamSchema,
