@@ -1,4 +1,4 @@
-import { isApiKeyScope } from '@/types.ee';
+import { ALL_API_KEY_SCOPES } from '@/scope-information';
 import { PROJECT_CUSTOM_ROLE_SCOPES } from '@/roles/custom-role-scopes.ee';
 import { GLOBAL_ADMIN_SCOPES, GLOBAL_OWNER_SCOPES } from '@/roles/scopes/global-scopes.ee';
 import {
@@ -37,10 +37,10 @@ describe.each(['workflow:manageOwner', 'agent:manageOwner'] as const)('%s scope'
 	it('can be given to a custom project role', () => {
 		expect(PROJECT_CUSTOM_ROLE_SCOPES.has(scope)).toBe(true);
 	});
+});
 
-	it('is not available to API keys', () => {
-		expect(isApiKeyScope(scope)).toBe(false);
-	});
+it('offers workflow:manageOwner to API keys', () => {
+	expect(ALL_API_KEY_SCOPES.has('workflow:manageOwner')).toBe(true);
 });
 
 it('grants workflow:manageOwner to the workflow owner role', () => {

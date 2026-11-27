@@ -35,6 +35,17 @@ parameters:
     name: projectId
     in: query
   - schema:
+      anyOf:
+        - type: string
+          enum:
+            - none
+        - type: string
+          format: uuid
+      description: Return only the workflows that this user owns. Use `none` to return only the workflows that have no owner.
+    required: false
+    name: ownerUserId
+    in: query
+  - schema:
       type: string
       enum:
         - 'true'
@@ -89,6 +100,10 @@ responses:
                     type: string
                   triggerCount:
                     type: number
+                  ownerUserId:
+                    type: string
+                    nullable: true
+                    description: ID of the user who owns the workflow, or null when the workflow has no owner.
                   nodes:
                     type: array
                     description: Nodes that make up the workflow
@@ -569,6 +584,7 @@ responses:
                   - isArchived
                   - versionId
                   - triggerCount
+                  - ownerUserId
                   - nodes
                   - connections
                   - nodeGroups

@@ -1687,6 +1687,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		this.applyIsArchivedFilter(qb, filter);
 		this.applyTagsFilter(qb, filter);
 		this.applyProjectFilter(qb, filter);
+		this.applyOwnerFilter(qb, filter);
 		this.applyParentFolderFilter(qb, filter);
 		this.applyNodeTypesFilter(qb, filter);
 		this.applyAvailableInMCPFilter(qb, filter);
@@ -1901,6 +1902,19 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			qb.innerJoin('workflow.shared', 'shared').andWhere('shared.projectId = :projectId', {
 				projectId: filter.projectId,
 			});
+		}
+	}
+
+	private applyOwnerFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: WorkflowListQueryOptions['filter'],
+	): void {
+		if (filter?.ownerUserId === null) {
+			qb.andWhere('workflow.ownerUserId IS NULL');
+			return;
+		}
+		if (typeof filter?.ownerUserId === 'string') {
+			qb.andWhere('workflow.ownerUserId = :ownerUserId', { ownerUserId: filter.ownerUserId });
 		}
 	}
 
