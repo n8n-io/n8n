@@ -10,6 +10,7 @@ import {
 	N8nDialogDescription,
 	N8nDialogFooter,
 	type DialogProps,
+	type DialogSize,
 } from './index';
 import { N8nAlertDialog } from '../N8nAlertDialog';
 import N8nButton from '../N8nButton/Button.vue';
@@ -34,7 +35,7 @@ const meta = {
 	argTypes: {
 		size: {
 			control: { type: 'select' },
-			options: ['small', 'medium', 'large', 'xlarge', '2xlarge', 'fit', 'full', 'cover'],
+			options: ['small', 'medium', 'large', 'xlarge', '2xlarge', '3xlarge', 'fit', 'full', 'cover'],
 		},
 	},
 } satisfies Meta<typeof N8nDialog>;
@@ -147,7 +148,17 @@ export const Sizes: Story = {
 			N8nButton,
 		},
 		setup() {
-			const sizes = ['small', 'medium', 'large', 'xlarge', 'full', 'cover'] as const;
+			const sizes = [
+				'small',
+				'medium',
+				'large',
+				'xlarge',
+				'2xlarge',
+				'3xlarge',
+				'fit',
+				'full',
+				'cover',
+			] as const satisfies readonly DialogSize[];
 			const openDialogs = ref<Record<string, boolean>>({});
 			const openDialog = (size: string) => {
 				openDialogs.value[size] = true;
@@ -155,7 +166,7 @@ export const Sizes: Story = {
 			return { sizes, openDialogs, openDialog };
 		},
 		template: `
-		<div style="display: flex; gap: 16px;">
+		<div style="display: flex; flex-wrap: wrap; gap: var(--spacing--sm);">
 			<template v-for="size in sizes" :key="size">
 				<N8nButton variant="solid" :label="size" @click="openDialog(size)" />
 
