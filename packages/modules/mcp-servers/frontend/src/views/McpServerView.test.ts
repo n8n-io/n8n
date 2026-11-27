@@ -457,7 +457,7 @@ describe('McpServerView', () => {
 
 			await userEvent.click(screen.getByTestId('mcp-server-menu').querySelector('button')!);
 
-			expect(await screen.findByText('Copy URL')).toBeInTheDocument();
+			expect(await screen.findByText('Copy server URL')).toBeInTheDocument();
 			expect(screen.queryByText('Rename')).not.toBeInTheDocument();
 			expect(screen.queryByText('Delete')).not.toBeInTheDocument();
 			expect(screen.getByTestId('mcp-server-description')).not.toHaveAttribute('role', 'button');

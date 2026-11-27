@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { mcpServerSlugSchema, type McpServerShare } from '@n8n/api-types';
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	N8nButton,
@@ -23,7 +24,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
-import { computed, markRaw, onMounted, ref, type Component } from 'vue';
+import { computed, markRaw, ref, watch, type Component } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -61,6 +62,7 @@ const share = ref<McpServerShare | null>(null);
 const state = ref<'loading' | 'ready' | 'notFound' | 'error'>('loading');
 
 const slug = computed(() => String(route.params.slug ?? ''));
+const latestFetch = useLatestFetch();
 const signedIn = computed(() => !!usersStore.currentUser);
 
 /**
@@ -69,6 +71,10 @@ const signedIn = computed(() => !!usersStore.currentUser);
  * would send a signed-in person to "Session expired".
  */
 async function load() {
+	const isLatest = latestFetch.next();
+	// Another slug in the same page: drop the old server at once.
+	share.value = null;
+	state.value = 'loading';
 	// vue-router decodes the param, so a crafted link could point the request at another route.
 	if (!mcpServerSlugSchema.safeParse(slug.value).success) {
 		state.value = 'notFound';
@@ -76,20 +82,24 @@ async function load() {
 		return;
 	}
 	try {
-		share.value = signedIn.value
+		const response = signedIn.value
 			? await getMcpServerShare(rootStore.restApiContext, slug.value)
 			: await getMcpServerPublicShare(rootStore.restApiContext, slug.value);
+		if (!isLatest()) return;
+		share.value = response;
 		state.value = 'ready';
 		// The backend sends the page view, also for a person who is not signed in.
 		documentTitle.set(share.value.name);
 	} catch (error) {
+		if (!isLatest()) return;
 		state.value =
 			error instanceof ResponseError && error.httpStatusCode === 404 ? 'notFound' : 'error';
 		documentTitle.set(i18n.baseText('mcpServers.share.title'));
 	}
 }
 
-onMounted(load);
+// The router reuses this page for another slug, so a slug change loads again.
+watch(slug, load, { immediate: true });
 
 const clients = computed(() => {
 	if (!share.value) return new Map<McpClientId, McpClientSetup>();

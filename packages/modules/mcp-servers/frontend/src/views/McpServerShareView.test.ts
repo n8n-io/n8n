@@ -4,6 +4,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import userEvent from '@testing-library/user-event';
 import { screen, waitFor, within } from '@testing-library/vue';
+import { useRoute } from 'vue-router';
 
 import McpServerShareView from './McpServerShareView.vue';
 
@@ -24,15 +25,20 @@ vi.mock('@n8n/stores/users.store', () => ({ useUsersStore: () => usersStore }));
 const track = vi.hoisted(() => vi.fn());
 vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
-	useRoute: () => route,
-	useRouter: () => ({
-		resolve: (to: { query?: { redirect?: string } }) => ({
-			href: `/signin?redirect=${to.query?.redirect ?? ''}`,
+// A reactive route, so the page sees a change of the slug.
+vi.mock('vue-router', async (importOriginal) => {
+	const { reactive } = await import('vue');
+	const live = reactive(route);
+	return {
+		...(await importOriginal()),
+		useRoute: () => live,
+		useRouter: () => ({
+			resolve: (to: { query?: { redirect?: string } }) => ({
+				href: `/signin?redirect=${to.query?.redirect ?? ''}`,
+			}),
 		}),
-	}),
-}));
+	};
+});
 
 const SERVER_URL = 'https://acme.n8n.cloud/mcp-servers/sales-tools';
 
@@ -153,6 +159,27 @@ describe('McpServerShareView', () => {
 		const who = screen.getByTestId('mcp-share-who');
 		expect(who).toHaveTextContent('Only the owner of this personal project can connect.');
 		expect(who.querySelector('strong')).toBeNull();
+	});
+
+	it('loads the other server when the slug changes on the same page', async () => {
+		api.getMcpServerPublicShare.mockResolvedValueOnce(publicShare).mockResolvedValueOnce({
+			...publicShare,
+			id: '0190a8d6-4a2e-7000-8000-000000000002',
+			slug: 'support-tools',
+			name: 'Support tools',
+			serverUrl: 'https://acme.n8n.cloud/mcp-servers/support-tools',
+		});
+		await renderPage();
+
+		useRoute().params.slug = 'support-tools';
+
+		await waitFor(() =>
+			expect(screen.getByTestId('mcp-share-name')).toHaveTextContent('Support tools'),
+		);
+		expect(api.getMcpServerPublicShare).toHaveBeenLastCalledWith(
+			expect.anything(),
+			'support-tools',
+		);
 	});
 
 	it('shows "not found" for an unknown server', async () => {
