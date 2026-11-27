@@ -56,7 +56,21 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 };
 
 export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
-	await userEvent.click(within(dropdownTriggerParent).getByRole('combobox'));
+	// Close a menu that is already open. An open menu hides the rest of the page.
+	await userEvent.keyboard('{Escape}');
+	const combobox = within(dropdownTriggerParent).getByRole('combobox');
+	await userEvent.click(combobox);
+
+	const contentId = combobox.getAttribute('aria-controls');
+	if (contentId?.includes('reka-')) {
+		const content = await waitFor(() => {
+			const node = document.getElementById(contentId);
+			expect(node).toBeInTheDocument();
+			return node as HTMLElement;
+		});
+		return content.querySelectorAll('[role="option"]');
+	}
+
 	const selectTrigger = dropdownTriggerParent.querySelector(
 		'.select-trigger[aria-describedby]',
 	) as HTMLElement;

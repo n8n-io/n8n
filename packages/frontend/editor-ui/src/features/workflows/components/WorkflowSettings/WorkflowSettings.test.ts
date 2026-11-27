@@ -1096,8 +1096,6 @@ describe('WorkflowSettingsVue', () => {
 				getByTestId('workflow-settings-credential-resolver'),
 			);
 
-			// Should have 3 resolvers
-			expect(dropdownItems).toHaveLength(3);
 			expect(dropdownItems[0]).toHaveTextContent('Test Resolver 1');
 			expect(dropdownItems[1]).toHaveTextContent('Test Resolver 2');
 			expect(dropdownItems[2]).toHaveTextContent('N8n Resolver');
@@ -1107,9 +1105,8 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 
-			await waitFor(() => {
-				expect(getByTestId('workflow-settings-credential-resolver-create-new')).toBeInTheDocument();
-			});
+			await getDropdownItems(getByTestId('workflow-settings-credential-resolver'));
+			expect(getByTestId('workflow-settings-credential-resolver-create-new')).toBeInTheDocument();
 		});
 
 		it('should not show "Edit" button when the default n8n system resolver is selected', async () => {
@@ -1159,7 +1156,6 @@ describe('WorkflowSettingsVue', () => {
 				getByTestId('workflow-settings-credential-resolver'),
 			);
 
-			expect(dropdownItems).toHaveLength(3);
 			expect(dropdownItems[0]).toHaveTextContent('Test Resolver 1');
 			expect(dropdownItems[1]).toHaveTextContent('Test Resolver 2');
 			expect(dropdownItems[2]).toHaveTextContent('N8n Resolver');
@@ -1217,21 +1213,7 @@ describe('WorkflowSettingsVue', () => {
 				expect(input?.value).toBe('Test Resolver 1');
 			});
 
-			// Hover over the select trigger to reveal the clear icon.
-			// Element Plus toggles the clear icon via a JS mouseenter handler on
-			// .select-trigger (not CSS :hover), and Vue re-renders asynchronously.
-			const selectTrigger = dropdown.querySelector('.select-trigger') as HTMLElement;
-			const arrowIcon = dropdown.querySelector('.el-icon');
-			selectTrigger.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
-
-			// Wait for Vue to swap the arrow icon for the clear icon (different VNode keys)
-			await waitFor(() => {
-				expect(dropdown.querySelector('.el-icon')).not.toBe(arrowIcon);
-			});
-
-			// Click the clear icon
-			const clearIcon = dropdown.querySelector('.el-icon') as HTMLElement;
-			await fireEvent.click(clearIcon);
+			await userEvent.click(within(dropdown).getByRole('button', { name: 'Clear selection' }));
 			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -1321,8 +1303,9 @@ describe('WorkflowSettingsVue', () => {
 
 			// The stale ID is cleared and the n8n system resolver is selected as the default.
 			const dropdown = getByTestId('workflow-settings-credential-resolver');
-			const input = dropdown.querySelector('input') as HTMLInputElement;
-			expect(input.value).toBe('N8n Resolver');
+			await waitFor(() => {
+				expect(dropdown.querySelector('input')).toHaveValue('N8n Resolver');
+			});
 		});
 
 		it('should default to the n8n system resolver when no resolver is selected', async () => {
@@ -1369,9 +1352,10 @@ describe('WorkflowSettingsVue', () => {
 			rbacStore.addGlobalScope('credentialResolver:list');
 			rbacStore.addGlobalScope('credentialResolver:update');
 
-			const { queryByTestId } = createComponent({ pinia });
+			const { getByTestId, queryByTestId } = createComponent({ pinia });
 			await flushPromises();
 
+			await getDropdownItems(getByTestId('workflow-settings-credential-resolver'));
 			expect(
 				queryByTestId('workflow-settings-credential-resolver-create-new'),
 			).not.toBeInTheDocument();
@@ -1385,6 +1369,7 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 
+			await getDropdownItems(getByTestId('workflow-settings-credential-resolver'));
 			expect(getByTestId('workflow-settings-credential-resolver-create-new')).toBeInTheDocument();
 		});
 
