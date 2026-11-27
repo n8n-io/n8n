@@ -1,7 +1,6 @@
 import type { DecorationSet } from '@codemirror/view';
 import { EditorView, Decoration } from '@codemirror/view';
-import { StateField, StateEffect, RangeSet } from '@codemirror/state';
-import type { Range } from '@codemirror/state';
+import { StateField, StateEffect, type ChangeSet } from '@codemirror/state';
 import { tags } from '@lezer/highlight';
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
 import { captureException } from '@sentry/vue';
@@ -13,6 +12,23 @@ import type {
 	Resolvable,
 	ResolvableState,
 } from '@/app/types/expressions';
+
+function isRangeTouched(changes: ChangeSet, from: number, to: number): boolean {
+	let touched = false;
+	changes.iterChanges((fromA, toA) => {
+		if (touched) return;
+		if (fromA === toA) {
+			// Zero-width insert: touches only if strictly inside (from, to)
+			if (fromA > from && fromA < to) {
+				touched = true;
+			}
+		} else if (fromA < to && toA > from) {
+			// Replacement or deletion: touches if ranges strictly overlap
+			touched = true;
+		}
+	});
+	return touched;
+}
 
 const cssClasses = {
 	validResolvable: 'cm-valid-resolvable',
@@ -80,22 +96,17 @@ export const coloringStateField = StateField.define<DecorationSet>({
 		try {
 			const isSynthetic = transaction.annotation(ignoreUpdateAnnotation) === true;
 			if (!transaction.changes.empty) {
-				if (isSynthetic) {
-					colorings = colorings.map(transaction.changes);
-					// Clean up zero-length decorations left behind by the synthetic insert/delete
-					if (colorings.size > 0) {
-						const surviving: Array<Range<Decoration>> = [];
-						const cursor = colorings.iter();
-						while (cursor.value !== null) {
-							if (cursor.from !== cursor.to) {
-								surviving.push(cursor.value.range(cursor.from, cursor.to));
-							}
-							cursor.next();
-						}
-						colorings = RangeSet.of(surviving);
-					}
-				} else {
-					colorings = Decoration.none;
+				if (!isSynthetic) {
+					colorings = colorings.update({
+						filter: (from, to) => !isRangeTouched(transaction.changes, from, to),
+					});
+				}
+				colorings = colorings.map(transaction.changes);
+				// Clean up zero-length decorations left behind by deletions
+				if (colorings.size > 0) {
+					colorings = colorings.update({
+						filter: (from, to) => from !== to,
+					});
 				}
 			}
 

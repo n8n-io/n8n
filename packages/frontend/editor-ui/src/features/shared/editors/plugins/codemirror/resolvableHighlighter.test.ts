@@ -46,7 +46,7 @@ describe('resolvableHighlighter', () => {
 		});
 
 		describe('real user edits (no annotation)', () => {
-			it('clears all existing decorations on a real edit', () => {
+			it('clears existing decoration when an edit occurs inside the resolvable', () => {
 				let state = createState('hello world');
 				// Seed a decoration at [0, 5]
 				state = state.update({
@@ -54,24 +54,49 @@ describe('resolvableHighlighter', () => {
 				}).state;
 				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toHaveLength(1);
 
-				// Apply a real insert (no annotation) — should reset to none
-				state = state.update({ changes: { from: 0, insert: 'X' } }).state;
+				// Apply a real insert inside the resolvable
+				state = state.update({ changes: { from: 2, insert: 'X' } }).state;
 				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([]);
 			});
 
-			it('treats ignoreUpdateAnnotation.of(false) as a real edit', () => {
+			it('clears existing decoration when pasting over the resolvable', () => {
 				let state = createState('hello world');
 				state = state.update({
 					effects: coloringStateEffects.addColorEffect.of({ from: 0, to: 5, state: 'valid' }),
 				}).state;
 				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toHaveLength(1);
 
-				// The guard only matches `ignoreUpdateAnnotation === true`, so `false` must still reset.
-				state = state.update({
-					changes: { from: 0, insert: 'X' },
-					annotations: [ignoreUpdateAnnotation.of(false)],
-				}).state;
+				// Replace the entire resolvable
+				state = state.update({ changes: { from: 0, to: 5, insert: 'X' } }).state;
 				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([]);
+			});
+
+			it('preserves and shifts decoration when inserting immediately before the resolvable', () => {
+				let state = createState('hello world');
+				state = state.update({
+					effects: coloringStateEffects.addColorEffect.of({ from: 0, to: 5, state: 'valid' }),
+				}).state;
+				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toHaveLength(1);
+
+				// Insert immediately before the resolvable
+				state = state.update({ changes: { from: 0, insert: 'X' } }).state;
+				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([
+					{ from: 1, to: 6, className: cssClasses.validResolvable },
+				]);
+			});
+
+			it('preserves decoration when inserting immediately after the resolvable', () => {
+				let state = createState('hello world');
+				state = state.update({
+					effects: coloringStateEffects.addColorEffect.of({ from: 0, to: 5, state: 'valid' }),
+				}).state;
+				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toHaveLength(1);
+
+				// Insert immediately after the resolvable
+				state = state.update({ changes: { from: 5, insert: 'X' } }).state;
+				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([
+					{ from: 0, to: 5, className: cssClasses.validResolvable },
+				]);
 			});
 		});
 
@@ -96,6 +121,71 @@ describe('resolvableHighlighter', () => {
 				}).state;
 				const set = snapshotDecorations(state.field(coloringStateField, false)!);
 				expect(set).toEqual([{ from: 0, to: 5, className: cssClasses.validResolvable }]);
+			});
+		});
+
+		describe('IME composition transactions (#39200)', () => {
+			it('preserves existing decorations during active IME composition', () => {
+				const doc = 'THIS IS "{{ $json.weather }}" TEST DESU.';
+				let state = createState(doc);
+				// Seed decoration for {{ $json.weather }} at [9, 28]
+				state = state.update({
+					effects: coloringStateEffects.addColorEffect.of({ from: 9, to: 28, state: 'valid' }),
+				}).state;
+				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([
+					{ from: 9, to: 28, className: cssClasses.validResolvable },
+				]);
+
+				// User begins IME composition at the end of the document (pos 40)
+				state = state.update({
+					changes: { from: 40, insert: 'あ' },
+					userEvent: 'input.type.compose',
+				}).state;
+
+				// Under issue #39200, the decoration is wiped out to none.
+				// It must be preserved across composition changes.
+				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([
+					{ from: 9, to: 28, className: cssClasses.validResolvable },
+				]);
+			});
+
+			it('preserves untouched decorations when user edits elsewhere without composition', () => {
+				const doc = 'THIS IS "{{ $json.weather }}" TEST DESU.';
+				let state = createState(doc);
+				state = state.update({
+					effects: coloringStateEffects.addColorEffect.of({ from: 9, to: 28, state: 'valid' }),
+				}).state;
+				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([
+					{ from: 9, to: 28, className: cssClasses.validResolvable },
+				]);
+
+				// User types at the end of the line
+				state = state.update({
+					changes: { from: 40, insert: '!' },
+				}).state;
+
+				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([
+					{ from: 9, to: 28, className: cssClasses.validResolvable },
+				]);
+			});
+
+			it('clears decoration when active IME composition occurs inside the resolvable', () => {
+				const doc = 'THIS IS "{{ $json.weather }}" TEST DESU.';
+				let state = createState(doc);
+				state = state.update({
+					effects: coloringStateEffects.addColorEffect.of({ from: 9, to: 28, state: 'valid' }),
+				}).state;
+				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([
+					{ from: 9, to: 28, className: cssClasses.validResolvable },
+				]);
+
+				// User composes text inside the resolvable (pos 15)
+				state = state.update({
+					changes: { from: 15, insert: 'あ' },
+					userEvent: 'input.type.compose',
+				}).state;
+
+				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([]);
 			});
 		});
 
