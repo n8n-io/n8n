@@ -293,6 +293,43 @@ describe('ToolHttpRequest', () => {
 			);
 		});
 
+		it('should read digest credentials under the selected generic auth type', async () => {
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://httpbin.org/text/plain';
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpDigestAuth';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+			executeFunctions.getCredentials.mockResolvedValue({ user: 'digest-user', password: 'digest-pass' });
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			const res = await (response as N8nTool).invoke({});
+
+			expect(res).toEqual('Hello World');
+			expect(executeFunctions.getCredentials).toHaveBeenCalledWith('httpDigestAuth', 0);
+			expect(helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					auth: expect.objectContaining({
+						username: 'digest-user',
+						password: 'digest-pass',
+						sendImmediately: false,
+					}),
+				}),
+			);
+		});
+
 		it.each(['genericCredentialType', 'predefinedCredentialType'])(
 			'should send both Multiple Headers Auth headers and keep request headers with %s',
 			async (authentication) => {

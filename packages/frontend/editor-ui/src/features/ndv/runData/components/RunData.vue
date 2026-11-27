@@ -977,6 +977,7 @@ const nodeHints = computed<NodeHint[]>(() => {
 					connections: props.workflowObject.connectionsBySourceNode,
 					hasNodeRun: hasNodeRun.value,
 					hasMultipleInputItems,
+					t: i18n.baseText,
 				});
 
 				return executionHints.value.concat(hints, genericHints).filter(shouldHintBeDisplayed);

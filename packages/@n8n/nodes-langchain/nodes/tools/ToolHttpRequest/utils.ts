@@ -57,7 +57,10 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
 
 	if (genericType === 'httpBasicAuth' || genericType === 'httpDigestAuth') {
-		const basicAuth = await ctx.getCredentials('httpBasicAuth', itemIndex);
+		// The credential is stored under the selected generic auth type; a
+		// Digest credential is not available as httpBasicAuth on a full-access
+		// node, so read it by the type the user actually selected.
+		const basicAuth = await ctx.getCredentials(genericType, itemIndex);
 		const sendImmediately = genericType === 'httpDigestAuth' ? false : undefined;
 
 		return async (options: IHttpRequestOptions) => {
