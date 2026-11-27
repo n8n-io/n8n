@@ -62,14 +62,14 @@ describe('ExecutionLimitUsagePruningTask', () => {
 		},
 	);
 
-	it('deletes the rows older than 400 days before the current UTC day', async () => {
+	it('deletes the rows older than 430 days before the current UTC day', async () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date('2026-11-25T23:30:00.000Z'));
 
 		await task.run();
 
 		expect(repository.deleteUsageBefore).toHaveBeenCalledTimes(1);
-		expect(repository.deleteUsageBefore).toHaveBeenCalledWith('2025-10-21', {});
+		expect(repository.deleteUsageBefore).toHaveBeenCalledWith('2025-09-21', {});
 	});
 
 	it('uses the configured retention for the cutoff day', async () => {

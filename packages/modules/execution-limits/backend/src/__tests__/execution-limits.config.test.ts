@@ -15,8 +15,8 @@ describe('ExecutionLimitsConfig', () => {
 		vi.unstubAllEnvs();
 	});
 
-	it('keeps the usage rows for 400 days by default', () => {
-		expect(Container.get(ExecutionLimitsConfig).usageRetentionDays).toBe(400);
+	it('keeps the usage rows for 430 days by default', () => {
+		expect(Container.get(ExecutionLimitsConfig).usageRetentionDays).toBe(430);
 	});
 
 	it('reads the retention from its environment variable', () => {
@@ -38,11 +38,11 @@ describe('ExecutionLimitsConfig', () => {
 	});
 
 	it.each(['30', '0', '-1', 'abc', '45.5', '36501', '1000000000'])(
-		'falls back to 400 days when given %s',
+		'falls back to 430 days when given %s',
 		(value) => {
 			setRetention(value);
 
-			expect(Container.get(ExecutionLimitsConfig).usageRetentionDays).toBe(400);
+			expect(Container.get(ExecutionLimitsConfig).usageRetentionDays).toBe(430);
 		},
 	);
 });

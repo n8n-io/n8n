@@ -2,7 +2,8 @@ import type { ExecutionLimitPeriodUnit } from '@n8n/api-types';
 import { Config, Env } from '@n8n/config';
 import { z } from 'zod';
 
-const USAGE_RETENTION_DAYS_DEFAULT = 400;
+/** One year and two months: last year's month stays whole for a month after this one ends. */
+const USAGE_RETENTION_DAYS_DEFAULT = 430;
 
 const LONGEST_PERIOD_DAYS = {
 	day: 1,
