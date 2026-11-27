@@ -53,6 +53,32 @@ describe('useConsentStore', () => {
 		expect(consentStore.isLoading).toBe(false);
 	});
 
+	it('keeps the refusal that a resource gives with a 403', async () => {
+		const refusal = {
+			reason: 'not_member',
+			projectName: 'Sales',
+			resourceName: 'Sales tools',
+			uiHints: { icon: 'mcp', consentType: 'mcp-server' },
+		};
+		getConsentDetails.mockRejectedValue(
+			new ResponseError('forbidden', { httpStatusCode: 403, meta: { refusal } }),
+		);
+
+		await expect(consentStore.fetchConsentDetails(FLOW_ID)).rejects.toThrow('forbidden');
+
+		expect(consentStore.errorCode).toBe('forbidden');
+		expect(consentStore.refusal).toEqual(refusal);
+	});
+
+	it('keeps no refusal for a 403 without one', async () => {
+		getConsentDetails.mockRejectedValue(new ResponseError('forbidden', { httpStatusCode: 403 }));
+
+		await expect(consentStore.fetchConsentDetails(FLOW_ID)).rejects.toThrow('forbidden');
+
+		expect(consentStore.errorCode).toBe('forbidden');
+		expect(consentStore.refusal).toBeNull();
+	});
+
 	// A component that abandons one fetch (e.g. it re-fetches, or a fresh mount starts
 	// its own call) must not have its result overwritten by the earlier, now-stale one
 	// resolving later — regardless of which settles first.

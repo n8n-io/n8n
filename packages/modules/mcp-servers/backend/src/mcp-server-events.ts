@@ -33,6 +33,15 @@ export interface McpServerEventMap {
 		field: McpServerToolDraftField | 'both';
 		status: McpServerToolDraftStatus;
 	};
+	/** An AI client called a tool. `clientName` comes from the OAuth client registration. */
+	'mcp-server-tool-called': {
+		serverId: string;
+		userId: string;
+		clientName: string;
+		toolKind: McpServerToolKind;
+		status: 'success' | 'error';
+		durationMs: number;
+	};
 }
 
 declare module '@n8n/backend-services' {

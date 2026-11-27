@@ -8934,6 +8934,12 @@ importers:
 
   packages/modules/mcp-servers/backend:
     dependencies:
+      '@modelcontextprotocol/node':
+        specifier: 'catalog:'
+        version: 2.1.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)
+      '@modelcontextprotocol/server':
+        specifier: 'catalog:'
+        version: 2.3.0
       '@n8n/ai-utilities':
         specifier: workspace:*
         version: link:../../../@n8n/ai-utilities
@@ -8946,6 +8952,9 @@ importers:
       '@n8n/backend-services':
         specifier: workspace:*
         version: link:../../../@n8n/backend-services
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../../../@n8n/config
       '@n8n/db':
         specifier: workspace:*
         version: link:../../../@n8n/db
@@ -8958,6 +8967,12 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../../../@n8n/errors
+      '@n8n/inbound-auth':
+        specifier: workspace:*
+        version: link:../../../@n8n/inbound-auth
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../../../@n8n/permissions
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
@@ -8977,6 +8992,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.1
       oxlint:
         specifier: 'catalog:'
         version: 1.93.0(oxlint-tsgolint@7.0.2007)

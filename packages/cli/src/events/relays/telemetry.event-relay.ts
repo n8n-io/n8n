@@ -429,6 +429,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'mcp-server-created': (event) => this.mcpServerCreated(event),
 			'mcp-server-deleted': (event) => this.mcpServerDeleted(event),
 			'mcp-server-tool-added': (event) => this.mcpServerToolAdded(event),
+			'mcp-server-tool-called': (event) => this.mcpServerToolCalled(event),
 			'mcp-server-tool-drafted': (event) => this.mcpServerToolDrafted(event),
 		});
 	}
@@ -672,6 +673,24 @@ export class TelemetryEventRelay extends EventRelay {
 			source,
 			thread_id: threadId,
 			tool_kind: toolKind,
+		});
+	}
+
+	private mcpServerToolCalled({
+		serverId,
+		userId,
+		clientName,
+		toolKind,
+		status,
+		durationMs,
+	}: RelayEventMap['mcp-server-tool-called']) {
+		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CALLED_CUSTOM_MCP_SERVER_TOOL, {
+			server_id: serverId,
+			user_id: userId,
+			client_name: clientName,
+			tool_kind: toolKind,
+			status,
+			duration_ms: durationMs,
 		});
 	}
 

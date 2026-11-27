@@ -1,5 +1,6 @@
 // Export the public API here. Do not export McpServersModule from this file.
 export { CustomMcpServersFlagGate } from './services/custom-mcp-servers-flag-gate';
+export { McpServersConfig } from './mcp-servers.config';
 export type { McpServerActor, McpServerEventMap } from './mcp-server-events';
 export { McpServer } from './database/entities/mcp-server.entity';
 export { McpServerTool } from './database/entities/mcp-server-tool.entity';
@@ -18,3 +19,5 @@ export {
 	type WorkflowToolStartedRun,
 } from './tools/workflow-tool-port';
 export { TextDraftPort, type TextDraftResult } from './tools/text-draft-port';
+export { OAuthClientNamePort } from './tools/oauth-client-name-port';
+export { OAuthGrantPort } from './tools/oauth-grant-port';
