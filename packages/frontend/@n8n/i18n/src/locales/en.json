@@ -2662,6 +2662,7 @@
 	"mcpServers.picker.reason.already_added": "Already added",
 	"mcpServers.server.tabs.connectionsWithCount": "Connections {count}",
 	"mcpServers.connections.load.error": "Could not load the connections",
+	"mcpServers.connections.load.retry": "Try again",
 	"mcpServers.connections.empty.heading": "No one has connected yet",
 	"mcpServers.connections.empty.description": "Send the server URL to the members of the project. Their clients show up here.",
 	"mcpServers.connections.column.person": "Person",

@@ -103,12 +103,12 @@ export class McpServersService {
 	/** Also deletes the refresh tokens of the server at once, so no client keeps a way back in. */
 	async delete(projectId: string, serverId: string, actor: McpServerActor): Promise<void> {
 		const server = await this.find(projectId, serverId);
+		// The tokens go first. If their delete fails, the server stays and a retry works.
+		await this.refreshTokens.deleteForResource(this.resources.serverUrl(server));
 		if (!(await this.servers.softDelete(projectId, server.id))) {
 			throw new NotFoundError('MCP server not found');
 		}
-		// The soft delete is committed, so a retry answers 404. Send the event first.
 		this.events.emit('mcp-server-deleted', { ...actor, serverId, projectId });
-		await this.refreshTokens.deleteForResource(this.resources.serverUrl(server));
 	}
 
 	/** Slugs are unique on the instance, so the check looks at the servers of all projects. */

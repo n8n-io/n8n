@@ -122,6 +122,18 @@ describe('McpServerConnectionsTab', () => {
 		expect(screen.queryByText('Remove')).not.toBeInTheDocument();
 	});
 
+	it('offers a retry when the connections did not load', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { server, connections: null, loading: false, loadFailed: true },
+		});
+
+		const state = getByTestId('mcp-server-connections-load-error');
+		expect(state).toHaveTextContent('Could not load the connections');
+		await userEvent.click(within(state).getByRole('button', { name: 'Try again' }));
+
+		expect(emitted('changed')).toHaveLength(1);
+	});
+
 	it('shows the empty state with "Copy URL" and no banner when no one connected', async () => {
 		render({ connections: [], blocks: [] });
 

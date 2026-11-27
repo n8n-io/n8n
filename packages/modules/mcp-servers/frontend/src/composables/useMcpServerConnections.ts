@@ -31,6 +31,8 @@ export function useMcpServerConnections(
 
 	const data = ref<McpServerConnectionsResponse | null>(null);
 	const loading = ref(false);
+	/** The last load failed and no data is there to show. */
+	const loadFailed = ref(false);
 
 	/** One row for each person and client, and one for a blocked person with no client. */
 	const rowCount = computed(() => {
@@ -41,6 +43,7 @@ export function useMcpServerConnections(
 	async function load() {
 		const isLatest = latestFetch.next();
 		loading.value = true;
+		loadFailed.value = false;
 		try {
 			const response = await listMcpServerConnections(
 				rootStore.restApiContext,
@@ -49,11 +52,14 @@ export function useMcpServerConnections(
 			);
 			if (isLatest()) data.value = response;
 		} catch (error) {
-			if (isLatest()) toast.showError(error, i18n.baseText('mcpServers.connections.load.error'));
+			if (isLatest()) {
+				loadFailed.value = true;
+				toast.showError(error, i18n.baseText('mcpServers.connections.load.error'));
+			}
 		} finally {
 			if (isLatest()) loading.value = false;
 		}
 	}
 
-	return { data, loading, rowCount, load };
+	return { data, loading, loadFailed, rowCount, load };
 }

@@ -79,12 +79,17 @@ async function addConnection(
 		.insert({ serverId, userId: user.id, oauthClientId, clientName, firstUsedAt, lastUsedAt });
 }
 
-async function addRefreshToken(user: User, resource: string, token: string) {
+async function addRefreshToken(
+	user: User,
+	resource: string,
+	token: string,
+	clientId = CLAUDE_CODE,
+) {
 	await Container.get(DataSource)
 		.getRepository(RefreshToken)
 		.insert({
 			token,
-			clientId: CLAUDE_CODE,
+			clientId,
 			userId: user.id,
 			expiresAt: Math.floor(Date.now() / 1000) + 3600,
 			scope: [],
@@ -255,6 +260,7 @@ describe('POST /projects/:projectId/mcp-servers/:serverId/blocks', () => {
 	it('blocks the person, deletes their refresh tokens for this server, and sends the event', async () => {
 		const other = await createServer('other-desk');
 		await addRefreshToken(tom, resourceUrl(server.slug), 'tom-this-server');
+		await addRefreshToken(tom, resourceUrl(server.slug), 'tom-cursor-this-server', CURSOR);
 		await addRefreshToken(tom, resourceUrl(other.slug), 'tom-other-server');
 		await addRefreshToken(maya, resourceUrl(server.slug), 'maya-this-server');
 
@@ -330,6 +336,7 @@ describe('DELETE /projects/:projectId/mcp-servers/:serverId/blocks/:userId', () 
 	it('deletes a refresh token that a refresh wrote during the block, so the person signs in again', async () => {
 		await ownerAgent.post(`${serverPath()}/blocks`).send({ userId: tom.id }).expect(200);
 		await addRefreshToken(tom, resourceUrl(server.slug), 'tom-during-block');
+		await addRefreshToken(tom, resourceUrl(server.slug), 'tom-cursor-during-block', CURSOR);
 		await addRefreshToken(maya, resourceUrl(server.slug), 'maya-this-server');
 
 		await ownerAgent.delete(`${serverPath()}/blocks/${tom.id}`).expect(200);
@@ -367,6 +374,7 @@ describe('DELETE /projects/:projectId/mcp-servers/:serverId/connections/:userId'
 	it('deletes a refresh token that a refresh wrote during the block, so the person signs in again', async () => {
 		await ownerAgent.post(`${serverPath()}/blocks`).send({ userId: tom.id }).expect(200);
 		await addRefreshToken(tom, resourceUrl(server.slug), 'tom-during-block');
+		await addRefreshToken(tom, resourceUrl(server.slug), 'tom-cursor-during-block', CURSOR);
 		await addRefreshToken(maya, resourceUrl(server.slug), 'maya-this-server');
 
 		await ownerAgent.delete(`${serverPath()}/connections/${tom.id}`).expect(200);
@@ -398,6 +406,7 @@ describe('DELETE /projects/:projectId/mcp-servers/:serverId', () => {
 	it('deletes the refresh tokens of the server at once', async () => {
 		const other = await createServer('other-desk');
 		await addRefreshToken(tom, resourceUrl(server.slug), 'tom-this-server');
+		await addRefreshToken(tom, resourceUrl(server.slug), 'tom-cursor-this-server', CURSOR);
 		await addRefreshToken(maya, resourceUrl(server.slug), 'maya-this-server');
 		await addRefreshToken(maya, resourceUrl(other.slug), 'maya-other-server');
 
@@ -421,21 +430,24 @@ describe('a failed refresh token delete', () => {
 		expect(eventsNamed('mcp-server-person-blocked')).toHaveLength(1);
 	});
 
-	it('still sends the restore event once', async () => {
+	it('keeps the block, so a retry of the restore works and sends one event', async () => {
 		await ownerAgent.post(`${serverPath()}/blocks`).send({ userId: tom.id }).expect(200);
 		failTokenDelete('deleteForPerson');
 
 		await ownerAgent.delete(`${serverPath()}/blocks/${tom.id}`).expect(500);
-		await ownerAgent.delete(`${serverPath()}/blocks/${tom.id}`).expect(404);
+		expect(await blockRows()).toHaveLength(1);
+		await ownerAgent.delete(`${serverPath()}/blocks/${tom.id}`).expect(200);
 
+		expect(await blockRows()).toHaveLength(0);
 		expect(eventsNamed('mcp-server-access-restored')).toHaveLength(1);
 	});
 
-	it('still sends the server delete event once', async () => {
+	it('keeps the server, so a retry of the delete works and sends one event', async () => {
 		failTokenDelete('deleteForResource');
 
 		await ownerAgent.delete(serverPath()).expect(500);
-		await ownerAgent.delete(serverPath()).expect(404);
+		await ownerAgent.get(serverPath()).expect(200);
+		await ownerAgent.delete(serverPath()).expect(200);
 
 		expect(eventsNamed('mcp-server-deleted')).toHaveLength(1);
 	});

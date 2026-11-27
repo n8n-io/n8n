@@ -42,7 +42,10 @@ export class McpServerConnectionRecorder {
 		}
 
 		const registered = await this.clients.getName(clientId);
-		const clientName = (registered || UNKNOWN_CLIENT_NAME).slice(0, CLIENT_NAME_MAX_LENGTH);
+		// Cut by code point, so a character outside the basic plane stays whole.
+		const clientName = Array.from(registered || UNKNOWN_CLIENT_NAME)
+			.slice(0, CLIENT_NAME_MAX_LENGTH)
+			.join('');
 		if (await this.connections.insertFirstUse(key, clientName, now)) {
 			this.events.emit('mcp-server-connected', { serverId: server.id, userId, clientName });
 		}

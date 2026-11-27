@@ -434,6 +434,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 					:server="server"
 					:connections="connections.data.value"
 					:loading="connections.loading.value"
+					:load-failed="connections.loadFailed.value"
 					@changed="connections.load"
 				/>
 

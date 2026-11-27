@@ -31,6 +31,8 @@ const props = defineProps<{
 	server: McpServerResponse;
 	connections: McpServerConnectionsResponse | null;
 	loading: boolean;
+	/** The connections did not load. The tab offers a retry. */
+	loadFailed?: boolean;
 }>();
 
 const emit = defineEmits<{ changed: [] }>();
@@ -230,6 +232,14 @@ const removeDescription = computed(() => {
 <template>
 	<div :class="$style.tab" data-test-id="mcp-server-connections">
 		<N8nLoading v-if="!connections && loading" :rows="3" />
+		<N8nEmptyState
+			v-else-if="!connections && loadFailed"
+			:icon="{ type: 'icon', value: 'triangle-alert' }"
+			:heading="i18n.baseText('mcpServers.connections.load.error')"
+			:button-text="i18n.baseText('mcpServers.connections.load.retry')"
+			data-test-id="mcp-server-connections-load-error"
+			@click:button="emit('changed')"
+		/>
 		<N8nEmptyState
 			v-else-if="connections && rows.length === 0"
 			:icon="{ type: 'icon', value: 'plug' }"

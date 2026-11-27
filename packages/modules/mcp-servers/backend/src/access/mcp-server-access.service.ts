@@ -119,18 +119,20 @@ export class McpServerAccessService {
 		actor: McpServerActor,
 	): Promise<void> {
 		const server = await this.findServer(projectId, serverId);
-		if (!isUserId(userId) || !(await this.blocks.deleteForPerson(server.id, userId))) {
+		if (!isUserId(userId) || !(await this.blocks.isBlocked(server.id, userId))) {
 			throw new NotFoundError('User is not blocked');
 		}
-		// The row is gone, so a retry answers 404. Send the event before the token delete can fail.
+		// A refresh that ran during the block can have written a new token. Delete it first, so the
+		// client signs in again. If the delete fails, the block stays and a retry works.
+		await this.refreshTokens.deleteForPerson(this.resources.serverUrl(server), userId);
+		if (!(await this.blocks.deleteForPerson(server.id, userId))) {
+			throw new NotFoundError('User is not blocked');
+		}
 		this.events.emit('mcp-server-access-restored', {
 			...actor,
 			serverId: server.id,
 			restoredUserId: userId,
 		});
-		// A refresh that ran during the block can have written a new token. Delete it, so the
-		// client signs in again when its access token ends.
-		await this.refreshTokens.deleteForPerson(this.resources.serverUrl(server), userId);
 	}
 
 	/**
