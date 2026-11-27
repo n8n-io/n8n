@@ -65,7 +65,11 @@ import type {
 	ToolCategoryKey,
 	ToolConnectionItem,
 } from '@/features/shared/toolsConnection/types';
-import { getSkillDetail, listAttachableSkills } from '../composables/useAgentApi';
+import {
+	getAgentSkillWorkflowAccess,
+	getSkillDetail,
+	listAttachableSkills,
+} from '@/features/agents/composables/useAgentApi';
 import { useSkillVersions } from '../composables/useSkillVersions';
 import { useSkillWorkflowMentionNames } from '@/features/agents/composables/useSkillWorkflowMentionNames';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
@@ -419,6 +423,9 @@ const pickerItemsWithRecommended = computed<SkillConnectionItem[]>(() =>
 const previewSkill = ref<SkillDetail | null>(null);
 const previewPath = ref(SKILL_FILE);
 const previewLoading = ref(false);
+const previewOutsideProjectWorkflowIds = ref<string[]>([]);
+const skillOutsideProjectWorkflowIds = ref<string[]>([]);
+let skillOutsideProjectRequest = 0;
 const previewIsAdded = computed(
 	() => !!previewSkill.value && attachedSkillIds.value.has(previewSkill.value.id),
 );
@@ -1009,15 +1016,54 @@ async function onPickerItemPreview(item: ToolConnectionItem) {
 	if (item.kind !== 'skill' || item.disabled) return;
 	if (item.category === 'recommended') return await selectRecommendedSkill(item.skillId);
 	previewLoading.value = true;
+	previewOutsideProjectWorkflowIds.value = [];
 	try {
 		previewSkill.value = await getSkillDetail(rootStore.restApiContext, item.skillId);
 		previewPath.value = SKILL_FILE;
 		step.value = 'preview';
+		void loadPreviewOutsideProjectWorkflowIds(item.skillId);
 	} catch (error) {
 		showError(error, i18n.baseText('agents.builder.skills.picker.previewError'));
 	} finally {
 		previewLoading.value = false;
 	}
+}
+
+async function fetchOutsideProjectWorkflowIds(skillId: string): Promise<string[]> {
+	const { projectId, agentId } = props.data;
+	if (
+		!projectId ||
+		!agentId ||
+		!posthog.isVariantEnabled(
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		)
+	) {
+		return [];
+	}
+	try {
+		const { outsideProjectWorkflowIds } = await getAgentSkillWorkflowAccess(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			skillId,
+		);
+		return outsideProjectWorkflowIds;
+	} catch {
+		return [];
+	}
+}
+
+async function loadPreviewOutsideProjectWorkflowIds(skillId: string) {
+	const ids = await fetchOutsideProjectWorkflowIds(skillId);
+	if (previewSkill.value?.id === skillId) previewOutsideProjectWorkflowIds.value = ids;
+}
+
+async function loadSkillOutsideProjectWorkflowIds() {
+	if (!props.data.skillId) return;
+	const request = ++skillOutsideProjectRequest;
+	const ids = await fetchOutsideProjectWorkflowIds(props.data.skillId);
+	if (request === skillOutsideProjectRequest) skillOutsideProjectWorkflowIds.value = ids;
 }
 
 async function attachLibrarySkill(skillId: string) {
@@ -1051,6 +1097,7 @@ onMounted(() => {
 		if (showRecommendedSkills.value) trackRecommendedSkillsShown('agent_skill_modal');
 	}
 	if (props.data.skillId && props.data.skillRefsEnabled) void loadSkillAccess(props.data.skillId);
+	void loadSkillOutsideProjectWorkflowIds();
 	if (
 		isEditing.value &&
 		posthog.isVariantEnabled(
@@ -1112,6 +1159,11 @@ watch(
 	{ immediate: true },
 );
 const displayedSkill = computed(() => viewedVersion.value?.skill ?? skill.value);
+const displayedOutsideProjectWorkflowIds = computed(() =>
+	viewedVersion.value && viewedVersion.value.version !== baseVersion.value
+		? []
+		: skillOutsideProjectWorkflowIds.value,
+);
 const viewingText = computed(() => {
 	const viewed = viewedVersion.value;
 	if (!viewed) return '';
@@ -1424,6 +1476,7 @@ function showSavedSkill(saved: AgentSkill) {
 	if (!(saved.references ?? []).some((file) => file.path === selectedPath.value)) {
 		selectedPath.value = SKILL_FILE;
 	}
+	void loadSkillOutsideProjectWorkflowIds();
 }
 
 // After a version change the builder sends the saved skill to the open editor. Show it in place,
@@ -1621,6 +1674,8 @@ function onRemove() {
 			<AgentSkillFileNav
 				:skill="previewSkill.skill"
 				:selected-path="previewPath"
+				:outside-project-workflow-ids="previewOutsideProjectWorkflowIds"
+				:agent-context="!!props.data.agentId"
 				read-only
 				@select="previewPath = $event"
 			/>
@@ -1799,6 +1854,7 @@ function onRemove() {
 						:instance-skill="mentionsInInstanceSkill"
 						:available-to-mcp="mentionsAvailableToMcp"
 						:agent-context="!!props.data.agentId"
+						:outside-project-workflow-ids="displayedOutsideProjectWorkflowIds"
 						@add-workflow="onAddWorkflow"
 						@add-reference="onAddReference"
 						@remove-reference="onRemoveReference"

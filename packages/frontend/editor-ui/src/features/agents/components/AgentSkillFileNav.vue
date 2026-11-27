@@ -44,6 +44,7 @@ const props = withDefaults(
 		mentionProjectName?: string;
 		instanceSkill?: boolean;
 		availableToMcp?: boolean;
+		outsideProjectWorkflowIds?: string[];
 		agentContext?: boolean;
 	}>(),
 	{
@@ -54,6 +55,7 @@ const props = withDefaults(
 		mentionProjectName: undefined,
 		instanceSkill: false,
 		availableToMcp: false,
+		outsideProjectWorkflowIds: () => [],
 		agentContext: false,
 	},
 );
@@ -104,13 +106,22 @@ const workflowRows = computed(() =>
 						availableToMCP: props.availableToMcp,
 						projectId: props.agentContext ? undefined : props.mentionProjectId,
 					});
+		const outsideProjectWarnings = props.outsideProjectWorkflowIds.includes(workflow.workflowId)
+			? [
+					i18n.baseText('agents.builder.validation.issue.tool.workflow.notInProject', {
+						interpolate: { id: workflow.name || workflow.workflowId },
+					}),
+				]
+			: [];
 		const isWarning = (note: SkillWorkflowNote) =>
 			props.agentContext && AGENT_BLOCKING_NOTES.includes(note);
+		const isCoveredByWarning = (note: SkillWorkflowNote) =>
+			note === 'instanceAccess' && outsideProjectWarnings.length > 0;
 		const toText = (note: SkillWorkflowNote) => i18n.baseText(NOTE_TEXT_KEYS[note]);
 		return {
 			...workflow,
-			warnings: allNotes.filter(isWarning).map(toText),
-			notes: allNotes.filter((note) => !isWarning(note)).map(toText),
+			warnings: [...outsideProjectWarnings, ...allNotes.filter(isWarning).map(toText)],
+			notes: allNotes.filter((note) => !isWarning(note) && !isCoveredByWarning(note)).map(toText),
 		};
 	}),
 );
