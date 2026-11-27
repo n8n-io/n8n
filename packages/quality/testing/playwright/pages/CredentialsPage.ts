@@ -108,6 +108,11 @@ export class CredentialsPage extends BasePage {
 		return this.getUnsavedChangesDialog().getByRole('button', { name: 'Keep Editing' });
 	}
 
+	/** The button in the unsaved-changes confirmation dialog that discards unsaved changes. */
+	getUnsavedChangesCloseButton() {
+		return this.getUnsavedChangesDialog().getByRole('button', { name: 'Close' });
+	}
+
 	/**
 	 * Select credential type without auto-saving (for tests that need to handle save manually)
 	 */

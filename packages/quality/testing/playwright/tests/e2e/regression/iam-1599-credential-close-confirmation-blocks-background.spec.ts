@@ -51,9 +51,11 @@ test.describe(
 		],
 	},
 	() => {
+		let credentialName: string;
+
 		test.beforeEach(async ({ n8n }) => {
 			const projectId = await n8n.start.fromNewProject();
-			const credentialName = `MongoDB ${nanoid(6)}`;
+			credentialName = `MongoDB ${nanoid(6)}`;
 
 			await n8n.api.credentials.createCredential({
 				name: credentialName,
@@ -99,18 +101,46 @@ test.describe(
 			await expect(n8n.credentials.credentialModal.getFieldInput('host')).toBeHidden();
 		});
 
+		test('discards unsaved changes after choosing Close and restores page interactivity', async ({
+			n8n,
+		}) => {
+			await n8n.credentials.getUnsavedChangesCloseButton().click();
+			await expect(n8n.credentials.getUnsavedChangesDialog()).toBeHidden();
+			await expect(n8n.credentials.credentialModal.getModal()).toBeHidden();
+
+			// Underlying page must remain clickable after both stacked modals close.
+			await n8n.credentials.cards.clickCredentialCard(credentialName);
+			await expect(n8n.credentials.credentialModal.getModal()).toBeVisible();
+			await expect(n8n.credentials.credentialModal.getFieldInput('database')).toHaveValue(
+				'initial-db',
+			);
+		});
+
 		test('blocks switching MongoDB Configuration Type while Close without saving dialog is open', async ({
 			n8n,
 		}) => {
 			const confirmDialog = n8n.credentials.getUnsavedChangesDialog();
 			const credentialModal = n8n.credentials.credentialModal;
+			const configTypeCombobox = credentialModal.getFieldCombobox('configurationType');
+			const connectionStringOption = credentialModal.getVisibleDropdownOption('Connection String');
 
+			// Direct pointer clicks at the background combobox coordinates must be blocked by the overlay.
+			const comboboxBox = await configTypeCombobox.boundingBox();
+			expect(comboboxBox).not.toBeNull();
+			await n8n.page.mouse.click(
+				comboboxBox!.x + comboboxBox!.width / 2,
+				comboboxBox!.y + comboboxBox!.height / 2,
+			);
+			await expect(confirmDialog).toBeVisible();
+			await expect(connectionStringOption).toBeHidden();
+
+			// Keyboard Tab and ArrowDown must stay inside the confirmation dialog even after clicking the overlay.
 			const { escapedConfirmationDialog, reachedBackgroundConfigType } =
 				await tryReachBackgroundConfigTypeWithKeyboard(
 					n8n.page,
 					confirmDialog,
-					credentialModal.getFieldCombobox('configurationType'),
-					credentialModal.getVisibleDropdownOption('Connection String'),
+					configTypeCombobox,
+					connectionStringOption,
 				);
 
 			await expect(confirmDialog).toBeVisible();

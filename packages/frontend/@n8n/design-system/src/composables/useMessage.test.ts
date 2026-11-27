@@ -2,7 +2,7 @@ import { ElMessageBox } from 'element-plus';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isVNode } from 'vue';
 
-import { useMessage } from './useMessage';
+import { hasActiveMessageBox, useMessage } from './useMessage';
 
 vi.mock('element-plus', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('element-plus')>();
@@ -82,6 +82,95 @@ describe('useMessage', () => {
 		await expect(useMessage().prompt('Name?')).resolves.toEqual({
 			value: '',
 			action: 'cancel',
+		});
+	});
+
+	it('tracks active message box state and mounts a focus-scope layer cleaned up on settle', async () => {
+		let resolveConfirm!: (value: string) => void;
+		mockedBox.confirm.mockImplementation(
+			async () =>
+				await new Promise<string>((resolve) => {
+					resolveConfirm = resolve;
+				}),
+		);
+
+		expect(hasActiveMessageBox.value).toBe(false);
+		const pending = useMessage().confirm('Discard changes?', 'Close without saving?');
+
+		expect(hasActiveMessageBox.value).toBe(true);
+		const [, , config] = mockedBox.confirm.mock.calls[0];
+		expect(config.appendTo).toBeInstanceOf(HTMLElement);
+		const layerEl = config.appendTo as HTMLElement;
+		expect(document.body.contains(layerEl)).toBe(true);
+		expect(layerEl.style.pointerEvents).toBe('auto');
+
+		resolveConfirm('confirm');
+		await expect(pending).resolves.toBe('confirm');
+
+		expect(hasActiveMessageBox.value).toBe(false);
+		expect(document.body.contains(layerEl)).toBe(false);
+	});
+
+	it('cleans up active state and modal layer when the message box rejects with an Error', async () => {
+		let rejectAlert!: (reason: Error) => void;
+		mockedBox.alert.mockImplementation(
+			async () =>
+				await new Promise<string>((_resolve, reject) => {
+					rejectAlert = reject;
+				}),
+		);
+
+		const pending = useMessage().alert('Something failed', 'Error');
+		const [, , config] = mockedBox.alert.mock.calls[0];
+		const layerEl = config.appendTo as HTMLElement;
+		expect(hasActiveMessageBox.value).toBe(true);
+
+		rejectAlert(new Error('boom'));
+		await expect(pending).rejects.toThrow('boom');
+
+		expect(hasActiveMessageBox.value).toBe(false);
+		expect(document.body.contains(layerEl)).toBe(false);
+	});
+
+	it('mounts the focus-scope layer inside a caller-provided appendTo container', async () => {
+		const customTarget = document.createElement('div');
+		customTarget.id = 'custom-message-box-root';
+		document.body.appendChild(customTarget);
+
+		let capturedAppendTo: unknown;
+		mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
+			capturedAppendTo = config.appendTo;
+			expect(customTarget.contains(config.appendTo as Node)).toBe(true);
+			return 'confirm';
+		});
+
+		try {
+			await useMessage().confirm('Continue?', 'Confirm', {
+				appendTo: '#custom-message-box-root',
+			});
+			expect(capturedAppendTo).toBeInstanceOf(HTMLElement);
+			expect(customTarget.childElementCount).toBe(0);
+		} finally {
+			customTarget.remove();
+		}
+	});
+
+	it('cleans up the modal layer if the message box DOM child is removed externally', async () => {
+		let appendedOverlay: HTMLDivElement | null = null;
+		mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
+			const layer = config.appendTo as HTMLElement;
+			appendedOverlay = document.createElement('div');
+			layer.appendChild(appendedOverlay);
+			return await new Promise(() => {});
+		});
+
+		void useMessage().confirm('External close?', 'Confirm');
+		expect(hasActiveMessageBox.value).toBe(true);
+		expect(appendedOverlay).not.toBeNull();
+
+		appendedOverlay!.remove();
+		await vi.waitFor(() => {
+			expect(hasActiveMessageBox.value).toBe(false);
 		});
 	});
 });

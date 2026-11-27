@@ -15,6 +15,7 @@ import {
 	N8nDialogTitle,
 } from './index';
 import { OVERLAY_LAYER_SELECTOR } from '../../constants';
+import { useMessage } from '../../composables/useMessage';
 
 // Helper to render the simplified N8nDialog component
 const renderDialog = (
@@ -811,6 +812,113 @@ describe('N8nDialog', () => {
 			await user.click(getByTestId('dialog-trigger'));
 
 			expect(getByRole('dialog')).toBeInTheDocument();
+		});
+	});
+
+	describe('interaction with useMessage', () => {
+		it('moves focus into a message box, blocks parent interaction, and restores it after closing', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByRole } = renderDialog();
+
+			await user.click(getByTestId('dialog-trigger'));
+			const parentDialog = getByRole('dialog', { name: 'Test Dialog Title' });
+			expect(parentDialog).toBeInTheDocument();
+			expect(parentDialog.className).not.toContain('behindMessageBox');
+
+			const pendingConfirm = useMessage().confirm(
+				'Are you sure you want to discard changes?',
+				'Close without saving?',
+				{
+					confirmButtonText: 'Keep Editing',
+					cancelButtonText: 'Close',
+				},
+			);
+
+			const confirmDialog = await waitFor(() =>
+				getByRole('dialog', { name: 'Close without saving?' }),
+			);
+			const keepEditingButton = getByRole('button', { name: 'Keep Editing' });
+			const closeConfirmButton = getByRole('button', { name: 'Close' });
+
+			expect(parentDialog.className).toContain('behindMessageBox');
+			await waitFor(() => {
+				expect(confirmDialog.contains(document.activeElement)).toBe(true);
+			});
+
+			// Tabbing must stay inside the confirmation dialog and never reach the background dialog.
+			for (let i = 0; i < 6; i++) {
+				await user.tab();
+				expect(confirmDialog.contains(document.activeElement)).toBe(true);
+				expect(parentDialog.contains(document.activeElement)).toBe(false);
+			}
+			expect([keepEditingButton, closeConfirmButton]).toContain(document.activeElement);
+
+			await user.click(keepEditingButton);
+			await expect(pendingConfirm).resolves.toBe('confirm');
+
+			await waitFor(() => {
+				expect(parentDialog.className).not.toContain('behindMessageBox');
+			});
+			// Focus trapping resumes in the parent dialog after the message box closes.
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			await user.tab();
+			expect(parentDialog.contains(document.activeElement)).toBe(true);
+		});
+
+		it('does not dismiss or emit escapeKeyDown on parent dialog when Escape closes a message box', async () => {
+			const user = userEvent.setup();
+			const escapeHandler = vi.fn();
+			const interactOutsideHandler = vi.fn();
+
+			const { getByTestId, getByRole, queryByRole } = render({
+				components: {
+					N8nDialog,
+					N8nDialogHeader,
+					N8nDialogTitle,
+				},
+				setup() {
+					const isOpen = ref(false);
+					return { isOpen, escapeHandler, interactOutsideHandler };
+				},
+				template: `
+					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
+					<N8nDialog
+						v-model:open="isOpen"
+						@escape-key-down="escapeHandler"
+						@interact-outside="interactOutsideHandler"
+					>
+						<N8nDialogHeader>
+							<N8nDialogTitle>Parent Dialog</N8nDialogTitle>
+						</N8nDialogHeader>
+					</N8nDialog>
+				`,
+			});
+
+			await user.click(getByTestId('dialog-trigger'));
+			expect(getByRole('dialog', { name: 'Parent Dialog' })).toBeInTheDocument();
+
+			const pendingConfirm = useMessage().confirm('Delete this item?', 'Delete Item?', {
+				confirmButtonText: 'Delete',
+				cancelButtonText: 'Cancel',
+			});
+
+			await waitFor(() => {
+				expect(getByRole('dialog', { name: 'Delete Item?' })).toBeInTheDocument();
+			});
+
+			await user.keyboard('{Escape}');
+			await expect(pendingConfirm).resolves.toBe('close');
+
+			expect(escapeHandler).not.toHaveBeenCalled();
+			expect(interactOutsideHandler).not.toHaveBeenCalled();
+			expect(getByRole('dialog', { name: 'Parent Dialog' })).toBeInTheDocument();
+
+			// Pressing Escape again closes the parent dialog normally.
+			await user.keyboard('{Escape}');
+			await waitFor(() => {
+				expect(queryByRole('dialog', { name: 'Parent Dialog' })).not.toBeInTheDocument();
+			});
+			expect(escapeHandler).toHaveBeenCalledOnce();
 		});
 	});
 });
