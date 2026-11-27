@@ -233,6 +233,51 @@ describe('CreateExecutionLimitPolicyTables migration', () => {
 		await context.queryRunner.release();
 	});
 
+	it('creates the columns and the cascading foreign keys of the three tables', async () => {
+		const context = createTestMigrationContext(dataSource);
+		const getTable = async (name: string) =>
+			await context.queryRunner.getTable(`${context.tablePrefix}${name}`);
+		const cascadeTo = (column: string, table: string) =>
+			expect.objectContaining({
+				columnNames: [column],
+				referencedTableName: `${context.tablePrefix}${table}`,
+				referencedColumnNames: ['id'],
+				onDelete: 'CASCADE',
+			});
+		const idType = context.isPostgres ? 'uuid' : 'varchar';
+
+		const policy = await getTable(POLICY_TABLE);
+		expect(policy?.columns.map(({ name, type }) => [name, type])).toEqual(
+			expect.arrayContaining([
+				['id', idType],
+				['maxExecutions', 'integer'],
+			]),
+		);
+		expect(policy?.columns.map(({ name }) => name).sort()).toEqual(
+			['createdAt', 'id', 'maxExecutions', 'name', 'updatedAt'].sort(),
+		);
+		expect(policy?.foreignKeys).toHaveLength(0);
+
+		const assignment = await getTable(ASSIGNMENT_TABLE);
+		expect(assignment?.columns.map(({ name }) => name).sort()).toEqual(
+			['createdAt', 'policyId', 'projectId'].sort(),
+		);
+		expect(assignment?.foreignKeys).toHaveLength(2);
+		expect(assignment?.foreignKeys).toEqual(
+			expect.arrayContaining([
+				cascadeTo('policyId', POLICY_TABLE),
+				cascadeTo('projectId', 'project'),
+			]),
+		);
+
+		const groupAssignment = await getTable(GROUP_ASSIGNMENT_TABLE);
+		expect(groupAssignment?.columns.map(({ name }) => name).sort()).toEqual(
+			['createdAt', 'group', 'policyId'].sort(),
+		);
+		expect(groupAssignment?.foreignKeys).toEqual([cascadeTo('policyId', POLICY_TABLE)]);
+		await context.queryRunner.release();
+	});
+
 	it('removes the single project limit table', async () => {
 		const context = createTestMigrationContext(dataSource);
 
@@ -248,7 +293,17 @@ describe('CreateExecutionLimitPolicyTables migration', () => {
 		for (const table of [POLICY_TABLE, ASSIGNMENT_TABLE, GROUP_ASSIGNMENT_TABLE]) {
 			expect(await context.queryRunner.hasTable(prefixed(table))).toBe(false);
 		}
-		expect(await context.queryRunner.hasTable(prefixed(OLD_TABLE))).toBe(true);
+		const restored = await context.queryRunner.getTable(prefixed(OLD_TABLE));
+		expect(restored?.columns.map(({ name }) => name).sort()).toEqual(
+			['createdAt', 'maxExecutions', 'projectId', 'updatedAt'].sort(),
+		);
+		expect(restored?.foreignKeys).toEqual([
+			expect.objectContaining({
+				columnNames: ['projectId'],
+				referencedTableName: prefixed('project'),
+				onDelete: 'CASCADE',
+			}),
+		]);
 		await context.queryRunner.release();
 
 		await runSingleMigration(MIGRATION_NAME);
