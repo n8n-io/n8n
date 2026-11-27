@@ -1,16 +1,13 @@
 import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type {
-	FindOptionsWhere,
-	Project,
-	TagEntity,
-	User,
-	Variables,
-	WorkflowEntity,
-} from '@n8n/db';
+import type { FindOptionsWhere, TagEntity, User, Variables, WorkflowEntity } from '@n8n/db';
 import {
+	accountFullName,
 	CredentialsRepository,
+	Folder,
 	FolderRepository,
+	PersonRepository,
+	Project,
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
@@ -23,7 +20,7 @@ import {
 	WorkflowTagMapping,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import type { PolicyCleared } from '@n8n/decorators';
+import type { ContentImportContext, PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG } from '@n8n/permissions';
 import { In, type DataSourceOptions, type EntityManager } from '@n8n/typeorm';
@@ -32,39 +29,46 @@ import { sleep } from '@n8n/utils/sleep';
 import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
-import type { AutoPublishMode } from 'n8n-workflow';
+import type { AutoPublishMode, INode } from 'n8n-workflow';
 import {
 	shouldAutoPublishWorkflow,
 	jsonParse,
-	OperationalError,
-	UnexpectedError,
-	UserError,
+	pickVersionedSettings,
+	versionedSettingsEqual,
 } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
+import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { IWorkflowToImport } from '@/interfaces';
-import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
-import { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
-import { DataTable } from '@/modules/data-table/data-table.entity';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
+import {
+	DataTableColumn,
+	DataTableColumnRepository,
+	DataTableDDLService,
+	DataTableSizeValidator,
+	DataTable,
+	DataTableRepository,
+	isValidColumnName,
+	isValidDataTableId,
+} from '@n8n/backend-module-data-table';
+
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
-import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+import { WorkflowMutationHooksProxy, WorkflowPublishGuardProxy } from '@n8n/backend-services';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
@@ -79,6 +83,7 @@ import {
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import { SourceControlContextFactory } from './source-control-context.factory';
+import { getNonDeletedResources } from './source-control-resource-helper';
 import {
 	getCredentialExportPath,
 	getDataTableColumnKey,
@@ -114,12 +119,39 @@ import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 
+type ImportVersionIdOptions = {
+	existingWorkflow: WorkflowEntity | undefined;
+	importedWorkflow: IWorkflowToImport;
+	/** The versionId in the file from Git */
+	pulledVersionId: string;
+	shouldPublishAfterImport: boolean;
+};
+
 const toStatusOwner = (project: Project | undefined): StatusResourceOwner | undefined => {
 	if (project?.type) {
 		return { type: project.type, projectId: project.id, projectName: project.name };
 	}
 	return undefined;
 };
+
+/** Shared by the pull and its preview, so both evaluate the same input. */
+const workflowImportPolicyContext = (
+	workflow: { id: string; name: string; nodes: INode[] },
+	projectId: string,
+): ContentImportContext => ({
+	workflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
+	projectId,
+	transport: 'source-control',
+});
+
+const credentialImportPolicyContext = (
+	credential: { id: string | null; type: string },
+	projectId: string,
+): ContentImportContext => ({
+	credential: { id: credential.id, type: credential.type },
+	projectId,
+	transport: 'source-control',
+});
 
 /**
  * How long a pull waits for one workflow's unpublish to settle before it gives
@@ -151,6 +183,7 @@ export class SourceControlImportService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly variablesRepository: VariablesRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
@@ -173,6 +206,8 @@ export class SourceControlImportService {
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly workflowIndexService: WorkflowIndexService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -190,6 +225,7 @@ export class SourceControlImportService {
 		const remoteWorkflowFiles = await glob('*.json', {
 			cwd: this.workflowExportFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 
 		// Parse in bounded batches and project each workflow to its slim status shape
@@ -222,6 +258,7 @@ export class SourceControlImportService {
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
 					owner: toStatusOwner(project),
 					isRemoteArchived: remote.isArchived,
+					versionedSettings: pickVersionedSettings(remote.settings),
 				};
 			},
 		);
@@ -240,6 +277,7 @@ export class SourceControlImportService {
 				name: true,
 				description: true,
 				updatedAt: true,
+				settings: {},
 				parentFolder: {
 					id: true,
 				},
@@ -267,6 +305,7 @@ export class SourceControlImportService {
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
+				versionedSettings: pickVersionedSettings(local.settings),
 			};
 		});
 	}
@@ -287,6 +326,7 @@ export class SourceControlImportService {
 				name: true,
 				description: true,
 				updatedAt: true,
+				settings: {},
 				parentFolder: {
 					id: true,
 				},
@@ -328,6 +368,7 @@ export class SourceControlImportService {
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
 				owner: toStatusOwner(ownerProject),
+				versionedSettings: pickVersionedSettings(local.settings),
 			};
 		});
 	}
@@ -338,17 +379,22 @@ export class SourceControlImportService {
 		const remoteCredentialFiles = await glob('*.json', {
 			cwd: this.credentialExportFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 
 		const remoteCredentialFilesRead = await mapInBatches(
 			remoteCredentialFiles,
 			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
-			async (file) => {
+			async (file): Promise<ExportableCredential | undefined> => {
 				this.logger.debug(`Parsing credential file ${file}`);
-				const remote = jsonParse<ExportableCredential>(
-					await fsReadFile(file, { encoding: 'utf8' }),
-				);
-				return remote;
+				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
+				try {
+					return jsonParse<ExportableCredential>(fileContent);
+				} catch (error) {
+					const reason = error instanceof Error ? error.message : String(error);
+					this.logger.warn(`Failed to parse credential from file ${file}: ${reason}`);
+					return undefined;
+				}
 			},
 		);
 
@@ -367,7 +413,7 @@ export class SourceControlImportService {
 		);
 
 		const remoteCredentialFilesParsed = remoteCredentialFilesRead
-			.filter((remote) => {
+			.filter((remote): remote is NonNullable<typeof remote> => {
 				if (!remote?.id) {
 					return false;
 				}
@@ -377,7 +423,9 @@ export class SourceControlImportService {
 				}
 				const owner = remote.ownedBy;
 				return (
-					!owner || context.hasAccessToAllProjects() || context.findAuthorizedProjectByOwner(owner)
+					!owner ||
+					context.hasAccessToAllProjects() ||
+					!!context.findAuthorizedProjectByOwner(owner)
 				);
 			})
 			.map((remote) => {
@@ -472,6 +520,7 @@ export class SourceControlImportService {
 		const variablesFile = await glob(SOURCE_CONTROL_VARIABLES_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 		if (variablesFile.length > 0) {
 			this.logger.debug(`Importing variables from file ${variablesFile[0]}`);
@@ -495,6 +544,7 @@ export class SourceControlImportService {
 		const dataTableFiles = await glob('*.json', {
 			cwd: this.dataTableExportFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 
 		if (dataTableFiles.length === 0) {
@@ -596,6 +646,7 @@ export class SourceControlImportService {
 		const foldersFile = await glob(SOURCE_CONTROL_FOLDERS_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 		if (foldersFile.length > 0) {
 			this.logger.debug(`Importing folders from file ${foldersFile[0]}`);
@@ -648,6 +699,7 @@ export class SourceControlImportService {
 		const tagsFile = await glob(SOURCE_CONTROL_TAGS_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 		if (tagsFile.length > 0) {
 			this.logger.debug(`Importing tags from file ${tagsFile[0]}`);
@@ -691,28 +743,38 @@ export class SourceControlImportService {
 		const remoteProjectFiles = await glob('*.json', {
 			cwd: this.projectExportFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 
 		const remoteProjects = await mapInBatches(
 			remoteProjectFiles,
 			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
-			async (file) => {
+			async (file): Promise<ExportableProjectWithFileName | undefined> => {
 				this.logger.debug(`Parsing project file ${file}`);
 				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
-				const parsedProject = jsonParse<ExportableProject>(fileContent);
-
-				return {
-					...parsedProject,
-					filename: getProjectExportPath(parsedProject.id, this.projectExportFolder),
-				};
+				try {
+					const parsedProject = jsonParse<ExportableProject>(fileContent);
+					return {
+						...parsedProject,
+						filename: getProjectExportPath(parsedProject.id, this.projectExportFolder),
+					};
+				} catch (error) {
+					const reason = error instanceof Error ? error.message : String(error);
+					this.logger.warn(`Failed to parse project from file ${file}: ${reason}`);
+					return undefined;
+				}
 			},
 		);
 
+		const remoteProjectsParsed = remoteProjects.filter(
+			(remoteProject): remoteProject is ExportableProjectWithFileName =>
+				remoteProject !== undefined,
+		);
 		if (context.hasAccessToAllProjects()) {
-			return remoteProjects;
+			return remoteProjectsParsed;
 		}
 
-		return remoteProjects.filter((remoteProject) => {
+		return remoteProjectsParsed.filter((remoteProject) => {
 			return context.findAuthorizedProjectByOwner(remoteProject.owner);
 		});
 	}
@@ -776,15 +838,12 @@ export class SourceControlImportService {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
-			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId', 'isArchived'],
+			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId', 'isArchived', 'nodes'],
 		});
 
 		const folders = await this.folderRepository.find({ select: ['id'] });
 		const existingFolderIds = folders.map((f) => f.id);
 
-		const allSharedWorkflows = await this.sharedWorkflowRepository.findWithFields(candidateIds, {
-			select: ['workflowId', 'role', 'projectId'],
-		});
 		const importWorkflowsResult = [];
 
 		// Due to SQLite concurrency issues, we cannot save all workflows at once
@@ -797,7 +856,6 @@ export class SourceControlImportService {
 				autoPublish,
 				existingWorkflows,
 				existingFolderIds,
-				allSharedWorkflows,
 				personalProject,
 			);
 
@@ -815,7 +873,6 @@ export class SourceControlImportService {
 		autoPublish: AutoPublishMode,
 		existingWorkflows: WorkflowEntity[],
 		existingFolderIds: string[],
-		allSharedWorkflows: Array<{ workflowId: string; role: string; projectId: string }>,
 		personalProject: Project,
 	): Promise<WorkflowImportResult | undefined> {
 		this.logger.debug(`Importing workflow file ${candidate.file}`);
@@ -839,7 +896,7 @@ export class SourceControlImportService {
 			this.logger.warn(`Workflow file ${candidate.file}: ${warning}`);
 		}
 
-		const { versionId, nodes, connections, id, owner, nodeGroups } = importedWorkflow;
+		const { versionId, nodes, connections, id, owner, nodeGroups, settings } = importedWorkflow;
 
 		if (!id || !versionId || !nodes || !connections) {
 			this.logger.error(
@@ -849,6 +906,19 @@ export class SourceControlImportService {
 			return;
 		}
 		const existingWorkflow = existingWorkflows.find((e) => e.id === id);
+
+		// Apply the same deprecated-node enforcement as the REST/public API
+		// endpoints. A re-sync that leaves the deprecated nodes untouched is
+		// allowed; introducing or in-place editing them through git is not.
+		if (existingWorkflow) {
+			this.deprecatedNodesValidationService.validateOnUpdate(
+				nodes,
+				existingWorkflow.nodes ?? [],
+				id,
+			);
+		} else {
+			this.deprecatedNodesValidationService.validateOnCreate(nodes, id);
+		}
 
 		await this.redactionEnforcementService.assertPolicyChangeAllowed(
 			existingWorkflow?.settings?.redactionPolicy,
@@ -864,11 +934,10 @@ export class SourceControlImportService {
 		let cleared: PolicyCleared<'contentImport'>;
 		try {
 			cleared = await this.policyEnforcementService.enforceContentImport(
-				{
-					workflow: { id, name: importedWorkflow.name, nodes },
-					projectId: targetOwnerProject.id,
-					transport: 'source-control',
-				},
+				workflowImportPolicyContext(
+					{ id, name: importedWorkflow.name, nodes },
+					targetOwnerProject.id,
+				),
 				{ kind: 'user', user: { id: userId } },
 			);
 		} catch (error) {
@@ -890,9 +959,18 @@ export class SourceControlImportService {
 			await this.preparePublishStateForImport(
 				existingWorkflow,
 				importedWorkflow,
+				versionId,
 				autoPublish,
 				userId,
 			);
+
+		const importVersionId = await this.resolveImportVersionId({
+			existingWorkflow,
+			importedWorkflow,
+			pulledVersionId: versionId,
+			shouldPublishAfterImport,
+		});
+		importedWorkflow.versionId = importVersionId;
 
 		let finalPublishingError = publishingError;
 		let finalPublishingErrorDetails = publishingErrorDetails;
@@ -907,10 +985,6 @@ export class SourceControlImportService {
 		const archivedByPull =
 			!!existingWorkflow && !existingWorkflow.isArchived && !!importedWorkflow.isArchived;
 
-		const localOwner = allSharedWorkflows.find(
-			(w) => w.workflowId === id && w.role === 'workflow:owner',
-		);
-
 		await this.workflowRepository.upsertImportedContent(
 			{
 				...importedWorkflow,
@@ -924,9 +998,14 @@ export class SourceControlImportService {
 			await this.workflowMutationHooks.afterWorkflowArchived(id, null);
 		}
 
+		const storedWorkflow = await this.workflowRepository.findOneBy({ id });
+		if (storedWorkflow) {
+			await this.workflowIndexService.updateIndexForDraft(storedWorkflow);
+		}
+
 		try {
 			await this.saveOrUpdateWorkflowHistory(
-				{ id, versionId, nodes, connections, nodeGroups },
+				{ id, versionId: importVersionId, nodes, connections, nodeGroups, settings },
 				userId,
 			);
 		} catch (error) {
@@ -937,18 +1016,17 @@ export class SourceControlImportService {
 			return;
 		}
 
-		await this.syncResourceOwnership({
-			resourceId: id,
-			remoteOwner: owner,
-			localOwner,
-			fallbackProject: personalProject,
-			repository: this.sharedWorkflowRepository,
-			targetOwnerProject,
-		});
+		const moved = await this.sharedWorkflowRepository.syncImportedWorkflowOwner(
+			id,
+			targetOwnerProject.id,
+		);
+		if (moved) {
+			await this.workflowMutationHooks.afterWorkflowsTransferred([id], null);
+		}
 
 		// Now publish the workflow if needed (after history is saved)
 		if (shouldPublishAfterImport) {
-			const publishResult = await this.publishWorkflow(id, versionId, userId);
+			const publishResult = await this.publishWorkflow(id, importVersionId, userId);
 			if (!publishResult.success) {
 				finalPublishingError = publishResult.error;
 				finalPublishingErrorDetails = publishResult.errorDetails;
@@ -1043,9 +1121,7 @@ export class SourceControlImportService {
 
 		try {
 			this.logger.debug(`Publishing imported workflow id ${workflowId}`);
-			await this.workflowService.activateWorkflow(user, workflowId, {
-				versionId,
-			});
+			await this.workflowService.activateWorkflowFromSourceControlPull(user, workflowId, versionId);
 			return { success: true };
 		} catch (e) {
 			const error = ensureError(e);
@@ -1056,6 +1132,58 @@ export class SourceControlImportService {
 				errorDetails: e instanceof WorkflowPublishBlockedError ? e.details : undefined,
 			};
 		}
+	}
+
+	/**
+	 * Marks each incoming workflow and credential that the pull would skip, by setting its
+	 * `contentImportPolicy`. Evaluates only: it writes nothing and creates no project.
+	 */
+	async previewContentImportPolicy(files: SourceControlledFile[], userId: string): Promise<void> {
+		if (!this.policyEnforcementService.hasChecksFor('contentImport')) return;
+
+		const workflows = getNonDeletedResources(files, 'workflow');
+		const credentials = getNonDeletedResources(files, 'credential');
+		if (workflows.length === 0 && credentials.length === 0) return;
+
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
+		const projectIdByOwner = new Map<string, Promise<string>>();
+		const targetProjectId = async (owner: RemoteResourceOwner | null | undefined) => {
+			const key = JSON.stringify(owner ?? null);
+			let projectId = projectIdByOwner.get(key);
+			if (!projectId) {
+				projectId = this.findTargetOwnerProjectId(owner, personalProject.id);
+				projectIdByOwner.set(key, projectId);
+			}
+			return await projectId;
+		};
+
+		const evaluate = async (file: SourceControlledFile, context: ContentImportContext) => {
+			const { violations, checkErrors = [] } =
+				await this.policyEnforcementService.evaluateContentImport(context);
+			if (violations.length > 0 || checkErrors.length > 0) {
+				file.contentImportPolicy = { violations, checkErrors };
+			}
+		};
+
+		await mapInBatches(workflows, SOURCE_CONTROL_READ_FILE_BATCH_SIZE, async (file) => {
+			const { id, versionId, name, nodes, connections, owner } = await this.parseWorkflowFromFile(
+				file.file,
+			);
+			// The import skips a file missing these before the policy runs.
+			if (!id || !versionId || !nodes || !connections) return;
+
+			const projectId = await targetProjectId(owner);
+			await evaluate(file, workflowImportPolicyContext({ id, name, nodes }, projectId));
+		});
+
+		await mapInBatches(credentials, SOURCE_CONTROL_READ_FILE_BATCH_SIZE, async (file) => {
+			const { id, type, ownedBy } = jsonParse<ExportableCredential>(
+				await fsReadFile(file.file, { encoding: 'utf8' }),
+			);
+
+			const projectId = await targetProjectId(ownedBy);
+			await evaluate(file, credentialImportPolicyContext({ id: id ?? null, type }, projectId));
+		});
 	}
 
 	async importCredentialsFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
@@ -1120,11 +1248,10 @@ export class SourceControlImportService {
 				let cleared: PolicyCleared<'contentImport'>;
 				try {
 					cleared = await this.policyEnforcementService.enforceContentImport(
-						{
-							credential: { id: credential.id ?? null, type },
-							projectId: targetOwnerProject.id,
-							transport: 'source-control',
-						},
+						credentialImportPolicyContext(
+							{ id: credential.id ?? null, type },
+							targetOwnerProject.id,
+						),
 						{ kind: 'user', user: { id: userId } },
 					);
 				} catch (error) {
@@ -1178,15 +1305,18 @@ export class SourceControlImportService {
 						(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
 					);
 
-					await this.syncResourceOwnership({
-						resourceId: credential.id,
-						remoteOwner: credential.ownedBy,
-						localOwner,
-						fallbackProject: personalProject,
-						repository: this.sharedCredentialsRepository,
+					if (localOwner && localOwner.projectId !== targetOwnerProject.id) {
+						await this.sharedCredentialsRepository.deleteByIds(
+							[credential.id],
+							localOwner.projectId,
+							transactionManager,
+						);
+					}
+					await this.sharedCredentialsRepository.makeOwner(
+						[credential.id],
+						targetOwnerProject.id,
 						transactionManager,
-						targetOwnerProject,
-					});
+					);
 				});
 
 				return {
@@ -1258,9 +1388,20 @@ export class SourceControlImportService {
 			]),
 		].filter((workflowId) => existingWorkflowIds.has(workflowId));
 
-		const mappingsToImport = mappedTags.mappings.filter((mapping) =>
-			existingWorkflowIds.has(String(mapping.workflowId)),
+		const existingTagIds = new Set(
+			(await this.tagRepository.find({ select: ['id'] })).map((tag) => tag.id),
 		);
+		const mappingsToImport = mappedTags.mappings.filter((mapping) => {
+			if (!existingWorkflowIds.has(String(mapping.workflowId))) return false;
+			if (!existingTagIds.has(String(mapping.tagId))) {
+				this.logger.warn('Skipping tag mapping because the tag does not exist locally', {
+					tagId: mapping.tagId,
+					workflowId: mapping.workflowId,
+				});
+				return false;
+			}
+			return true;
+		});
 
 		/**
 		 * Use a transaction here as we "delete" them all and then "create" them again.
@@ -1676,11 +1817,9 @@ export class SourceControlImportService {
 			return ownedBy.teamId;
 		}
 		if (ownedBy?.type === 'personal' && ownedBy.personalEmail) {
-			const user = await this.userRepository.findOne({
-				where: { email: ownedBy.personalEmail },
-			});
-			if (user) {
-				return (await this.projectRepository.getPersonalProjectForUserOrFail(user.id)).id;
+			const person = await this.personRepository.findByEmail(ownedBy.personalEmail);
+			if (person) {
+				return (await this.projectRepository.getPersonalProjectForUserOrFail(person.id)).id;
 			}
 			this.logger.debug(
 				`User ${ownedBy.personalEmail} not found locally. Using pulling user's personal project as fallback.`,
@@ -1747,9 +1886,8 @@ export class SourceControlImportService {
 		pullingUserId: string,
 	) {
 		const importResults = [];
-		const existingProjectVariables = (await this.variablesService.getAllCached()).filter(
-			(v) => v.project,
-		);
+		const importedProjectIds: string[] = [];
+		const importedVariableIds = new Set<string>();
 
 		for (const candidate of candidates) {
 			try {
@@ -1806,12 +1944,8 @@ export class SourceControlImportService {
 					project.variableStubs?.map((v) => ({ ...v, projectId: project.id })) ?? [],
 				);
 
-				// Delete variables that existed before but are no longer present in the imported project
-				const deletedVariables = existingProjectVariables.filter(
-					(v) =>
-						v.project!.id === project.id && !project.variableStubs?.some((vs) => vs.id === v.id),
-				);
-				await this.variablesService.deleteByIds(deletedVariables.map((v) => v.id));
+				importedProjectIds.push(project.id);
+				project.variableStubs?.forEach((v) => importedVariableIds.add(v.id));
 
 				this.logger.info(`Imported team project: ${project.name}`);
 				importResults.push({
@@ -1821,6 +1955,24 @@ export class SourceControlImportService {
 			} catch (error) {
 				const errorMessage = ensureError(error);
 				this.logger.error(`Failed to import project from file ${candidate.file}`, {
+					error: errorMessage,
+				});
+			}
+		}
+
+		// Prune after all imports so a variable moved between projects survives in any file order.
+		for (const id of importedProjectIds) {
+			try {
+				const currentProjectVariables = await this.variablesRepository.find({
+					where: { project: { id } },
+				});
+				const deletedVariables = currentProjectVariables.filter(
+					(v) => !importedVariableIds.has(v.id),
+				);
+				await this.variablesService.deleteByIds(deletedVariables.map((v) => v.id));
+			} catch (error) {
+				const errorMessage = ensureError(error);
+				this.logger.error(`Failed to prune variables of project ${id}`, {
 					error: errorMessage,
 				});
 			}
@@ -1842,9 +1994,12 @@ export class SourceControlImportService {
 
 	async deleteCredentialsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
 		for (const candidate of candidates) {
-			await this.credentialsService.delete(user, candidate.id, {
+			const deleted = await this.credentialsService.delete(user, candidate.id, {
 				includeInstanceCredentials: true,
 			});
+			// A project deleted by an earlier pull can leave a credential without an owner,
+			// which `delete()` cannot find.
+			if (!deleted) await this.credentialsService.deleteUnowned(user, candidate.id);
 		}
 	}
 
@@ -1891,8 +2046,8 @@ export class SourceControlImportService {
 				workflows.map((workflow) => workflow.id),
 			);
 
-			await this.folderRepository.delete({
-				id: In(candidateIds),
+			await this.deleteWithCallerAllowlistPurge(async (trx) => {
+				await trx.delete(Folder, { id: In(candidateIds), resourceType: 'workflow' });
 			});
 
 			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
@@ -1901,13 +2056,35 @@ export class SourceControlImportService {
 		}
 	}
 
-	async deleteTeamProjectsNotInWorkfolder(candidates: SourceControlledFile[]) {
+	async deleteTeamProjectsNotInWorkfolder(
+		user: User,
+		candidates: SourceControlledFile[],
+		credentialsInWorkfolder: SourceControlledFile[],
+	) {
 		if (candidates.length === 0) {
 			return;
 		}
 		const candidateIds = candidates.map((c) => c.id);
 
 		try {
+			// Deleting a project removes its `shared_credentials` rows but keeps the credentials.
+			// A credential without an owner row cannot be found or deleted later, so delete them first.
+			const ownedCredentials =
+				await this.sharedCredentialsRepository.findOwnedCredentialsByProjects(candidateIds);
+			const credentialIdsInWorkfolder = new Set(credentialsInWorkfolder.map((c) => c.id));
+			for (const credential of ownedCredentials) {
+				// The work folder moved this credential to another project, but its import was
+				// skipped (e.g. blocked by policy). Git has no secret values, so keep the local ones:
+				// a later pull can still give the credential its new owner.
+				if (credentialIdsInWorkfolder.has(credential.id)) {
+					this.logger.warn(
+						`Keeping credential ${credential.id} of deleted project: it was not imported into its new project`,
+					);
+					continue;
+				}
+				await this.credentialsService.delete(user, credential.id);
+			}
+
 			// Deleting a project cascades to its folders and workflows. Workflows are
 			// normally deleted individually before this point, but any still owned by
 			// the project (e.g. skipped for lack of permission) must be prepared for
@@ -1920,8 +2097,8 @@ export class SourceControlImportService {
 				ownedWorkflows.map((sw) => sw.workflowId),
 			);
 
-			await this.projectRepository.delete({
-				id: In(candidateIds),
+			await this.deleteWithCallerAllowlistPurge(async (trx) => {
+				await trx.delete(Project, { id: In(candidateIds) });
 			});
 
 			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
@@ -1975,7 +2152,7 @@ export class SourceControlImportService {
 
 		for (const workflow of workflows) {
 			if (workflow.activeVersionId !== null) {
-				await this.workflowService.deactivateWorkflowAsSystem(workflow.id);
+				await this.workflowService.deactivateWorkflowAsSystem(workflow.id, 'source-control-pull');
 			}
 			await this.waitForUnpublishToSettle(workflow.id);
 			await this.executionPersistence.hardDeleteByWorkflowId(workflow.id);
@@ -2033,6 +2210,19 @@ export class SourceControlImportService {
 		await this.workflowMutationHooks.afterWorkflowsDeleted(cascadedWorkflowIds);
 	}
 
+	/**
+	 * Run a folder/project row delete and drop every id left without a row from the `callerIds`
+	 * allowlists, in one transaction, so no new workflow can take a freed id first.
+	 */
+	private async deleteWithCallerAllowlistPurge(deleteRows: (trx: EntityManager) => Promise<void>) {
+		await this.workflowRepository.runInTransaction({}, async (trx, ctx) => {
+			await deleteRows(trx);
+			// Purge by what is gone rather than by the ids collected before the delete: the cascade
+			// also removes a workflow moved into a deleted folder since.
+			await this.workflowRepository.removeMissingFromCallerAllowlists(ctx);
+		});
+	}
+
 	/** Contextual error for a failed deletion during pull, so the operator learns which resource to look at. */
 	private deletionError(
 		type: 'workflow' | 'folder' | 'project',
@@ -2053,43 +2243,6 @@ export class SourceControlImportService {
 		return new UnexpectedError(message, { cause: error });
 	}
 
-	/**
-	 * Syncs ownership of a resource (workflow or credential) during import.
-	 * Handles ownership transfer by removing old ownership and assigning new ownership.
-	 */
-	private async syncResourceOwnership({
-		resourceId,
-		remoteOwner,
-		localOwner,
-		fallbackProject,
-		repository,
-		transactionManager,
-		targetOwnerProject,
-	}: {
-		resourceId: string;
-		remoteOwner: RemoteResourceOwner | null | undefined;
-		localOwner: { projectId: string } | undefined;
-		fallbackProject: Project;
-		repository: SharedWorkflowRepository | SharedCredentialsRepository;
-		transactionManager?: EntityManager;
-		targetOwnerProject?: Project;
-	}): Promise<Project> {
-		targetOwnerProject ??= await this.resolveTargetOwnerProject(remoteOwner, fallbackProject);
-
-		const trx = transactionManager ?? this.workflowRepository.manager;
-
-		// remove old ownership if it changed
-		const shouldRemoveOldOwner = localOwner && localOwner.projectId !== targetOwnerProject.id;
-		if (shouldRemoveOldOwner) {
-			await repository.deleteByIds([resourceId], localOwner.projectId, trx);
-		}
-
-		// Set new ownership
-		await repository.makeOwner([resourceId], targetOwnerProject.id, trx);
-
-		return targetOwnerProject;
-	}
-
 	private async resolveTargetOwnerProject(
 		remoteOwner: RemoteResourceOwner | null | undefined,
 		fallbackProject: Project,
@@ -2102,6 +2255,19 @@ export class SourceControlImportService {
 		return isSharedResource ? await this.createTeamProject(remoteOwner) : fallbackProject;
 	}
 
+	/** Read-only twin of `resolveTargetOwnerProject`: the pull creates a missing team project with the team id. */
+	private async findTargetOwnerProjectId(
+		remoteOwner: RemoteResourceOwner | null | undefined,
+		fallbackProjectId: string,
+	): Promise<string> {
+		const project = await this.findOwnerProjectInLocalDb(remoteOwner ?? undefined);
+		if (project) return project.id;
+
+		const isSharedResource =
+			remoteOwner && typeof remoteOwner !== 'string' && remoteOwner.type === 'team';
+		return isSharedResource ? remoteOwner.teamId : fallbackProjectId;
+	}
+
 	private async findOwnerProjectInLocalDb(owner: RemoteResourceOwner | IWorkflowToImport['owner']) {
 		if (!owner) {
 			return null;
@@ -2109,13 +2275,15 @@ export class SourceControlImportService {
 
 		if (typeof owner === 'string' || owner.type === 'personal') {
 			const email = typeof owner === 'string' ? owner : owner.personalEmail;
-			const user = await this.userRepository.findOne({ where: { email } });
+			// A lookup with no email matches any person. The caller falls back to the puller.
+			if (!email) return null;
+			const person = await this.personRepository.findByEmail(email);
 
-			if (!user) {
+			if (!person) {
 				return null;
 			}
 
-			return await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+			return await this.projectRepository.getPersonalProjectForUserOrFail(person.id);
 		} else if (owner.type === 'team') {
 			return await this.projectRepository.findOne({
 				where: { id: owner.teamId },
@@ -2159,6 +2327,49 @@ export class SourceControlImportService {
 	}
 
 	/**
+	 * Picks the versionId that the import saves under. Usually it is the one from the file.
+	 *
+	 * The exception: the file changes the engine but keeps the versionId of the published
+	 * version, and this pull does not publish. Then the pulled content gets a draft
+	 * versionId, so production keeps its engine until someone publishes.
+	 */
+	private async resolveImportVersionId({
+		existingWorkflow,
+		importedWorkflow,
+		pulledVersionId,
+		shouldPublishAfterImport,
+	}: ImportVersionIdOptions): Promise<string> {
+		const staysPublishedOnPulledVersion =
+			!shouldPublishAfterImport && importedWorkflow.activeVersionId === pulledVersionId;
+		if (!existingWorkflow || !staysPublishedOnPulledVersion) return pulledVersionId;
+
+		const publishedVersion = await this.workflowHistoryService.findVersion(
+			existingWorkflow.id,
+			pulledVersionId,
+		);
+		if (
+			!publishedVersion ||
+			versionedSettingsEqual(publishedVersion.settings, importedWorkflow.settings)
+		) {
+			return pulledVersionId;
+		}
+
+		// Pulling the same file again reuses the draft from the first pull
+		const draft = await this.workflowHistoryService.findVersion(
+			existingWorkflow.id,
+			existingWorkflow.versionId,
+		);
+		const draftHasPulledContent =
+			!!draft &&
+			isEqual(draft.nodes, importedWorkflow.nodes) &&
+			isEqual(draft.connections, importedWorkflow.connections) &&
+			isEqual(draft.nodeGroups, importedWorkflow.nodeGroups) &&
+			versionedSettingsEqual(draft.settings, importedWorkflow.settings);
+
+		return draftHasPulledContent ? draft.versionId : uuid();
+	}
+
+	/**
 	 * Saves or updates workflow version history during import.
 	 * - If versionId is new: Creates new history record
 	 * - If versionId exists with different nodes/connections: Updates existing record
@@ -2170,15 +2381,16 @@ export class SourceControlImportService {
 			nodes: IWorkflowToImport['nodes'];
 			connections: IWorkflowToImport['connections'];
 			nodeGroups: IWorkflowToImport['nodeGroups'];
+			settings: IWorkflowToImport['settings'];
 			id: string;
 		},
 		userId: string,
 	): Promise<void> {
-		const { versionId, nodes, connections, nodeGroups, id } = importedWorkflow;
+		const { versionId, nodes, connections, nodeGroups, settings, id } = importedWorkflow;
 
 		// Fetch user for author info
 		const user = await this.userRepository.findOne({ where: { id: userId } });
-		const authors = user ? `import by ${user.firstName} ${user.lastName}` : 'import';
+		const authors = user ? `import by ${accountFullName(user)}` : 'import';
 
 		const existingVersion = await this.workflowHistoryService.findVersion(id, versionId);
 
@@ -2187,20 +2399,26 @@ export class SourceControlImportService {
 			const nodesChanged = !isEqual(existingVersion.nodes, nodes);
 			const connectionsChanged = !isEqual(existingVersion.connections, connections);
 			const nodeGroupsChanged = !isEqual(existingVersion.nodeGroups, nodeGroups);
+			const settingsChanged = !versionedSettingsEqual(existingVersion.settings, settings);
 
 			if (nodesChanged || connectionsChanged || nodeGroupsChanged) {
 				await this.workflowHistoryService.updateVersion(id, versionId, {
 					nodes,
 					connections,
 					nodeGroups,
+					settings: pickVersionedSettings(settings),
 					authors,
+				});
+			} else if (settingsChanged) {
+				await this.workflowHistoryService.updateVersion(id, versionId, {
+					settings: pickVersionedSettings(settings),
 				});
 			}
 		} else {
 			// Create new version history record
 			await this.workflowHistoryService.saveVersion(
 				authors,
-				{ versionId, nodes, connections, nodeGroups },
+				{ versionId, nodes, connections, nodeGroups, settings },
 				id,
 			);
 		}
@@ -2213,6 +2431,7 @@ export class SourceControlImportService {
 	 *
 	 * @param existingWorkflow - The existing workflow entity, if it exists
 	 * @param importedWorkflow - The workflow being imported (mutated by this method)
+	 * @param versionId - The version the import publishes
 	 * @param autoPublish - The auto-publish mode
 	 * @param userId - The ID of the user performing the import
 	 * @returns Object indicating whether to publish after import and any activation error
@@ -2220,6 +2439,7 @@ export class SourceControlImportService {
 	private async preparePublishStateForImport(
 		existingWorkflow: WorkflowEntity | undefined,
 		importedWorkflow: IWorkflowToImport,
+		versionId: string,
 		autoPublish: AutoPublishMode,
 		userId: string,
 	): Promise<{
@@ -2247,7 +2467,10 @@ export class SourceControlImportService {
 		let publishingErrorDetails: WorkflowPublishBlockedDetails | undefined;
 		if (mustUnpublishLocal && shouldAutoPublishRemote && existingWorkflow) {
 			try {
-				await this.workflowPublishGuard.assertCanPublish(existingWorkflow.id);
+				await this.workflowPublishGuard.assertCanPublish(existingWorkflow.id, {
+					versionId,
+					fromSourceControlPull: true,
+				});
 			} catch (error) {
 				if (!(error instanceof WorkflowPublishBlockedError)) throw error;
 

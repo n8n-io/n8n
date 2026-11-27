@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as create from '../../../../v2/actions/drive/create.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
@@ -50,7 +51,7 @@ describe('test GoogleDriveV2: drive create', () => {
 		expect(transport.googleApiRequest).toBeCalledTimes(1);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/drive/v3/drives',
+			requestPath`/drive/v3/drives`,
 			{
 				capabilities: { canComment: true, canRename: true, canTrashChildren: true },
 				colorRgb: '#451AD3',

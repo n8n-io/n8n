@@ -3,14 +3,16 @@ import { GlobalConfig } from '@n8n/config';
 import { ScheduledJobOwnerType } from '@n8n/constants';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { Repository } from '@n8n/typeorm';
 import { createScheduler } from '@n8n/scheduler';
 import type { Scheduler, SchedulerPasses } from '@n8n/scheduler';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AGENT_TASK_TASK_TYPE } from '@/modules/agents/scheduling/agent-task-job';
@@ -35,7 +37,7 @@ describe('agent tasks across two mains over one database', () => {
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
 	let agentRepo: AgentRepository;
-	let historyRepo: AgentHistoryRepository;
+	let historyRepo: Repository<AgentHistory>;
 	let snapshotRepo: AgentTaskSnapshotRepository;
 	let registrar: AgentTaskJobRegistrar;
 	let schedulerConfig: GlobalConfig['scheduler'];
@@ -67,26 +69,22 @@ describe('agent tasks across two mains over one database', () => {
 		const versionId = uuid();
 		// Task ids are capped at 32 characters.
 		const taskId = uuid().replaceAll('-', '');
-		const agent = await agentRepo.save(
-			agentRepo.create({
-				id: uuid(),
-				name: 'Scheduled agent',
-				projectId,
-				schema: { name: 'Scheduled agent', model: 'm', instructions: 'i' },
-				integrations: [],
-				tools: {},
-				skills: {},
-				versionId,
-				activeVersionId: null,
-			} as Partial<Agent>),
-		);
+		const agent = await createAgent({
+			id: uuid(),
+			name: 'Scheduled agent',
+			projectId,
+			schema: { name: 'Scheduled agent', model: 'm', instructions: 'i' },
+			integrations: [],
+			tools: {},
+			versionId,
+			activeVersionId: null,
+		});
 		await historyRepo.insert({
 			versionId,
 			agentId: agent.id,
 			author: 'test',
 			schema: null,
 			tools: null,
-			skills: null,
 		});
 		await snapshotRepo.saveForVersion([
 			{
@@ -122,7 +120,7 @@ describe('agent tasks across two mains over one database', () => {
 		jobRepo = Container.get(ScheduledJobRepository);
 		taskRepo = Container.get(ScheduledTaskRepository);
 		agentRepo = Container.get(AgentRepository);
-		historyRepo = Container.get(AgentHistoryRepository);
+		historyRepo = Container.get(DataSource).getRepository(AgentHistory);
 		snapshotRepo = Container.get(AgentTaskSnapshotRepository);
 		registrar = Container.get(AgentTaskJobRegistrar);
 		mainA = buildMain('main-a');

@@ -1,5 +1,9 @@
-import type { NodeTypeAvailability } from '@n8n/api-types';
-import type { InjectionKey, Ref } from 'vue';
+import type {
+	AgentPersonalisation,
+	McpToolPermissions,
+	NodeTypeAvailability,
+} from '@n8n/api-types';
+import type { Component, InjectionKey, Ref } from 'vue';
 
 export type ConnectionItemKind =
 	| 'node'
@@ -7,17 +11,33 @@ export type ConnectionItemKind =
 	| 'mcp-server'
 	| 'agent'
 	| 'data-store'
-	| 'service';
+	| 'service'
+	| 'skill'
+	| 'collection';
 
 export type ToolIconSource =
 	| { type: 'file'; src: string }
-	| { type: 'icon'; name: string; color?: string };
+	| { type: 'icon'; name: string; color?: string }
+	| { type: 'avatar'; personalisation: AgentPersonalisation };
+
+/** The subset of `ToolIconSource` that `N8nNodeIcon` can render; avatar sources need their own tile. */
+export type NodeIconSource = Extract<ToolIconSource, { type: 'file' } | { type: 'icon' }>;
+
+/**
+ * Renderer for `{ type: 'avatar' }` icon sources. The consumer that passes
+ * avatar items injects the component at its mount site.
+ */
+export const TOOL_ICON_AVATAR_RENDERER_KEY = Symbol(
+	'tool-icon-avatar-renderer',
+) as InjectionKey<Component | null>;
 
 export interface ToolCredentialRef {
 	authType: string;
 	displayName?: string;
 	credentialId?: string;
 	required?: boolean;
+	/** Gateway credits: no stored credential. `credentialId` is `AI_GATEWAY_MANAGED_TAG` when selected. */
+	aiGateway?: boolean;
 }
 
 /**
@@ -25,6 +45,8 @@ export interface ToolCredentialRef {
  * an existing connection that is currently unavailable.
  */
 export type ToolConnectionStatus = 'none' | 'connecting' | 'connected' | 'disconnected';
+
+export type ToolConnectionFailureReason = 'server_unavailable' | 'authentication' | 'unknown';
 
 /** Whether a connection exists or is currently being established. */
 export function hasToolConnection(status: ToolConnectionStatus): boolean {
@@ -37,6 +59,7 @@ export interface BaseConnectionItem {
 	description?: string;
 	iconSource?: ToolIconSource;
 	status: ToolConnectionStatus;
+	connectionFailureReason?: ToolConnectionFailureReason;
 	credentials?: ToolCredentialRef[];
 	longDescription?: string;
 	/** Tab this item belongs to. Falls back to `CATEGORY_BY_KIND` when unset. */
@@ -87,19 +110,16 @@ export interface PublisherInfo {
 	url?: string;
 }
 
-export type McpToolInclusionMode = 'all' | 'selected' | 'except';
-
-export interface McpToolSettings {
-	inclusionMode: McpToolInclusionMode;
-	selectedTools: string[];
-	excludedTools: string[];
-}
+export type McpToolSettings = McpToolPermissions & {
+	connectionTimeoutMs?: number;
+};
 
 export type ToolConnectionSettings = McpToolSettings;
 
 export interface McpServerConnectionItem extends BaseConnectionItem {
 	kind: 'mcp-server';
 	availableTools: McpServerTool[];
+	isOfficial?: boolean;
 	settings?: McpToolSettings;
 	publisher?: PublisherInfo;
 	version?: string;
@@ -121,13 +141,31 @@ export interface ServiceConnectionItem extends BaseConnectionItem {
 	serviceId: string;
 }
 
+export interface SkillConnectionItem extends BaseConnectionItem {
+	kind: 'skill';
+	skillId: string;
+	attached: boolean;
+	attaching?: boolean;
+}
+
+/** A knowledge collection. The row adds it, or shows it as added with a Remove action. */
+export interface CollectionConnectionItem extends BaseConnectionItem {
+	kind: 'collection';
+	collectionId: string;
+	attached: boolean;
+	/** A short line about the contents, such as "3 files", shown before the action. */
+	summary: string;
+}
+
 export type ToolConnectionItem =
 	| NodeConnectionItem
 	| WorkflowConnectionItem
 	| McpServerConnectionItem
 	| AgentConnectionItem
 	| DataStoreConnectionItem
-	| ServiceConnectionItem;
+	| ServiceConnectionItem
+	| SkillConnectionItem
+	| CollectionConnectionItem;
 
 /**
  * One tab in the modal. Consumers declare the subset they support. `data` has
@@ -145,7 +183,10 @@ export type ToolCategoryKey =
 	| 'community'
 	| 'workflows'
 	| 'agents'
-	| 'data';
+	| 'project'
+	| 'global'
+	| 'data'
+	| 'recommended';
 
 /** Used when an item carries no explicit `category`. */
 export const CATEGORY_BY_KIND: Record<ConnectionItemKind, ToolCategoryKey> = {
@@ -155,6 +196,8 @@ export const CATEGORY_BY_KIND: Record<ConnectionItemKind, ToolCategoryKey> = {
 	service: 'built-in',
 	agent: 'agents',
 	'data-store': 'data',
+	skill: 'project',
+	collection: 'project',
 };
 
 /**

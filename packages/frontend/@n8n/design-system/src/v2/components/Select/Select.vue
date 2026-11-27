@@ -56,6 +56,7 @@ const props = withDefaults(defineProps<SelectProps<M>>(), {
 	variant: 'default',
 	size: 'small',
 	sideOffset: 4,
+	align: 'start',
 	clearable: false,
 });
 const emit = defineEmits<SelectEmits<M>>();
@@ -82,8 +83,15 @@ function rootBind() {
 
 const triggerRef = useTemplateRef<InstanceType<typeof SelectTrigger>>('trigger');
 
+/** Puts the focus on the trigger, as a click or a Tab key press does. */
+function focus() {
+	const trigger: unknown = triggerRef.value?.$el;
+	if (trigger instanceof HTMLElement) trigger.focus();
+}
+
 defineExpose({
 	triggerRef,
+	focus,
 });
 
 const sizes: Record<SelectSizes, string> = {
@@ -411,6 +419,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				:class="[$style.selectContent, size, contentClass]"
 				position="popper"
 				side="bottom"
+				:align="align"
 				:side-offset="sideOffset"
 			>
 				<slot name="header" />

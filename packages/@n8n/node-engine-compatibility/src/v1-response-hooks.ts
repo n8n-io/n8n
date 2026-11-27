@@ -1,7 +1,7 @@
 import type { JsonValue, StepExecutionRequest } from '@n8n/engine';
 import { encodeBufferBody, ExecutionLifecycleHooks } from 'n8n-core';
 import type { IBinaryData, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { toV1ExecuteMode } from './v1-adapters';
 
@@ -40,14 +40,24 @@ export function attachResponseHooks(
 		stubWorkflow(context.workflowId),
 	);
 
-	additionalData.hooks.addHandler('sendResponse', (response) => {
-		// The payload is built only if the caller expects it.
-		const result = respond.send(() => toJsonPayload(response));
-		if (!result.ok) {
+	const { kind } = context.responseExpectation;
+
+	if (kind === 'stepResponse') {
+		additionalData.hooks.addHandler('sendResponse', (response) => {
+			const result = respond.send(() => toJsonPayload(response));
 			// Fail the node so the caller can see the response error.
-			throw result.error;
-		}
-	});
+			if (!result.ok) throw result.error;
+		});
+	}
+
+	if (kind === 'stream') {
+		additionalData.streamingEnabled = true;
+		additionalData.hooks.addHandler('sendChunk', (chunk) => {
+			const result = respond.chunk(() => toJsonPayload(chunk));
+			// Fail the node so the caller can see the response error.
+			if (!result.ok) throw result.error;
+		});
+	}
 }
 
 /**

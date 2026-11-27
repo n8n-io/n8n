@@ -4,8 +4,7 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
-import type { AiPreferenceService } from '@/services/ai-preference.service';
-import type { Telemetry } from '@/telemetry';
+import type { AiPreferenceService, TelemetryProxy } from '@n8n/backend-services';
 
 import {
 	MCP_SAVE_USER_PREFERENCE_TOOL_NAME,
@@ -45,7 +44,7 @@ const outputSchema = {
 export const createUndoUserPreferenceTool = (
 	user: User,
 	aiPreferenceService: AiPreferenceService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	logger: Logger,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
@@ -101,6 +100,7 @@ export const createUndoUserPreferenceTool = (
 		// The same pair the chat card fires on Undo and the review form fires on remove, so one
 		// number covers every way a user takes back an assistant write.
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+			user_id: user.id,
 			count: 1,
 			source: 'rejected',
 			scope_types: [preferenceScopeOf(removed)],
@@ -108,6 +108,7 @@ export const createUndoUserPreferenceTool = (
 			seconds_since_saved: secondsSinceSaved(removed),
 		});
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+			user_id: user.id,
 			surface: 'mcp',
 			outcome: 'rejected',
 			scope_type: preferenceScopeOf(removed),

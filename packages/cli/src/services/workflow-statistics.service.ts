@@ -1,8 +1,9 @@
 import { Logger, TypedEmitter } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, ExecutionLedger, toWorkflowStatisticsCount } from '@n8n/backend-services';
 import { DatabaseConfig } from '@n8n/config';
 import type { CrashedExecution } from '@n8n/db';
 import {
+	isPerson,
 	SettingsRepository,
 	StatisticsNames,
 	WorkflowRepository,
@@ -11,7 +12,6 @@ import {
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
-	isCompletedExecutionStatus,
 	type ExecutionStatus,
 	type INode,
 	type IRun,
@@ -21,39 +21,13 @@ import {
 } from 'n8n-workflow';
 
 import { UserService } from '@/services/user.service';
-import { isBillableExecution } from '@/utils/is-billable-execution';
 
-import { INSTANCE_ACTIVATED_SETTINGS_KEY } from './instance-activation.service';
 import { OwnershipService } from './ownership.service';
 
 type CompletedRunOutcome = {
 	mode: WorkflowExecuteMode;
 	status: ExecutionStatus;
 };
-
-function getStatisticsNameForCompletedRun(
-	runData: CompletedRunOutcome,
-	source?: WorkflowExecutionSource,
-): StatisticsNames | null {
-	const isChatExecution = runData.mode === 'chat';
-	if (isChatExecution || !isCompletedExecutionStatus(runData.status)) {
-		return null;
-	}
-
-	// Instance AI verification runs mimic the trigger's execution mode, but they
-	// are test runs on the user's behalf — count them as manual so they never
-	// land in production stats or fire first-production milestones.
-	const isManualExecution = runData.mode === 'manual' || source === 'instance_ai';
-	if (isManualExecution) {
-		return runData.status === 'success'
-			? StatisticsNames.manualSuccess
-			: StatisticsNames.manualError;
-	}
-
-	return runData.status === 'success'
-		? StatisticsNames.productionSuccess
-		: StatisticsNames.productionError;
-}
 
 type WorkflowStatisticsEvents = {
 	nodeFetchedData: { workflowId: string; node: INode; source?: WorkflowExecutionSource };
@@ -76,6 +50,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly databaseConfig: DatabaseConfig,
+		private readonly executionLedger: ExecutionLedger,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
@@ -91,8 +66,14 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		);
 		this.on('executionsCrashed', async ({ executions }) => {
 			// Record one at a time, to keep a large sweep within the database connection pool.
-			for (const { workflowId, workflowName, mode } of executions) {
-				await this.recordExecutionOutcome({ workflowId, workflowName, mode, status: 'crashed' });
+			for (const { workflowId, workflowName, mode, startedAt } of executions) {
+				await this.recordExecutionOutcome({
+					workflowId,
+					workflowName,
+					mode,
+					status: 'crashed',
+					startedAt,
+				});
 			}
 		});
 	}
@@ -102,20 +83,17 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		runData: IRun,
 		source?: WorkflowExecutionSource,
 	): Promise<void> {
-		const statisticsName = getStatisticsNameForCompletedRun(runData, source);
-
-		const isRoot = isBillableExecution(runData, source);
-
-		if (!statisticsName) return;
+		const counted = toWorkflowStatisticsCount(runData, source);
+		if (!counted) return;
 
 		const workflowId = workflowData.id;
 		if (!workflowId) return;
 
 		await this.recordCompletedRun({
-			statisticsName,
+			statisticsName: counted.name,
 			workflowId,
 			workflowName: workflowData.name,
-			isRoot,
+			isRoot: counted.isRoot,
 			firstEventMs: runData.startedAt.getTime(),
 		});
 	}
@@ -125,20 +103,23 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		workflowName,
 		mode,
 		status,
-	}: { workflowId: string; workflowName?: string } & CompletedRunOutcome): Promise<void> {
+		startedAt,
+	}: {
+		workflowId: string;
+		workflowName?: string;
+		startedAt: Date | null;
+	} & CompletedRunOutcome): Promise<void> {
 		// Contain every failure: this runs from an emitter listener that captures
 		// rejections and has no `error` handler, so a rejection would end the process.
 		try {
-			const outcome = { mode, status };
-			const statisticsName = getStatisticsNameForCompletedRun(outcome);
-
-			if (!statisticsName) return;
+			const counted = toWorkflowStatisticsCount({ mode, status, startedAt });
+			if (!counted) return;
 
 			await this.recordCompletedRun({
-				statisticsName,
+				statisticsName: counted.name,
 				workflowId,
 				workflowName,
-				isRoot: isBillableExecution(outcome),
+				isRoot: counted.isRoot,
 				firstEventMs: Date.now(),
 			});
 		} catch (error) {
@@ -162,6 +143,9 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		isRoot: boolean;
 		firstEventMs: number;
 	}): Promise<void> {
+		// With the ledger on, its fold step writes these counters. Both writers would count twice.
+		if (this.executionLedger.isEnabled) return;
+
 		let upsertResult: Awaited<ReturnType<WorkflowStatisticsRepository['upsertWorkflowStatistics']>>;
 
 		try {
@@ -233,7 +217,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
 			userId = owner?.id ?? null;
 
-			if (owner && !owner.settings?.userActivated) {
+			if (owner && isPerson(owner) && !owner.settings?.userActivated) {
 				await this.userService.updateSettings(owner.id, {
 					firstSuccessfulWorkflowId: workflowId,
 					userActivated: true,
@@ -246,35 +230,6 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			projectId: project.id,
 			workflowId,
 			userId,
-		});
-
-		await this.recordInstanceActivation(project.id, workflowId, userId, userActivatedAtMs);
-	}
-
-	/**
-	 * Record the instance's activation moment, exactly once, whatever the project type.
-	 *
-	 * The per-user `userActivated` flag above only covers personal projects, so an instance whose
-	 * first success happens in a team project would otherwise never look activated. Guarded by a
-	 * settings row, mirroring `instance.firstProductionFailure`. The row is the whole contract —
-	 * {@link InstanceActivationService} reads it — so there is no accompanying event.
-	 */
-	private async recordInstanceActivation(
-		projectId: string,
-		workflowId: string,
-		userId: string | null,
-		activatedAt: number,
-	): Promise<void> {
-		const alreadyActivated = await this.settingsRepository.findByKey(
-			INSTANCE_ACTIVATED_SETTINGS_KEY,
-		);
-
-		if (alreadyActivated) return;
-
-		await this.settingsRepository.save({
-			key: INSTANCE_ACTIVATED_SETTINGS_KEY,
-			value: JSON.stringify({ workflowId, projectId, userId, timestamp: activatedAt }),
-			loadOnStartup: false,
 		});
 	}
 
@@ -303,16 +258,18 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 		owner ??= await this.ownershipService.getInstanceOwner();
 
-		await this.settingsRepository.save({
-			key: 'instance.firstProductionFailure',
-			value: JSON.stringify({
+		const isFirstFailure = await this.settingsRepository.insertIfAbsent(
+			'instance.firstProductionFailure',
+			JSON.stringify({
 				workflowId,
 				projectId: project.id,
 				userId: owner.id,
 				timestamp: timestampMs,
 			}),
-			loadOnStartup: false,
-		});
+		);
+		if (!isFirstFailure) {
+			return;
+		}
 
 		this.eventService.emit('instance-first-production-workflow-failed', {
 			projectId: project.id,

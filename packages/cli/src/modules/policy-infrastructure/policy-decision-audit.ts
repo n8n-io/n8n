@@ -14,9 +14,6 @@ import type {
 	PolicySystemReason,
 } from '@/policy/policy-enforcement-backend';
 
-/** Every context, as one union — a generic `PolicyContext<Point>` narrows against none. */
-type AnyPolicyContext = PolicyContext<EnforcementPoint>;
-
 type OptionalAuditedKey = 'subject' | 'subjectType' | 'scope' | 'matchedRuleId';
 
 /**
@@ -55,6 +52,9 @@ export type PolicyDecisionAudit = {
 	/** `null` for a create, which has no id yet — read `workflowName` instead. */
 	workflowId?: string | null;
 	workflowName?: string;
+	/** Same rule as `workflowId`: `null` for a create. */
+	agentId?: string | null;
+	agentName?: string;
 	/** `null` for a credential create, which has no id yet — read `credentialType` instead. */
 	credentialId?: string | null;
 	credentialType?: string;
@@ -71,65 +71,73 @@ const auditedViolation = (violation: PolicyViolation): AuditedViolation => ({
 	matchedRuleId: violation.matchedRuleId ?? null,
 });
 
+type AuditTarget = Pick<
+	PolicyDecisionAudit,
+	| 'workflowId'
+	| 'workflowName'
+	| 'agentId'
+	| 'agentName'
+	| 'credentialId'
+	| 'credentialType'
+	| 'consumerNodeType'
+	| 'projectId'
+>;
+
+const workflowTarget = (
+	id: string | null,
+	workflow: PolicedWorkflow,
+	projectId: string | null,
+): AuditTarget =>
+	workflow.artifactKind === 'agent'
+		? { agentId: id, agentName: workflow.name, projectId }
+		: { workflowId: id, workflowName: workflow.name, projectId };
+
+const credentialTarget = (
+	id: string | null,
+	type: string,
+	projectId: string | null,
+): AuditTarget => ({
+	credentialId: id,
+	credentialType: type,
+	projectId,
+});
+
 /**
- * The id of the row that was policed, or `null` when there is none yet.
- *
- * A save with no stored row is a create, and any id on its payload is the client's claim rather
- * than a committed row — the seal discards it for the same reason. `workflowName` is what
- * identifies a create.
+ * What each point polices, as the audit line names it. A save names its stored row: a create has
+ * no committed id, whatever the payload claims, and the seal discards that id too.
  */
-const policedWorkflowId = (context: {
-	workflow: PolicedWorkflow;
-	storedWorkflow?: PolicedWorkflow | null;
-}) => ('storedWorkflow' in context ? (context.storedWorkflow?.id ?? null) : context.workflow.id);
+const AUDIT_TARGETS: {
+	readonly [Point in EnforcementPoint]: (context: PolicyContext<Point>) => AuditTarget;
+} = {
+	workflowSave: (ctx) =>
+		workflowTarget(ctx.storedWorkflow?.id ?? null, ctx.workflow, ctx.projectId),
+	workflowPublish: (ctx) => workflowTarget(ctx.workflow.id, ctx.workflow, ctx.projectId),
+	workflowStart: (ctx) => workflowTarget(ctx.workflow.id, ctx.workflow, ctx.projectId),
+	workflowTransfer: (ctx) => workflowTarget(ctx.workflow.id, ctx.workflow, ctx.targetProjectId),
+	credentialSave: (ctx) =>
+		credentialTarget(ctx.storedCredential?.id ?? null, ctx.credential.type, ctx.projectId),
+	credentialTransfer: (ctx) =>
+		credentialTarget(ctx.credential.id, ctx.credential.type, ctx.targetProjectId),
+	credentialDecrypt: (ctx) => ({
+		credentialId: ctx.credentialId,
+		credentialType: ctx.credentialType,
+		consumerNodeType: ctx.consumer?.nodeType,
+		projectId: ctx.projectId,
+	}),
+	// A reference has no stored version, so its id is always the committed one.
+	executionAdmission: ({ artifact, projectId }) =>
+		artifact.kind === 'agent'
+			? { agentId: artifact.id, agentName: artifact.name, projectId }
+			: { workflowId: artifact.id, workflowName: artifact.name, projectId },
+	contentImport: (ctx) =>
+		'workflow' in ctx
+			? workflowTarget(ctx.workflow.id, ctx.workflow, ctx.projectId)
+			: credentialTarget(ctx.credential.id, ctx.credential.type, ctx.projectId),
+};
 
-/** What was policed, read off the context. */
-function targetOf(context: AnyPolicyContext) {
-	// Same rule as a workflow save: a create has no committed id, whatever the payload claims.
-	if ('storedCredential' in context) {
-		return {
-			credentialId: context.storedCredential?.id ?? null,
-			credentialType: context.credential.type,
-			projectId: context.projectId,
-		};
-	}
-
-	if ('credentialId' in context) {
-		return {
-			credentialId: context.credentialId,
-			credentialType: context.credentialType,
-			consumerNodeType: context.consumer?.nodeType,
-			projectId: context.projectId,
-		};
-	}
-
-	// contentImport: the one point whose context can be either shape.
-	if ('transport' in context) {
-		if ('credential' in context) {
-			return {
-				credentialId: context.credential.id,
-				credentialType: context.credential.type,
-				projectId: context.projectId,
-			};
-		}
-
-		return {
-			workflowId: policedWorkflowId(context),
-			workflowName: context.workflow.name,
-			projectId: context.projectId,
-		};
-	}
-
-	return {
-		workflowId: policedWorkflowId(context),
-		workflowName: context.workflow.name,
-		projectId: 'targetProjectId' in context ? context.targetProjectId : context.projectId,
-	};
-}
-
-export type DecisionAuditInput = {
-	point: EnforcementPoint;
-	context: AnyPolicyContext;
+export type DecisionAuditInput<Point extends EnforcementPoint> = {
+	point: Point;
+	context: PolicyContext<Point>;
 	/** Built from the checks that answered, so a partial run stays diagnosable. */
 	decision: PolicyDecision;
 	durationMs: number;
@@ -138,14 +146,14 @@ export type DecisionAuditInput = {
 	failures?: PolicyCheckFailure[];
 };
 
-export function decisionAudit({
+export function decisionAudit<Point extends EnforcementPoint>({
 	point,
 	context,
 	decision,
 	durationMs,
 	checkIds,
 	failures = [],
-}: DecisionAuditInput): PolicyDecisionAudit {
+}: DecisionAuditInput<Point>): PolicyDecisionAudit {
 	return {
 		point,
 		outcome: failures.length > 0 ? 'checkFailure' : 'violation',
@@ -156,7 +164,7 @@ export function decisionAudit({
 		...(failures.length > 0 && {
 			correlationIds: failures.map((failure) => failure.correlationId),
 		}),
-		...targetOf(context),
+		...AUDIT_TARGETS[point](context),
 	};
 }
 

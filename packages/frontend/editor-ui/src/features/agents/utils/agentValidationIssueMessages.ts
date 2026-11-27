@@ -1,6 +1,7 @@
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 
+import { skillWorkflowIdOfIssue } from './validationIssues';
 import { workflowToolTriggerLabel } from './workflowToolTriggers';
 
 const GENERIC_ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
@@ -11,6 +12,7 @@ const GENERIC_ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey
 	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
 	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
 	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
+	restricted_node_type: 'agents.builder.validation.issue.restrictedNodeType' as BaseTextKey,
 };
 
 const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
@@ -18,6 +20,8 @@ const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.validation.issue.subAgent.missingReference' as BaseTextKey,
 	'subAgent.incompatible_reference':
 		'agents.builder.validation.issue.subAgent.incompatibleReference' as BaseTextKey,
+	'skillWorkflow.missing_reference':
+		'agents.builder.validation.issue.skillWorkflow.missingReference' as BaseTextKey,
 	'skill.missing_reference':
 		'agents.builder.validation.issue.skill.missingReference' as BaseTextKey,
 	'task.invalid_value': 'agents.builder.validation.issue.task.invalidValue' as BaseTextKey,
@@ -39,6 +43,9 @@ const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 	no_supported_trigger:
 		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
 	not_published: 'agents.builder.validation.issue.tool.workflow.notPublished' as BaseTextKey,
+	not_in_project: 'agents.builder.validation.issue.tool.workflow.notInProject' as BaseTextKey,
+	restricted_by_inline_tool:
+		'agents.builder.validation.issue.restrictedByInlineTool' as BaseTextKey,
 };
 
 export function resolveAgentValidationIssueMessageKey(
@@ -46,6 +53,9 @@ export function resolveAgentValidationIssueMessageKey(
 ): BaseTextKey {
 	const { kind, toolType } = issue.capability;
 	return (
+		(skillWorkflowIdOfIssue(issue)
+			? SPECIFIC_ISSUE_KEYS[`skillWorkflow.${issue.code}`]
+			: undefined) ??
 		(issue.code === 'invalid_value' && issue.path.endsWith('.node.nodeParameters.url')
 			? ('agents.builder.validation.issue.httpRequestUrlFromAi' as BaseTextKey)
 			: undefined) ??

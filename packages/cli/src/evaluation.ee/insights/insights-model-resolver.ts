@@ -3,7 +3,7 @@ import type { EvaluationConfig, User } from '@n8n/db';
 import { EvaluationConfigRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 // LLM-judge provider node types → `@n8n/agents` provider prefix. Only the
@@ -60,7 +60,7 @@ export class InsightsModelResolver {
 		const config =
 			preloadedConfig !== undefined
 				? preloadedConfig
-				: await this.evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId);
+				: await this.evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId, {});
 		if (!config) return null;
 
 		// Reuse the first LLM-judge metric's model. Collections score against a

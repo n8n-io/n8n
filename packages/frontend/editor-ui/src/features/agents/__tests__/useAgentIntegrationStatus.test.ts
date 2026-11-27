@@ -50,6 +50,45 @@ describe('useAgentIntegrationStatus', () => {
 		expect(status.hasRuntimeError('slack')).toBe(serverStatus === 'error');
 	});
 
+	it.each([
+		{ draftEnabled: true, configured: true },
+		{ draftEnabled: false, configured: false },
+	])(
+		'follows the draft for n8n Chat while the published version still has it (draftEnabled $draftEnabled)',
+		async ({ draftEnabled, configured }) => {
+			apiMocks.getIntegrationStatus.mockResolvedValue({
+				status: 'connected',
+				integrations: [{ type: 'n8n_chat', status: 'connected' }],
+				n8nChat: { draftEnabled, publishedEnabled: true },
+			});
+			const status = useAgentIntegrationStatus(projectId, agentId);
+
+			await status.fetchStatus(['n8n_chat']);
+
+			expect(status.isConfigured('n8n_chat')).toBe(configured);
+			expect(status.n8nChatPublishedEnabled.value).toBe(true);
+		},
+	);
+
+	it('clears published n8n Chat availability when a refresh reports it disabled', async () => {
+		apiMocks.getIntegrationStatus.mockResolvedValueOnce({
+			integrations: [{ type: 'n8n_chat', status: 'connected' }],
+			n8nChat: { draftEnabled: true, publishedEnabled: true },
+		});
+		apiMocks.getIntegrationStatus.mockResolvedValueOnce({
+			integrations: [{ type: 'n8n_chat', status: 'configured' }],
+			n8nChat: { draftEnabled: true, publishedEnabled: false },
+		});
+		const status = useAgentIntegrationStatus(projectId, agentId);
+
+		await status.fetchStatus(['n8n_chat']);
+		expect(status.n8nChatPublishedEnabled.value).toBe(true);
+
+		await status.fetchStatus(['n8n_chat']);
+		expect(status.n8nChatPublishedEnabled.value).toBe(false);
+		expect(status.isConfigured('n8n_chat')).toBe(true);
+	});
+
 	it('takes each channel from its own status, not the rollup', async () => {
 		apiMocks.getIntegrationStatus.mockResolvedValue({
 			status: 'partial',
@@ -70,6 +109,37 @@ describe('useAgentIntegrationStatus', () => {
 		expect(status.isConnected('slack')).toBe(true);
 		expect(status.hasRuntimeError('telegram')).toBe(true);
 		expect(status.runtimeErrors.value.telegram).toBe('Credential cred-telegram not found');
+	});
+
+	it('offers the settings of a draft channel without marking it configured', async () => {
+		const settings = { accessMode: 'private' as const, allowedUsers: ['alice'] };
+		apiMocks.getIntegrationStatus.mockResolvedValue({
+			status: 'disconnected',
+			integrations: [],
+			drafts: [{ type: 'telegram', settings }],
+		});
+		const status = useAgentIntegrationStatus(projectId, agentId);
+
+		await status.fetchStatus(['telegram']);
+
+		expect(status.integrationSettings.value.telegram).toEqual(settings);
+		expect(status.isConfigured('telegram')).toBe(false);
+	});
+
+	it('offers draft settings from a configuration seed', () => {
+		const settings = { accessMode: 'private' as const, allowedUsers: ['alice'] };
+
+		syncAgentIntegrationStatusCache(
+			projectId,
+			agentId,
+			['telegram'],
+			[],
+			[{ type: 'telegram', settings }],
+		);
+		const status = useAgentIntegrationStatus(projectId, agentId);
+
+		expect(status.integrationSettings.value.telegram).toEqual(settings);
+		expect(status.isConfigured('telegram')).toBe(false);
 	});
 
 	it('drops a stale runtime error once the channel starts', async () => {

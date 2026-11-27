@@ -57,6 +57,22 @@ describe('parseExecutionFileId', () => {
 	it('returns null for a malformed id', () => {
 		expect(parseExecutionFileId('malformed-id')).toBeNull();
 	});
+
+	it('rejects traversal, backslash, trailing, and incomplete paths', () => {
+		const invalidFileIds = [
+			'workflows/../executions/999/binary_data/file',
+			'workflows/workflow/executions/../binary_data/file',
+			'workflows/work\\flow/executions/999/binary_data/file',
+			'workflows/workflow/executions/999/binary_data/file\\name',
+			'workflows/workflow/executions/999/binary_data/file/',
+			'workflows/workflow/executions/999/binary_data/',
+			'workflows/workflow/executions/999/binary_data',
+		];
+
+		for (const invalidFileId of invalidFileIds) {
+			expect(parseExecutionFileId(invalidFileId)).toBeNull();
+		}
+	});
 });
 
 describe('store', () => {
@@ -97,8 +113,10 @@ describe('store', () => {
 });
 
 describe('getPath', () => {
-	it('returns the file id unchanged', () => {
-		expect(manager.getPath(fileId)).toBe(fileId);
+	it('rejects path access when the byte store has no filesystem path', () => {
+		expect(() => manager.getPath(fileId)).toThrow(
+			'Binary data storage does not provide filesystem paths.',
+		);
 	});
 });
 
@@ -185,7 +203,7 @@ describe('deletion', () => {
 		expect(byteStore.delete).not.toHaveBeenCalled();
 	});
 
-	it('deleteMany deletes the rest of the batch when one prefix fails, and warns', async () => {
+	it('deleteMany deletes the rest of the batch when one prefix fails, warns, and rejects', async () => {
 		const prefixStore = mock<ByteStore>();
 		const failure = new Error('ENOTEMPTY: directory not empty');
 		prefixStore.deletePrefix = vi
@@ -195,7 +213,7 @@ describe('deletion', () => {
 		const prefixManager = new BinaryDataBlobManager(prefixStore, errorReporter);
 		const other = { type: 'execution', workflowId, executionId: '1000' } as const;
 
-		await expect(prefixManager.deleteMany([location, other])).resolves.toBeUndefined();
+		await expect(prefixManager.deleteMany([location, other])).rejects.toThrow(AggregateError);
 
 		expect(prefixStore.deletePrefix).toHaveBeenCalledTimes(2);
 		expect(prefixStore.deletePrefix).toHaveBeenLastCalledWith(
@@ -207,14 +225,49 @@ describe('deletion', () => {
 		});
 	});
 
-	it('deleteMany resolves and warns for each prefix when every one fails', async () => {
+	it('deleteMany wraps a non-error prefix failure before it warns and rejects', async () => {
+		const prefixStore = mock<ByteStore>();
+		prefixStore.deletePrefix = vi.fn().mockRejectedValue('gone');
+		const prefixManager = new BinaryDataBlobManager(prefixStore, errorReporter);
+
+		await expect(prefixManager.deleteMany([location])).rejects.toThrow(AggregateError);
+
+		expect(errorReporter.warn).toHaveBeenCalledWith(expect.objectContaining({ message: 'gone' }), {
+			extra: { prefix: `workflows/${workflowId}/executions/${executionId}/binary_data` },
+		});
+	});
+
+	it('deleteMany warns for each prefix and rejects when every one fails', async () => {
 		const prefixStore = mock<ByteStore>();
 		prefixStore.deletePrefix = vi.fn().mockRejectedValue(new Error('ENOTEMPTY'));
 		const prefixManager = new BinaryDataBlobManager(prefixStore, errorReporter);
 		const other = { type: 'execution', workflowId, executionId: '1000' } as const;
 
-		await expect(prefixManager.deleteMany([location, other])).resolves.toBeUndefined();
+		await expect(prefixManager.deleteMany([location, other])).rejects.toThrow(AggregateError);
 
 		expect(errorReporter.warn).toHaveBeenCalledTimes(2);
+	});
+
+	it('deleteMany limits how many prefixes are deleted at once', async () => {
+		let active = 0;
+		let peak = 0;
+		const prefixStore = mock<ByteStore>();
+		prefixStore.deletePrefix = vi.fn(async () => {
+			active++;
+			peak = Math.max(peak, active);
+			await new Promise((resolve) => setTimeout(resolve, 1));
+			active--;
+		});
+		const prefixManager = new BinaryDataBlobManager(prefixStore, errorReporter);
+		const locations = Array.from({ length: 20 }, (_, i) => ({
+			type: 'execution' as const,
+			workflowId,
+			executionId: String(i),
+		}));
+
+		await prefixManager.deleteMany(locations);
+
+		expect(prefixStore.deletePrefix).toHaveBeenCalledTimes(20);
+		expect(peak).toBeLessThanOrEqual(5);
 	});
 });

@@ -10,11 +10,14 @@ import N8nAiActivityStepResultSection from '../N8nAiActivityStepResultSection';
 import N8nAnimatedCollapsibleContent from '../N8nAnimatedCollapsibleContent';
 import N8nCallout from '../N8nCallout';
 import N8nIcon from '../N8nIcon';
+import type { IconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
 
 const props = withDefaults(
 	defineProps<{
 		label: string;
+		/** Short text after the label, such as an elapsed time. A long label does not cut it. */
+		meta?: string;
 		loading?: boolean;
 		error?: string;
 		/** Whether the step has collapsible content. */
@@ -23,15 +26,27 @@ const props = withDefaults(
 		wrapContent?: boolean;
 		/** Keep error icon/tooltip but skip the inner danger callout. */
 		hideErrorCallout?: boolean;
+		errorIcon?: IconName;
 	}>(),
 	{
+		meta: undefined,
 		loading: false,
 		error: undefined,
 		hasContent: true,
 		wrapContent: false,
 		hideErrorCallout: false,
+		errorIcon: 'triangle-alert',
 	},
 );
+
+defineSlots<{
+	prefix?: () => unknown;
+	/** Replaces the label text, for example to animate a change of label. */
+	label?: () => unknown;
+	default?: () => unknown;
+	/** Replaces the callout text; the tooltip keeps showing `error`. */
+	errorCallout?: () => unknown;
+}>();
 
 const MAX_ERROR_TOOLTIP_LENGTH = 160;
 
@@ -43,21 +58,25 @@ const errorTooltip = computed(() =>
 </script>
 
 <template>
-	<div :class="{ [$style.nestedRow]: isNested }">
+	<div :class="{ [$style.nestedRow]: isNested, [$style.row]: !isNested }">
 		<span v-if="isNested" :class="$style.rail">
 			<span :class="$style.railDot" />
 		</span>
 		<CollapsibleRoot v-if="props.hasContent" v-slot="{ open: isOpen }">
 			<CollapsibleTrigger as-child>
-				<N8nAiActivityStepButton size="small" :loading="props.loading">
-					{{ props.label }}
+				<N8nAiActivityStepButton :loading="props.loading">
+					<template #prefix><slot name="prefix" /></template>
+					<slot name="label">{{ props.label }}</slot>
 					<template #icon>
+						<span v-if="props.meta" :class="$style.meta" data-test-id="ai-activity-step-meta">
+							· {{ props.meta }}
+						</span>
 						<N8nTooltip v-if="props.error" placement="top">
 							<template #content>
 								<span :class="$style.errorTooltip">{{ errorTooltip }}</span>
 							</template>
 							<N8nIcon
-								icon="triangle-alert"
+								:icon="props.errorIcon"
 								color="danger"
 								size="small"
 								:class="$style.activityErrorIcon"
@@ -79,19 +98,23 @@ const errorTooltip = computed(() =>
 					theme="danger"
 					:class="$style.errorCallout"
 				>
-					{{ props.error }}
+					<slot name="errorCallout">{{ props.error }}</slot>
 				</N8nCallout>
 			</N8nAnimatedCollapsibleContent>
 		</CollapsibleRoot>
-		<N8nAiActivityStepButton v-else size="small" :loading="props.loading" :interactive="false">
-			{{ props.label }}
+		<N8nAiActivityStepButton v-else :loading="props.loading" :interactive="false">
+			<template #prefix><slot name="prefix" /></template>
+			<slot name="label">{{ props.label }}</slot>
 			<template #icon>
+				<span v-if="props.meta" :class="$style.meta" data-test-id="ai-activity-step-meta">
+					· {{ props.meta }}
+				</span>
 				<N8nTooltip v-if="props.error" placement="top">
 					<template #content>
 						<span :class="$style.errorTooltip">{{ errorTooltip }}</span>
 					</template>
 					<N8nIcon
-						icon="triangle-alert"
+						:icon="props.errorIcon"
 						color="danger"
 						size="small"
 						:class="$style.activityErrorIcon"
@@ -103,6 +126,10 @@ const errorTooltip = computed(() =>
 </template>
 
 <style lang="scss" module>
+.row {
+	display: flex;
+	flex-direction: column;
+}
 .nestedRow {
 	display: grid;
 	grid-template-columns: var(--spacing--md) minmax(0, 1fr);
@@ -116,6 +143,9 @@ const errorTooltip = computed(() =>
 	align-items: flex-start;
 	justify-content: center;
 	align-self: self-start;
+	/** Half the height change from the small to the medium step button. Keeps the rail centered on the label. */
+	--rail--offset: calc((var(--height--md) - var(--height--sm)) / 2);
+
 	width: var(--spacing--md);
 	min-height: var(--spacing--lg);
 	height: 100%;
@@ -132,13 +162,13 @@ const errorTooltip = computed(() =>
 
 	&::before {
 		top: 0;
-		height: calc(var(--spacing--xs) - var(--spacing--4xs));
+		height: calc(var(--spacing--xs) - var(--spacing--4xs) + var(--rail--offset));
 	}
 
 	&::after {
-		top: calc(var(--spacing--xs) + calc(var(--spacing--3xs) + var(--spacing--4xs)));
+		top: calc(var(--spacing--xs) + var(--spacing--3xs) + var(--spacing--4xs) + var(--rail--offset));
 		/** Extends the rail through the parent timeline gap when that shared value is set. */
-		bottom: calc(var(--n8n--ai-activity-step-gap, 0px) * -1);
+		bottom: calc(var(--n8n-ai-activity-step--gap, 0px) * -1);
 	}
 }
 
@@ -150,7 +180,7 @@ const errorTooltip = computed(() =>
 .railDot {
 	position: relative;
 	z-index: 1;
-	top: var(--spacing--xs);
+	top: calc(var(--spacing--xs) + var(--rail--offset));
 	width: var(--spacing--3xs);
 	height: var(--spacing--3xs);
 	border-radius: 50%;
@@ -167,6 +197,12 @@ const errorTooltip = computed(() =>
 	overflow-wrap: anywhere;
 	word-break: break-word;
 }
+.meta {
+	flex-shrink: 0;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
 .activityErrorIcon {
 	transform: translateY(1px);
 }

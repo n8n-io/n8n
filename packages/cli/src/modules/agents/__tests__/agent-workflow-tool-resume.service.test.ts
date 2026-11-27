@@ -9,7 +9,7 @@ import { createRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
@@ -106,13 +106,18 @@ describe('AgentWorkflowToolResumeService production n8n Chat', () => {
 		expect(orchestratorService.resumeForChat).toHaveBeenCalledWith(
 			expect.objectContaining({
 				usePublishedVersion: true,
-				source: 'n8n_chat_production',
+				chatSurface: 'n8n-chat',
 				user: expect.objectContaining({ id: 'user-1' }),
 				expectedMemory: {
 					threadId: previewRun.threadId,
 					resourceId: 'n8n-chat-production:user-1',
 				},
 			}),
+		);
+		// The caller no longer stamps the source itself; the orchestrator
+		// derives it from the chat surface.
+		expect(orchestratorService.resumeForChat).not.toHaveBeenCalledWith(
+			expect.objectContaining({ source: expect.anything() }),
 		);
 	});
 
@@ -389,7 +394,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 	// with nothing attached — recording the turn is what puts it in the transcript.
 	it('drives the resume headlessly against the draft version', async () => {
 		const { service, userRepository, agentTestRunService, chatIntegrationService } = setup();
-		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		agentTestRunService.resumeDraftRun.mockResolvedValue(completed);
 
 		await service.resume(previewRun, 'success');
@@ -411,17 +416,17 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 	// MCP and AI Assistant test runs are `n8n_chat` too. They must resume on the
 	// runtime they started on, without the preview chat's extra instructions.
 	it.each([
-		['the preview chat', { ...previewRun, previewChat: true }, true],
+		['the preview chat', { ...previewRun, previewChat: true }, 'preview' as const],
 		['another draft surface', previewRun, undefined],
 	])('carries the preview flag of %s into the resume', async (_label, run, expected) => {
 		const { service, userRepository, agentTestRunService } = setup();
-		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		agentTestRunService.resumeDraftRun.mockResolvedValue(completed);
 
 		await service.resume(run, 'success');
 
 		expect(agentTestRunService.resumeDraftRun).toHaveBeenCalledWith(
-			expect.objectContaining({ previewChat: expected }),
+			expect.objectContaining({ chatSurface: expected }),
 		);
 	});
 
@@ -433,7 +438,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 		],
 	])('pushes the recorded execution after %s', async (_label, result) => {
 		const { service, userRepository, agentTestRunService, broadcaster } = setup();
-		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		const execution = createDeferredPromise<typeof result>();
 		agentTestRunService.resumeDraftRun.mockReturnValue(execution.promise);
 
@@ -453,7 +458,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 
 	it('does not push when the session could not be resumed', async () => {
 		const { service, logger, userRepository, agentTestRunService, broadcaster } = setup();
-		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		agentTestRunService.resumeDraftRun.mockResolvedValue({ status: 'session_not_found' });
 
 		await service.resume(previewRun, 'success');
@@ -472,7 +477,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 		['the user no longer exists', 'user-1', null],
 	])('warns and stops when %s', async (_label, userId, found) => {
 		const { service, logger, userRepository, agentTestRunService } = setup();
-		userRepository.findOneBy.mockResolvedValue(found);
+		userRepository.findByIdWithRole.mockResolvedValue(found);
 
 		await service.resume({ ...previewRun, userId }, 'success');
 
@@ -485,6 +490,11 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 });
 
 describe('AgentWorkflowToolResumeService → background job settlement', () => {
+	/** The sub-workflow connection map that decision collection reads. */
+	const subWorkflowConnections = () => ({
+		Fetch: { main: [[{ node: 'Set', type: 'main' as const, index: 0 }]] },
+	});
+
 	/** Like {@link afterContext}, with node output the settle serializes. */
 	function afterContextWithOutput(status: IRun['status']): WorkflowExecuteAfterContext {
 		const ctx = afterContext(status, agentRun);
@@ -492,19 +502,22 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 			Fetch: [{ data: { main: [[{ json: { page: 1 } }]] } } as never],
 			Set: [{ data: { main: [[{ json: { ok: true } }]] } } as never],
 		};
+		Object.assign(ctx, { workflow: { connections: subWorkflowConnections() } });
 		return ctx;
 	}
 
 	it('settles the job with only the last node’s output serialized', async () => {
 		const { service, backgroundJobService } = setup();
+		const ctx = afterContextWithOutput('success');
 
-		await service.handleWorkflowExecuteAfter(afterContextWithOutput('success'));
+		await service.handleWorkflowExecuteAfter(ctx);
 
-		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
-			status: 'completed',
-			result: '{"Set":[{"ok":true}]}',
-			error: null,
-		});
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith(
+			'exec-1',
+			{ status: 'completed', result: '{"Set":[{"ok":true}]}', error: null },
+			ctx.runData.data.resultData.runData,
+			subWorkflowConnections(),
+		);
 	});
 
 	it('does not settle a success callback for a run that has not finished', async () => {
@@ -524,11 +537,12 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 
 		await service.handleWorkflowExecuteAfter(ctx);
 
-		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
-			status: 'failed',
-			result: null,
-			error: 'boom',
-		});
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith(
+			'exec-1',
+			{ status: 'failed', result: null, error: 'boom' },
+			ctx.runData.data.resultData.runData,
+			subWorkflowConnections(),
+		);
 	});
 
 	it('does not settle while the execution is still waiting', async () => {
@@ -557,5 +571,92 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
 
 		expect(bridge.resumeInAgentThread).toHaveBeenCalled();
+	});
+});
+
+describe('expired workflow approval continuation', () => {
+	it('resumes only while the original Agent is suspended', async () => {
+		const { service, checkpointStorage } = setup();
+		const resume = vi.spyOn(service, 'resume').mockResolvedValue();
+		await service.resumeIfSuspended(previewRun, 'canceled');
+		expect(resume).toHaveBeenCalledOnce();
+		checkpointStorage.getStatus.mockResolvedValue({ status: 'not-found' });
+		await service.resumeIfSuspended(previewRun, 'canceled');
+		expect(resume).toHaveBeenCalledOnce();
+	});
+});
+
+describe('AgentWorkflowToolResumeService tasks', () => {
+	it.each([true, false])(
+		'resumes a task in its original session (published=%s)',
+		async (published) => {
+			const {
+				service,
+				checkpointStorage,
+				orchestratorService,
+				chatIntegrationService,
+				userRepository,
+			} = setup();
+			const taskRun = {
+				...agentRun,
+				integrationType: 'task',
+				published,
+				userId: published ? undefined : 'user-1',
+			};
+			checkpointStorage.getStatus.mockResolvedValue({
+				status: 'active',
+				checkpoint: {
+					status: 'suspended',
+					persistence: { threadId: agentRun.threadId, resourceId: 'task:task-1' },
+				},
+			} as never);
+			userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+			orchestratorService.resumeForChat.mockImplementation(async function* () {});
+			await service.resume(taskRun, 'success');
+			expect(orchestratorService.resumeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({
+					usePublishedVersion: published,
+					integrationType: 'task',
+					source: 'task',
+					allowBackgroundTasks: false,
+					expectedMemory: { threadId: agentRun.threadId, resourceId: 'task:task-1' },
+				}),
+			);
+			expect(chatIntegrationService.getBridge).not.toHaveBeenCalled();
+		},
+	);
+	it.each(['other-thread', 'integration:channel'])(
+		'rejects a task checkpoint outside its scope: %s',
+		async (invalid) => {
+			const { service, checkpointStorage, orchestratorService } = setup();
+			checkpointStorage.getStatus.mockResolvedValue({
+				status: 'active',
+				checkpoint: {
+					status: 'suspended',
+					persistence: {
+						threadId: invalid === 'other-thread' ? invalid : agentRun.threadId,
+						resourceId: invalid === 'other-thread' ? 'task:task-1' : invalid,
+					},
+				},
+			} as never);
+			await service.resume({ ...agentRun, integrationType: 'task', published: true }, 'success');
+			expect(orchestratorService.resumeForChat).not.toHaveBeenCalled();
+		},
+	);
+	it('retains a draft task when its initiating user is unavailable', async () => {
+		const { service, checkpointStorage, orchestratorService, userRepository } = setup();
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: {
+				status: 'suspended',
+				persistence: { threadId: agentRun.threadId, resourceId: 'task:task-1' },
+			},
+		} as never);
+		userRepository.findOneBy.mockResolvedValue(null);
+		await service.resume(
+			{ ...agentRun, integrationType: 'task', published: false, userId: 'missing' },
+			'success',
+		);
+		expect(orchestratorService.resumeForChat).not.toHaveBeenCalled();
 	});
 });

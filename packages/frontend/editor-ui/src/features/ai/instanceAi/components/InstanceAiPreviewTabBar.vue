@@ -1,5 +1,12 @@
 <script lang="ts" setup>
-import { N8nHoverCard, N8nIcon, N8nIconButton, N8nLoading } from '@n8n/design-system';
+import {
+	N8nHoverCard,
+	N8nIcon,
+	N8nIconButton,
+	N8nLoading,
+	N8nTabsList,
+	N8nTabsTrigger,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	ContextMenuContent,
@@ -7,33 +14,38 @@ import {
 	ContextMenuPortal,
 	ContextMenuRoot,
 	ContextMenuTrigger,
-	TabsList,
-	TabsTrigger,
 } from 'reka-ui';
 import { computed, nextTick, ref, shallowRef, watch } from 'vue';
 import { useTimeoutFn } from '@vueuse/core';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
+import { useSkillsStore } from '@/features/settings/context/skills.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { HOVER_DELAY } from '@/app/constants/durations';
-import type { ArtifactTab } from '../useCanvasPreview';
+import { isArtifactTab, type ArtifactTab, type PreviewTab } from '../useCanvasPreview';
+import { useArtifactLinks } from '../artifactLinks';
 import { hasTabSummary, useArtifactTabSummaries } from '../useArtifactTabSummaries';
+import { TAB_DRAG_IGNORE_ATTRIBUTE, useTabDragReorder } from '../composables/useTabDragReorder';
+import InstanceAiResourcePicker from './InstanceAiResourcePicker.vue';
 
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import ManualEditorButton from '@/experiments/openWorkflowInAssistant/components/ManualEditorButton.vue';
 
 const props = withDefaults(
 	defineProps<{
-		tabs: ArtifactTab[];
+		tabs: PreviewTab[];
 		activeTabId?: string;
 		isExpanded?: boolean;
 		isExpandDisabled?: boolean;
 		previewToggleLabel?: string;
+		/** The thread's project. The new tab picker lists its resources. */
+		projectId?: string;
 	}>(),
 	{
 		isExpanded: false,
 		isExpandDisabled: false,
 		previewToggleLabel: undefined,
+		projectId: undefined,
 	},
 );
 
@@ -41,11 +53,15 @@ const emit = defineEmits<{
 	togglePreview: [];
 	toggleExpanded: [];
 	closeTab: [tabId: string];
+	openTab: [tab: ArtifactTab];
+	reorderTab: [tabId: string, toIndex: number];
 }>();
 
 const i18n = useI18n();
 const clipboard = useClipboard();
+const { artifactHref, artifactUrl, openArtifactInNewTab } = useArtifactLinks();
 const toast = useToast();
+const skillsStore = useSkillsStore();
 const tabListRef = ref<HTMLElement | null>(null);
 const sizeToggleLabel = computed(() =>
 	i18n.baseText(
@@ -106,30 +122,30 @@ watch(
 	},
 );
 
-function tabHref(tab: ArtifactTab): string | undefined {
-	if (tab.type === 'workflow') return `/workflow/${tab.id}`;
-	if (tab.type === 'data-table') {
-		return tab.projectId ? `/projects/${tab.projectId}/datatables/${tab.id}` : '/home/datatables';
-	}
-	if (tab.type === 'agent') {
-		return tab.projectId ? `/projects/${tab.projectId}/agents/${tab.id}` : '/home/agents';
-	}
-	return undefined;
+/** A browser tab has no page of its own, so it has no link. */
+function tabHref(tab: PreviewTab): string | undefined {
+	return isArtifactTab(tab) ? artifactHref(tab.type, tab.id, tab.projectId) : undefined;
 }
 
-function handleOpenInEditor(tab: ArtifactTab) {
-	const href = tabHref(tab);
-	if (!href) return;
-	window.open(href, '_blank', 'noopener');
+function handleOpenInEditor(tab: PreviewTab) {
+	if (!isArtifactTab(tab)) return;
+	openArtifactInNewTab(tab.type, tab.id, tab.projectId);
 }
 
 type HoverTarget = { tabId: string; reference: HTMLElement };
 
 const {
-	getSummary,
-	displayName: tabName,
+	getSummary: getArtifactSummary,
+	displayName,
 	refresh: refreshSummaries,
-} = useArtifactTabSummaries(() => props.tabs);
+} = useArtifactTabSummaries(() => props.tabs.filter(isArtifactTab));
+// A browser tab has no stored resource behind it, so it has no summary.
+const getSummary = (tab: PreviewTab) => (isArtifactTab(tab) ? getArtifactSummary(tab) : undefined);
+
+function tabName(tab: PreviewTab): string {
+	if (!isArtifactTab(tab)) return tab.name;
+	return tab.type === 'skill' ? (skillsStore.skillNames.get(tab.id) ?? tab.name) : displayName(tab);
+}
 const hoverTarget = shallowRef<HoverTarget | null>(null);
 // Read the tab from the current props, so a rename shows at once while the card is open.
 const hoveredTab = computed(() => {
@@ -142,12 +158,21 @@ const hoveredSummary = computed(() =>
 );
 const isHoveredSummaryLoading = computed(
 	() =>
-		!!hoveredTab.value && hasTabSummary(hoveredTab.value.tab) && hoveredSummary.value === undefined,
+		!!hoveredTab.value &&
+		isArtifactTab(hoveredTab.value.tab) &&
+		hasTabSummary(hoveredTab.value.tab) &&
+		hoveredSummary.value === undefined,
 );
 const hoveredStatus = computed(() => {
 	const summary = hoveredSummary.value;
 	if (!summary) return undefined;
 	if (summary.type === 'workflow') {
+		if (summary.isArchived) {
+			return {
+				label: i18n.baseText('workflows.item.archived'),
+				published: false,
+			};
+		}
 		return {
 			label: i18n.baseText(
 				summary.published ? 'workflows.published' : 'instanceAi.previewTabBar.draft',
@@ -172,7 +197,7 @@ function setHoveredTab(target: HoverTarget) {
 		return;
 	}
 	// Keep the stored details on screen while this refresh runs.
-	void refreshSummaries([hoveredTab.value.tab]);
+	if (isArtifactTab(hoveredTab.value.tab)) void refreshSummaries([hoveredTab.value.tab]);
 }
 
 const { start: startOpenTimer, stop: stopOpenTimer } = useTimeoutFn(
@@ -191,12 +216,10 @@ const { start: startCloseTimer, stop: stopCloseTimer } = useTimeoutFn(
 	{ immediate: false },
 );
 
-let isPointerOnTab = false;
-
-function showTabHoverCard(tab: ArtifactTab, event: MouseEvent) {
+function showTabHoverCard(tab: PreviewTab, event: MouseEvent) {
 	if (!(event.currentTarget instanceof HTMLElement)) return;
+	if (tabDrag.draggedTabId.value !== undefined) return;
 	const target = { tabId: tab.id, reference: event.currentTarget };
-	isPointerOnTab = true;
 	stopCloseTimer();
 
 	if (hoveredTab.value) {
@@ -204,11 +227,6 @@ function showTabHoverCard(tab: ArtifactTab, event: MouseEvent) {
 	} else {
 		startOpenTimer(target);
 	}
-}
-
-function handleTabMouseLeave() {
-	isPointerOnTab = false;
-	scheduleHideTabHoverCard();
 }
 
 function scheduleHideTabHoverCard() {
@@ -227,18 +245,25 @@ watch(hoveredTab, (tab) => {
 	if (!tab && hoverTarget.value) hideTabHoverCard();
 });
 
-// The card reports open when the pointer enters it, so it stays open while the
-// pointer is on it. It reports closed when the pointer leaves its grace area,
-// which can happen after the pointer is already on a tab.
 function handleHoverCardOpenChange(open: boolean) {
-	if (open) stopCloseTimer();
-	else if (!isPointerOnTab) scheduleHideTabHoverCard();
+	if (!open) hideTabHoverCard();
 }
 
-async function handleCopyLink(tab: ArtifactTab) {
-	const href = tabHref(tab);
-	if (!href) return;
-	const url = new URL(href, window.location.origin).toString();
+// --- Reordering ---
+
+const tabDrag = useTabDragReorder({
+	getTabElements: () => {
+		const tabList = getTabListElement();
+		return tabList ? Array.from(tabList.querySelectorAll<HTMLElement>('[data-tab-item-id]')) : [];
+	},
+	onReorder: (tabId, toIndex) => emit('reorderTab', tabId, toIndex),
+	onDragStart: () => hideTabHoverCard(),
+});
+
+async function handleCopyLink(tab: PreviewTab) {
+	if (!isArtifactTab(tab)) return;
+	const url = artifactUrl(tab.type, tab.id, tab.projectId);
+	if (!url) return;
 	await clipboard.copy(url);
 	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
 }
@@ -257,7 +282,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 			data-test-id="instance-ai-artifacts-preview-toggle"
 			@click="emit('togglePreview')"
 		/>
-		<TabsList
+		<N8nTabsList
 			ref="tabListRef"
 			:aria-label="i18n.baseText('instanceAi.artifactsPanel.title')"
 			:class="$style.tabList"
@@ -266,22 +291,36 @@ async function handleCopyLink(tab: ArtifactTab) {
 				<ContextMenuTrigger as-child>
 					<!-- The close button cannot sit inside the trigger button, so both share a wrapper. -->
 					<div
-						:class="[$style.tab, { [$style.tabActive]: tab.id === activeTabId }]"
+						:class="[
+							$style.tab,
+							{
+								[$style.tabActive]: tab.id === activeTabId,
+								[$style.tabDragging]: tab.id === tabDrag.draggedTabId.value,
+							},
+						]"
 						:data-tab-item-id="tab.id"
+						@pointerdown="tabDrag.onPointerDown(tab.id, $event)"
 						@mouseenter="showTabHoverCard(tab, $event)"
-						@mouseleave="handleTabMouseLeave"
+						@mouseleave="scheduleHideTabHoverCard"
 						@contextmenu="hideTabHoverCard"
 						@mousedown.middle.prevent
 						@auxclick.middle.prevent="emit('closeTab', tab.id)"
 					>
-						<TabsTrigger
+						<N8nTabsTrigger
 							:value="tab.id"
 							:data-tab-id="tab.id"
 							:class="$style.tabTrigger"
 							@keydown.delete.prevent="emit('closeTab', tab.id)"
 						>
+							<!-- The chat asks the user for an answer, so the tab draws the eye to it. -->
+							<span
+								v-if="isArtifactTab(tab) && tab.waiting"
+								:class="[$style.icon, $style.draftWaitingDot]"
+								aria-hidden="true"
+								data-test-id="instance-ai-tab-waiting-dot"
+							/>
 							<N8nIcon
-								v-if="tab.building"
+								v-else-if="isArtifactTab(tab) && tab.building"
 								icon="spinner"
 								size="large"
 								spin
@@ -290,13 +329,22 @@ async function handleCopyLink(tab: ArtifactTab) {
 							/>
 							<N8nIcon v-else :icon="tab.icon" size="large" :class="$style.icon" />
 							<span :class="$style.label">{{ tabName(tab) }}</span>
-						</TabsTrigger>
+							<!-- The browser task waits for the user. -->
+							<span
+								v-if="tab.type === 'browser' && tab.userAction"
+								:class="$style.waitingDot"
+								role="img"
+								:aria-label="i18n.baseText('instanceAi.cloudBrowser.needsYou')"
+								data-test-id="instance-ai-tab-waiting"
+							/>
+						</N8nTabsTrigger>
 						<span :class="$style.closeSlot">
 							<N8nIconButton
 								icon="x"
 								variant="ghost"
 								size="xsmall"
 								:class="$style.closeButton"
+								v-bind="{ [TAB_DRAG_IGNORE_ATTRIBUTE]: '' }"
 								:aria-label="
 									i18n.baseText('instanceAi.previewTabBar.closeTab', {
 										interpolate: { name: tabName(tab) },
@@ -310,18 +358,49 @@ async function handleCopyLink(tab: ArtifactTab) {
 				</ContextMenuTrigger>
 				<ContextMenuPortal>
 					<ContextMenuContent :class="$style.contextMenu">
-						<ContextMenuItem :class="$style.contextMenuItem" @select="handleOpenInEditor(tab)">
+						<ContextMenuItem
+							:class="$style.contextMenuItem"
+							:disabled="!tabHref(tab)"
+							@select="handleOpenInEditor(tab)"
+						>
 							<N8nIcon icon="external-link" size="small" />
-							<span>{{ i18n.baseText('instanceAi.previewTabBar.openInEditor') }}</span>
+							<span>{{
+								i18n.baseText(
+									tab.type === 'skill'
+										? 'instanceAi.previewTabBar.openInSkillHub'
+										: 'instanceAi.previewTabBar.openInEditor',
+								)
+							}}</span>
 						</ContextMenuItem>
-						<ContextMenuItem :class="$style.contextMenuItem" @select="handleCopyLink(tab)">
+						<ContextMenuItem
+							:class="$style.contextMenuItem"
+							:disabled="!tabHref(tab)"
+							@select="handleCopyLink(tab)"
+						>
 							<N8nIcon icon="link" size="small" />
 							<span>{{ i18n.baseText('instanceAi.previewTabBar.copyLink') }}</span>
 						</ContextMenuItem>
 					</ContextMenuContent>
 				</ContextMenuPortal>
 			</ContextMenuRoot>
-		</TabsList>
+			<InstanceAiResourcePicker
+				v-if="projectId"
+				:project-id="projectId"
+				:excluded-tabs="tabs.filter(isArtifactTab)"
+				@select="emit('openTab', $event)"
+			>
+				<template #trigger="{ isOpen }">
+					<N8nIconButton
+						icon="plus"
+						variant="ghost"
+						size="small"
+						:class="[$style.newTabButton, { [$style.newTabButtonOpen]: isOpen }]"
+						:aria-label="i18n.baseText('instanceAi.previewTabBar.newTab')"
+						data-test-id="instance-ai-new-tab-button"
+					/>
+				</template>
+			</InstanceAiResourcePicker>
+		</N8nTabsList>
 		<!-- One shared card follows the hovered tab, so each tab does not mount its own. -->
 		<N8nHoverCard
 			:open="!!hoveredTab"
@@ -373,7 +452,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 			</template>
 		</N8nHoverCard>
 		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
-		<ManualEditorButton :tabs="tabs" :active-tab-id="activeTabId" />
+		<ManualEditorButton :tabs="tabs.filter(isArtifactTab)" :active-tab-id="activeTabId" />
 		<N8nIconButton
 			:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
 			variant="ghost"
@@ -388,6 +467,21 @@ async function handleCopyLink(tab: ArtifactTab) {
 </template>
 
 <style lang="scss" module>
+.waitingDot {
+	flex-shrink: 0;
+	width: var(--spacing--3xs);
+	height: var(--spacing--3xs);
+	border-radius: 50%;
+	background: var(--color--warning);
+	animation: waiting-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes waiting-pulse {
+	50% {
+		opacity: 0.3;
+	}
+}
+
 @property --right--fade {
 	syntax: '<length>';
 	inherits: false;
@@ -420,7 +514,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 
 .header {
 	flex-shrink: 0;
-	height: 49px;
+	// 6px above and below the tabs, plus the 1px bottom border.
+	height: 45px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
@@ -470,6 +565,12 @@ async function handleCopyLink(tab: ArtifactTab) {
 
 	&.tabActive {
 		--tab--background: light-dark(var(--color--neutral-150), var(--color--neutral-800));
+	}
+
+	// The drag composable moves the tabs through inline styles.
+	&.tabDragging {
+		z-index: 1;
+		cursor: grabbing;
 	}
 
 	// Show the close button on hover and while it has keyboard focus.
@@ -558,7 +659,16 @@ async function handleCopyLink(tab: ArtifactTab) {
 	flex-shrink: 0;
 }
 
+.draftWaitingDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	margin-inline: var(--spacing--5xs);
+	border-radius: var(--radius--full);
+	background: var(--color--danger);
+}
+
 .hoverCard {
+	pointer-events: none;
 	width: 238px;
 	padding: var(--spacing--2xs);
 	border: 1px solid var(--border-color--subtle);
@@ -635,6 +745,15 @@ async function handleCopyLink(tab: ArtifactTab) {
 .statusTagPublished {
 	background-color: light-dark(var(--color--green-100), var(--color--green-800));
 	color: light-dark(var(--color--green-800), var(--color--neutral-white));
+}
+
+.newTabButton {
+	flex-shrink: 0;
+}
+
+// Keep the hover background while the picker is open, as in the design.
+.newTabButtonOpen {
+	background-color: var(--background--hover);
 }
 
 .contextMenu {

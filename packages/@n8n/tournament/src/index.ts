@@ -6,6 +6,12 @@ import { FunctionEvaluator } from './FunctionEvaluator';
 
 export type { ExpressionEvaluator, ExpressionEvaluatorClass } from './Evaluator';
 export * from './ast';
+export { getParsedExpression } from './ExpressionBuilder';
+export type { ParsedCode } from './ExpressionBuilder';
+export { splitExpression } from './ExpressionSplitter';
+export type { ExpressionChunk, ExpressionCode, ExpressionText } from './ExpressionSplitter';
+export type { namedTypes } from 'ast-types';
+export type { ExpressionKind, SpreadElementKind } from 'ast-types/lib/gen/kinds';
 
 const DATA_NODE_NAME = '___n8n_data';
 export type ReturnValue = string | null | (() => unknown);

@@ -5,8 +5,19 @@ receiver, once a day.
 
 Each report carries two data points for the previous completed UTC day:
 
-- a `daily` billable-execution count, from the `insights` module
+- a `daily` billable-execution count, from workflow Insights and agent turn counts
 - a `cumulative` lifetime total, from the license metrics repository
+
+Both counts include production agent turns. Agent counts are stored for each
+UTC day, including on Community instances and when diagnostics are disabled.
+The counts survive agent and session deletion. Recording starts with this
+version. Past agent turns are not added to the counts.
+
+On PostgreSQL, each turn appends an increment. The existing workflow statistics
+task folds workflow and agent increments every five seconds. Each fold uses
+one transaction and the existing advisory lock. Counts can be delayed while
+increments await a fold. SQLite updates the daily counter directly, as it does
+for workflow statistics.
 
 Every report is persisted in `instance_monitoring_report` before it is
 sent, so a retry resends the exact same measurement under the same `batchId`
@@ -19,21 +30,29 @@ series is the authoritative one: the two cumulative samples around the gap sit
 more than 24 hours apart, so their difference covers the whole outage. A missed
 day with no executions is reported as `0`, so a gap in the series always means
 "not reported", never "nothing ran". The one exception: missed days before the
-first `insights` data are not reported at all.
+first workflow Insights data or recorded agent turn are not reported at all.
 
 The first report works the same way: it carries a `daily` point for every day
-from the first `insights` data to yesterday. It carries no past `cumulative`
-values, since those are unknown. Days before the first `insights` data are not
+from the first workflow Insights data or recorded agent turn to yesterday.
+It carries no past `cumulative` values, since those are unknown.
+Days before the first recorded data are not
 sent. A report reads only hourly `insights` data, because only hourly rows
 split exactly into UTC days. `insights` folds hours older than 90 days (by
 default) into daily rows, so a report never carries a day older than 89 days.
 Inside the sent range, a day without data is `0`.
 [RETRIES.md](./RETRIES.md#type-2-missed-day-backfill) gives the exact rules.
 
+Insights data only has a `billable` number on instances that run 2.40.0 or
+higher. Before then, only the `total` number is available. The first day with
+`billable` data is not a full 24-hour window on 2.40.0 or higher, so instance
+reports send the `total` number for that day and every day before it. Every
+later day sends the `billable` number, also when it is `0`.
+
 Known limits:
 
 - If `insights` was disabled for a time between its first data and the first
-  report, those days are sent as `0`.
+  report, workflow executions from that time are absent. Agent counts remain
+  available.
 - After this instance's database is restored from a backup, the days since the
   backup are sent again, as `0` or as a lower value. Consumers of the receiver's
   export must use the highest value for each instance, metric and day.
@@ -64,6 +83,7 @@ without reading this document:
 | `status` | Meaning |
 |---|---|
 | `pending` | Not delivered yet, and attempts remain |
+| `sending` | One main holds the report while it sends a request |
 | `delivered` | The receiver answered 201 |
 | `skipped_after_max_retries` | The instance stopped delivering that day: after three failed attempts, because the report's own slot passed before it landed, or because the receiver rejected the payload (`400` or `413`) |
 
@@ -75,7 +95,7 @@ next one.
 scheduler holding them in memory. A restart therefore resumes the same report's
 three attempts instead of granting three more, and waits out the rest of the
 five minutes since the last attempt before trying again — otherwise a crash loop
-would spend the whole budget in seconds. `InstanceReportingScheduler` keeps no
+would spend the whole budget in seconds. `InstanceReportingTask` keeps no
 attempt state of its own.
 
 The delivery retry above and the missed-day backfill are two separate
@@ -84,22 +104,37 @@ and where the logic lives.
 
 ## Scheduling
 
-The daily fire is driven by `InstanceReportingScheduler`, a leader-gated
-in-process timer (the same pattern as execution pruning and workflow history
-compaction) rather than the durable scheduler: that framework has no
-first-class support yet for system-owned jobs like this one, only for
-workflow-triggered jobs, and this module is meant to move onto it once it does.
+`InstanceReportingTask` checks the stored report time every 15 minutes. Changes
+to that time apply on the next pass without a restart or a schedule update. A
+report can start up to 15 minutes after its UTC slot. A pass sends a new report
+for the latest slot at or before its time, unless the day of that slot is
+settled. Yesterday's slot stays due for one hour, so a slot late in the UTC day
+is sent after midnight. That report is still dated by its slot and ends on the
+day before it.
 
-In multi-main, only the leader holds the timer, so a cluster reports once
-rather than once per main; leadership handover moves the timer along with it.
-In place of the durability a scheduler-backed job would give:
+With `N8N_SCHEDULER_ENABLED` and `N8N_SCHEDULER_SYSTEM_TASKS_ENABLED` enabled,
+any main can claim the durable task. With either flag disabled, the shared
+system task runner uses the leader's in-memory timer. It also runs a catch-up
+pass at startup and on leader takeover. The runner starts after the server.
 
-- **Catch-up.** Every tick asks the database whether today's report was
-  delivered, rather than trusting a timer fired at the right moment — so a
-  restart, or a leadership handover, that straddles the report time still
-  reports that day.
-- **Bounded retry.** A failed delivery is retried a few times, a few minutes
-  apart, before the day is left to the next slot.
+The report row owns retries in both modes. Each scheduler occurrence has one
+attempt. A delivery failure is recorded as a failed occurrence. Later passes
+read the report row and wait at least five minutes before retrying. During normal
+operation, retries run on the next 15-minute pass. After three
+failed deliveries, the row is skipped. At the pending row's next daily slot,
+a new report replaces it even if the retry delay has not elapsed. A `sending`
+row stays active until its request finishes. A stopped main's claim expires
+after two minutes.
+
+The unique `reportDate` key allows one report row per UTC day. Concurrent
+creators cannot send different measurements for that day. Retries use the
+persisted data and `batchId`. If delivery succeeds before a main stops, a repeat
+uses that same batch. The receiver answers `409`, which counts as delivery.
+A database claim lets only one main send a pending row at a time. Claim age
+uses the database clock. A failure write must match the active claim timestamp.
+A late `201` or `409` marks any undelivered row as delivered, even if another
+main reclaimed or skipped it. Further results leave a delivered row and its
+attempt count unchanged.
 
 ## Enabling
 
@@ -150,7 +185,7 @@ host.
 
 | Env var | Default | Notes |
 |---|---|---|
-| `N8N_INSTANCE_REPORTING_BASE_URL` | `''` | Base URL of the receiver. The report is POSTed to `<base>/api/v1/instance-reports`. Left unset, the module loads but warns and never sends: it starts no scheduler and claims no report time. |
+| `N8N_INSTANCE_REPORTING_BASE_URL` | `''` | Base URL of the receiver. The report is POSTed to `<base>/api/v1/instance-reports`. Left unset, the module loads but warns and never sends: it registers no reporting task and claims no report time. |
 | `N8N_INSTANCE_REPORTING_LABEL` | `''` | Sent as `label` in the payload, when set. |
 | `N8N_INSTANCE_REPORTING_AUTH_TOKEN` | `''` | Sent as `Authorization: Bearer …`, when set. Replaces the license certificate as the credential; `licenseCert` is then omitted from the body. |
 | `N8N_LICENSE_CERT` | `''` | Not owned by this module. Its value, or the persisted certificate of an activated license, is sent as `licenseCert` and is the credential the receiver checks, unless a token is set. |

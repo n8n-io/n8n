@@ -66,7 +66,7 @@ const getIconSize = computed<IconSize>(() => {
 				</N8nTooltip>
 				<N8nIcon v-else :icon="getIcon" :size="getIconSize" />
 			</div>
-			<N8nText size="small">
+			<N8nText size="small" :class="$style.text">
 				<slot />
 			</N8nText>
 			&nbsp;
@@ -122,6 +122,10 @@ const getIconSize = computed<IconSize>(() => {
 	align-items: center;
 }
 
+.text {
+	--n8n-markdown--font-size--base: var(--font-size--2xs);
+}
+
 .info,
 .custom {
 	border-color: var(--callout--border-color--info);
@@ -170,10 +174,14 @@ const getIconSize = computed<IconSize>(() => {
 
 .secondary {
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	border-color: var(--callout--border-color--secondary);
 	background-color: var(--callout--color--background--secondary);
 	color: var(--callout--color--text--secondary);
+
+	.messageSection > :global(.n8n-text) {
+		font-weight: inherit;
+	}
 
 	.icon {
 		color: var(--callout--icon-color--secondary);

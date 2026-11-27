@@ -80,6 +80,7 @@ const flush = async () => await Promise.resolve();
 
 describe('EmailReadImapV2', () => {
 	const staticData: IDataObject = {};
+	let insideIsolateScope = false;
 
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers: {
@@ -92,6 +93,14 @@ describe('EmailReadImapV2', () => {
 				});
 				return { promise, resolve, reject };
 			}),
+			withExpressionIsolate: async <T>(fn: () => Promise<T>) => {
+				insideIsolateScope = true;
+				try {
+					return await fn();
+				} finally {
+					insideIsolateScope = false;
+				}
+			},
 		},
 	});
 
@@ -167,6 +176,20 @@ describe('EmailReadImapV2', () => {
 
 			await vi.waitFor(() => expect(fetched).toHaveBeenCalled());
 		});
+
+		it('fetches inside an expression isolate scope', async () => {
+			const connection = createConnection();
+			connectMock.mockResolvedValueOnce(connection);
+			let fetchedInsideScope: boolean | undefined;
+			fetched.mockImplementationOnce(async () => {
+				fetchedInsideScope = insideIsolateScope;
+			});
+			await startTrigger();
+
+			await arrive(connection, 1);
+
+			expect(fetchedInsideScope).toBe(true);
+		});
 	});
 
 	describe('overlapping arrivals', () => {
@@ -186,8 +209,11 @@ describe('EmailReadImapV2', () => {
 	describe('search criteria', () => {
 		it('does not accumulate UID filters across arrivals', async () => {
 			const criteriaPerFetch: unknown[][] = [];
-			fetched.mockImplementation(async function (this: ITriggerFunctions, { searchCriteria }) {
-				criteriaPerFetch.push([...searchCriteria]);
+			fetched.mockImplementation(async function (
+				this: ITriggerFunctions,
+				{ searchCriteria, newMailWindow },
+			) {
+				criteriaPerFetch.push([...searchCriteria, newMailWindow]);
 				// Past the first fetch the node takes the UID path rather than the SINCE one.
 				const data = this.getWorkflowStaticData('node');
 				data.lastMessageUid = ((data.lastMessageUid as number) ?? 0) + 1;
@@ -230,6 +256,19 @@ describe('EmailReadImapV2', () => {
 	});
 
 	describe('a connection that fails', () => {
+		it('rejects activation with a warning-level node error when the server cannot be reached', async () => {
+			const cause = Object.assign(new Error('Socket timeout'), { code: 'ETIMEOUT' });
+			connectMock.mockRejectedValueOnce(cause);
+
+			const activation = startTrigger();
+
+			await expect(activation).rejects.toBeInstanceOf(NodeOperationError);
+			await expect(activation).rejects.toMatchObject({
+				message: 'Socket timeout',
+				level: 'warning',
+			});
+		});
+
 		it('reports the error to the error workflow', async () => {
 			const connection = createConnection();
 			connectMock.mockResolvedValueOnce(connection);
@@ -303,25 +342,55 @@ describe('EmailReadImapV2', () => {
 		});
 	});
 
-	describe('catching up after a gap', () => {
-		it('looks at the mailbox when it has processed mail before', async () => {
-			staticData.lastMessageUid = 42;
-			const connection = createConnection();
-			connectMock.mockResolvedValueOnce(connection);
+	describe('catching up on activation', () => {
+		// Mail that landed while the workflow was inactive sends no arrival event.
+		it.each([
+			{
+				case: 'mail processed before',
+				typeVersion: 2.1,
+				lastMessageUid: 42,
+				options: {},
+				newMailWindow: ['UID', '42:*'],
+			},
+			{
+				case: 'a first activation',
+				typeVersion: 2.1,
+				lastMessageUid: undefined,
+				options: {},
+				newMailWindow: ['SINCE', '13-Oct-2026'],
+			},
+			{
+				case: 'an untracked last message id',
+				typeVersion: 2.1,
+				lastMessageUid: 42,
+				options: { trackLastMessageId: false },
+				newMailWindow: undefined,
+			},
+			{
+				case: 'version 2',
+				typeVersion: 2,
+				lastMessageUid: 42,
+				options: {},
+				newMailWindow: undefined,
+			},
+		])(
+			'searches the mailbox after $case',
+			async ({ typeVersion, lastMessageUid, options, newMailWindow }) => {
+				vi.setSystemTime(new Date('2026-10-13T12:00:00Z'));
+				triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion }));
+				staticData.lastMessageUid = lastMessageUid;
+				const connection = createConnection();
+				connectMock.mockResolvedValueOnce(connection);
 
-			await startTrigger();
+				await startTrigger(options);
+				expect(connection.catchUp).toHaveBeenCalledTimes(1);
+				await arrive(connection, 'unknown');
 
-			expect(connection.catchUp).toHaveBeenCalledTimes(1);
-		});
-
-		it('leaves the mailbox alone on a first activation', async () => {
-			const connection = createConnection();
-			connectMock.mockResolvedValueOnce(connection);
-
-			await startTrigger();
-
-			expect(connection.catchUp).not.toHaveBeenCalled();
-		});
+				expect(fetched).toHaveBeenCalledWith(
+					expect.objectContaining({ searchCriteria: ['UNSEEN'], newMailWindow }),
+				);
+			},
+		);
 	});
 
 	describe('credential test', () => {

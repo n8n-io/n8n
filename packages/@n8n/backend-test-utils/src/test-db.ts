@@ -7,7 +7,6 @@ import { DataSource as Connection } from '@n8n/typeorm';
 import assert from 'assert';
 import { randomString } from 'n8n-workflow';
 import path from 'node:path';
-import { vi } from 'vitest';
 
 export const testDbPrefix = 'n8n_test_';
 let isInitialized = false;
@@ -59,10 +58,12 @@ export async function init() {
 	const sqliteTemplate = dbType === 'sqlite' ? process.env.N8N_TEST_SQLITE_TEMPLATE : undefined;
 	if (sqliteTemplate) {
 		// Some test files mock `fs`, so use the real module.
+		const { vi } = await import('vitest');
 		const fs = await vi.importActual<typeof import('node:fs')>('node:fs');
 		// An existing file keeps its data, as it does without a template.
 		const databasePath = getSqliteDatabasePath();
 		if (!fs.existsSync(databasePath)) {
+			await fs.promises.mkdir(path.dirname(databasePath), { recursive: true });
 			await fs.promises.copyFile(sqliteTemplate, databasePath);
 			fromTemplate = true;
 		}
@@ -233,7 +234,17 @@ type EntityName =
 	| 'TokenExchangeJti'
 	| 'TrustedKeySourceEntity'
 	| 'TrustedKeyEntity'
-	| 'WorkflowStatisticsDelta';
+	| 'TrustedSourceEntity'
+	| 'TrustedSourceIdentityEntity'
+	| 'WorkflowStatisticsDelta'
+	| 'AgentExecutionStatisticsDelta'
+	| 'ExecutionLedgerEntity'
+	| 'ExecutionLedgerParkedEntity'
+	| 'ExecutionLimitAudit'
+	| 'McpServer'
+	| 'McpServerTool'
+	| 'McpServerConnection'
+	| 'McpServerBlock';
 
 /**
  * Truncate specific DB tables in a test DB.
@@ -270,13 +281,21 @@ export async function truncate(entities: EntityName[]) {
 		await connection.getRepository('WorkflowPublishedVersion').delete({});
 	}
 
+	// `agents.identityId` references `user` with RESTRICT, so agents go first.
+	if (entities.includes('User') && connection.hasMetadata('Agent')) {
+		await connection.getRepository('Agent').delete({});
+	}
+
 	for (const name of entities) {
-		// `workflow_statistics_delta` is a raw-SQL, Postgres-only table with no TypeORM entity, so it
-		// can't go through the repository, so we clear it directly.
-		if (name === 'WorkflowStatisticsDelta') {
+		// PostgreSQL statistics buffers have no TypeORM entity.
+		if (name === 'WorkflowStatisticsDelta' || name === 'AgentExecutionStatisticsDelta') {
 			const { type, tablePrefix } = Container.get(GlobalConfig).database;
 			if (type === 'postgresdb') {
-				const table = connection.driver.escape(`${tablePrefix}workflow_statistics_delta`);
+				const tableName =
+					name === 'WorkflowStatisticsDelta'
+						? 'workflow_statistics_delta'
+						: 'agent_execution_statistics_delta';
+				const table = connection.driver.escape(`${tablePrefix}${tableName}`);
 				await connection.query(`DELETE FROM ${table}`);
 			}
 			continue;

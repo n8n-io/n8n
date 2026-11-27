@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
-import { EventService } from '@n8n/backend-services';
-import { GlobalConfig } from '@n8n/config';
+import { EventService, EventRelay } from '@n8n/backend-services';
+import { ActivityLogConfig } from '@n8n/config';
 import {
 	activityDataMaxLength,
 	ActivityEventRepository,
@@ -13,8 +12,6 @@ import { Service } from '@n8n/di';
 import type { IDataObject, INode, IWorkflowBase } from 'n8n-workflow';
 
 import type { RelayEventMap, WorkflowActionSource } from '@/events/maps/relay.event-map';
-import { EventRelay } from '@/events/relays/event-relay';
-import { PostHogClient } from '@/posthog';
 
 /** Carried by nearly every core node type. Dropping it buys room inside the `data` budget. */
 const CORE_NODE_TYPE_PREFIX = 'n8n-nodes-base.';
@@ -40,8 +37,7 @@ type ActivityHandlers<EventNames extends keyof RelayEventMap> = {
  * Registered from `BaseCommand` as a core relay. Every event it listens for is emitted from a
  * request path, so today only a main writes rows — but the record itself is not specific to one
  * consumer, and keeping the writer beside the core table it fills means a later consumer does not
- * have to reach across a module boundary. On a process that emits none of these, the flag check
- * below is the entire cost.
+ * have to reach across a module boundary. `N8N_ACTIVITY_LOG_ENABLED=false` skips the listeners.
  *
  * Not recorded, because the events carry too little to render a useful entry: data tables and
  * folders (no name, no acting user), agents (only an id), projects and source control. Executions
@@ -54,8 +50,7 @@ export class ActivityEventRelay extends EventRelay {
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly globalConfig: GlobalConfig,
-		private readonly postHogClient: PostHogClient,
+		private readonly activityLogConfig: ActivityLogConfig,
 		private readonly logger: Logger,
 	) {
 		super(eventService);
@@ -63,10 +58,7 @@ export class ActivityEventRelay extends EventRelay {
 	}
 
 	init() {
-		// Skip listeners when no local or remote control can enable recording.
-		if (!this.globalConfig.diagnostics.enabled && !this.overrideEnablesFlag()) {
-			return;
-		}
+		if (!this.activityLogConfig.enabled) return;
 
 		this.setupListeners(
 			this.guarded({
@@ -83,38 +75,6 @@ export class ActivityEventRelay extends EventRelay {
 				'credentials-deleted': async (e) => await this.onCredentialDeleted(e),
 			}),
 		);
-	}
-
-	/** Whether an explicit override turns the flag on. Its value decides, not its presence. */
-	private overrideEnablesFlag(): boolean {
-		const override = this.globalConfig.featureFlags.override[INSTANCE_ACTIVITY_CONTEXT_FLAG];
-		const value = typeof override === 'object' ? override.value : override;
-		return value === true;
-	}
-
-	/** The active instance gate check. All events in a burst share it. */
-	private gateCheck?: Promise<boolean>;
-
-	/** Checks the instance gate and fails closed when its value is unreadable. */
-	private async shouldRecord(): Promise<boolean> {
-		if (this.gateCheck) return await this.gateCheck;
-
-		const check = this.readGate().finally(() => {
-			this.gateCheck = undefined;
-		});
-		this.gateCheck = check;
-		return await check;
-	}
-
-	private async readGate(): Promise<boolean> {
-		try {
-			return (
-				(await this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)) ===
-				true
-			);
-		} catch {
-			return false;
-		}
 	}
 
 	/**
@@ -135,7 +95,6 @@ export class ActivityEventRelay extends EventRelay {
 			event,
 			async (payload: RelayEventMap[EventNames]) => {
 				try {
-					if (!(await this.shouldRecord())) return;
 					await handle(payload);
 				} catch (error) {
 					this.logger.warn('Failed to record activity for an event', { event, error });

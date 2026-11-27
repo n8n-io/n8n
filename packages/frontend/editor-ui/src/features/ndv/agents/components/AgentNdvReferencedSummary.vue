@@ -7,9 +7,10 @@
  * Deliberately not the disabled editing panels: a disabled form reads as "no
  * permission" and mounts modal/credential machinery a summary never needs.
  */
-import { computed, inject, watch } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 import type { AgentCapabilitySummary } from '@n8n/api-types';
 import { N8nLoading, N8nMarkdown, N8nText, N8nButton } from '@n8n/design-system';
+import { useScrollEdges } from '@n8n/design-system/composables/useScrollEdges';
 import { useI18n } from '@n8n/i18n';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -33,6 +34,9 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const { catalog: modelCatalog, ensureLoaded: ensureModelsLoaded } = useModelCatalog();
 
+const configContentRef = ref<HTMLElement | null>(null);
+const { scrollMaskAttrs } = useScrollEdges(configContentRef, { axis: 'vertical' });
+
 const ndv = inject(NdvAgentConfigKey);
 const referenced = ndv?.referenced;
 
@@ -44,6 +48,7 @@ const agentRecord = computed(() => referenced?.agent.value ?? null);
 const appliedSkills = computed(() => referenced?.appliedSkills.value ?? []);
 const loading = computed(() => referenced?.loading.value ?? false);
 const isUnavailable = computed(() => referenced?.isUnavailable.value ?? false);
+const agentsDisabled = computed(() => referenced?.agentsDisabled.value ?? false);
 
 const parsedModel = computed(() => {
 	const model = config.value?.model;
@@ -98,7 +103,7 @@ const chips = computed(() => {
 watch(
 	projectId,
 	(id) => {
-		if (!id) return;
+		if (!id || agentsDisabled.value) return;
 		void ensureModelsLoaded(id).catch(() => {});
 	},
 	{ immediate: true },
@@ -117,9 +122,19 @@ async function onEditInBuilder() {
 		:class="$style.summary"
 		data-test-id="agent-ndv-referenced-summary"
 	>
+		<N8nText
+			v-if="agentsDisabled"
+			:class="$style.unavailable"
+			color="danger"
+			size="small"
+			data-test-id="agent-ndv-agents-disabled"
+		>
+			{{ i18n.baseText('agentNode.agentsDisabled') }}
+		</N8nText>
+
 		<!-- Terminal state: the referenced agent was deleted or access was lost. -->
 		<N8nText
-			v-if="isUnavailable"
+			v-else-if="isUnavailable"
 			:class="$style.unavailable"
 			color="danger"
 			size="small"
@@ -133,12 +148,12 @@ async function onEditInBuilder() {
 
 		<template v-else-if="config">
 			<div :class="$style.config">
-				<div :class="$style.configContent">
+				<div ref="configContentRef" :class="$style.configContent" v-bind="scrollMaskAttrs">
 					<N8nButton
 						v-if="!isUnavailable && !props.isReadOnly"
 						size="small"
 						icon="external-link"
-						variant="subtle"
+						variant="outline"
 						:class="$style.editButton"
 						data-test-id="agent-ndv-edit-in-builder"
 						@click="onEditInBuilder"
@@ -224,13 +239,7 @@ async function onEditInBuilder() {
 	scrollbar-gutter: stable;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
-	mask-image: linear-gradient(
-		to bottom,
-		black 0,
-		black calc(100% - var(--spacing--sm)),
-		transparent 100%
-	);
-
+	@include scrollbar-mixins.scroll-mask-when-y;
 	@include scrollbar-mixins.scroll-bar;
 }
 

@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import type { OutboundHttp } from '@n8n/backend-network';
+import type {
+	HttpConnectionPoolOptions,
+	HttpRequestClient,
+	OutboundHttp,
+} from '@n8n/backend-network';
 import {
 	LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
 	LOGSTREAMING_DEFAULT_MAX_SOCKETS,
@@ -78,6 +82,8 @@ export class MessageEventBusDestinationWebhook
 
 	requestOptions?: IHttpRequestOptions;
 
+	private httpClient?: HttpRequestClient;
+
 	constructor(
 		eventBusInstance: MessageEventBus,
 		options: MessageEventBusDestinationWebhookOptions,
@@ -136,7 +142,25 @@ export class MessageEventBusDestinationWebhook
 			maxSockets: options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_SOCKETS,
 			maxFreeSockets: options?.socket?.maxFreeSockets ?? LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
 			maxTotalSockets: options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
+			// Closes idle sockets, which the receiver would otherwise keep open
+			timeout: options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
 		};
+	}
+
+	private buildConnectionPool(): HttpConnectionPoolOptions {
+		return {
+			agentOptions: this.buildAgentOptions(this.options),
+			proxy: this.resolveProxy(this.options),
+			skipSslCertificateValidation: this.options?.allowUnauthorizedCerts === true,
+		};
+	}
+
+	private getHttpClient(): HttpRequestClient {
+		this.httpClient ??= this.outboundHttp.requests({
+			useDefaultSsrfPolicy: 'unsafe', // The destination URL is admin-configured, so SSRF protection is disabled.
+			connectionPool: this.buildConnectionPool(),
+		});
+		return this.httpClient;
 	}
 
 	private buildConnectionOptions(): IHttpRequestOptions {
@@ -145,7 +169,6 @@ export class MessageEventBusDestinationWebhook
 			method: this.method as IHttpRequestMethods,
 			headers: {},
 			disableFollowRedirect: true,
-			agentOptions: this.buildAgentOptions(this.options),
 			timeout: this.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
 		};
 
@@ -155,19 +178,15 @@ export class MessageEventBusDestinationWebhook
 			requestOptions.maxRedirects = redirectInner.maxRedirects;
 		}
 
-		const proxy = this.resolveProxy(this.options);
-		if (proxy) {
-			requestOptions.proxy = proxy;
-		}
-
-		if (this.options?.allowUnauthorizedCerts) {
-			requestOptions.skipSslCertificateValidation = true;
-		}
-
 		return requestOptions;
 	}
 
-	async matchDecryptedCredentialType(credentialType: string, raw = true) {
+	/**
+	 * Decrypt destination credentials with expression resolution enabled by default
+	 * (`raw = false`) so External Secrets expressions (e.g. `{{ $secrets... }}`)
+	 * are resolved before the request is sent.
+	 */
+	async matchDecryptedCredentialType(credentialType: string, raw = false) {
 		const foundCredential = Object.entries(this.credentials).find((e) => e[0] === credentialType);
 		if (foundCredential) {
 			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
@@ -355,30 +374,22 @@ export class MessageEventBusDestinationWebhook
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
-		let httpTemplatedCustomAuth;
+		let customAuthCredentials;
 
 		if (this.authentication === 'genericCredentialType') {
 			if (this.genericAuthType === 'httpBasicAuth') {
-				try {
-					httpBasicAuth = await this.matchDecryptedCredentialType('httpBasicAuth');
-				} catch {}
+				httpBasicAuth = await this.matchDecryptedCredentialType('httpBasicAuth');
 			} else if (this.genericAuthType === 'httpDigestAuth') {
-				try {
-					httpDigestAuth = await this.matchDecryptedCredentialType('httpDigestAuth');
-				} catch {}
+				httpDigestAuth = await this.matchDecryptedCredentialType('httpDigestAuth');
 			} else if (this.genericAuthType === 'httpHeaderAuth') {
-				try {
-					httpHeaderAuth = await this.matchDecryptedCredentialType('httpHeaderAuth');
-				} catch {}
+				httpHeaderAuth = await this.matchDecryptedCredentialType('httpHeaderAuth');
 			} else if (this.genericAuthType === 'httpQueryAuth') {
-				try {
-					httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
-				} catch {}
-			} else if (this.genericAuthType === 'httpTemplatedCustomAuth') {
-				httpTemplatedCustomAuth = await this.matchDecryptedCredentialType(
-					'httpTemplatedCustomAuth',
-					false,
-				);
+				httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
+			} else if (
+				this.genericAuthType === 'httpTemplatedCustomAuth' ||
+				this.genericAuthType === 'httpMultipleHeadersAuth'
+			) {
+				customAuthCredentials = await this.matchDecryptedCredentialType(this.genericAuthType);
 			}
 		}
 
@@ -403,22 +414,20 @@ export class MessageEventBusDestinationWebhook
 				username: httpDigestAuth.user as string,
 				password: httpDigestAuth.password as string,
 			};
-		} else if (httpTemplatedCustomAuth) {
+		} else if (customAuthCredentials) {
 			this.credentialsHelper ??= Container.get(CredentialsHelper);
 			Object.assign(
 				request,
 				await this.credentialsHelper.authenticate(
-					httpTemplatedCustomAuth,
-					'httpTemplatedCustomAuth',
+					customAuthCredentials,
+					this.genericAuthType,
 					request,
 				),
 			);
 		}
 
 		try {
-			const requestResponse = await this.outboundHttp
-				.requests({ useDefaultSsrfPolicy: 'unsafe' }) // The destination URL is admin-configured, so SSRF protection is disabled.
-				.request(request);
+			const requestResponse = await this.getHttpClient().request(request);
 			if (requestResponse) {
 				if (this.responseCodeMustMatch) {
 					if (requestResponse.statusCode === this.expectedStatusCode) {
@@ -442,5 +451,10 @@ export class MessageEventBusDestinationWebhook
 		}
 
 		return sendResult;
+	}
+
+	async close() {
+		await super.close();
+		this.httpClient?.close();
 	}
 }

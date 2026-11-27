@@ -13,11 +13,7 @@ function format(value: number, extraArgs: unknown[]): string {
 		Intl.NumberFormatOptions,
 	];
 
-	try {
-		return value.toLocaleString(locales as string, config);
-	} catch {
-		return String(value);
-	}
+	return value.toLocaleString(locales as string, config);
 }
 
 function isEven(value: number) {
@@ -159,7 +155,7 @@ format.doc = {
 			name: 'locale',
 			optional: true,
 			description:
-				'A <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl#locales_argument">locale tag</a> for formatting the number, e.g. <code>fr-FR</code>, <code>en-GB</code>, <code>pr-BR</code>',
+				'A <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl#locales_argument">locale tag</a> for formatting the number, e.g. <code>fr-FR</code>, <code>en-GB</code>, <code>pt-BR</code>',
 			default: '"en-US"',
 			type: 'string',
 		},

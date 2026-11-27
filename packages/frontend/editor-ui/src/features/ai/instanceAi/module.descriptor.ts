@@ -1,11 +1,18 @@
 import { i18n } from '@n8n/i18n';
+import {
+	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+	PERSONAL_SELF_HEALING_VIEW,
+	SELF_HEALING_CONFIGURATION_VIEW,
+	type SelfHealingLocation,
+} from '@n8n/frontend-constants/self-healing';
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
-import type { LocationQuery } from 'vue-router';
+import type { LocationQuery, RouteLocationNormalized } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_MODALS } from './modals';
 import {
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_THREAD_SESSION_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 	INSTANCE_AI_THREADS_VIEW,
@@ -77,16 +84,57 @@ async function readSignupSurvey(
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
-const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
+const InstanceAiThreadRouteView = async () => await import('./InstanceAiThreadRouteView.vue');
 const InstanceAiThreadsView = async () => await import('./InstanceAiThreadsView.vue');
+const AssistantAgentSessionView = async () =>
+	await import('./assistantAgent/AssistantAgentSessionView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
+
+const SelfHealingConfigView = async () =>
+	(await import('@n8n/frontend-module-self-healing')).SelfHealingConfigView;
+const PersonalSelfHealingView = async () =>
+	await import('@/features/collaboration/projects/views/PersonalSelfHealingView.vue');
+
+function selfHealingGuard(location: SelfHealingLocation) {
+	return async (to: RouteLocationNormalized) => {
+		const { canOpenSelfHealingRoute } = await import(
+			'@/features/collaboration/projects/projects.utils'
+		);
+		return (await canOpenSelfHealingRoute(to.params.projectId, location))
+			? true
+			: { name: VIEWS.HOMEPAGE };
+	};
+}
 
 export const InstanceAiModule = defineFrontendModule({
 	id: 'instance-ai',
 	name: 'n8n Assistant',
 	description: 'Chat with your n8n instance.',
-	icon: 'sparkles',
+	icon: 'n8n-assistant',
 	routes: [
+		{
+			path: 'settings/self-healing/:configurationId',
+			name: SELF_HEALING_CONFIGURATION_VIEW,
+			component: SelfHealingConfigView,
+			props: true,
+			meta: { projectRoute: true },
+			beforeEnter: selfHealingGuard('projectSettings'),
+		},
+		{
+			path: 'self-healing',
+			name: PERSONAL_SELF_HEALING_VIEW,
+			component: PersonalSelfHealingView,
+			meta: { projectRoute: true },
+			beforeEnter: selfHealingGuard('personalTab'),
+		},
+		{
+			path: 'self-healing/:configurationId',
+			name: PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+			component: SelfHealingConfigView,
+			props: true,
+			meta: { projectRoute: true },
+			beforeEnter: selfHealingGuard('personalTab'),
+		},
 		{
 			path: '/assistant',
 			component: InstanceAiView,
@@ -176,7 +224,13 @@ export const InstanceAiModule = defineFrontendModule({
 				{
 					name: INSTANCE_AI_THREAD_VIEW,
 					path: ':threadId',
-					component: InstanceAiThreadView,
+					component: InstanceAiThreadRouteView,
+					props: true,
+				},
+				{
+					name: INSTANCE_AI_THREAD_SESSION_VIEW,
+					path: ':threadId/session',
+					component: AssistantAgentSessionView,
 					props: true,
 				},
 			],
@@ -248,8 +302,30 @@ export const InstanceAiModule = defineFrontendModule({
 		// the SDK registry instead of a view-scoped store listener. The store is
 		// imported lazily so it stays out of the startup bundle.
 		updateInstanceAiCredits: async (event) => {
-			const { useInstanceAiStore } = await import('./instanceAi.store');
-			useInstanceAiStore().handleCreditsPush(event.data);
+			const { useAssistantCreditsStore } = await import('./assistantCredits.store');
+			useAssistantCreditsStore().setCredits(event.data);
+			// A claim also carries the running total of its thread. Each runtime keeps the
+			// totals of its own threads. A tab cannot always tell the runtime of a thread
+			// (a new thread can open from a launch marker only), so both stores get the
+			// total. The current Assistant store ignores a thread that it does not hold.
+			const perThread = event.data.creditsPerThread;
+			if (!perThread) return;
+			const [{ useAssistantAgentThreadsStore }, { useInstanceAiStore }] = await Promise.all([
+				import('./assistantAgent/assistantAgentThreads.store'),
+				import('./instanceAi.store'),
+			]);
+			const { threadId, totalCreditsUsed } = perThread;
+			useAssistantAgentThreadsStore().setThreadCreditsUsed(threadId, totalCreditsUsed);
+			useInstanceAiStore().setThreadCreditsUsed(threadId, totalCreditsUsed);
+		},
+		// Title generation stores the title of a new thread while its first turn
+		// runs. The push lets the lists show it at once. The store ignores
+		// threads of other agents.
+		agentThreadTitleUpdated: async (event) => {
+			const { useAssistantAgentThreadsStore } = await import(
+				'./assistantAgent/assistantAgentThreads.store'
+			);
+			useAssistantAgentThreadsStore().applyGeneratedTitle(event.data);
 		},
 		instanceAiMcpToolCallFailed: async (event) => {
 			const { useInstanceAiMcpStore } = await import('./instanceAiMcp.store');
@@ -259,11 +335,12 @@ export const InstanceAiModule = defineFrontendModule({
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',
-			icon: 'sparkles',
+			order: 20,
+			section: 'ai',
+			icon: 'n8n-assistant',
 			label: i18n.baseText('settings.n8nAgent'),
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
-			preview: true,
 			get available() {
 				return hasInstanceAiSettingsContent();
 			},

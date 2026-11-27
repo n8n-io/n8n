@@ -42,6 +42,7 @@ describe('ScalingService queue recovery', () => {
 			mock(),
 			mock(),
 			Container.get(ExecutionCrashService),
+			mock(),
 		);
 	});
 

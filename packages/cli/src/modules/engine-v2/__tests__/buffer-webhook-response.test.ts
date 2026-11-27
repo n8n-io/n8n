@@ -11,14 +11,15 @@ import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { createExecutionIdV2 } from '@/executions/execution-id';
-import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
+import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 
-import { InMemoryExecutionResponseChannel } from '../response-channel/in-memory-execution-response-channel';
-import { InMemoryExecutionResponseReceiver } from '../response-channel/in-memory-execution-response-receiver';
-import { InMemoryExecutionResponseSender } from '../response-channel/in-memory-execution-response-sender';
+import { createExecutionResponseCodec } from '../execution-channel/execution-response-frame';
+import { ExecutionChannelReceiver } from '../execution-channel/execution-channel-receiver';
+import { ExecutionChannelSender } from '../execution-channel/execution-channel-sender';
+import { createInMemoryExecutionChannel } from '../execution-channel/in-memory-execution-channel';
 
 /**
- * Runs `sendResponse` through the real hook, sender, receiver and responder.
+ * Runs `sendResponse` through the real hook, sender, receiver and registry.
  * The unit tests for each of them check one step. This checks that the Buffer
  * body that goes in is the one that comes out.
  */
@@ -27,18 +28,25 @@ describe('a Buffer webhook response through the response channel', () => {
 	const headers = { 'content-type': 'image/png', 'content-length': bytes.length };
 
 	const buildPath = async (expectation: ResponseExpectation = { kind: 'stepResponse' }) => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
-		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
+		const { publisher, subscriber } = createInMemoryExecutionChannel();
+		const sender = new ExecutionChannelSender(
+			publisher,
+			createExecutionResponseCodec(mockLogger()),
+		);
+		const receiver = new ExecutionChannelReceiver(
+			subscriber,
+			createExecutionResponseCodec(mockLogger()),
+			mockLogger(),
+		);
 
-		const responder = new EngineV2WebhookResponder(
+		const registry = new EngineV2WebhookResponseRegistry(
 			mock<EngineConfig>({ webhookResponseTimeout: 50_000 }),
 			mock<Logger>({ scoped: () => mock<Logger>() }),
 		);
-		responder.useReceiver(receiver);
+		registry.useReceiver(receiver);
 
 		const executionId = createExecutionIdV2();
-		const pending = await responder.waitForResponse(executionId, expectation);
+		const pending = await registry.waitForResponse(executionId, expectation);
 
 		const additionalData = {} as IWorkflowExecuteAdditionalData;
 		attachResponseHooks(additionalData, {
@@ -49,11 +57,12 @@ describe('a Buffer webhook response through the response channel', () => {
 				mode: 'production',
 				iteration: 0,
 				callerContext: { hostMode: 'webhook' },
+				responseExpectation: expectation,
 			},
 			respond: createResponseEmitter(sender, { id: executionId, responseExpectation: expectation }),
 		} as unknown as StepExecutionRequest);
 
-		return { additionalData, pending, publish: vi.spyOn(channel, 'publish') };
+		return { additionalData, pending, publish: vi.spyOn(publisher, 'publish') };
 	};
 
 	it('delivers the original bytes, headers and status code to the control plane', async () => {
@@ -63,7 +72,7 @@ describe('a Buffer webhook response through the response channel', () => {
 			{ body: Buffer.from(bytes), headers, statusCode: 201 },
 		]);
 
-		const outcome = await pending.settled;
+		const outcome = await pending.outcome;
 		expect(outcome).toEqual({
 			status: 'response',
 			response: { body: bytes, headers, statusCode: 201 },
@@ -79,7 +88,7 @@ describe('a Buffer webhook response through the response channel', () => {
 			{ body: { ok: true }, headers: {}, statusCode: 200 },
 		]);
 
-		await expect(pending.settled).resolves.toEqual({
+		await expect(pending.outcome).resolves.toEqual({
 			status: 'response',
 			response: { body: { ok: true }, headers: {}, statusCode: 200 },
 		});

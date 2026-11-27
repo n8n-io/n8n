@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { keysToSnakeCase, shopifyApiRequest, shopifyApiRequestAllItems } from './GenericFunctions';
 import { orderFields, orderOperations } from './OrderDescription';
@@ -123,7 +123,7 @@ export class Shopify implements INodeType {
 					this,
 					'products',
 					'GET',
-					'/products.json',
+					requestPath`/products.json`,
 					{},
 					{ fields: 'id,title' },
 				);
@@ -145,7 +145,7 @@ export class Shopify implements INodeType {
 					this,
 					'locations',
 					'GET',
-					'/locations.json',
+					requestPath`/locations.json`,
 					{},
 					{ fields: 'id,name' },
 				);
@@ -173,7 +173,7 @@ export class Shopify implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'order') {
-					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#create-2020-04
+					//https://shopify.dev/docs/api/admin-rest/latest/resources/order#post-orders
 					if (operation === 'create') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const discount = additionalFields.discountCodesUi as IDataObject;
@@ -238,18 +238,22 @@ export class Shopify implements INodeType {
 								shipping.shippingAddressValues as IDataObject,
 							)[0] as IAddress;
 						}
-						responseData = await shopifyApiRequest.call(this, 'POST', '/orders.json', {
+						responseData = await shopifyApiRequest.call(this, 'POST', requestPath`/orders.json`, {
 							order: body,
 						});
 						responseData = responseData.order;
 					}
-					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#destroy-2020-04
+					//https://shopify.dev/docs/api/admin-rest/latest/resources/order#delete-orders-order-id
 					if (operation === 'delete') {
 						const orderId = this.getNodeParameter('orderId', i) as string;
-						responseData = await shopifyApiRequest.call(this, 'DELETE', `/orders/${orderId}.json`);
+						responseData = await shopifyApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/orders/${orderId}.json`,
+						);
 						responseData = { success: true };
 					}
-					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#show-2020-04
+					//https://shopify.dev/docs/api/admin-rest/latest/resources/order#get-orders-order-id?fields=id,line-items,name,total-price
 					if (operation === 'get') {
 						const orderId = this.getNodeParameter('orderId', i) as string;
 						const options = this.getNodeParameter('options', i);
@@ -259,13 +263,13 @@ export class Shopify implements INodeType {
 						responseData = await shopifyApiRequest.call(
 							this,
 							'GET',
-							`/orders/${orderId}.json`,
+							requestPath`/orders/${orderId}.json`,
 							{},
 							qs,
 						);
 						responseData = responseData.order;
 					}
-					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#index-2020-04
+					//https://shopify.dev/docs/api/admin-rest/latest/resources/order#get-orders?status=any
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
@@ -314,17 +318,23 @@ export class Shopify implements INodeType {
 								this,
 								'orders',
 								'GET',
-								'/orders.json',
+								requestPath`/orders.json`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await shopifyApiRequest.call(this, 'GET', '/orders.json', {}, qs);
+							responseData = await shopifyApiRequest.call(
+								this,
+								'GET',
+								requestPath`/orders.json`,
+								{},
+								qs,
+							);
 							responseData = responseData.orders;
 						}
 					}
-					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#update-2019-10
+					//https://shopify.dev/docs/api/admin-rest/latest/resources/order#put-orders-order-id
 					if (operation === 'update') {
 						const orderId = this.getNodeParameter('orderId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
@@ -350,15 +360,20 @@ export class Shopify implements INodeType {
 								shipping.shippingAddressValues as IDataObject,
 							)[0] as IAddress;
 						}
-						responseData = await shopifyApiRequest.call(this, 'PUT', `/orders/${orderId}.json`, {
-							order: body,
-						});
+						responseData = await shopifyApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/orders/${orderId}.json`,
+							{
+								order: body,
+							},
+						);
 						responseData = responseData.order;
 					}
 				} else if (resource === 'product') {
 					const productId = this.getNodeParameter('productId', i, '') as string;
 					let body: IProduct = {};
-					//https://shopify.dev/docs/admin-api/rest/reference/products/product#create-2020-04
+					//https://shopify.dev/docs/api/admin-rest/latest/resources/product#post-products
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
 
@@ -379,35 +394,35 @@ export class Shopify implements INodeType {
 
 						body.title = title;
 
-						responseData = await shopifyApiRequest.call(this, 'POST', '/products.json', {
+						responseData = await shopifyApiRequest.call(this, 'POST', requestPath`/products.json`, {
 							product: body,
 						});
 						responseData = responseData.product;
 					}
 					if (operation === 'delete') {
-						//https://shopify.dev/docs/admin-api/rest/reference/products/product#destroy-2020-04
+						//https://shopify.dev/docs/api/admin-rest/latest/resources/product#delete-products-product-id
 						responseData = await shopifyApiRequest.call(
 							this,
 							'DELETE',
-							`/products/${productId}.json`,
+							requestPath`/products/${productId}.json`,
 						);
 						responseData = { success: true };
 					}
 					if (operation === 'get') {
-						//https://shopify.dev/docs/admin-api/rest/reference/products/product#show-2020-04
+						//https://shopify.dev/docs/api/admin-rest/latest/resources/product#get-products-product-id
 						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 						Object.assign(qs, additionalFields);
 						responseData = await shopifyApiRequest.call(
 							this,
 							'GET',
-							`/products/${productId}.json`,
+							requestPath`/products/${productId}.json`,
 							{},
 							qs,
 						);
 						responseData = responseData.product;
 					}
 					if (operation === 'getAll') {
-						//https://shopify.dev/docs/admin-api/rest/reference/products/product#index-2020-04
+						//https://shopify.dev/docs/api/admin-rest/latest/resources/product#get-products?ids=632910392,921728736
 						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 						const returnAll = this.getNodeParameter('returnAll', i);
@@ -419,18 +434,24 @@ export class Shopify implements INodeType {
 								this,
 								'products',
 								'GET',
-								'/products.json',
+								requestPath`/products.json`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await shopifyApiRequest.call(this, 'GET', '/products.json', {}, qs);
+							responseData = await shopifyApiRequest.call(
+								this,
+								'GET',
+								requestPath`/products.json`,
+								{},
+								qs,
+							);
 							responseData = responseData.products;
 						}
 					}
 					if (operation === 'update') {
-						//https://shopify.dev/docs/admin-api/rest/reference/products/product?api[version]=2020-07#update-2020-07
+						//https://shopify.dev/docs/api/admin-rest/latest/resources/product#put-products-product-id
 						const updateFields = this.getNodeParameter('updateFields', i, {});
 
 						if (updateFields.productOptions) {
@@ -448,7 +469,7 @@ export class Shopify implements INodeType {
 						responseData = await shopifyApiRequest.call(
 							this,
 							'PUT',
-							`/products/${productId}.json`,
+							requestPath`/products/${productId}.json`,
 							{ product: body },
 						);
 

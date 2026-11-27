@@ -22,6 +22,8 @@ export const SCOPE_TYPES: ProjectResource[] = [
 	'folder',
 	'workflow',
 	'agent',
+	'app',
+	'mcpServer',
 	'credential',
 	'execution',
 	'externalSecretsProvider',
@@ -29,6 +31,7 @@ export const SCOPE_TYPES: ProjectResource[] = [
 	'dataTable',
 	'projectVariable',
 	'projectAiPreference',
+	'projectSkill',
 	'sourceControl',
 ];
 

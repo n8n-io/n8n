@@ -16,6 +16,7 @@
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -24,10 +25,11 @@ import {
 	collectParametersByTab,
 	createCommonNodeSettings,
 	removeMismatchedOptionValues,
+	resetValuesOfChangedShape,
 } from '@/features/ndv/shared/ndv.utils';
 import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
-import { N8nTabs, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	NodeHelpers,
@@ -58,12 +60,16 @@ const props = defineProps<{
 	existingToolNames?: string[];
 	hideAskAssistant?: boolean;
 	projectId?: string;
+	forAgent?: boolean;
 	/** Resource/operation option values to hide from the form (e.g. operations the hosting runtime cannot execute). */
 	hiddenOperations?: readonly string[];
+	/** Parameter names owned by the hosting surface instead of the node form. */
+	hiddenParameters?: readonly string[];
 	parameterIssues?: Record<string, string[]>;
 	fromAiDisabledParameters?: string[];
 	/** Keeps standalone Agent tool parameters resolvable through the scoped NDV store. */
 	syncNodeToNdv?: boolean;
+	readOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -81,6 +87,8 @@ const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
 
 const node = shallowRef<INode | null>(props.initialNode);
+// The defaults come from the node type. Fill them one time, after the node types load.
+const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
 const userEditedName = ref(false);
 
 const existingToolNames = computed(() => props.existingToolNames ?? []);
@@ -95,10 +103,20 @@ const nodeTypeDescription = computed(() => {
 		return null;
 	}
 	const description = nodeTypesStore.getNodeType(props.initialNode.type);
-	if (!description || !props.hiddenOperations?.length) {
-		return description;
-	}
-	return omitOperationOptions(description, props.hiddenOperations);
+	if (!description) return null;
+
+	const withFilteredOperations = props.hiddenOperations?.length
+		? omitOperationOptions(description, props.hiddenOperations)
+		: description;
+	if (!props.hiddenParameters?.length) return withFilteredOperations;
+
+	const hiddenParameters = new Set(props.hiddenParameters);
+	return {
+		...withFilteredOperations,
+		properties: withFilteredOperations.properties.filter(
+			(parameter) => !hiddenParameters.has(parameter.name),
+		),
+	};
 });
 
 type ToolSettingsTab = 'params' | 'settings';
@@ -165,13 +183,14 @@ const hasCredentialIssues = computed(() => {
 		nodeTypeDescription.value,
 		node.value,
 		{ getNode: () => node.value } as unknown as Workflow,
-		['parameters', 'execution', 'typeUnknown', 'input'],
+		['parameters', 'typeUnknown', 'input'],
 	);
 
 	return Object.keys(credentialIssues?.credentials ?? {}).length > 0;
 });
 
-const toolWorkflowDocumentId = createWorkflowDocumentId('node-tool-workflow');
+// The tool document has a local key and no saved workflow ID.
+const toolWorkflowDocumentId = createWorkflowDocumentId('', 'node-tool-workflow');
 const toolWorkflowStore = useWorkflowDocumentStore(toolWorkflowDocumentId);
 const toolNdvStore = useNDVStore(toolWorkflowDocumentId);
 const workflowDocumentStore = computed(() => toolWorkflowStore);
@@ -201,8 +220,25 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	};
 });
 
+// Agents cannot use personal credentials yet. A saved selection that the
+// agent-scoped fetch no longer returns must block saving.
+const agentCredentialsLoaded = ref(false);
+const hasUnavailableAgentCredential = computed(() => {
+	if (!props.forAgent || !agentCredentialsLoaded.value) return false;
+	return Object.values(node.value?.credentials ?? {}).some(
+		(credential) => credential.id && !credentialsStore.getUsableCredentialById(credential.id),
+	);
+});
+
 const isValid = computed(() => {
-	return node.value?.name && !hasParameterIssues.value && !hasCredentialIssues.value;
+	// Without the node type, the parameters can't be checked and have no defaults yet.
+	return (
+		!nodeTypesLoading.value &&
+		node.value?.name &&
+		!hasParameterIssues.value &&
+		!hasCredentialIssues.value &&
+		!hasUnavailableAgentCredential.value
+	);
 });
 
 // Provide expression resolve context for dynamic parameter loading
@@ -232,7 +268,8 @@ function handleChangeParameter(updateData: IUpdateInformation) {
 
 	// Re-derive parameters the same way the NDV does (see
 	// `useNodeSettingsParameters.updateNodeParameter`): strip to user-set values,
-	// apply the change, drop options that no longer match, then refill defaults.
+	// apply the change, drop options and same-named values that no longer match,
+	// then refill defaults.
 	// This resets a dependent param (e.g. `operation`) to the new resource's
 	// default when `resource` changes, instead of keeping a stale selection.
 	let parameters =
@@ -255,6 +292,8 @@ function handleChangeParameter(updateData: IUpdateInformation) {
 			value: null,
 		});
 	}
+
+	parameters = resetValuesOfChangedShape(nodeType, node.value, parameters, [updateData.name]);
 
 	const newParameters =
 		NodeHelpers.getNodeParameters(
@@ -317,8 +356,9 @@ function handleChangeName(name: string) {
 }
 
 watch(
-	() => props.initialNode,
-	(initialNode) => {
+	() => [props.initialNode, nodeTypesLoading.value] as const,
+	([initialNode, loading]) => {
+		if (loading) return;
 		if (initialNode) {
 			const uniqueName = makeUniqueName(initialNode.name, existingToolNames.value);
 			let nodeData =
@@ -446,8 +486,12 @@ onMounted(async () => {
 	if (projectId) {
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
-			credentialsStore.fetchUsableCredentials({ projectId }),
+			credentialsStore.fetchUsableCredentials({
+				projectId,
+				...(props.forAgent ? { forAgent: true } : {}),
+			}),
 		]);
+		agentCredentialsLoaded.value = true;
 	}
 });
 
@@ -476,7 +520,10 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 			@update:model-value="activeTab = $event"
 		/>
 
-		<div :class="$style.tabContent">
+		<div v-if="nodeTypesLoading" :class="$style.loading" data-test-id="tool-settings-loading">
+			<N8nIcon icon="loader-circle" size="large" spin />
+		</div>
+		<div v-else :class="$style.tabContent">
 			<!-- Parameters Tab -->
 			<div v-show="activeTab === 'params'">
 				<ParameterInputList
@@ -484,7 +531,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					:parameters="parametersByTab.params"
 					:hide-delete="true"
 					:node-values="node.parameters"
-					:is-read-only="false"
+					:is-read-only="props.readOnly"
 					:node="node"
 					:parameter-issues="props.parameterIssues"
 					:from-ai-disabled-parameters="props.fromAiDisabledParameters"
@@ -492,9 +539,10 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 				>
 					<NodeCredentials
 						:node="node"
-						:readonly="false"
+						:readonly="props.readOnly"
 						:show-all="true"
 						:project-id="credentialProjectId"
+						:for-agent="props.forAgent"
 						:hide-issues="false"
 						:hide-ask-assistant="props.hideAskAssistant"
 						:skip-credentials-fetch="true"
@@ -518,7 +566,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					v-if="node && parametersByTab.settings.length > 0"
 					:parameters="parametersByTab.settings"
 					:node-values="settingsNodeValues"
-					:is-read-only="false"
+					:is-read-only="props.readOnly"
 					:hide-delete="true"
 					path="parameters"
 					:node="node"
@@ -529,7 +577,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					:parameters="nodeSettings"
 					:hide-delete="true"
 					:node-values="settingsNodeValues"
-					:is-read-only="false"
+					:is-read-only="props.readOnly"
 					path=""
 					:node="node"
 					@value-changed="handleChangeSettingsValue"
@@ -559,6 +607,13 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 	overflow-y: auto;
 	min-height: 0;
 	padding-right: var(--spacing--lg);
+}
+
+.loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--xl);
 }
 
 .noParameters {

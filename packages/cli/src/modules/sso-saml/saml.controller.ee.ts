@@ -11,13 +11,15 @@ import url from 'url';
 
 import { AuthService } from '@/auth/auth.service';
 import { AuthError, ForbiddenError } from '@n8n/errors';
+import { validateRedirectUrl } from '@n8n/utils/validate-redirect-url';
 import { SSO_ACCESS_DENIED_REDIRECT_PATH } from '@/modules/provisioning.ee/constants';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
-import { validateRedirectUrl } from '@/utils/validate-redirect-url';
+import { getChangedFields } from '@/utils/changed-fields';
 
+import { SamlEmailNotVerifiedError } from './errors/saml-email-not-verified.error';
 import {
 	samlLicensedAndEnabledMiddleware,
 	samlLicensedMiddleware,
@@ -69,14 +71,22 @@ export class SamlController {
 	 */
 	@Post('/config', { middlewares: [samlLicensedMiddleware] })
 	@GlobalScope('saml:manage')
-	async configPost(_req: AuthenticatedRequest, _res: Response, @Body payload: SamlPreferences) {
+	async configPost(req: AuthenticatedRequest, _res: Response, @Body payload: SamlPreferences) {
 		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {
 			throw new ForbiddenError(
 				'SSO configuration is managed via environment variables and cannot be modified through the API',
 			);
 		}
+		const previous = this.samlService.samlPreferences;
 		const result = await this.samlService.setSamlPreferences(payload);
 		if (!result) return;
+		this.eventService.emit('sso-settings-updated', {
+			user: req.user,
+			protocol: 'saml',
+			loginEnabled: result.loginEnabled ?? false,
+			fieldsChanged: getChangedFields(previous, result),
+			publicApi: false,
+		});
 		return {
 			...result,
 			signingPrivateKey: result.signingPrivateKey ? CREDENTIAL_BLANKING_VALUE : undefined,
@@ -89,7 +99,7 @@ export class SamlController {
 	@Post('/config/toggle', { middlewares: [samlLicensedMiddleware] })
 	@GlobalScope('saml:manage')
 	async toggleEnabledPost(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		res: Response,
 		@Body { loginEnabled }: SamlToggleDto,
 	) {
@@ -98,7 +108,15 @@ export class SamlController {
 				'SSO configuration is managed via environment variables and cannot be modified through the API',
 			);
 		}
+		const wasEnabled = this.samlService.samlPreferences.loginEnabled ?? false;
 		await this.samlService.setSamlPreferences({ loginEnabled });
+		this.eventService.emit('sso-settings-updated', {
+			user: req.user,
+			protocol: 'saml',
+			loginEnabled,
+			fieldsChanged: wasEnabled === loginEnabled ? [] : ['loginEnabled'],
+			publicApi: false,
+		});
 		return res.sendStatus(200);
 	}
 
@@ -187,8 +205,9 @@ export class SamlController {
 				return res.render('saml-connection-test-failed', { message: (error as Error).message });
 			}
 			this.eventService.emit('user-login-failed', {
-				userEmail: 'unknown',
+				userEmail: error instanceof SamlEmailNotVerifiedError ? error.email : 'unknown',
 				authenticationMethod: 'saml',
+				reason: (error as Error).message,
 			});
 			// A login denied by role mapping is not a failure to authenticate: send the
 			// user to the sign-in page, which explains they have no access.
@@ -213,6 +232,7 @@ export class SamlController {
 		try {
 			const refererUrl = req.headers.referer;
 			if (refererUrl) {
+				// oxlint-disable-next-line typescript/no-deprecated
 				const parsedUrl = url.parse(refererUrl);
 				if (parsedUrl?.query) {
 					const parsedQueryParams = querystring.parse(parsedUrl.query);

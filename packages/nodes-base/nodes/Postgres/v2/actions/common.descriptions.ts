@@ -80,6 +80,19 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
+			displayName: 'Load Rows With COPY',
+			name: 'useCopy',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to send all rows in one COPY statement, which is faster for many rows. All rows are inserted, or none. The output is one item with the number of inserted rows.',
+			displayOptions: {
+				show: {
+					'/operation': ['insert'],
+				},
+			},
+		},
+		{
 			displayName: 'Query Batching',
 			name: 'queryBatching',
 			type: 'options',
@@ -104,6 +117,11 @@ export const optionsCollection: INodeProperties = {
 			],
 			default: 'single',
 			description: 'The way queries should be sent to the database',
+			displayOptions: {
+				hide: {
+					useCopy: [true],
+				},
+			},
 		},
 		{
 			displayName: 'Query Parameters',
@@ -115,7 +133,20 @@ export const optionsCollection: INodeProperties = {
 			hint: 'Comma-separated list of values: reference them in your query as $1, $2, $3…',
 			placeholder: 'e.g. value1,value2,value3',
 			displayOptions: {
-				show: { '/operation': ['executeQuery'] },
+				show: { '/operation': ['executeQuery'], '@version': [{ _cnd: { lt: 2.8 } }] },
+			},
+		},
+		{
+			displayName: 'Query Parameters',
+			name: 'queryReplacement',
+			type: 'string',
+			default: '',
+			description:
+				'Comma-separated list of the values you want to use as query parameters. Each expression gives one value, also when the value contains commas. To give more than one value from an expression, return an array. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/#use-query-parameters" target="_blank">More info</a>.',
+			hint: 'Comma-separated list of values: reference them in your query as $1, $2, $3… An expression always gives one value.',
+			placeholder: 'e.g. value1,value2,value3',
+			displayOptions: {
+				show: { '/operation': ['executeQuery'], '@version': [{ _cnd: { gte: 2.8 } }] },
 			},
 		},
 		{
@@ -126,7 +157,10 @@ export const optionsCollection: INodeProperties = {
 			default: false,
 			description: "Whether to treat query parameters enclosed in single quotes as text e.g. '$1'",
 			displayOptions: {
-				show: { queryReplacement: [{ _cnd: { exists: true } }] },
+				show: {
+					queryReplacement: [{ _cnd: { exists: true } }],
+					'@version': [{ _cnd: { lt: 2.9 } }],
+				},
 			},
 		},
 		{
@@ -144,6 +178,7 @@ export const optionsCollection: INodeProperties = {
 			default: [],
 			displayOptions: {
 				show: { '/operation': ['select', 'insert', 'update', 'upsert'] },
+				hide: { useCopy: [true] },
 			},
 		},
 		{
@@ -175,6 +210,9 @@ export const optionsCollection: INodeProperties = {
 			displayOptions: {
 				show: {
 					'/operation': ['insert'],
+				},
+				hide: {
+					useCopy: [true],
 				},
 			},
 		},
@@ -342,6 +380,57 @@ export const sortFixedCollection: INodeProperties = {
 						},
 					],
 					default: 'ASC',
+				},
+			],
+		},
+	],
+};
+
+// From 2.7 the node outputs DATE columns as text, so a date can be the Start After value
+const START_AFTER_MIN_VERSION = 2.7;
+
+export const startAfterFixedCollection: INodeProperties = {
+	displayName: 'Start After',
+	name: 'startAfter',
+	type: 'fixedCollection',
+	placeholder: 'Add Start After',
+	default: {},
+	description:
+		'Get the table one page at a time. Each page has the rows after the last value of the page before. Limit sets the page size. To get the biggest values first, sort this column DESC.',
+	displayOptions: {
+		show: {
+			// Keep '@version' first. When a show value is an expression, n8n shows the field and skips the next keys.
+			'@version': [{ _cnd: { gte: START_AFTER_MIN_VERSION } }],
+			returnAll: [false],
+		},
+	},
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+					displayName: 'Column',
+					name: 'column',
+					type: 'options',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+					description:
+						'A unique column that is never null, for example the primary key. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>.',
+					default: '',
+					typeOptions: {
+						loadOptionsMethod: 'getColumns',
+						loadOptionsDependsOn: ['schema.value', 'table.value'],
+					},
+				},
+				{
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					default: '',
+					description:
+						'The value of the column in the last row of the page before. Leave empty to get the first page.',
+					hint: 'The node runs once for each input item. In a loop, give it only the last row of the page before, for example with a Limit node that keeps the last item, and use {{ $json.id }}.',
 				},
 			],
 		},

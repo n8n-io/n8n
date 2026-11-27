@@ -34,6 +34,7 @@ Each platform adapter uses a different HTTP client, so the interception mechanis
 | Telegram | native `fetch` | replace `globalThis.fetch` | `installFetchStub` (replay-test-helpers) |
 | Slack | `@slack/web-api` (axios) | `nock` at the HTTP layer | inline in slack `replay-test-context` |
 | Linear | `@linear/sdk` (GraphQL over fetch) | replace `globalThis.fetch` | `installFetchStub` |
+| WhatsApp | native `fetch` | replace `globalThis.fetch` | `installWhatsAppApiStub` (whatsapp `replay-test-context`) |
 | Teams | `@microsoft/teams.*` (axios) + `jwks-rsa` (node `https`) | `nock` at the HTTP layer | inline in teams `replay-test-context` |
 
 Responses are answered from two sources, in order of preference:
@@ -73,6 +74,18 @@ so response stubs only need to be valid enough for the real adapter to proceed.
   (e.g. a `Comment` needs `reactions: []`; an `AgentActivity` references `agentSession`/`sourceComment`
   by id). Linear's "mention" is an **agent-session** event, not a comment — see the contract note
   below.
+- **WhatsApp** — inbound media (`fetchData`) calls `downloadMedia`. It first GETs the media
+  metadata with `fetch`, with no JSON body, so the stub branches on `httpMethod === 'GET'` before
+  the send-message logic, which assumes a POST. It then downloads the file with `https.request`.
+  The `fetch` stub cannot see that request, and nock cannot patch the adapter's ESM import of
+  `https`. So the replay context passes a transport to `downloadMedia` that serves the file. The
+  file must contain *real* bytes: `resolveInboundMimeType` sniffs magic bytes before it trusts a
+  declared type. See `WHATSAPP_MEDIA_CONTENT` in whatsapp's `replay-test-context` for genuine
+  minimal file content per media kind. Attachments also need an `attachmentService` passed to
+  `createReplayContextSetup` (opt-in; `createMockAttachmentService()` echoes back a plausible stored
+  record) — without it, `AgentChatBridge`'s attachment pipeline silently no-ops for every platform,
+  not just WhatsApp.
+  It is not the default because other platforms' replay tests do not stub their file downloads.
 
 #### Teams setup, outside the adapter
 

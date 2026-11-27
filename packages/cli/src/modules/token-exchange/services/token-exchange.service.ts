@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import { isPerson, type Person } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 import { TokenExchangeConfig } from '../token-exchange.config';
 import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors';
@@ -93,8 +93,7 @@ export class TokenExchangeService {
 		let payload: jwt.JwtPayload;
 		try {
 			const result = jwt.verify(subjectToken, resolvedKey.key, {
-				// EdDSA is valid at runtime but missing from @types/jsonwebtoken
-				algorithms: resolvedKey.algorithms as jwt.Algorithm[],
+				algorithms: resolvedKey.algorithms,
 				issuer: resolvedKey.issuer,
 				audience: resolvedKey.expectedAudience,
 				ignoreExpiration: false,
@@ -142,7 +141,7 @@ export class TokenExchangeService {
 
 	async embedLogin(
 		subjectToken: string,
-	): Promise<{ user: User; subject: string; issuer: string; kid: string }> {
+	): Promise<{ user: Person; subject: string; issuer: string; kid: string }> {
 		const { claims, resolvedKey } = await this.verifyToken(subjectToken, {
 			maxLifetimeSeconds: MAX_TOKEN_LIFETIME_SECONDS,
 		});
@@ -151,6 +150,13 @@ export class TokenExchangeService {
 			issuer: resolvedKey.issuer,
 			requireVerifiedEmail: resolvedKey.requireVerifiedEmail,
 		});
+		// Embed login issues a browser session, and only a person has one.
+		if (!isPerson(user)) {
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.RoleNotAllowed,
+				'A service account cannot sign in to the embedded editor',
+			);
+		}
 		return { user, subject: claims.sub, issuer: resolvedKey.issuer, kid: resolvedKey.kid };
 	}
 
@@ -202,7 +208,7 @@ export class TokenExchangeService {
 			jti: randomUUID(),
 		};
 
-		const accessToken = this.jwtService.sign(payload);
+		const accessToken = this.jwtService.sign('tokenExchange', payload);
 
 		return {
 			accessToken,

@@ -9,7 +9,7 @@ import type {
 } from '@n8n/decorators';
 import { ENFORCEMENT_POINT_METHODS, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import type {
@@ -23,15 +23,17 @@ import type { DecisionAuditInput } from './policy-decision-audit';
 import { auditedActor, decisionAudit } from './policy-decision-audit';
 
 /**
- * How long one check gets. Tight on the two points that sit inside a running execution: a wedged
- * policy store there pins worker slots rather than failing a single request.
+ * How long one check gets. Tight on the points on the execution path: a wedged policy store
+ * there pins worker slots rather than failing a single request.
  */
 const DEADLINES_MS = {
 	workflowSave: 1_000,
 	workflowPublish: 1_000,
+	executionAdmission: 250,
 	workflowStart: 250,
 	workflowTransfer: 1_000,
 	credentialSave: 1_000,
+	credentialTransfer: 1_000,
 	credentialDecrypt: 250,
 	contentImport: 1_000,
 } as const satisfies Record<EnforcementPoint, number>;
@@ -176,7 +178,10 @@ export class PolicyDecisionService implements PolicyEnforcementBackend {
 	 * structured half only reaches the console under `N8N_LOG_FORMAT=json` — the text format
 	 * prints the message alone — so the message names the point on its own.
 	 */
-	private audit(input: DecisionAuditInput, actor: PolicyActor) {
+	private audit<Point extends EnforcementPoint>(
+		input: DecisionAuditInput<Point>,
+		actor: PolicyActor,
+	) {
 		const line = decisionAudit(input);
 		const message =
 			line.outcome === 'violation'

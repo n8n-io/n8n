@@ -1,57 +1,136 @@
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { useRouter } from 'vue-router';
-import type { AiPreferencesAppliedPayload } from '@n8n/api-types';
+import type { SkillListItem } from '@n8n/api-types';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useDebounceFn } from '@vueuse/core';
 import { VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useContextStore } from '@/features/settings/context/context.store';
-import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
-import type { ToolConnectionStatus, ToolIconSource } from '@/features/shared/toolsConnection/types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import {
-	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
-	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
-} from '../constants';
-import { useInstanceAiStore } from '../instanceAi.store';
+	canWriteInstanceSkillScope,
+	canWriteProjectSkillScope,
+	isContextSkillsEnabled,
+} from '@/features/settings/context/context.utils';
+import { getSkills } from '@/features/settings/context/skills.api';
+import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
+import type { NodeIconSource, ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
+import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '@/features/ai/instanceAi/constants';
+import { injectOpenResource } from '@/features/ai/instanceAi/openResourceContext';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
-import { useInstanceAiComputerUseTelemetry } from '../instanceAiComputerUse.telemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useBrowserUseConnection } from './useBrowserUseConnection';
 import { useMcpServerConnect } from './useMcpServerConnect';
-import { iconForTool } from '../toolIcons';
+import { useProjectResourceSearch } from './useProjectResourceSearch';
+
+const OPEN_RESOURCE_ITEM_ID = 'open-resource';
 
 type InputMenuItemData = {
 	status?: ToolConnectionStatus;
-	toolIcon?: ToolIconSource;
+	toolIcon?: NodeIconSource;
 	action?: () => void | Promise<void>;
-	/**
-	 * A preference row the turn applied. `removed` when the lookup answered without the
-	 * row, `unavailable` when the lookup itself failed, so the two never read the same.
-	 */
-	preference?: 'applied' | 'removed' | 'unavailable';
 };
 
 export type InputMenuItem = DropdownMenuItemProps<string, InputMenuItemData>;
 
-type AppliedPreference = AiPreferencesAppliedPayload['preferences'][number];
-
 export function useInstanceAiInputMenuItems(
 	attachFiles: () => void,
-	/** The thread whose applied preferences the menu reports. None before a thread exists. */
-	threadId: MaybeRefOrGetter<string | undefined> = undefined,
+	projectId?: MaybeRefOrGetter<string | undefined>,
 ) {
 	const i18n = useI18n();
-	const router = useRouter();
+	const rootStore = useRootStore();
 	const uiStore = useUIStore();
+	const projectsStore = useProjectsStore();
+	const router = useRouter();
 	const settingsStore = useInstanceAiSettingsStore();
 	const mcpStore = useInstanceAiMcpStore();
-	const instanceAiStore = useInstanceAiStore();
-	const contextStore = useContextStore();
 	const { ignorePendingConnectResult } = useMcpServerConnect();
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
 	const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
-	const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
+	const shouldShowSkills = computed(() => isContextSkillsEnabled());
+	const canCreateSkill = computed(
+		() =>
+			canWriteInstanceSkillScope() ||
+			canWriteProjectSkillScope(projectsStore.personalProject?.id) ||
+			projectsStore.myProjects.some(
+				(project) => project.type === 'team' && canWriteProjectSkillScope(project.id),
+			),
+	);
+	const openResource = injectOpenResource();
+	const resourceSearch = useProjectResourceSearch({
+		projectId: () => openResource?.projectId(),
+		excludedTabs: () => openResource?.excludedTabs() ?? [],
+	});
+	const debouncedResourceSearch = useDebounceFn(
+		async (term: string) => await resourceSearch.search(term),
+		getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
+	);
+
+	/** Loads the resources when their sub-menu opens, so the menu itself sends no requests. */
+	function handleSubMenuToggle(itemId: string, open: boolean) {
+		if (itemId === OPEN_RESOURCE_ITEM_ID && open) void resourceSearch.search();
+	}
+
+	function handleSearch(term: string, itemId?: string) {
+		if (itemId === OPEN_RESOURCE_ITEM_ID) void debouncedResourceSearch(term);
+	}
+
+	const openResourceItem = computed((): InputMenuItem | undefined => {
+		if (!openResource?.projectId() || !openResource.isAvailable()) return undefined;
+
+		const results = resourceSearch.results.value;
+		const children: InputMenuItem[] =
+			results.length > 0
+				? results.map((resource) => ({
+						id: `${OPEN_RESOURCE_ITEM_ID}:${resource.type}:${resource.id}`,
+						label: resource.name,
+						icon: { type: 'icon', value: resource.icon },
+						data: { action: () => openResource.open(resource) },
+					}))
+				: [
+						{
+							id: `${OPEN_RESOURCE_ITEM_ID}-empty`,
+							label: i18n.baseText('instanceAi.previewTabBar.noResources'),
+							disabled: true,
+						},
+					];
+
+		return {
+			id: OPEN_RESOURCE_ITEM_ID,
+			label: i18n.baseText('instanceAi.inputMenu.openResource.label'),
+			icon: { type: 'icon', value: 'folder-open' },
+			divided: true,
+			searchable: true,
+			searchPlaceholder: i18n.baseText('instanceAi.previewTabBar.searchResources'),
+			loading: resourceSearch.isLoading.value && results.length === 0,
+			children,
+		};
+	});
+
+	const skills = ref<SkillListItem[]>([]);
+	const skillsLoadState = ref<'loading' | 'loaded' | 'error'>('loading');
+	const { next: nextSkillsLoad } = useLatestFetch();
+
+	async function refreshSkills() {
+		const isLatest = nextSkillsLoad();
+		if (!shouldShowSkills.value) return;
+		skills.value = [];
+		skillsLoadState.value = 'loading';
+		try {
+			// Without `take`, the API returns every visible skill.
+			const result = await getSkills(rootStore.restApiContext);
+			if (!isLatest()) return;
+			skills.value = result.data;
+			skillsLoadState.value = 'loaded';
+		} catch {
+			if (isLatest()) skillsLoadState.value = 'error';
+		}
+	}
 
 	void settingsStore.fetch();
 	watch(
@@ -63,21 +142,87 @@ export function useInstanceAiInputMenuItems(
 	);
 
 	// The store owns this, so the + menu and the message payload cannot disagree.
-	const isComputerUseAvailable = computed(() => settingsStore.isComputerUseAvailable);
 	const isBrowserUseAvailable = computed(() => settingsStore.isBrowserUseAvailable);
-	async function openComputerSetup() {
-		if (settingsStore.isLocalGatewayDisabled) {
-			await settingsStore.persistLocalGatewayPreference(false);
-		}
-
-		computerUseTelemetry.trackModalOpened(settingsStore.isGatewayConnected, 'input_menu');
-		uiStore.openModal(INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY);
-	}
 
 	function openToolsModal() {
 		mcpTelemetry.trackToolsListOpened('input_menu');
 		uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 	}
+
+	function openPreferenceSettings() {
+		// A new tab keeps the chat and its unsent draft.
+		window.open(router.resolve({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES }).href, '_blank');
+	}
+
+	function openSkillSettings(query: { skillId?: string; create?: string } = {}) {
+		window.open(
+			router.resolve({ name: VIEWS.SETTINGS_CONTEXT_SKILLS, query }).href,
+			'_blank',
+			'noopener',
+		);
+	}
+
+	const skillMenuItems = computed<InputMenuItem[]>(() => {
+		const children: InputMenuItem[] = [];
+		const availableSkills = skills.value
+			.filter(
+				(skill) =>
+					skill.availableToAssistant &&
+					skill.name.trim() &&
+					skill.description.trim() &&
+					(skill.scope === 'instance' ||
+						(skill.scope === 'project' && skill.projectId === toValue(projectId))),
+			)
+			.sort((left, right) => left.name.localeCompare(right.name));
+
+		if (skillsLoadState.value !== 'loaded' || availableSkills.length === 0) {
+			children.push({
+				id: 'skills-status',
+				label: i18n.baseText(
+					skillsLoadState.value === 'loading'
+						? 'instanceAi.inputMenu.skills.loading'
+						: skillsLoadState.value === 'error'
+							? 'instanceAi.inputMenu.skills.loadError'
+							: 'instanceAi.inputMenu.skills.empty',
+				),
+				disabled: true,
+			});
+		} else {
+			for (const scope of ['project', 'instance'] as const) {
+				const group = availableSkills.filter((skill) => skill.scope === scope);
+				if (group.length === 0) continue;
+				children.push(
+					{
+						id: `skills-${scope}`,
+						label: i18n.baseText(`settings.context.skills.scope.${scope}`),
+						header: true,
+						divided: children.length > 0,
+					},
+					...group.map((skill) => ({
+						id: `skill-${skill.id}`,
+						label: skill.name,
+						data: { action: () => openSkillSettings({ skillId: skill.id }) },
+					})),
+				);
+			}
+		}
+
+		children.push({
+			id: 'manage-skills',
+			label: i18n.baseText('instanceAi.inputMenu.skills.manage'),
+			divided: true,
+			data: { action: () => openSkillSettings() },
+		});
+		if (canCreateSkill.value) {
+			children.push({
+				id: 'create-skill',
+				label: i18n.baseText('instanceAi.inputMenu.skills.create'),
+				icon: { type: 'icon', value: 'plus' },
+				data: { action: () => openSkillSettings({ create: 'true' }) },
+			});
+		}
+		return children;
+	});
 
 	function createConnectionItem({
 		id,
@@ -144,147 +289,10 @@ export function useInstanceAiInputMenuItems(
 		};
 	}
 
-	// --- Applied preferences ---
-	//
-	// The list comes from the `preferences-applied` payload the backend published for
-	// the thread's latest turn, never from a fresh read of the settings list: the two
-	// answer different questions (a bound project against every project, a failed read,
-	// a flag that is off), and a menu that disagrees with what the assistant received
-	// is worse than no menu. Only the display text is looked up, by id.
-	const isPreferencesAvailable = computed(() => isContextPreferencesEnabled());
-	const appliedPreferences = computed<AiPreferencesAppliedPayload | null>(() => {
-		const id = toValue(threadId);
-		if (!id) return null;
-		return instanceAiStore.getRuntime(id)?.appliedPreferences ?? null;
-	});
-	const appliedPreferenceIds = computed(() =>
-		(appliedPreferences.value?.preferences ?? []).map(({ id }) => id),
-	);
-	const preferenceTextById = ref(new Map<string, string>());
-	const isLoadingPreferenceTexts = ref(false);
-	const didPreferenceLookupFail = ref(false);
-	let latestTextsRead = 0;
-	let inFlightIdsKey: string | undefined;
-
-	/** Resolves the text behind each applied id. Safe to call again: the newest read wins. */
-	async function refreshAppliedPreferences() {
-		const ids = appliedPreferenceIds.value;
-		if (!isPreferencesAvailable.value || ids.length === 0) {
-			// Also retires a read still in flight for the previous list, so it cannot
-			// land later and repopulate the menu with another thread's text.
-			++latestTextsRead;
-			inFlightIdsKey = undefined;
-			preferenceTextById.value = new Map();
-			didPreferenceLookupFail.value = false;
-			isLoadingPreferenceTexts.value = false;
-			return;
-		}
-		// One read per list at a time: opening the menu right after a thread opened must
-		// not throw away the read the thread open already started.
-		const idsKey = ids.join('\n');
-		if (inFlightIdsKey === idsKey) return;
-		const read = ++latestTextsRead;
-		inFlightIdsKey = idsKey;
-		// Skeletons only while nothing is known yet. With texts in hand this is a
-		// background refresh, and the list stays usable meanwhile.
-		isLoadingPreferenceTexts.value = ids.some((id) => !preferenceTextById.value.has(id));
-		try {
-			const rows = await contextStore.fetchPreferencesByIds(ids);
-			if (read !== latestTextsRead) return;
-			preferenceTextById.value = new Map(rows.map((row) => [row.id, row.content]));
-			didPreferenceLookupFail.value = false;
-		} catch {
-			// The list still renders: the ids are what the turn carried. Texts already
-			// resolved stay, the rest read as unavailable rather than as removed.
-			if (read === latestTextsRead) didPreferenceLookupFail.value = true;
-		} finally {
-			if (read === latestTextsRead) {
-				isLoadingPreferenceTexts.value = false;
-				inFlightIdsKey = undefined;
-			}
-		}
-	}
-
-	watch(
-		appliedPreferenceIds,
-		(ids, previous) => {
-			if (previous && ids.join('\n') === previous.join('\n')) return;
-			void refreshAppliedPreferences();
-		},
-		{ immediate: true },
-	);
-
-	function preferenceGroupKey(preference: AppliedPreference): string {
-		return preference.scope === 'project'
-			? `project-${preference.projectId ?? ''}`
-			: preference.scope;
-	}
-
-	function preferenceGroupLabel(preference: AppliedPreference): string {
-		switch (preference.scope) {
-			// The settings page names the same scopes; one string each keeps them aligned.
-			case 'instance':
-				return i18n.baseText('settings.context.preferences.scope.instance');
-			case 'user':
-				return i18n.baseText('instanceAi.inputMenu.preferences.scope.user');
-			case 'project':
-				return (
-					preference.projectName ?? i18n.baseText('settings.context.preferences.scope.project')
-				);
-		}
-	}
-
-	/** Group headers follow the payload order, so the menu lists what the prompt carried, as it carried it. */
-	function preferenceItems(): InputMenuItem[] {
-		const preferences = appliedPreferences.value?.preferences ?? [];
-		if (preferences.length === 0) {
-			return [
-				{
-					id: 'preferences-empty',
-					label: i18n.baseText('instanceAi.inputMenu.preferences.empty'),
-					disabled: true,
-				},
-			];
-		}
-
-		const items: InputMenuItem[] = [];
-		let currentGroup: string | undefined;
-		for (const preference of preferences) {
-			const group = preferenceGroupKey(preference);
-			if (group !== currentGroup) {
-				currentGroup = group;
-				items.push({
-					id: `preferences-group-${group}`,
-					label: preferenceGroupLabel(preference),
-					header: true,
-				});
-			}
-			const text = preferenceTextById.value.get(preference.id);
-			const missing = didPreferenceLookupFail.value ? 'unavailable' : 'removed';
-			items.push({
-				id: `preference-${preference.id}`,
-				label: text ?? i18n.baseText(`instanceAi.inputMenu.preferences.${missing}`),
-				keepOpen: true,
-				data: { preference: text === undefined ? missing : 'applied' },
-			});
-		}
-		return items;
-	}
-
-	function openPreferenceSettings() {
-		void router.push({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES });
-	}
-
 	const disconnectedConnectionCount = computed(() => {
 		let count = 0;
 		if (settingsStore.isMcpAvailable) {
 			count += mcpStore.connections.filter(({ status }) => status === 'disconnected').length;
-		}
-		if (
-			isComputerUseAvailable.value &&
-			settingsStore.computerUseConnectionStatus === 'disconnected'
-		) {
-			count++;
 		}
 		if (
 			isBrowserUseAvailable.value &&
@@ -311,7 +319,7 @@ export function useInstanceAiInputMenuItems(
 				label: connection.serverTitle,
 				data: {
 					status: connection.status,
-					toolIcon: iconForTool(connection.serverIcons, uiStore.appliedTheme),
+					toolIcon: iconForMcpRegistryServer(connection.serverIcons, uiStore.appliedTheme),
 				},
 				children: [
 					{
@@ -386,21 +394,6 @@ export function useInstanceAiInputMenuItems(
 			});
 		}
 
-		if (isComputerUseAvailable.value) {
-			items.push(
-				createConnectionItem({
-					id: 'computer',
-					status: settingsStore.computerUseConnectionStatus,
-					icon: 'laptop',
-					connectLabel: i18n.baseText('instanceAi.inputMenu.computer.connect'),
-					connectedLabel: i18n.baseText('instanceAi.inputMenu.computer.connected'),
-					connectedTitle: settingsStore.gatewayHostIdentifier ?? undefined,
-					connect: openComputerSetup,
-					disconnect: settingsStore.disconnectComputerUse,
-				}),
-			);
-		}
-
 		if (isBrowserUseAvailable.value) {
 			items.push(
 				createConnectionItem({
@@ -423,28 +416,34 @@ export function useInstanceAiInputMenuItems(
 			);
 		}
 
-		if (isPreferencesAvailable.value) {
-			// An empty payload still gets the item: "none applied" is information.
+		if (shouldShowSkills.value) {
 			items.push({
-				id: 'preferences',
-				label: i18n.baseText('instanceAi.inputMenu.preferences.label'),
-				icon: { type: 'icon', value: 'brain' },
-				loading: isLoadingPreferenceTexts.value,
-				children: [
-					...preferenceItems(),
-					{
-						id: 'preferences-manage',
-						label: i18n.baseText('instanceAi.inputMenu.preferences.manage'),
-						icon: { type: 'icon', value: 'settings' },
-						divided: true,
-						data: { action: openPreferenceSettings },
-					},
-				],
+				id: 'skills',
+				label: i18n.baseText('instanceAi.inputMenu.skills.label'),
+				icon: { type: 'icon', value: 'book-open' },
+				children: skillMenuItems.value,
 			});
 		}
+
+		// Opening a resource and Preferences both leave the message as it is, so they share a group.
+		if (openResourceItem.value) items.push(openResourceItem.value);
+
+		items.push({
+			id: 'preferences',
+			label: i18n.baseText('instanceAi.inputMenu.preferences.label'),
+			icon: { type: 'icon', value: 'brain' },
+			divided: !openResourceItem.value,
+			data: { action: openPreferenceSettings },
+		});
 
 		return items;
 	});
 
-	return { menuItems, disconnectedConnectionCount, refreshAppliedPreferences };
+	return {
+		menuItems,
+		disconnectedConnectionCount,
+		refreshSkills,
+		handleSubMenuToggle,
+		handleSearch,
+	};
 }

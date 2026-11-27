@@ -6,7 +6,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+import { createEventLoopYielder } from '@n8n/utils/promise/create-event-loop-yielder';
+
+import { evaluateResolvables, resolveExpressions, updateDisplayOptions } from '@utils/utilities';
 
 import type {
 	PgpDatabase,
@@ -59,15 +61,18 @@ export async function execute(
 	nodeOptions: PostgresNodeOptions,
 	_db?: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
-	const queries: QueryWithValues[] = replaceEmptyStringsByNulls(
-		items,
-		nodeOptions.replaceEmptyStrings as boolean,
-	).map((_, index) => {
-		let query = this.getNodeParameter('query', index) as string;
+	const yieldToEventLoop = createEventLoopYielder();
+	const queries: QueryWithValues[] = [];
+	replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
+	for (let index = 0; index < items.length; index++) {
+		await yieldToEventLoop();
+		const nodeVersion = nodeOptions.nodeVersion as number;
 
-		for (const resolvable of getResolvables(query)) {
-			query = query.replace(resolvable, this.evaluateExpression(resolvable, index) as string);
-		}
+		let query = resolveExpressions(
+			this.getNodeParameter('query', index) as string,
+			(resolvable) => this.evaluateExpression(resolvable, index),
+			{ legacy: nodeVersion < 2.9 },
+		);
 
 		let values: QueryValue[] = [];
 
@@ -83,18 +88,20 @@ export async function execute(
 			const rawReplacements = (node.parameters.options as IDataObject)?.queryReplacement as string;
 
 			if (rawReplacements) {
-				const nodeVersion = nodeOptions.nodeVersion as number;
-
 				if (nodeVersion >= 2.5) {
 					const rawValues = rawReplacements.replace(/^=+/, '');
-					const resolvables = getResolvables(rawValues);
-					if (resolvables.length) {
-						for (const resolvable of resolvables) {
-							const rawEvaluated = this.evaluateExpression(`${resolvable}`, index);
-
+					const evaluatedResolvables = evaluateResolvables(rawValues, (resolvable) =>
+						this.evaluateExpression(resolvable, index),
+					);
+					if (evaluatedResolvables.length) {
+						for (const rawEvaluated of evaluatedResolvables) {
 							if (Array.isArray(rawEvaluated)) {
 								for (const item of rawEvaluated) {
-									if (item === undefined) continue;
+									if (item === undefined) {
+										// From v2.8 a missing element becomes SQL NULL, so later values keep their position
+										if (nodeVersion >= 2.8) values.push(null);
+										continue;
+									}
 									values.push(
 										typeof item === 'object' && item !== null ? JSON.stringify(item) : item,
 									);
@@ -102,7 +109,19 @@ export async function execute(
 								continue;
 							}
 
+							// From v2.8 an expression gives one bind value, so commas in data do not split it.
+							// null and a missing field (undefined) become SQL NULL
+							if (nodeVersion >= 2.8) {
+								values.push(
+									rawEvaluated === null || rawEvaluated === undefined
+										? null
+										: evaluateExpression(rawEvaluated),
+								);
+								continue;
+							}
+
 							const evaluatedExpression = evaluateExpression(rawEvaluated);
+
 							const evaluatedValues = isJSON(evaluatedExpression)
 								? [evaluatedExpression]
 								: stringToArray(evaluatedExpression);
@@ -120,12 +139,12 @@ export async function execute(
 						.map((entry) => entry.trim());
 
 					for (const rawValue of rawValues) {
-						const resolvables = getResolvables(rawValue);
+						const evaluatedValues = evaluateResolvables(rawValue, (resolvable) =>
+							this.evaluateExpression(resolvable, index),
+						);
 
-						if (resolvables.length) {
-							for (const resolvable of resolvables) {
-								values.push(this.evaluateExpression(`${resolvable}`, index) as IDataObject);
-							}
+						if (evaluatedValues.length) {
+							values.push(...(evaluatedValues as IDataObject[]));
 						} else {
 							values.push(rawValue);
 						}
@@ -135,6 +154,12 @@ export async function execute(
 		} else {
 			if (Array.isArray(queryReplacement)) {
 				values = queryReplacement as IDataObject[];
+			} else if (
+				nodeVersion >= 2.8 &&
+				(queryReplacement === null || queryReplacement === undefined)
+			) {
+				// From v2.8 a single expression that gives null or a missing field becomes SQL NULL
+				values = [null];
 			} else {
 				throw new NodeOperationError(
 					this.getNode(),
@@ -144,7 +169,10 @@ export async function execute(
 			}
 		}
 
-		if (!queryReplacement || nodeOptions.treatQueryParametersInSingleQuotesAsText) {
+		if (
+			nodeVersion < 2.9 &&
+			(!queryReplacement || nodeOptions.treatQueryParametersInSingleQuotesAsText)
+		) {
 			let nextValueIndex = values.length + 1;
 			const literals = query.match(/'\$[0-9]+'/g) ?? [];
 			for (const literal of literals) {
@@ -154,8 +182,8 @@ export async function execute(
 			}
 		}
 
-		return { query, values, options: { partial: true } };
-	});
+		queries.push({ query, values, options: { partial: true } });
+	}
 
 	return await runQueries(queries, nodeOptions);
 }

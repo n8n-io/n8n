@@ -1,9 +1,10 @@
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ResolvedFilePath } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { dirname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import simpleGit, { type SimpleGit } from 'simple-git';
+import { GitError, simpleGit, type SimpleGit } from 'simple-git';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { Container } from '@n8n/di';
 import { DeploymentConfig, SecurityConfig } from '@n8n/config';
@@ -37,9 +38,9 @@ const mockGit = {
 	env: vi.fn().mockReturnThis(),
 } as unknown as Mocked<SimpleGit>;
 
-vi.mock('simple-git', () => ({
-	__esModule: true,
-	default: vi.fn(() => mockGit),
+vi.mock('simple-git', async () => ({
+	GitError: (await vi.importActual<typeof import('simple-git')>('simple-git')).GitError,
+	simpleGit: vi.fn(() => mockGit),
 }));
 
 const mockSimpleGit = vi.mocked(simpleGit);
@@ -654,6 +655,35 @@ describe('Git Node', () => {
 
 			expect(mockGit.checkout).not.toHaveBeenCalled();
 			expect(mockGit.push).toHaveBeenCalled();
+		});
+
+		it('should not include git command arguments in the error when push fails', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({ branch: '' })
+				.mockReturnValueOnce('gitPassword');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				username: 'user',
+				password: 'secret-token',
+			});
+			mockGit.listConfig.mockResolvedValueOnce({
+				files: ['.git/config'],
+				values: { '.git/config': { 'remote.origin.url': 'https://github.com/test/repo.git' } },
+			} as any);
+			mockGit.push.mockRejectedValueOnce(
+				new GitError(
+					{ commands: ['push', 'https://user:secret-token@github.com/test/repo.git'] } as any,
+					'fatal: unable to access repository',
+				),
+			);
+
+			const error = await gitNode.execute.call(mockExecuteFunctions).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(NodeOperationError);
+			expect(error).not.toBeInstanceOf(GitError);
+			expect((error as Error).message).toBe('fatal: unable to access repository');
+			expect(JSON.stringify(error)).not.toContain('secret-token');
 		});
 
 		it('should not push to a blocked config-derived target repository path', async () => {
@@ -1526,6 +1556,25 @@ describe('Git Node', () => {
 			expect(mockGit.clone).not.toHaveBeenCalled();
 		});
 
+		it('should disable fetching missing objects for every git process of a local clone', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('/git/source-repo');
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockSimpleGit.mock.calls.length).toBeGreaterThan(1);
+			for (const [options] of mockSimpleGit.mock.calls) {
+				expect(options?.allowEnvironment).toContain('GIT_NO_LAZY_FETCH');
+			}
+			expect(mockGit.env).toHaveBeenCalledTimes(mockSimpleGit.mock.calls.length);
+			for (const [env] of mockGit.env.mock.calls) {
+				expect(env).toMatchObject({ GIT_NO_LAZY_FETCH: '1' });
+			}
+		});
+
 		it('should check file URL source repository paths', async () => {
 			const sourcePath = resolve(sep, 'tmp', 'source-repo');
 			const sourceRepository = pathToFileURL(sourcePath).href;
@@ -1663,6 +1712,20 @@ describe('Git Node', () => {
 
 			const envArg = mockGit.env.mock.calls[0][0] as Record<string, string>;
 			expect(envArg.GIT_ALLOW_PROTOCOL).toBe('file:git:http:https:ssh');
+		});
+
+		it('should disable fetching missing objects via the environment', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('https://github.com/test/repo.git');
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			const envArg = mockGit.env.mock.calls[0][0] as Record<string, string>;
+			expect(envArg.GIT_NO_LAZY_FETCH).toBe('1');
+			expect(mockSimpleGit.mock.calls[0][0]?.allowEnvironment).toContain('GIT_NO_LAZY_FETCH');
 		});
 
 		it.each(['push', 'pushTags'])(

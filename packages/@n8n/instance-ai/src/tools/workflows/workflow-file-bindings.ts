@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { getThread, patchThread } from '../../storage/thread-patch';
 import type { InstanceAiContext } from '../../types';
@@ -15,7 +15,17 @@ const workflowSourceFileBindingSchema = z.object({
 	workflowVersionId: z.string().optional(),
 	workflowChecksum: z.string().optional(),
 	sourceHash: z.string().optional(),
+	/** False when the source was read while parameter values were hidden. */
+	parameterValuesIncluded: z.boolean().optional(),
 	setupPending: z.boolean().optional(),
+	/** Setup scope of the builds so far in this work item or run. `nodeNames` undefined = every node. */
+	setupScope: z
+		.object({
+			workItemId: z.string().optional(),
+			runId: z.string().optional(),
+			nodeNames: z.array(z.string()).optional(),
+		})
+		.optional(),
 	setupPreferences: z
 		.object({
 			runId: z.string().optional(),
@@ -37,11 +47,12 @@ export function hashWorkflowSource(source: string): string {
 
 export function normalizeWorkflowSourceFilePath(
 	filePath: string,
-	options: { workspaceRoot?: string } = {},
+	options: { workspaceRoot?: string; fallbackWorkspaceRoot?: string } = {},
 ): string {
 	return normalizeWorkspaceRelativePath(filePath, {
 		resourceLabel: 'Workflow source file',
 		workspaceRoot: options.workspaceRoot,
+		fallbackWorkspaceRoot: options.fallbackWorkspaceRoot,
 	});
 }
 
@@ -190,7 +201,7 @@ export async function refreshWorkflowSourceFileBindingFromWorkflow(
 	});
 }
 
-/** Refresh the binding checksum/version after an agent-side DB patch outside build-workflow. */
+/** Refresh the binding checksum/version after an agent-side DB patch outside workflow_builder_build_workflow. */
 export async function refreshWorkflowSourceFileBindingFromSave(
 	context: InstanceAiContext,
 	workflowId: string,

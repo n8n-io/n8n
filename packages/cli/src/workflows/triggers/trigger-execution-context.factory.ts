@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
-import { GlobalConfig } from '@n8n/config';
+import { EventService, WorkflowPublishedDataService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import type { IWorkflowDb, PollerCursor, PollLeaseFence } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -25,11 +24,13 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionDataProcess,
 	PollCursor,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
+import { Workflow, createRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -46,9 +47,19 @@ import { EngineV2ActiveTriggers } from '@/workflows/triggers/engine-v2-active-tr
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+/** What the trigger node waits on from the run it starts. A done promise outranks a response. */
+function awaitedByTrigger(
+	responsePromise: IDeferredPromise<IExecuteResponsePromiseData> | undefined,
+	donePromise: IDeferredPromise<IRun | undefined> | undefined,
+): NonNullable<IWorkflowExecutionDataProcess['callerAwaitsOutcome']> {
+	if (donePromise) return 'completion';
+	if (responsePromise) return 'response';
+	return 'none';
+}
 
 export type TriggerFailureHandler = (opts: {
 	error: Error;
@@ -57,6 +68,14 @@ export type TriggerFailureHandler = (opts: {
 	mode: WorkflowExecuteMode;
 	activation: WorkflowActivateMode;
 }) => void;
+
+/** A poll run by a claimed occurrence: the fence of its writes, and the timeout of the occurrence. */
+export interface LeasedPoll {
+	fence: PollLeaseFence;
+	timeoutSeconds: number;
+	/** Milliseconds until the occurrence times out. */
+	remainingMs(): number;
+}
 
 /**
  * Builds the execution-context functions (`IGetExecuteTriggerFunctions` /
@@ -84,7 +103,6 @@ export class TriggerExecutionContextFactory {
 		private readonly ownershipService: OwnershipService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly pollCursorService: PollCursorService,
-		private readonly globalConfig: GlobalConfig,
 		private readonly engineV2ActiveTriggers: EngineV2ActiveTriggers,
 		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {
@@ -123,11 +141,7 @@ export class TriggerExecutionContextFactory {
 		emit: EngineV2ActiveTriggerEmit,
 	): void {
 		try {
-			// Files first, because this check deletes what it refuses: a refusal for
-			// any other reason would otherwise leave the stored files behind, owned by
-			// no execution.
-			this.engineV2ActiveTriggers.assertPayloadSupported(data);
-			this.engineV2ActiveTriggers.assertSupported(emit);
+			this.engineV2ActiveTriggers.assertSupported(emit, data);
 		} catch (error) {
 			emit.responsePromise?.reject(ensureError(error));
 			throw error;
@@ -222,6 +236,8 @@ export class TriggerExecutionContextFactory {
 							mode,
 							responsePromise,
 							deduplicationKey,
+							// A node awaiting the run's end, or a response from it, must not get a paused segment instead.
+							awaitedByTrigger(responsePromise, donePromise),
 						);
 					})
 					.catch((error: unknown) => {
@@ -311,28 +327,28 @@ export class TriggerExecutionContextFactory {
 		// service (flag on). Once the feature flag is removed, we'll call the
 		// service directly and this parameter will go away.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
-		fence?: PollLeaseFence,
+		leasedPoll?: LeasedPoll,
 		prefetchedCursor?: PollerCursor,
 	): IGetExecutePollFunctions {
+		const fence = leasedPoll?.fence;
 		return (workflow: Workflow, node: INode) => {
-			// A poll must finish inside both the handler's abandon deadline and the task
-			// lease; past either, its commits are fenced out or discarded. The margin —
-			// 20%, at least 5s, at most half the ceiling — leaves room for the trailing
-			// hand-off and cursor commit.
-			const ceilingMs =
-				Math.min(
-					this.globalConfig.scheduler.pollTimeoutSeconds,
-					this.globalConfig.scheduler.leaseDurationSeconds,
-				) * Time.seconds.toMilliseconds;
+			// A poll must finish inside the timeout of its occurrence; past it, the
+			// executor aborts the run and its commits are discarded. The lease is
+			// renewed while the poll runs, so it does not bound the poll. The margin
+			// — 20%, at least 5s, at most half the ceiling — leaves room for the
+			// trailing hand-off and cursor commit.
+			const ceilingMs = (leasedPoll?.timeoutSeconds ?? 0) * Time.seconds.toMilliseconds;
 			const marginMs = Math.min(Math.max(0.2 * ceilingMs, 5_000), ceilingMs / 2);
-			const pollBudgetMs = ceilingMs - marginMs;
+			// Setup before `poll()` uses part of the timeout, so the budget counts down with it.
+			const pollBudgetMs = () => Math.max(0, (leasedPoll?.remainingMs() ?? 0) - marginMs);
 			// A poll's staged snapshot lives in an async scope entered per poll, rather
 			// than in a variable per node: only the poll that staged it can commit it, and
 			// two overlapping polls of the same node never share a slot. An unmigrated
 			// node gets no snapshot: it reads and writes the real static-data bucket
 			// directly.
 			const stagedCursorStore = new AsyncLocalStorage<
-				{ migrated: true; snapshot: PollCursor; seed: PollCursor } | { migrated: false }
+				| { migrated: true; snapshot: PollCursor; seed: PollCursor; bounded: boolean }
+				| { migrated: false }
 			>();
 
 			const __runPoll = async <T>(poll: () => Promise<T>): Promise<T> => {
@@ -343,7 +359,12 @@ export class TriggerExecutionContextFactory {
 					prefetchedCursor,
 				);
 				const store = resolved.migrated
-					? { migrated: true as const, snapshot: cloneDeep(resolved.cursor), seed: resolved.cursor }
+					? {
+							migrated: true as const,
+							snapshot: cloneDeep(resolved.cursor),
+							seed: resolved.cursor,
+							bounded: false,
+						}
 					: { migrated: false as const };
 				return await stagedCursorStore.run(store, poll);
 			};
@@ -370,14 +391,9 @@ export class TriggerExecutionContextFactory {
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 
-				// Ahead of the cursor take, so a refused poll leaves its window to be
-				// retried. Reads the registration's copy of the workflow rather than the
-				// fresh one for the same reason: the fresh read comes too late.
-				if (this.engineV2ActiveTriggers.handles(workflowData, mode)) {
-					this.engineV2ActiveTriggers.assertPayloadSupported(data);
-				}
-
 				const cursor = takeStagedCursor();
+				const staged = stagedCursorStore.getStore();
+				const pollIsBounded = staged?.migrated === true && staged.bounded;
 
 				// A migrated node's cursor lives in `poller_state`, not static data, so
 				// saving here can't race the cursor commit; this persists global static
@@ -388,19 +404,8 @@ export class TriggerExecutionContextFactory {
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) => {
-					// The registration snapshot above can be stale by the time this
-					// resolves (e.g. the workflow was just republished onto engine v2),
-					// so a payload that slipped past that check is guarded again here,
-					// against the copy that actually decides where this run goes.
+					// Decided on the fresh copy, which is the one the dispatcher decides on.
 					const routesToV2 = this.engineV2ActiveTriggers.handles(freshWorkflowData, mode);
-					if (routesToV2) {
-						try {
-							this.engineV2ActiveTriggers.assertPayloadSupported(data);
-						} catch (error) {
-							responsePromise?.reject(ensureError(error));
-							throw error;
-						}
-					}
 
 					const runAdditionalData = await this.attributeToPublisher(
 						additionalData,
@@ -415,6 +420,8 @@ export class TriggerExecutionContextFactory {
 							runAdditionalData,
 							mode,
 							responsePromise,
+							undefined,
+							awaitedByTrigger(responsePromise, donePromise),
 						);
 					}
 
@@ -438,6 +445,8 @@ export class TriggerExecutionContextFactory {
 								cursor,
 								responsePromise,
 								fence,
+								awaitedByTrigger(responsePromise, donePromise),
+								pollIsBounded,
 							);
 				});
 
@@ -485,6 +494,11 @@ export class TriggerExecutionContextFactory {
 				return staged.migrated ? staged.snapshot : workflow.getStaticData('node', node);
 			};
 
+			const declareBoundedPoll = () => {
+				const staged = stagedCursorStore.getStore();
+				if (staged?.migrated) staged.bounded = true;
+			};
+
 			return new PollContext(
 				workflow,
 				node,
@@ -496,9 +510,10 @@ export class TriggerExecutionContextFactory {
 				__commitCursor,
 				__runPoll,
 				resolveNodeStaticData,
-				// Only a leased (durable) poll is bounded by the timeout and lease; a
+				// Only a leased (durable) poll is bounded by the timeout; a
 				// legacy in-memory poll keeps PollContext's generous default.
-				fence ? () => pollBudgetMs : undefined,
+				fence ? pollBudgetMs : undefined,
+				declareBoundedPoll,
 			);
 		};
 	}
@@ -511,7 +526,7 @@ export class TriggerExecutionContextFactory {
 	async createPollExecutionContext(
 		workflowData: IWorkflowBase,
 		node: INode,
-		fence?: PollLeaseFence,
+		leasedPoll?: LeasedPoll,
 		prefetchedCursor?: PollerCursor,
 	): Promise<{ workflow: Workflow; pollFunctions: IPollFunctions }> {
 		const workflow = new Workflow({
@@ -541,7 +556,7 @@ export class TriggerExecutionContextFactory {
 			'trigger',
 			'update',
 			resolveWorkflowData,
-			fence,
+			leasedPoll,
 			prefetchedCursor,
 		);
 		// getPollFunctions already closed over these; its signature still requires them.
@@ -590,6 +605,7 @@ export class TriggerExecutionContextFactory {
 					runData: {},
 				},
 			}),
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			mode,
 			startedAt: new Date(),

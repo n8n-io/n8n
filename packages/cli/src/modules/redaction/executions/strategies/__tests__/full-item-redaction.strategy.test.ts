@@ -1,7 +1,7 @@
 import type { IRunExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { RedactableExecution } from '@/executions/execution-redaction';
+import type { RedactableExecution } from '@n8n/backend-services';
 
 import type { RedactionContext } from '../../execution-redaction.interfaces';
 import { FullItemRedactionStrategy } from '../full-item-redaction.strategy';
@@ -12,6 +12,8 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 	userCanReveal: false,
 	enforceDynCredRedaction: false,
 	enforceCredentialUsabilityRedaction: false,
+	inaccessibleCredentialIds: [],
+	redactedBySubWorkflow: false,
 	memo: new Map(),
 	...overrides,
 });
@@ -235,11 +237,19 @@ describe('FullItemRedactionStrategy', () => {
 				],
 			});
 
-			await strategy.apply(execution, makeContext({ enforceCredentialUsabilityRedaction: true }));
+			await strategy.apply(
+				execution,
+				makeContext({
+					enforceCredentialUsabilityRedaction: true,
+					inaccessibleCredentialIds: ['alice-gmail'],
+				}),
+			);
 
 			const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
 			expect(item.redaction?.reason).toBe('credential_inaccessible');
 			expect(execution.data.redactionInfo?.reason).toBe('credential_inaccessible');
+			// Names the credentials, so the editor can link to where access is granted.
+			expect(execution.data.redactionInfo?.credentialIds).toEqual(['alice-gmail']);
 		});
 
 		it('prefers "dynamic_credentials" over "credential_inaccessible" when both are set', async () => {
@@ -262,6 +272,54 @@ describe('FullItemRedactionStrategy', () => {
 			);
 
 			expect(execution.data.redactionInfo?.reason).toBe('dynamic_credentials');
+		});
+
+		describe('sub-workflow redaction', () => {
+			const execution = () =>
+				makeExecution({
+					NodeA: [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							executionTime: 0,
+							executionStatus: 'success',
+							source: [],
+							data: { main: [[{ json: { x: 1 } }]] },
+						},
+					],
+				});
+
+			it('sets reason "sub_workflow_redaction_policy" when redactedBySubWorkflow is true', async () => {
+				const target = execution();
+
+				await strategy.apply(target, makeContext({ redactedBySubWorkflow: true }));
+
+				const item = target.data.resultData.runData.NodeA[0].data!.main[0]![0];
+				expect(item.redaction?.reason).toBe('sub_workflow_redaction_policy');
+				expect(target.data.redactionInfo?.reason).toBe('sub_workflow_redaction_policy');
+			});
+
+			it('prefers "user_requested" over "sub_workflow_redaction_policy"', async () => {
+				const target = execution();
+
+				await strategy.apply(
+					target,
+					makeContext({ redactedBySubWorkflow: true, redactExecutionData: true }),
+				);
+
+				expect(target.data.redactionInfo?.reason).toBe('user_requested');
+			});
+
+			it('prefers "dynamic_credentials" over "sub_workflow_redaction_policy"', async () => {
+				const target = execution();
+
+				await strategy.apply(
+					target,
+					makeContext({ redactedBySubWorkflow: true, enforceDynCredRedaction: true }),
+				);
+
+				expect(target.data.redactionInfo?.reason).toBe('dynamic_credentials');
+			});
 		});
 	});
 
@@ -416,7 +474,7 @@ describe('FullItemRedactionStrategy', () => {
 			});
 
 			it('sets httpCode: null for post-DB plain-object NodeApiError with null httpCode', async () => {
-				// Exercises the `?? null` fallback in redactError when httpCode is null or absent.
+				// Exercises the `null` fallback in redactExecutionError when httpCode is null or absent.
 				const execution = makeExecution({
 					NodeA: [
 						{
@@ -570,6 +628,116 @@ describe('FullItemRedactionStrategy', () => {
 		});
 	});
 
+	describe('metadata and highlighted data', () => {
+		const agentNode = {
+			id: 'agent-1',
+			name: 'AI Agent',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			typeVersion: 3,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		};
+
+		const makeSubNodeExecutionData = () => ({
+			actions: [
+				{
+					nodeName: 'Tool',
+					runIndex: 0,
+					action: {
+						actionType: 'ExecutionNodeAction' as const,
+						nodeName: 'Tool',
+						input: { query: 'tool-argument' },
+						type: 'ai_tool' as const,
+						id: 'call-1',
+						metadata: { itemIndex: 0, reasoning: 'model-reasoning' },
+					},
+				},
+			],
+			metadata: { previousRequests: ['earlier-request'] },
+		});
+
+		it('removes subNodeExecutionData from saved runs and keeps other metadata', async () => {
+			const execution = makeExecution({
+				'AI Agent': [
+					{
+						startTime: 0,
+						executionIndex: 0,
+						executionTime: 0,
+						executionStatus: 'success',
+						source: [],
+						data: { main: [[{ json: { output: 'answer' } }]] },
+						metadata: {
+							subNodeExecutionData: makeSubNodeExecutionData(),
+							subRun: [{ node: 'Tool', runIndex: 0 }],
+						},
+					},
+				],
+			});
+
+			await strategy.apply(execution, makeContext());
+
+			const metadata = execution.data.resultData.runData['AI Agent'][0].metadata;
+			expect(metadata).not.toHaveProperty('subNodeExecutionData');
+			expect(metadata?.subRun).toEqual([{ node: 'Tool', runIndex: 0 }]);
+		});
+
+		it('removes subNodeExecutionData from the execution stack of a waiting agent', async () => {
+			const execution = makeExecution({});
+			execution.data.executionData!.nodeExecutionStack = [
+				{
+					node: agentNode,
+					source: null,
+					data: { main: [[{ json: { chatInput: 'hello' } }]] },
+					metadata: { subNodeExecutionData: makeSubNodeExecutionData() },
+				},
+			];
+			execution.data.executionData!.metadata = {
+				'AI Agent': [{ subNodeExecutionData: makeSubNodeExecutionData() }],
+			};
+
+			await strategy.apply(execution, makeContext());
+
+			expect(execution.data.executionData!.nodeExecutionStack[0].metadata).not.toHaveProperty(
+				'subNodeExecutionData',
+			);
+			expect(execution.data.executionData!.metadata['AI Agent'][0]).not.toHaveProperty(
+				'subNodeExecutionData',
+			);
+		});
+
+		it('clears highlighted data in resultData.metadata and customData', async () => {
+			const execution = makeExecution({});
+			execution.data.resultData.metadata = { chatInput: 'hello', sessionId: 'session-1' };
+			execution.customData = { chatInput: 'hello', sessionId: 'session-1' };
+
+			await strategy.apply(execution, makeContext());
+
+			expect(execution.data.resultData.metadata).toBeUndefined();
+			expect(execution.customData).toEqual({});
+		});
+
+		it('clears highlighted data and sets redactionInfo when the execution has no runData', async () => {
+			const execution = makeExecution({});
+			delete (execution.data.resultData as Partial<typeof execution.data.resultData>).runData;
+			execution.data.resultData.metadata = { chatInput: 'hello' };
+			execution.customData = { chatInput: 'hello' };
+
+			await strategy.apply(execution, makeContext());
+
+			expect(execution.data.resultData.metadata).toBeUndefined();
+			expect(execution.customData).toEqual({});
+			expect(execution.data.redactionInfo).toMatchObject({ isRedacted: true });
+		});
+
+		it('does not add customData when the execution has none', async () => {
+			const execution = makeExecution({});
+
+			await strategy.apply(execution, makeContext());
+
+			expect(execution).not.toHaveProperty('customData');
+		});
+	});
+
 	describe('redactionInfo', () => {
 		it('sets isRedacted: true with canReveal from context', async () => {
 			const execution = makeExecution({
@@ -623,4 +791,22 @@ describe('FullItemRedactionStrategy', () => {
 			});
 		});
 	});
+});
+
+it('removes temporary Agent results from node context without changing other state', async () => {
+	const execution = makeExecution({});
+	execution.data.executionData!.contextData = {
+		'node:Agent': {
+			agentInvocations: {
+				runIndex: 0,
+				items: [{ threadId: 'thread', result: { response: 'private response' } }],
+			},
+			otherState: 'preserved',
+		},
+	};
+	await new FullItemRedactionStrategy().apply(execution, makeContext());
+	expect(execution.data.executionData!.contextData['node:Agent']).toEqual({
+		otherState: 'preserved',
+	});
+	expect(JSON.stringify(execution.data)).not.toContain('private response');
 });

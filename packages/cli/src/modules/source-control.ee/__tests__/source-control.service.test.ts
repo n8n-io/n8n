@@ -1,8 +1,8 @@
 import type { EventService } from '@n8n/backend-services';
-import type { Mock } from 'vitest';
+import type { Mock, MockInstance } from 'vitest';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { isContainedWithin } from '@n8n/backend-common';
-import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, User, type WorkflowEntity } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, Person, User, type WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
@@ -22,7 +22,7 @@ import {
 	SOURCE_CONTROL_DEFAULT_NAME,
 } from '../constants';
 import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
-import type { ExportResult } from '../types/export-result';
+import { mockServiceAccount } from '@test/mock-objects';
 
 // Mock the status service to avoid complex dependency issues
 const mockStatusService = {
@@ -85,7 +85,6 @@ describe('SourceControlService', () => {
 
 	describe('pushWorkfolder', () => {
 		it('should push the workfolder', async () => {
-			const mockExportResult = mock<ExportResult>();
 			// Arrange
 			const user = Object.assign(new User(), {
 				role: GLOBAL_ADMIN_ROLE,
@@ -203,30 +202,17 @@ describe('SourceControlService', () => {
 			mockStatusService.getStatus.mockResolvedValueOnce(files);
 
 			// Mock all export and delete methods
-			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValueOnce(
-				mockExportResult,
-			);
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValueOnce(undefined);
 			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
-				count: 1,
 				missingIds: [],
-				folder: '',
-				files: [],
 			});
-			sourceControlExportService.exportTeamProjectsToWorkFolder.mockResolvedValueOnce(
-				mockExportResult,
-			);
-			sourceControlExportService.exportTagsToWorkFolder.mockResolvedValueOnce(mockExportResult);
-			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(mockExportResult);
-			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
-				mockExportResult,
-			);
-			sourceControlExportService.exportDataTablesToWorkFolder.mockResolvedValueOnce(
-				mockExportResult,
-			);
-			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(mockExportResult);
-			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
-				mockExportResult,
-			);
+			sourceControlExportService.exportTeamProjectsToWorkFolder.mockResolvedValueOnce(undefined);
+			sourceControlExportService.exportTagsToWorkFolder.mockResolvedValueOnce(undefined);
+			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(undefined);
+			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(undefined);
+			sourceControlExportService.exportDataTablesToWorkFolder.mockResolvedValueOnce(undefined);
+			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(undefined);
+			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(undefined);
 			sourceControlExportService.rmFilesFromExportFolder.mockResolvedValueOnce(new Set());
 
 			(isContainedWithin as Mock).mockReturnValue(true);
@@ -308,7 +294,7 @@ describe('SourceControlService', () => {
 			// ARRANGE
 			// The status service authorizes only the caller's own resource, with the
 			// server-derived path and status.
-			const user = mock<User>();
+			const person = new Person();
 			const now = new Date().toISOString();
 			const authorizedResource: SourceControlledFile = {
 				id: 'authorized-wf',
@@ -323,10 +309,7 @@ describe('SourceControlService', () => {
 
 			mockStatusService.getStatus.mockResolvedValueOnce([authorizedResource]);
 			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
-				count: 0,
 				missingIds: [],
-				folder: '',
-				files: [],
 			});
 			(isContainedWithin as Mock).mockReturnValue(true);
 			gitService.push.mockResolvedValueOnce(mock<PushResult>());
@@ -337,7 +320,7 @@ describe('SourceControlService', () => {
 			// ACT
 			// The caller pairs an authorized (id, type) with another resource's file path
 			// and flips the status to 'deleted'. Both must be ignored.
-			await sourceControlService.pushWorkfolder(user, {
+			await sourceControlService.pushWorkfolder(person, {
 				fileNames: [
 					{
 						id: 'authorized-wf',
@@ -463,7 +446,7 @@ describe('SourceControlService', () => {
 
 		it('should include the tags file even if not explicitly specified', async () => {
 			// ARRANGE
-			const user = mock<User>();
+			const person = new Person();
 			const mockFile: SourceControlledFile = {
 				file: 'some-workflow.json',
 				id: 'test',
@@ -477,10 +460,7 @@ describe('SourceControlService', () => {
 
 			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
 			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
-				count: 0,
 				missingIds: [],
-				folder: '',
-				files: [],
 			});
 			eventService.emit.mockReturnValueOnce(true);
 
@@ -493,7 +473,7 @@ describe('SourceControlService', () => {
 			const expectedFilePath = `${preferencesService.gitFolder}/some-workflow.json`;
 
 			// ACT
-			const result = await sourceControlService.pushWorkfolder(user, {
+			const result = await sourceControlService.pushWorkfolder(person, {
 				fileNames: [mockFile],
 				commitMessage: 'A commit message',
 			});
@@ -553,7 +533,7 @@ describe('SourceControlService', () => {
 
 		it('should reset branch to origin/branch when push fails after commit', async () => {
 			// ARRANGE
-			const user = mock<User>();
+			const person = new Person();
 			const mockFile: SourceControlledFile = {
 				file: 'workflow-1.json',
 				id: 'wf-1',
@@ -567,10 +547,7 @@ describe('SourceControlService', () => {
 
 			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
 			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
-				count: 0,
 				missingIds: [],
-				folder: '',
-				files: [],
 			});
 
 			(isContainedWithin as Mock).mockReturnValue(true);
@@ -582,7 +559,7 @@ describe('SourceControlService', () => {
 
 			// ACT & ASSERT
 			await expect(
-				sourceControlService.pushWorkfolder(user, {
+				sourceControlService.pushWorkfolder(person, {
 					fileNames: [mockFile],
 					commitMessage: 'Test commit',
 				}),
@@ -602,7 +579,7 @@ describe('SourceControlService', () => {
 
 		it('should reset branch to HEAD when commit fails', async () => {
 			// ARRANGE
-			const user = mock<User>();
+			const person = new Person();
 			const mockFile: SourceControlledFile = {
 				file: 'workflow-1.json',
 				id: 'wf-1',
@@ -616,10 +593,7 @@ describe('SourceControlService', () => {
 
 			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
 			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
-				count: 0,
 				missingIds: [],
-				folder: '',
-				files: [],
 			});
 
 			(isContainedWithin as Mock).mockReturnValue(true);
@@ -630,7 +604,7 @@ describe('SourceControlService', () => {
 
 			// ACT & ASSERT
 			await expect(
-				sourceControlService.pushWorkfolder(user, {
+				sourceControlService.pushWorkfolder(person, {
 					fileNames: [mockFile],
 					commitMessage: 'Test commit',
 				}),
@@ -680,6 +654,66 @@ describe('SourceControlService', () => {
 					reason: 'review_pending',
 					workflowReviewRequestId: 'review-1',
 				},
+			});
+		});
+
+		it('passes the public API client to the pull status check', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+
+			await sourceControlService.pullWorkfolder(
+				user,
+				{ force: true, autoPublish: 'none' },
+				'other',
+			);
+
+			expect(mockStatusService.getStatus).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ direction: 'pull', publicApi: 'other' }),
+			);
+		});
+
+		it('does not run the policy preview, because the import enforces on its own', async () => {
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+
+			await sourceControlService.pullWorkfolder(mock<User>({ id: 'user-1' }), {
+				force: true,
+				autoPublish: 'none',
+			});
+
+			expect(sourceControlImportService.previewContentImportPolicy).not.toHaveBeenCalled();
+		});
+
+		it('announces each pulled workflow, but not one skipped by the content policy', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			mockStatusService.getStatus.mockResolvedValueOnce([
+				mock<SourceControlledFile>({ id: 'workflow-1', type: 'workflow', conflict: false }),
+				mock<SourceControlledFile>({ id: 'workflow-2', type: 'workflow', conflict: false }),
+			]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([
+				{ id: 'workflow-1', name: 'workflow-1.json', publishingError: undefined },
+				{
+					id: 'workflow-2',
+					name: 'workflow-2.json',
+					publishingError: undefined,
+					contentImportPolicy: {
+						violations: [
+							{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+						],
+						checkErrors: [],
+					},
+				},
+			]);
+
+			await sourceControlService.pullWorkfolder(user, { force: true, autoPublish: 'none' });
+
+			expect(eventService.emit).toHaveBeenCalledWith('workflow-imported', {
+				workflowId: 'workflow-1',
+			});
+			expect(eventService.emit).not.toHaveBeenCalledWith('workflow-imported', {
+				workflowId: 'workflow-2',
 			});
 		});
 
@@ -1082,6 +1116,34 @@ describe('SourceControlService', () => {
 			expect(pushResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', false);
 		});
 
+		it('previews the content-import policy on a pull status', async () => {
+			const files = [mock<SourceControlledFile>({ id: 'workflow-1', type: 'workflow' })];
+			mockStatusService.getStatus.mockResolvedValue(files);
+
+			await sourceControlService.getStatus(globalAdminUserWithId, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			expect(sourceControlImportService.previewContentImportPolicy).toHaveBeenCalledWith(
+				files,
+				globalAdminUserWithId.id,
+			);
+		});
+
+		it('does not preview the content-import policy on a push status', async () => {
+			mockStatusService.getStatus.mockResolvedValue([]);
+
+			await sourceControlService.getStatus(globalAdminUser, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			expect(sourceControlImportService.previewContentImportPolicy).not.toHaveBeenCalled();
+		});
+
 		it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
 			// ARRANGE
 			const user = globalMemberUser;
@@ -1474,6 +1536,78 @@ describe('SourceControlService', () => {
 			expect(gitService.fetch).toHaveBeenCalledTimes(2);
 			expect(result).toEqual({ branches: ['main'], currentBranch: 'main' });
 		});
+
+		it('marks the instance as v1 on the first connect, also without a matching branch', async () => {
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(false);
+			gitService.getBranches.mockResolvedValue({ branches: ['develop'], currentBranch: '' });
+
+			await sourceControlService.initializeRepository(
+				{ branchName: 'main', repositoryUrl: 'git@github.com:test/repo.git' } as any,
+				mock<User>(),
+			);
+
+			expect(preferencesService.setPreferences).toHaveBeenCalledWith({
+				branchName: '',
+				connected: true,
+				environmentsVersion: 'v1',
+			});
+		});
+
+		it('keeps the version when a connected repository initializes again', async () => {
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(true);
+			gitService.getBranches.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+
+			await sourceControlService.initializeRepository(
+				{ branchName: 'main', repositoryUrl: 'git@github.com:test/repo.git' } as any,
+				mock<User>(),
+			);
+
+			expect(preferencesService.setPreferences).toHaveBeenCalledWith({
+				branchName: 'main',
+				connected: true,
+			});
+		});
+	});
+
+	describe('setBranch', () => {
+		let setPreferencesSpy: MockInstance<typeof preferencesService.setPreferences>;
+
+		beforeEach(() => {
+			gitService.setBranch.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+			setPreferencesSpy = vi
+				.spyOn(preferencesService, 'setPreferences')
+				.mockResolvedValue(preferencesService.getPreferences());
+		});
+
+		afterEach(() => {
+			setPreferencesSpy.mockRestore();
+		});
+
+		it('persists the branch preference only after the checkout succeeded', async () => {
+			await sourceControlService.setBranch('feature-branch');
+
+			expect(gitService.setBranch).toHaveBeenCalledWith('feature-branch');
+			expect(setPreferencesSpy).toHaveBeenCalledWith({
+				branchName: 'feature-branch',
+				connected: true,
+			});
+			// The checkout must happen before the preference write is persisted.
+			expect(gitService.setBranch.mock.invocationCallOrder[0]).toBeLessThan(
+				setPreferencesSpy.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not persist the branch preference when the checkout fails', async () => {
+			gitService.setBranch.mockRejectedValue(
+				new Error("fatal: Couldn't find remote ref refs/remotes/origin/feature-branch"),
+			);
+
+			await expect(sourceControlService.setBranch('feature-branch')).rejects.toThrow(
+				/feature-branch/,
+			);
+
+			expect(setPreferencesSpy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('sanityCheck', () => {
@@ -1565,7 +1699,6 @@ describe('SourceControlService', () => {
 			sourceControlExportService.exportWorkflowsToWorkFolder.mockImplementation(async () => {
 				signalExportStarted();
 				await exportGate;
-				return mock<ExportResult>();
 			});
 			return { exportStarted, releaseExport };
 		};
@@ -1576,15 +1709,10 @@ describe('SourceControlService', () => {
 			gitService.push.mockResolvedValue(mock<PushResult>());
 			sourceControlExportService.rmFilesFromExportFolder.mockResolvedValue(new Set());
 			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValue({
-				count: 0,
 				missingIds: [],
-				folder: '',
-				files: [],
 			});
-			sourceControlExportService.exportTeamProjectsToWorkFolder.mockResolvedValue(
-				mock<ExportResult>(),
-			);
-			sourceControlExportService.exportTagsToWorkFolder.mockResolvedValue(mock<ExportResult>());
+			sourceControlExportService.exportTeamProjectsToWorkFolder.mockResolvedValue(undefined);
+			sourceControlExportService.exportTagsToWorkFolder.mockResolvedValue(undefined);
 		};
 
 		it('queues a reset behind an in-flight push and never resets the work tree mid-push', async () => {
@@ -1621,6 +1749,7 @@ describe('SourceControlService', () => {
 
 			// Once the push releases the lock, the queued reset runs - but only after the commit.
 			expect(gitService.resetBranch).toHaveBeenCalled();
+			expect(gitService.pull).toHaveBeenCalled();
 			expect(callOrder).toEqual(['commit', 'reset']);
 		});
 
@@ -1685,9 +1814,7 @@ describe('SourceControlService', () => {
 			// ARRANGE
 			arrangeSuccessfulPushMocks();
 			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
-			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(
-				mock<ExportResult>(),
-			);
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(undefined);
 
 			const callOrder: string[] = [];
 			gitService.setGitUserDetails.mockImplementation(async () => {
@@ -1699,7 +1826,7 @@ describe('SourceControlService', () => {
 				return await Promise.resolve(mock<CommitResult>());
 			});
 
-			const author = Object.assign(new User(), {
+			const author = Object.assign(new Person(), {
 				role: GLOBAL_ADMIN_ROLE,
 				firstName: 'Ada',
 				lastName: 'Lovelace',
@@ -1720,9 +1847,7 @@ describe('SourceControlService', () => {
 			arrangeSuccessfulPushMocks();
 			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
 			gitService.commit.mockResolvedValue(mock<CommitResult>());
-			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(
-				mock<ExportResult>(),
-			);
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(undefined);
 
 			const userWithoutProfile = Object.assign(new User(), {
 				role: GLOBAL_ADMIN_ROLE,
@@ -1735,6 +1860,25 @@ describe('SourceControlService', () => {
 			await sourceControlService.pushWorkfolder(userWithoutProfile, pushOptions);
 
 			// ASSERT: an empty profile must not produce an invalid git identity for the commit.
+			expect(gitService.setGitUserDetails).toHaveBeenCalledWith(
+				SOURCE_CONTROL_DEFAULT_NAME,
+				SOURCE_CONTROL_DEFAULT_EMAIL,
+			);
+		});
+
+		it('uses default author details when a service account pushes', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+			gitService.commit.mockResolvedValue(mock<CommitResult>());
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(undefined);
+
+			const serviceAccount = mockServiceAccount({ role: GLOBAL_ADMIN_ROLE });
+
+			// ACT
+			await sourceControlService.pushWorkfolder(serviceAccount, pushOptions);
+
+			// ASSERT
 			expect(gitService.setGitUserDetails).toHaveBeenCalledWith(
 				SOURCE_CONTROL_DEFAULT_NAME,
 				SOURCE_CONTROL_DEFAULT_EMAIL,

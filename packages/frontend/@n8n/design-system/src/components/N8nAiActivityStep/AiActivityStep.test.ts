@@ -28,6 +28,16 @@ describe('N8nAiActivityStep', () => {
 		expect(getByText('Search nodes')).toBeInTheDocument();
 	});
 
+	it('should show the meta text outside the label', () => {
+		const { getByTestId, getByText } = render(AiActivityStep, {
+			props: { label: 'Planning the reply', meta: '1m 12s', loading: true },
+			global,
+		});
+
+		expect(getByTestId('ai-activity-step-meta')).toHaveTextContent('· 1m 12s');
+		expect(getByText('Planning the reply')).not.toHaveTextContent('1m 12s');
+	});
+
 	it('should show loading affordance when loading', () => {
 		const { getByText } = render(AiActivityStep, {
 			props: { label: 'Search nodes', loading: true },
@@ -101,5 +111,53 @@ describe('N8nAiActivityStep', () => {
 		expect(getByText('Search nodes')).toBeInTheDocument();
 		expect(container.querySelector('.n8n-icon')).not.toBeInTheDocument();
 		expect(queryByText('Custom details')).not.toBeInTheDocument();
+	});
+
+	it('should default the error icon to triangle-alert', () => {
+		const { container } = render(AiActivityStep, {
+			props: { label: 'Search nodes', error: 'Something went wrong' },
+			global,
+		});
+
+		expect(container.querySelector('.n8n-icon')?.getAttribute('icon')).toBe('triangle-alert');
+	});
+
+	it('should use a custom errorIcon when provided', () => {
+		const { container } = render(AiActivityStep, {
+			props: { label: 'Search nodes', error: 'Something went wrong', errorIcon: 'lock' },
+			global,
+		});
+
+		expect(container.querySelector('.n8n-icon')?.getAttribute('icon')).toBe('lock');
+	});
+
+	it('should render errorCallout slot content instead of the default error text', () => {
+		const { getByText, queryByText } = render(AiActivityStep, {
+			props: { label: 'Search nodes', error: 'Something went wrong' },
+			slots: { errorCallout: '<span>Custom callout text</span>' },
+			global,
+		});
+
+		expect(getByText('Custom callout text')).toBeInTheDocument();
+		// The tooltip is hidden by default in this test environment, so the only
+		// remaining place `error` could render is the callout body it replaced.
+		expect(queryByText('Something went wrong')).not.toBeInTheDocument();
+	});
+
+	it('should still show the error text in the tooltip when errorCallout slot is used', () => {
+		const { getByText } = render(AiActivityStep, {
+			props: { label: 'Search nodes', error: 'Something went wrong' },
+			slots: { errorCallout: '<span>Custom callout text</span>' },
+			global: {
+				...global,
+				stubs: {
+					...global.stubs,
+					N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
+				},
+			},
+		});
+
+		expect(getByText('Something went wrong')).toBeInTheDocument();
+		expect(getByText('Custom callout text')).toBeInTheDocument();
 	});
 });

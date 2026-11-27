@@ -1,4 +1,5 @@
-import type { Author } from 'chat';
+import type { ActionEvent, Author } from 'chat';
+import { mock } from 'vitest-mock-extended';
 
 import { AgentChatHitlResumeHandler } from '../agent-chat-hitl-resume-handler';
 
@@ -47,6 +48,16 @@ describe('settling the action card', () => {
 				value: JSON.stringify({ approved: true }),
 			},
 			content: '✅ Approved by Alice',
+			resumeData: { approved: true },
+		},
+		{
+			name: 'session approval',
+			callback: {
+				actionId: 'resume:run-1:tool-1:0',
+				value: JSON.stringify({ approved: true, scope: 'session' }),
+			},
+			content: '✅ Approved by Alice',
+			resumeData: { approved: true, scope: 'session' },
 		},
 		{
 			name: 'non-approval selection',
@@ -56,6 +67,7 @@ describe('settling the action card', () => {
 				label: 'Continue',
 			},
 			content: '✅ Continue selected by Alice',
+			resumeData: { type: 'button', value: 'continue' },
 		},
 		// Teams and any other platform that carries the full payload in the card:
 		// the decision is in the button value, so no store is needed to name it.
@@ -64,22 +76,32 @@ describe('settling the action card', () => {
 			actionId: 'resume:run-1:tool-1:0',
 			value: JSON.stringify({ approved: true }),
 			content: '✅ Approved by Alice',
+			resumeData: { approved: true },
 		},
 		{
 			name: 'store-less decline',
 			actionId: 'resume:run-1:tool-1:1',
 			value: JSON.stringify({ approved: false }),
 			content: '🚫 Declined by Alice',
+			resumeData: { approved: false },
 		},
 		{
 			name: 'background approval after a restart',
 			actionId: 'bg:96fa13fa-75db-4439-b7c8-cd04a2c2f9b7:abcdefghijklmnopqrstuv:1',
 			value: '',
 			content: '✅ Approved by Alice',
+			resumeData: { approved: true },
+		},
+		{
+			name: 'background session approval after a restart',
+			actionId: 'bg:96fa13fa-75db-4439-b7c8-cd04a2c2f9b7:abcdefghijklmnopqrstuv:s',
+			value: '',
+			content: '✅ Approved by Alice',
+			resumeData: { approved: true, scope: 'session' },
 		},
 	])(
 		'names the decision on a $name card',
-		async ({ callback, actionId = 'callback-key', value, content }) => {
+		async ({ callback, actionId = 'callback-key', value, content, resumeData }) => {
 			const background = actionId.startsWith('bg:');
 			const settleActionMessage = vi.fn().mockResolvedValue(undefined);
 			const deleteMessage = vi.fn().mockResolvedValue(undefined);
@@ -108,6 +130,7 @@ describe('settling the action card', () => {
 			} as never);
 
 			expect(deleteMessage).not.toHaveBeenCalled();
+			expect(resumeForChat).toHaveBeenCalledWith(expect.objectContaining({ resumeData }));
 			expect(settleActionMessage).toHaveBeenCalledWith({
 				agentId: 'agent-1',
 				integration: { type: 'discord', credentialId: 'cred-1' },
@@ -121,7 +144,6 @@ describe('settling the action card', () => {
 					expect.objectContaining({
 						runId: 'background-job-96fa13fa-75db-4439-b7c8-cd04a2c2f9b7',
 						toolCallId: 'abcdefghijklmnopqrstuv',
-						resumeData: { approved: true },
 					}),
 				);
 				expect(settleActionMessage.mock.invocationCallOrder[0]).toBeGreaterThan(
@@ -362,5 +384,73 @@ describe('notices that answer one click', () => {
 		expect(resumeForChat).toHaveBeenCalledWith(
 			expect.objectContaining({ runId: 'run-1', resumeData: { approved: true } }),
 		);
+	});
+});
+
+it.each([true, false])(
+	'updates a routed approval card with its decision without a conversation resume: %s',
+	async (approved) => {
+		const editMessage = vi.fn().mockResolvedValue(undefined);
+		const deleteMessage = vi.fn();
+		const resumeForChat = vi.fn(() => (async function* () {})());
+		const handler = createHandler({
+			deleteActionMessageBeforeResume: true,
+			agentService: { resumeForChat },
+		});
+		const event = mock<ActionEvent>({
+			user: ALICE,
+			threadId: THREAD_ID,
+			messageId: 'message',
+			adapter: mock({ editMessage, deleteMessage }),
+		});
+		await handler.settleApprovalAction(event, approved);
+		expect(editMessage).toHaveBeenCalledWith(
+			THREAD_ID,
+			'message',
+			`${approved ? 'Approved' : 'Denied'} by Alice`,
+		);
+		expect(deleteMessage).not.toHaveBeenCalled();
+		expect(resumeForChat).not.toHaveBeenCalled();
+	},
+);
+describe('files queued before a suspension', () => {
+	it('passes the earlier tool results and agent thread of the run to the stream consumer', async () => {
+		const consume = vi.fn().mockResolvedValue(undefined);
+		const toolResults = [
+			{
+				toolCallId: 'tc-1',
+				toolName: 'discord_action',
+				output: { ok: true, queuedFileIds: ['f'] },
+			},
+		];
+		const getSuspendedRun = vi.fn().mockResolvedValue({ threadId: 'agent-thread-1', toolResults });
+		const handler = createHandler({
+			agentService: { resumeForChat: vi.fn(() => (async function* () {})()), getSuspendedRun },
+			streamConsumer: { consume } as never,
+		});
+
+		await handler.executeResume(createThread(true) as never, 'run-1', 'tool-1', { approved: true });
+
+		expect(getSuspendedRun).toHaveBeenCalledWith({ agentId: 'agent-1', runId: 'run-1' });
+		expect(consume).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.objectContaining({ agentThreadId: 'agent-thread-1', earlierToolResults: toolResults }),
+		);
+	});
+
+	it('still resumes when the suspended run cannot be read', async () => {
+		const resumeForChat = vi.fn(() => (async function* () {})());
+		const handler = createHandler({
+			agentService: {
+				resumeForChat,
+				getSuspendedRun: vi.fn().mockRejectedValue(new Error('database unavailable')),
+			},
+		});
+
+		await expect(
+			handler.executeResume(createThread(true) as never, 'run-1', 'tool-1', { approved: true }),
+		).resolves.toBe(true);
+		expect(resumeForChat).toHaveBeenCalled();
 	});
 });

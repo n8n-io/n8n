@@ -2,13 +2,11 @@ import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { TtlMap } from '@/utils/ttl-map';
 
 import {
@@ -17,17 +15,19 @@ import {
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { AgentChangePublisher } from './agent-change-publisher.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type {
 	ReconstructedAgentRuntime,
 	UserToolAccessSnapshot,
 } from './agent-runtime-reconstruction.service';
-import type { Agent } from './entities/agent.entity';
+import type { IAgentConfigurationTelemetryProperties } from './agent-telemetry.types';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
+import { resolveAgentRunSource } from './utils/agent-published-snapshot';
+import type { SimulationSession } from './simulation/simulation-session';
 
 export interface GetRuntimeParams {
 	agentId: string;
@@ -52,6 +52,8 @@ export interface GetRuntimeParams {
 	 * every other surface, so it is part of the cache key.
 	 */
 	previewChat?: boolean;
+	/** A test run. The runtime is cached for this session only. */
+	simulation?: SimulationSession;
 }
 
 /**
@@ -66,10 +68,11 @@ export interface AgentRuntime extends ReconstructedAgentRuntime {
 	projectId: string;
 	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
 	/**
-	 * Grants baked into the runtime's tool list by `filterToolsForUser`.
+	 * Grants baked into the runtime's tool list and draft integrations at build.
 	 * The sliding TTL can keep an active runtime alive indefinitely, so these
 	 * are re-checked on cache hits (debounced) rather than waiting for
-	 * eviction. Absent when no user-gated tools made it into the runtime.
+	 * eviction. Absent when no user-gated tool or integration made it into the
+	 * runtime.
 	 */
 	userToolAccessSnapshot?: UserToolAccessSnapshot;
 	/** Epoch ms of the last passing tool-access re-check (build counts as one). */
@@ -122,6 +125,7 @@ export class AgentRuntimeCacheService {
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -134,6 +138,7 @@ export class AgentRuntimeCacheService {
 		if (params.integrationType) parts.push(params.integrationType);
 		if (params.allowBackgroundTasks === false) parts.push('no-background-tasks');
 		if (params.attributionUserId) parts.push(`attribution:${params.attributionUserId}`);
+		if (params.simulation) parts.push(params.simulation.runtimeCacheKey);
 		// Per-user runtimes have node/workflow tools filtered by that user's
 		// access — keying by user id keeps them from colliding with each other
 		// or with the unscoped (no-user) runtime.
@@ -312,6 +317,7 @@ export class AgentRuntimeCacheService {
 			allowBackgroundTasks,
 			previewChat,
 			attributionUserId,
+			simulation,
 		} = params;
 
 		const agentEntity = await getAgentOrThrow(
@@ -321,9 +327,12 @@ export class AgentRuntimeCacheService {
 			`Agent ${agentId} not found`,
 		);
 
-		const agentData: Agent = usePublishedVersion
-			? getPublishedAgentSnapshot(agentEntity)
-			: agentEntity;
+		const runSource = await resolveAgentRunSource(
+			agentEntity,
+			usePublishedVersion === true,
+			this.agentSkillRefs,
+			{},
+		);
 
 		// `user` here is whatever `computeRuntimeCacheKey` above already keyed
 		// this build on — undefined for published/integration runs, set for
@@ -338,12 +347,12 @@ export class AgentRuntimeCacheService {
 			agentId,
 		);
 		const reconstruction = this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
-			agentData,
+			runSource,
 			credentialProvider,
 			usePublishedVersion ? 'production' : 'test',
 			integrationType,
 			user,
-			undefined,
+			simulation?.instrumentation(),
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
 			{ previewChat, allowBackgroundTasks, attributionUserId },
@@ -353,6 +362,10 @@ export class AgentRuntimeCacheService {
 			toolRegistry,
 			mcpServerAttributions,
 			userToolAccessSnapshot,
+			budget,
+			toolGuardrails,
+			guardrailModel,
+			guardrailWorkflowContext,
 		} = await reconstruction;
 
 		return {
@@ -360,8 +373,12 @@ export class AgentRuntimeCacheService {
 			agentId,
 			toolRegistry,
 			mcpServerAttributions,
+			...(budget !== undefined ? { budget } : {}),
+			...(toolGuardrails !== undefined ? { toolGuardrails } : {}),
+			...(guardrailModel !== undefined ? { guardrailModel } : {}),
+			...(guardrailWorkflowContext !== undefined ? { guardrailWorkflowContext } : {}),
 			projectId,
-			telemetryConfiguration: buildAgentConfigurationTelemetry(agentData),
+			telemetryConfiguration: buildAgentConfigurationTelemetry(runSource),
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),
 			toolAccessCheckedAt: Date.now(),
 		};

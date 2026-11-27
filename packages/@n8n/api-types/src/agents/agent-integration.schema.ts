@@ -56,7 +56,12 @@ const sessionIdleTimeoutMinutes = z.number().int().positive().nullable().optiona
 
 export const AgentTelegramSettingsSchema = z
 	.object({
-		accessMode: z.enum(AGENT_TELEGRAM_ACCESS_MODES),
+		// Builders read this description in the config schema reference.
+		accessMode: z
+			.enum(AGENT_TELEGRAM_ACCESS_MODES)
+			.describe(
+				'The channel setup asks the user for this and allowedUsers. Omit settings when you add the channel',
+			),
 		allowedUsers: z
 			.array(
 				z
@@ -89,6 +94,8 @@ export const SLACK_MESSAGING_EXPERIENCES = ['assistant', 'agent'] as const;
 export const AgentSlackSettingsSchema = z
 	.object({
 		messagingExperience: z.enum(SLACK_MESSAGING_EXPERIENCES),
+		/** Require a mention in shared conversations. Unset keeps automatic thread replies. */
+		onlyRespondWhenMentioned: z.boolean().optional(),
 		sessionIdleTimeoutMinutes,
 	})
 	.strict();
@@ -103,6 +110,44 @@ export type AgentDiscordIntegrationSettings = z.infer<typeof AgentDiscordSetting
 
 export const AgentLinearSettingsSchema = AgentSessionOnlySettingsSchema;
 export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsSchema>;
+
+export const WHATSAPP_MEDIA_RETENTION_DAYS_MAX = 365;
+
+/**
+ * Applied when a setting is unset, so channels saved before these settings
+ * existed get the same behavior as new ones.
+ */
+export const WHATSAPP_SETTING_DEFAULTS = {
+	typingIndicator: true,
+	downloadMedia: true,
+	mediaRetentionDays: 30,
+} as const;
+
+export const AgentWhatsAppSettingsSchema = z
+	.object({
+		sessionIdleTimeoutMinutes,
+		/**
+		 * Shows WhatsApp's "typing…" indicator while the agent works. The Cloud API
+		 * sends it together with a read receipt, so this also marks the message read.
+		 */
+		typingIndicator: z.boolean().optional(),
+		/** Whether the agent receives the images, documents and audio customers send. */
+		downloadMedia: z.boolean().optional(),
+		/** Days to keep downloaded media before it is deleted. */
+		mediaRetentionDays: z.number().int().min(1).max(WHATSAPP_MEDIA_RETENTION_DAYS_MAX).optional(),
+	})
+	.strict();
+export type AgentWhatsAppIntegrationSettings = z.infer<typeof AgentWhatsAppSettingsSchema>;
+
+/** The WhatsApp settings in effect, with the defaults for any that were never saved. */
+export function resolveWhatsAppSettings(settings?: AgentWhatsAppIntegrationSettings) {
+	return {
+		typingIndicator: settings?.typingIndicator ?? WHATSAPP_SETTING_DEFAULTS.typingIndicator,
+		downloadMedia: settings?.downloadMedia ?? WHATSAPP_SETTING_DEFAULTS.downloadMedia,
+		mediaRetentionDays:
+			settings?.mediaRetentionDays ?? WHATSAPP_SETTING_DEFAULTS.mediaRetentionDays,
+	};
+}
 
 /**
  * Where the Teams app may be used, and how much it may read there.
@@ -164,14 +209,45 @@ export const AgentTeamsSettingsSchema = z
 	});
 export type AgentTeamsIntegrationSettings = z.infer<typeof AgentTeamsSettingsSchema>;
 
+export const WEBHOOK_INTEGRATION_TYPE = 'webhook' as const;
+
+export const AGENT_WEBHOOK_AUTHENTICATIONS = ['none', 'headerAuth', 'jwtAuth'] as const;
+export type AgentWebhookAuthentication = (typeof AGENT_WEBHOOK_AUTHENTICATIONS)[number];
+
+export const AgentWebhookSettingsSchema = z
+	.object({ authentication: z.enum(AGENT_WEBHOOK_AUTHENTICATIONS) })
+	.strict();
+export type AgentWebhookIntegrationSettings = z.infer<typeof AgentWebhookSettingsSchema>;
+
+/** The credential type that each webhook authentication checks against. */
+const WEBHOOK_CREDENTIAL_TYPES = {
+	none: undefined,
+	headerAuth: 'httpHeaderAuth',
+	jwtAuth: 'jwtAuth',
+} as const satisfies Record<AgentWebhookAuthentication, string | undefined>;
+
+export function webhookCredentialType(settings: AgentWebhookIntegrationSettings | undefined) {
+	return settings ? WEBHOOK_CREDENTIAL_TYPES[settings.authentication] : undefined;
+}
+
+/** The authentication of a webhook entry. `undefined` while the entry has no settings. */
+export function webhookAuthentication(integration: {
+	settings?: unknown;
+}): AgentWebhookAuthentication | undefined {
+	const settings = AgentWebhookSettingsSchema.safeParse(integration.settings);
+	return settings.success ? settings.data.authentication : undefined;
+}
+
 export const AgentIntegrationSettingsSchema = z.union([
 	AgentTelegramSettingsSchema,
 	AgentSlackSettingsSchema,
 	AgentDiscordSettingsSchema,
 	AgentLinearSettingsSchema,
+	AgentWhatsAppSettingsSchema,
 	// Teams was left out while it aliased the shared shape, when the entry was a
 	// no-op. Its settings now differ, so leaving it out would reject them.
 	AgentTeamsSettingsSchema,
+	AgentWebhookSettingsSchema,
 	z.undefined(),
 ]);
 export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
@@ -191,6 +267,9 @@ const credentialIntegrations = [
 	createCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createCredIntegrationSchema('whatsapp', AgentWhatsAppSettingsSchema).extend({
+		settings: AgentWhatsAppSettingsSchema.optional(),
+	}),
 	createCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
 		settings: AgentTeamsSettingsSchema.optional(),
 	}),
@@ -209,6 +288,9 @@ const draftCredentialIntegrations = [
 	createDraftCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createDraftCredIntegrationSchema('whatsapp', AgentWhatsAppSettingsSchema).extend({
+		settings: AgentWhatsAppSettingsSchema.optional(),
+	}),
 	createDraftCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
 		settings: AgentTeamsSettingsSchema.optional(),
 	}),
@@ -221,15 +303,29 @@ const n8nChatIntegration = z
 	})
 	.strict();
 
+/**
+ * The authentication decides whether the webhook holds a credential. A copy of
+ * an agent drops the settings, so the copy is a draft until its setup is done.
+ */
+const webhookIntegration = z.object({
+	type: z.literal(WEBHOOK_INTEGRATION_TYPE),
+	credentialId: z.string(),
+	settings: AgentWebhookSettingsSchema.optional(),
+	approval,
+});
+
 export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);
 
 /** Draft config variant that allows cleared stale credential IDs. */
 export const AgentIntegrationConfigSchema = z.discriminatedUnion('type', [
 	...draftCredentialIntegrations,
 	n8nChatIntegration,
+	webhookIntegration,
 ]);
 
 export type AgentIntegrationConfig = z.infer<typeof AgentIntegrationConfigSchema>;
+
+export type AgentWebhookIntegrationConfig = z.infer<typeof webhookIntegration>;
 
 export type CredentialAgentIntegrationConfig = Exclude<
 	AgentIntegrationConfig,

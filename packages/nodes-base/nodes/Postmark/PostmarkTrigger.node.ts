@@ -6,6 +6,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
@@ -131,7 +132,7 @@ export class PostmarkTrigger implements INodeType {
 				}
 
 				// Get all webhooks
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 
 				const responseData = await postmarkApiRequest.call(this, 'GET', endpoint, {});
 
@@ -157,7 +158,7 @@ export class PostmarkTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 
 				const body: any = {
 					Url: webhookUrl,
@@ -228,7 +229,7 @@ export class PostmarkTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/webhooks/${webhookData.webhookId}`;
+					const endpoint = requestPath`/webhooks/${webhookData.webhookId}`;
 					const body = {};
 
 					try {

@@ -28,6 +28,7 @@ const statuses: Array<{ id: AgentSessionStatus | 'all'; name: string }> = [
 	{ id: 'error', name: i18n.baseText('agentSessions.status.error') },
 	{ id: 'cancelled', name: i18n.baseText('agentSessions.status.cancelled') },
 	{ id: 'interrupted', name: i18n.baseText('agentSessions.status.interrupted') },
+	{ id: 'awaiting', name: i18n.baseText('agentSessions.status.awaiting') },
 ];
 
 const origins: Array<{ id: AgentSessionOrigin | 'all'; name: string }> = [
@@ -38,10 +39,14 @@ const origins: Array<{ id: AgentSessionOrigin | 'all'; name: string }> = [
 	{ id: 'sub-agent', name: i18n.baseText('agentSessions.origin.subAgent') },
 	{ id: 'schedule', name: i18n.baseText('agentSessions.origin.schedule') },
 	{ id: 'workflow', name: i18n.baseText('agentSessions.origin.workflow') },
+	{ id: 'n8n_chat_production', name: i18n.baseText('agentSessions.origin.n8nChat') },
 	{ id: 'slack', name: i18n.baseText('agentSessions.origin.slack') },
 	{ id: 'telegram', name: i18n.baseText('agentSessions.origin.telegram') },
 	{ id: 'linear', name: i18n.baseText('agentSessions.origin.linear') },
 	{ id: 'discord', name: i18n.baseText('agentSessions.origin.discord') },
+	{ id: 'whatsapp', name: i18n.baseText('agentSessions.origin.whatsapp') },
+	{ id: 'teams', name: i18n.baseText('agentSessions.origin.teams') },
+	{ id: 'webhook', name: i18n.baseText('agentSessions.origin.webhook') },
 ];
 
 const activeFilterCount = computed(
@@ -69,12 +74,11 @@ function reset() {
 		align="end"
 		position-strategy="absolute"
 		width="calc(var(--spacing--5xl) + var(--spacing--4xl))"
-		:content-class="$style.popoverContent"
 		show-arrow
 	>
 		<template #trigger>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				icon-only
 				icon="funnel"
 				size="medium"
@@ -96,7 +100,7 @@ function reset() {
 		</template>
 
 		<template #content>
-			<div data-test-id="agent-sessions-filter-form">
+			<div :class="$style.form" data-test-id="agent-sessions-filter-form">
 				<div :class="$style.group">
 					<label for="agent-sessions-filter-status">{{
 						i18n.baseText('agentSessions.filters.status')
@@ -216,7 +220,9 @@ function reset() {
 	transform: translate(50%, -50%);
 }
 
-.popoverContent {
+// The popover scroll area clips its content, so keep the padding inside it. This leaves room
+// for the focus rings of the full-width controls.
+.form {
 	padding: var(--spacing--sm);
 }
 </style>

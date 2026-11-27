@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -16,11 +17,14 @@ import { invokeAxios } from './axios/invoke';
 import { buildAxiosConfigFromLegacyRequest, buildLegacyAgentOptions } from './axios/legacy';
 import { followSsrfRedirects, shouldFollowRedirectsManually } from './axios/redirect';
 import {
+	destroyRequestBody,
 	resolveLegacyRequestUrl,
 	throwIfDomainNotAllowed,
+	throwIfProxyNotAllowed,
 	validateProxySsrf,
 	validateUrlSsrf,
 } from './axios/utils';
+import { streamToBufferPartial } from './binary-buffer';
 import { binaryToString } from './binary-string';
 import { parseIncomingMessage } from './parse-incoming-message';
 
@@ -50,6 +54,48 @@ export async function executeLegacyRequest(
 	logger: Logger,
 	callbacks?: LegacyRequestCallbacks,
 ): Promise<unknown> {
+	try {
+		return await sendLegacyRequest(requestObject, ssrfBridge, logger, callbacks);
+	} catch (error) {
+		// The URL, SSRF and domain checks can throw before axios reads the body.
+		destroyRequestBody(requestObject.body);
+		destroyRequestBody(requestObject.formData);
+		throw error;
+	}
+}
+
+/**
+ * Drains an Axios error-response body into a string.
+ * If the stream is already destroyed or fails to finish (for example a denied
+ * proxy CONNECT response, a truncated error response, or a stalled error body),
+ * return any received or buffered bytes so the caller keeps the HTTP error
+ * status and available error text.
+ */
+async function readErrorResponseBody(body: Buffer | Readable): Promise<string> {
+	let encoding: string | undefined;
+	if (body instanceof IncomingMessage) {
+		parseIncomingMessage(body);
+		encoding = body.encoding;
+	}
+
+	const buffer = Buffer.isBuffer(body) ? body : await streamToBufferPartial(body);
+	if (buffer.length === 0) {
+		return '';
+	}
+
+	try {
+		return await binaryToString(buffer, encoding);
+	} catch {
+		return buffer.toString('utf-8');
+	}
+}
+
+async function sendLegacyRequest(
+	requestObject: IRequestOptions,
+	ssrfBridge: SsrfBridge | undefined,
+	logger: Logger,
+	callbacks?: LegacyRequestCallbacks,
+): Promise<unknown> {
 	let axiosConfig: AxiosRequestConfig = {
 		maxBodyLength: Infinity,
 		// -1 is the Axios sentinel for "no limit". Infinity also means no limit but
@@ -68,6 +114,7 @@ export async function executeLegacyRequest(
 		await buildAxiosConfigFromLegacyRequest(requestObject, ssrfBridge),
 	);
 	throwIfDomainNotAllowed(axiosConfig, requestObject.allowedDomains);
+	throwIfProxyNotAllowed(requestObject.proxy, requestObject.allowedDomains);
 
 	try {
 		const response = shouldFollowRedirectsManually(axiosConfig, requestObject.proxy, ssrfBridge)
@@ -77,7 +124,7 @@ export async function executeLegacyRequest(
 					agentOptions: buildLegacyAgentOptions(requestObject),
 					allowedDomains: requestObject.allowedDomains,
 					sendCredentialsOnCrossOriginRedirect:
-						requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+						requestObject.sendCredentialsOnCrossOriginRedirect ?? false,
 					authSendImmediately: requestObject.auth?.sendImmediately,
 				})
 			: await invokeAxios(axiosConfig, requestObject.auth?.sendImmediately);
@@ -101,7 +148,7 @@ export async function executeLegacyRequest(
 		const { config, response } = error;
 
 		// Axios hydrates the original error with more data. We extract them.
-		// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
+		// https://github.com/axios/axios/blob/v1.x/lib/core/AxiosError.js
 		// Note: `code` is ignored as it's an expected part of the errorData.
 		if (error.isAxiosError) {
 			error.config = error.request = undefined;
@@ -120,7 +167,7 @@ export async function executeLegacyRequest(
 				let responseData = response.data;
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
-					responseData = await binaryToString(responseData);
+					responseData = await readErrorResponseBody(responseData);
 				}
 
 				if (requestObject.simple === false) {

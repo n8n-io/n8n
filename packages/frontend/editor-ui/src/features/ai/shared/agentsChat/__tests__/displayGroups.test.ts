@@ -1,9 +1,32 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildDisplayGroups, isGroupable } from '../displayGroups';
+import { createStoppedMessage } from '../messageMappers';
 import type { AgentsChatMessage } from '../types';
 
 describe('shared agents chat display groups', () => {
+	it('keeps the notice of a stopped turn in its own group, below the reasoning', () => {
+		const groups = buildDisplayGroups([
+			{
+				id: 'a1',
+				executionId: 'exec-1',
+				role: 'assistant',
+				content: '',
+				thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a tool.' }],
+				toolCalls: [{ tool: 'search', toolCallId: 'tc1', state: 'cancelled' }],
+			},
+			createStoppedMessage('exec-1'),
+		]);
+
+		expect(groups.map(({ kind, id }) => [kind, id])).toEqual([
+			['toolRun', 'a1'],
+			['message', 'exec-1:stopped'],
+		]);
+		expect(
+			groups.map((group) => 'thinkingSegments' in group && group.thinkingSegments.length),
+		).toEqual([1, 0]);
+	});
+
 	it('keeps the results entry unchanged when the assistant reply arrives', () => {
 		const previous: AgentsChatMessage = {
 			id: 'previous',
@@ -33,6 +56,66 @@ describe('shared agents chat display groups', () => {
 			'wake:background-job-signal',
 			'retry:background-job-signal',
 		]);
+	});
+
+	it('keeps budget notices from a tool-only folded message on the group', () => {
+		const messages: AgentsChatMessage[] = [
+			{ id: 'u1', role: 'user', content: 'start' },
+			{
+				id: 'a1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'search', toolCallId: 'tc1', state: 'done' }],
+				budgetNotices: [{ id: 'n1', code: 'budget.session' }],
+			},
+		];
+
+		const groups = buildDisplayGroups(messages);
+
+		expect(groups[1].kind).toBe('toolRun');
+		if (groups[1].kind === 'toolRun') {
+			expect(groups[1].finalMessage).toBeUndefined();
+			expect(groups[1].budgetNotices).toEqual([{ id: 'n1', code: 'budget.session' }]);
+		}
+	});
+
+	it('merges budget notices across folded messages and dedupes by code', () => {
+		const messages: AgentsChatMessage[] = [
+			{
+				id: 'a1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'search', toolCallId: 'tc1', state: 'done' }],
+				budgetNotices: [{ id: 'n1', code: 'budget.alert' }],
+			},
+			{
+				id: 'a2',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'write', toolCallId: 'tc2', state: 'done' }],
+				budgetNotices: [
+					{ id: 'n2', code: 'budget.alert' },
+					{ id: 'n3', code: 'budget.monthly' },
+				],
+			},
+			{
+				id: 'a3',
+				role: 'assistant',
+				content: 'final text',
+				budgetNotices: [{ id: 'n4', code: 'budget.session' }],
+			},
+		];
+
+		const groups = buildDisplayGroups(messages);
+
+		expect(groups).toHaveLength(1);
+		if (groups[0].kind === 'toolRun') {
+			expect(groups[0].budgetNotices).toEqual([
+				{ id: 'n1', code: 'budget.alert' },
+				{ id: 'n3', code: 'budget.monthly' },
+				{ id: 'n4', code: 'budget.session' },
+			]);
+		}
 	});
 
 	it('folds consecutive assistant tool-only messages into one tool run', () => {
@@ -236,7 +319,7 @@ describe('shared agents chat display groups', () => {
 		}
 	});
 
-	it('moves reasoning from narrated tool steps to the final assistant group', () => {
+	it('moves reasoning from later tool steps to the first assistant group', () => {
 		const messages: AgentsChatMessage[] = [
 			{ id: 'u1', role: 'user', content: 'research this', executionId: 'exec-1' },
 			{
@@ -270,8 +353,8 @@ describe('shared agents chat display groups', () => {
 		expect(groups[1].kind).toBe('message');
 		expect(groups[2].kind).toBe('toolRun');
 		if (groups[1].kind !== 'message' || groups[2].kind !== 'toolRun') return;
-		expect(groups[1].thinkingSegments).toEqual([]);
-		expect(groups[2].thinkingSegments.map((segment) => segment.id)).toEqual(['r1', 'r2', 'r3']);
+		expect(groups[1].thinkingSegments.map((segment) => segment.id)).toEqual(['r1', 'r2', 'r3']);
+		expect(groups[2].thinkingSegments).toEqual([]);
 	});
 
 	it('does not group assistant messages with visible text as tool-only messages', () => {

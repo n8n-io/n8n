@@ -370,6 +370,7 @@ const goToUpgrade = () => {
 			<div :class="$style.execHeaderRight">
 				<ExecutionStopAllText :executions="props.executions" />
 				<ExecutionsFilter
+					:initial-filters="props.filters"
 					:workflows="workflows"
 					class="execFilter"
 					@filter-changed="onFilterChanged"
@@ -488,6 +489,8 @@ const goToUpgrade = () => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .execListWrapper {
 	padding: var(--spacing--lg) var(--spacing--2xl);
 	display: flex;
@@ -495,6 +498,10 @@ const goToUpgrade = () => {
 	overflow: hidden;
 	width: 100%;
 	max-width: var(--content-container--width);
+
+	@include breakpoints.breakpoint('sm-and-down') {
+		padding: var(--spacing--sm) var(--spacing--sm) 0;
+	}
 }
 
 .execList {

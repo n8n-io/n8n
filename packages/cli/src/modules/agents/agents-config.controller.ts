@@ -1,4 +1,9 @@
-import { type AgentConfigValidationResponse, UpdateAgentConfigDto } from '@n8n/api-types';
+import {
+	type AgentBudgetSpend,
+	type AgentConfigValidationResponse,
+	UpdateAgentConfigDto,
+} from '@n8n/api-types';
+import { budgetMonthKey } from '@n8n/agents';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, ProjectScope, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -7,9 +12,11 @@ import { AgentsCredentialProvider } from './adapters/agents-credential-provider'
 import { AgentConfigService } from './agent-config.service';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentValidationService } from './agent-validation.service';
+import { AgentSpendLedger } from './budget-guardrail';
 import { AgentRepository } from './repositories/agent.repository';
+import { AgentsService } from './agents.service';
 import { getAgentConfigHash } from './utils/agent-config-hash';
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from './agent-write-lock.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@n8n/errors';
 
@@ -21,8 +28,24 @@ export class AgentsConfigController {
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRepository: AgentRepository,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
+		private readonly agentSpendLedger: AgentSpendLedger,
+		private readonly agentsService: AgentsService,
 	) {}
+
+	@Get('/:agentId/budget')
+	@ProjectScope('agent:read')
+	async getBudget(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentBudgetSpend> {
+		const { projectId, agentId } = req.params;
+		const exists = await this.agentRepository.existsByIdAndProjectId(agentId, projectId);
+		if (!exists) {
+			throw new NotFoundError('Agent not found');
+		}
+		const spentUsd = await this.agentSpendLedger.read(budgetMonthKey(agentId));
+		return { spentUsd };
+	}
 
 	@Get('/:agentId/config')
 	@ProjectScope('agent:read')
@@ -59,6 +82,9 @@ export class AgentsConfigController {
 			agent,
 			projectId,
 			credentialProvider,
+			'publish',
+			undefined,
+			req.user,
 		);
 	}
 
@@ -71,20 +97,37 @@ export class AgentsConfigController {
 		@Body payload: UpdateAgentConfigDto,
 	) {
 		const { projectId } = req.params;
-		const { config, baseConfigHash } = payload;
+		const { config, baseConfigHash, tags } = payload;
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			projectId,
 			agentId,
 			'update',
 		);
-		return await this.agentConfigService.updateConfig(agentId, projectId, config, req.user, {
-			baseConfigHash,
-			modifiedBy: 'user',
-			pushRef: req.headers?.['push-ref'],
-		});
+		// Validate the tag write before the config is committed, so a rejected
+		// tag list cannot leave the request half-applied. Omitted `tags` leave
+		// the agent's tags alone; an explicit list replaces them after the save.
+		const validatedTags =
+			tags === undefined
+				? undefined
+				: await this.agentsService.validateAgentTags(agentId, projectId, tags);
+		const result = await this.agentConfigService.updateConfig(
+			agentId,
+			projectId,
+			config,
+			req.user,
+			{
+				baseConfigHash,
+				modifiedBy: 'user',
+				pushRef: req.headers?.['push-ref'],
+			},
+		);
+		if (validatedTags !== undefined) {
+			await this.agentsService.applyValidatedAgentTags(agentId, validatedTags);
+		}
+		return result;
 	}
 
 	@Delete('/:agentId/tools/:toolId')
@@ -97,7 +140,7 @@ export class AgentsConfigController {
 	) {
 		const { projectId } = req.params;
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			projectId,

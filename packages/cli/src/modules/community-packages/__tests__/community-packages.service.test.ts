@@ -3,7 +3,11 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, randomName } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
-import { N8N_NODES_API_VERSION, type PublicInstalledPackage } from 'n8n-workflow';
+import {
+	N8N_NODES_API_VERSION,
+	parseNodesApiLevel,
+	type PublicInstalledPackage,
+} from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path, { join } from 'node:path';
@@ -11,9 +15,10 @@ import { mock } from 'vitest-mock-extended';
 
 import { NPM_PACKAGE_STATUS_GOOD } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { CredentialTypeConflictError } from '@/errors/response-errors/credential-type-conflict.error';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
 import { mockPackageName, mockPackagePair } from '@test-integration/utils';
 
@@ -51,6 +56,9 @@ const execMock: typeof execFile = ((...args) => {
 }) as typeof execFile;
 
 vi.mocked(execFile).mockImplementation(execMock);
+
+const { major: supportedMajor, minor: supportedMinor } = parseNodesApiLevel(N8N_NODES_API_VERSION)!;
+const oneMinorAboveSupported = `${supportedMajor}.${supportedMinor + 1}`;
 
 describe('CommunityPackagesService', () => {
 	const license = mock<License>();
@@ -131,6 +139,20 @@ describe('CommunityPackagesService', () => {
 				).toThrow(`Invalid version: ${version}`);
 			},
 		);
+
+		test.each([
+			['n8n-nodes-test', 'n8n-nodes-test', undefined, undefined],
+			['n8n-nodes-test@1.2.3', 'n8n-nodes-test', undefined, '1.2.3'],
+			['@scope/n8n-nodes-test', '@scope/n8n-nodes-test', '@scope', undefined],
+			['@scope/n8n-nodes-test@1.2.3', '@scope/n8n-nodes-test', '@scope', '1.2.3'],
+		])('should parse "%s"', (rawString, packageName, scope, version) => {
+			expect(communityPackagesService.parseNpmPackageName(rawString)).toEqual({
+				rawString,
+				packageName,
+				scope,
+				version,
+			});
+		});
 
 		test.each(['n8n-nodes-base', '@n8n/n8n-nodes-langchain'])(
 			'should reject reserved package name %s',
@@ -602,6 +624,49 @@ describe('CommunityPackagesService', () => {
 			expect(loadNodesAndCredentials.releaseTypes).toHaveBeenCalledTimes(1);
 		});
 
+		describe('credential type conflicts', () => {
+			const conflictError = new CredentialTypeConflictError(PACKAGE_NAME, {
+				awsAssumeRole: 'n8n-nodes-base',
+			});
+
+			test('should only warn on conflicts by default, so restores and reinstalls keep loading', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+				await communityPackagesService.updatePackage(
+					installedPackageForUpdateTest.packageName,
+					installedPackageForUpdateTest,
+				);
+
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME, {
+					rejectCredentialTypeConflicts: false,
+				});
+			});
+
+			test('should reject the new version and reload the previous one without the check', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+				loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(conflictError);
+
+				await expect(
+					communityPackagesService.updatePackage(
+						installedPackageForUpdateTest.packageName,
+						installedPackageForUpdateTest,
+						undefined,
+						undefined,
+						{ rejectCredentialTypeConflicts: true },
+					),
+				).rejects.toBe(conflictError);
+
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(2);
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenNthCalledWith(1, PACKAGE_NAME, {
+					rejectCredentialTypeConflicts: true,
+				});
+				// A previous version that already had the conflict must keep loading.
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenNthCalledWith(2, PACKAGE_NAME);
+				expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
+				expect(publisher.publishCommand).not.toHaveBeenCalled();
+			});
+		});
+
 		test('should restore the previous package without reloading when the download fails during an update', async () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
@@ -661,7 +726,7 @@ describe('CommunityPackagesService', () => {
 			test('should reject the update when the package requires a newer node API version', async () => {
 				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 
-				await expect(updateToIncompatible(N8N_NODES_API_VERSION + 1)).rejects.toThrow(
+				await expect(updateToIncompatible(oneMinorAboveSupported)).rejects.toThrow(
 					"This community node isn't compatible with your version of n8n. Update n8n to use it.",
 				);
 
@@ -673,7 +738,7 @@ describe('CommunityPackagesService', () => {
 			test('should reject the update when the declared node API version is malformed', async () => {
 				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 
-				await expect(updateToIncompatible('3')).rejects.toThrow('invalid n8n node API version');
+				await expect(updateToIncompatible(3.1)).rejects.toThrow('invalid n8n node API version');
 
 				expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
 				expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
@@ -684,8 +749,22 @@ describe('CommunityPackagesService', () => {
 
 				await expect(updateToIncompatible(N8N_NODES_API_VERSION)).resolves.toBe(packageAfterUpdate);
 
-				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME, {
+					rejectCredentialTypeConflicts: false,
+				});
 				expect(installedPackageRepository.replaceInstalledPackageWithNodes).toHaveBeenCalled();
+			});
+
+			test('should update to a package that declares the supported level with an explicit minor', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+				await expect(updateToIncompatible(`${supportedMajor}.${supportedMinor}`)).resolves.toBe(
+					packageAfterUpdate,
+				);
+
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME, {
+					rejectCredentialTypeConflicts: false,
+				});
 			});
 		});
 
@@ -936,7 +1015,9 @@ describe('CommunityPackagesService', () => {
 			);
 
 			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
-			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME, {
+				rejectCredentialTypeConflicts: false,
+			});
 			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalledTimes(1);
 
 			expect(installedPackageRepository.replaceInstalledPackageWithNodes).toHaveBeenCalledWith(
@@ -1404,7 +1485,7 @@ describe('CommunityPackagesService', () => {
 				JSON.stringify({
 					name: 'package-1',
 					version: '1.0.0',
-					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION + 1 },
+					n8n: { n8nNodesApiVersion: oneMinorAboveSupported },
 				}),
 			);
 
@@ -1424,7 +1505,7 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 			config.reinstallMissing = true;
 			vi.mocked(readFile).mockResolvedValue(
-				JSON.stringify({ name: 'package-1', version: '1.0.0', n8n: { n8nNodesApiVersion: '3' } }),
+				JSON.stringify({ name: 'package-1', version: '1.0.0', n8n: { n8nNodesApiVersion: 3.1 } }),
 			);
 
 			await communityPackagesService.checkForMissingPackages();

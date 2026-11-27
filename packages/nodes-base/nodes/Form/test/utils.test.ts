@@ -35,7 +35,12 @@ import type {
 	MultiPartFormData,
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
-import { BINARY_MODE_COMBINED, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
+import {
+	BINARY_MODE_COMBINED,
+	FORM_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	WAIT_NODE_TYPE,
+} from 'n8n-workflow';
 
 import {
 	formWebhook,
@@ -55,11 +60,17 @@ import {
 	validateFormPageAuth,
 	generateFormUserAuthToken,
 	verifyFormUserAuthToken,
+	setFormAuthCookie,
 } from '../utils/utils';
 import { isIpAllowed } from '../../Webhook/utils';
 import type { Mock } from 'vitest';
 
 Container.set(InstanceSettings, { hmacSignatureSecret: 'test-hmac-secret' } as InstanceSettings);
+
+const SPECIAL_CHARACTERS_TEMPLATE = '<div>{{ $json.value }}</div>';
+const SPECIAL_CHARACTERS_VALUE = "<p>1$&2 1$$2 '^[0-9]+$'</p>";
+const SPECIAL_CHARACTERS_LITERAL_HTML = "<div><p>1$&2 1$$2 '^[0-9]+$'</p></div>";
+const SPECIAL_CHARACTERS_LEGACY_HTML = "<div><p>1{{ $json.value }}2 1$2 '^[0-9]+</div></p></div>";
 
 describe('FormTrigger, parseFormDescription', () => {
 	it('should remove HTML tags and truncate to 150 characters', () => {
@@ -1043,7 +1054,9 @@ describe('FormTrigger, formWebhook', () => {
 			await formWebhook(ctx);
 
 			expect(ctx.completeN8nOAuth2Flow).not.toHaveBeenCalled();
-			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, { query: 'foo=bar&code=x' });
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, {
+				query: 'foo=bar&code=x',
+			});
 		});
 
 		it('re-appends the query stashed as flow metadata on a valid callback', async () => {
@@ -1130,7 +1143,12 @@ describe('FormTrigger, formWebhook', () => {
 			const result = await formWebhook(ctx);
 
 			expect(ctx.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
-			expect(ctx.establishTriggerIdentity).toHaveBeenCalledWith('as-token', resourceUrl);
+			// The subject rides in the seal, so a worker never needs the token to resolve it.
+			expect(ctx.establishTriggerIdentity).toHaveBeenCalledWith(
+				'as-token',
+				resourceUrl,
+				authedUser.id,
+			);
 			expect(result).toMatchObject({ webhookResponse: { status: 200 } });
 		});
 
@@ -1147,6 +1165,44 @@ describe('FormTrigger, formWebhook', () => {
 			expect(ctx.establishTriggerIdentity).not.toHaveBeenCalled();
 			expect(status).toHaveBeenCalledWith(401);
 			expect(send).toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('names the resource metadata on the 401 when the token is rejected', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { status, setHeader } = setupContext(ctx, {
+				method: 'POST',
+				headers: { 'x-auth-token': 'bad-token' },
+			});
+			const challenge =
+				'Bearer resource_metadata="http://localhost:5678/.well-known/oauth-protected-resource/form/test", error="invalid_token"';
+			ctx.validateN8nOAuth2Token.mockResolvedValue({
+				valid: false,
+				reason: 'invalid_token',
+				challenge,
+			});
+
+			await formWebhook(ctx);
+
+			expect(setHeader).toHaveBeenCalledWith('WWW-Authenticate', challenge);
+			expect(status).toHaveBeenCalledWith(401);
+		});
+
+		it('answers a POST without a token with a 401 that still carries the challenge', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { status, setHeader } = setupContext(ctx, { method: 'POST' });
+			ctx.validateN8nOAuth2Token.mockResolvedValue({
+				valid: false,
+				reason: 'invalid_token',
+				challenge: 'Bearer resource_metadata="x"',
+			});
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.validateN8nOAuth2Token).toHaveBeenCalledWith('', resourceUrl);
+			expect(ctx.establishTriggerIdentity).not.toHaveBeenCalled();
+			expect(setHeader).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer resource_metadata="x"');
+			expect(status).toHaveBeenCalledWith(401);
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
@@ -1461,6 +1517,46 @@ describe('FormTrigger, formWebhook', () => {
 			});
 		});
 	});
+
+	it.each([
+		{ type: FORM_TRIGGER_NODE_TYPE, typeVersion: 2.7, expected: SPECIAL_CHARACTERS_LITERAL_HTML },
+		{ type: FORM_TRIGGER_NODE_TYPE, typeVersion: 2.6, expected: SPECIAL_CHARACTERS_LEGACY_HTML },
+		{ type: WAIT_NODE_TYPE, typeVersion: 1.2, expected: SPECIAL_CHARACTERS_LITERAL_HTML },
+		{ type: WAIT_NODE_TYPE, typeVersion: 1.1, expected: SPECIAL_CHARACTERS_LEGACY_HTML },
+	])(
+		'resolves html field expressions for $type version $typeVersion',
+		async ({ type, typeVersion, expected }) => {
+			const ctx = mock<IWebhookFunctions>();
+			const formFields: FormFieldsParameter = [
+				{ fieldLabel: 'Custom HTML', fieldType: 'html', html: SPECIAL_CHARACTERS_TEMPLATE },
+			];
+			ctx.getNode.mockReturnValue(mock<INode>({ type, typeVersion, name: 'Form' }));
+			ctx.getNodeParameter.calledWith('options').mockReturnValue({});
+			ctx.getNodeParameter.calledWith('authentication', 'none').mockReturnValue('none');
+			ctx.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+			ctx.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+			ctx.getNodeParameter.calledWith('formDescription').mockReturnValue('');
+			ctx.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+			ctx.getRequestObject.mockReturnValue(
+				mock<ReturnType<IWebhookFunctions['getRequestObject']>>({
+					method: 'GET',
+					query: {},
+					headers: {},
+				}),
+			);
+			ctx.getResponseObject.mockReturnValue(
+				mock<ReturnType<IWebhookFunctions['getResponseObject']>>(),
+			);
+			ctx.getMode.mockReturnValue('manual');
+			ctx.getInstanceId.mockReturnValue('instanceId');
+			ctx.getChildNodes.mockReturnValue([]);
+			ctx.evaluateExpression.mockReturnValue(SPECIAL_CHARACTERS_VALUE);
+
+			await formWebhook(ctx);
+
+			expect(formFields[0].html).toBe(sanitizeHtml(expected));
+		},
+	);
 });
 
 describe('FormTrigger, prepareFormData', () => {
@@ -3042,6 +3138,7 @@ describe('resolveRawData', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
+		mockContext.getNode.mockReturnValue(mock<INode>({ type: FORM_NODE_TYPE, typeVersion: 2.6 }));
 		mockContext.evaluateExpression.mockImplementation((expression: string) => {
 			const key = expression.replace(/[{}]/g, '').trim();
 			return key.split('.').reduce((obj, prop) => obj?.[prop], dummyData as any);
@@ -3154,6 +3251,16 @@ describe('resolveRawData', () => {
 		expect(resolveRawData(mockContext, input)).toBe(
 			'Address object: {"street":"123 Main St","zipCode":"10001","country":"USA"}.',
 		);
+	});
+
+	it.each([
+		{ typeVersion: 2.6, expected: SPECIAL_CHARACTERS_LITERAL_HTML },
+		{ typeVersion: 2.5, expected: SPECIAL_CHARACTERS_LEGACY_HTML },
+	])('resolves expressions for form node version $typeVersion', ({ typeVersion, expected }) => {
+		mockContext.getNode.mockReturnValue(mock<INode>({ type: FORM_NODE_TYPE, typeVersion }));
+		mockContext.evaluateExpression.mockReturnValue(SPECIAL_CHARACTERS_VALUE);
+
+		expect(resolveRawData(mockContext, `=${SPECIAL_CHARACTERS_TEMPLATE}`)).toBe(expected);
 	});
 });
 
@@ -3678,6 +3785,9 @@ describe('parseFormFields - HTML field expression resolution', () => {
 
 	beforeEach(() => {
 		mockWebhookFunctions = mock<IWebhookFunctions>();
+		mockWebhookFunctions.getNode.mockReturnValue(
+			mock<INode>({ type: FORM_NODE_TYPE, typeVersion: 2.6 }),
+		);
 	});
 
 	it('should resolve expressions in html fields', () => {
@@ -3805,6 +3915,29 @@ describe('parseFormFields - HTML field expression resolution', () => {
 
 		expect(result[0].html).toBe('');
 	});
+
+	it.each([
+		{ typeVersion: 2.6, expected: SPECIAL_CHARACTERS_LITERAL_HTML },
+		{ typeVersion: 2.5, expected: SPECIAL_CHARACTERS_LEGACY_HTML },
+	])(
+		'resolves html field expressions for form node version $typeVersion',
+		({ typeVersion, expected }) => {
+			mockWebhookFunctions.getNode.mockReturnValue(
+				mock<INode>({ type: FORM_NODE_TYPE, typeVersion }),
+			);
+			mockWebhookFunctions.getNodeParameter.mockReturnValue([
+				{ fieldLabel: 'Custom HTML', fieldType: 'html', html: SPECIAL_CHARACTERS_TEMPLATE },
+			]);
+			mockWebhookFunctions.evaluateExpression.mockReturnValue(SPECIAL_CHARACTERS_VALUE);
+
+			const result = parseFormFields(mockWebhookFunctions, {
+				defineForm: 'fields',
+				fieldsParameterName: 'formFields.values',
+			});
+
+			expect(result[0].html).toBe(expected);
+		},
+	);
 });
 
 describe('validateFormPageAuth', () => {
@@ -4229,6 +4362,75 @@ describe('validateFormPageAuth', () => {
 		expect(res.writeHead).toHaveBeenCalledWith(
 			302,
 			expect.objectContaining({ Location: expect.stringContaining('/signin?redirect=') }),
+		);
+	});
+});
+
+// The browser sends a cookie to every path under its own. Each run's cookie has
+// its own name, so a shared path would send all unexpired run cookies with every
+// page request until the header grew too large.
+describe('setFormAuthCookie', () => {
+	const setup = (resumeFormUrl: string | Error) => {
+		const cookie = vi.fn();
+		const ctx = mock<IWebhookFunctions>();
+		ctx.getRequestObject.mockReturnValue({
+			headers: { host: 'localhost:5678' },
+			protocol: 'http',
+		} as unknown as Request);
+		ctx.getResponseObject.mockReturnValue({ cookie } as never);
+		ctx.evaluateExpression.mockImplementation(() => {
+			if (resumeFormUrl instanceof Error) throw resumeFormUrl;
+			return resumeFormUrl;
+		});
+		return { ctx, cookie };
+	};
+
+	it("scopes a run's cookie to that run's pages", () => {
+		const { ctx, cookie } = setup('http://localhost:5678/form-waiting/123?signature=abc');
+
+		setFormAuthCookie(ctx, 'token', { workflowId: 'wf-1', executionId: '123' });
+
+		expect(cookie).toHaveBeenCalledWith(
+			'n8n-form-auth-ex-123',
+			'token',
+			expect.objectContaining({ path: '/form-waiting/123' }),
+		);
+	});
+
+	it('keeps an instance path prefix in the run path', () => {
+		const { ctx, cookie } = setup('https://example.com/n8n/form-waiting/123');
+
+		setFormAuthCookie(ctx, 'token', { workflowId: 'wf-1', executionId: '123' });
+
+		expect(cookie).toHaveBeenCalledWith(
+			'n8n-form-auth-ex-123',
+			'token',
+			expect.objectContaining({ path: '/n8n/form-waiting/123' }),
+		);
+	});
+
+	it("scopes the trigger's cookie to the form-waiting base path", () => {
+		// The first page of a run is served before the trigger knows the run's id.
+		const { ctx, cookie } = setup('http://localhost:5678/form-waiting/123');
+
+		setFormAuthCookie(ctx, 'token', { workflowId: 'wf-1' });
+
+		expect(cookie).toHaveBeenCalledWith(
+			'n8n-form-auth-wf-wf-1',
+			'token',
+			expect.objectContaining({ path: '/form-waiting' }),
+		);
+	});
+
+	it('falls back to the root path when the form-waiting path is unknown', () => {
+		const { ctx, cookie } = setup(new Error('no resume URL'));
+
+		setFormAuthCookie(ctx, 'token', { workflowId: 'wf-1', executionId: '123' });
+
+		expect(cookie).toHaveBeenCalledWith(
+			'n8n-form-auth-ex-123',
+			'token',
+			expect.objectContaining({ path: '/' }),
 		);
 	});
 });

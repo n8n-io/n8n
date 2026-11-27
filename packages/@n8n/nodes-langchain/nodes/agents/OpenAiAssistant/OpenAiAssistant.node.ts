@@ -8,9 +8,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { aiClientFetch } from '@n8n/ai-utilities';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { getConnectedTools, mergeCustomHeaders } from '@utils/helpers';
+import { createRunCancellation } from '@utils/agent-execution/createRunCancellation';
+import { getConnectedTools, mergeCustomHeaders, getRequiredApiKey } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool } from './utils';
@@ -117,7 +119,7 @@ export class OpenAiAssistant implements INodeType {
 				name: 'model',
 				type: 'options',
 				description:
-					'The model which will be used to power the assistant. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>. The Retrieval tool requires gpt-3.5-turbo-1106 and gpt-4-1106-preview models.',
+					'The model which will be used to power the assistant. <a href="https://developers.openai.com/api/docs/models">Learn more</a>. The Retrieval tool requires gpt-3.5-turbo-1106 and gpt-4-1106-preview models.',
 				required: true,
 				displayOptions: {
 					show: {
@@ -182,7 +184,7 @@ export class OpenAiAssistant implements INodeType {
 					},
 				},
 				description:
-					'The assistant to use. <a href="https://beta.openai.com/docs/assistants/overview">Learn more</a>.',
+					'The assistant to use. <a href="https://developers.openai.com/api/docs/assistants/migration">Learn more</a>.',
 				typeOptions: {
 					loadOptions: {
 						routing: {
@@ -278,7 +280,7 @@ export class OpenAiAssistant implements INodeType {
 			},
 			{
 				displayName:
-					'Upload files for retrieval using the <a href="https://platform.openai.com/playground" target="_blank">OpenAI website<a/>',
+					'Upload files for retrieval using the <a href="https://platform.openai.com/storage/files" target="_blank">OpenAI website<a/>',
 				name: 'noticeTools',
 				type: 'notice',
 				typeOptions: {
@@ -355,7 +357,8 @@ export class OpenAiAssistant implements INodeType {
 				}
 
 				const client = new OpenAIClient({
-					apiKey: credentials.apiKey as string,
+					fetch: aiClientFetch,
+					apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 					maxRetries: options.maxRetries ?? 2,
 					timeout: options.timeout ?? 10000,
 					baseURL: options.baseURL,
@@ -393,11 +396,17 @@ export class OpenAiAssistant implements INodeType {
 					tools,
 				});
 
-				const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
-					content: input,
-					signal: this.getExecutionCancelSignal(),
-					timeout: options.timeout ?? 10000,
-				});
+				const runCancellation = createRunCancellation(this.getExecutionCancelSignal());
+				const response = await runCancellation.abortOnFailure(
+					agentExecutor.withConfig(getTracingConfig(this)).invoke(
+						{
+							content: input,
+							signal: runCancellation.signal,
+							timeout: options.timeout ?? 10000,
+						},
+						{ signal: runCancellation.signal },
+					),
+				);
 
 				returnData.push({ json: response });
 			} catch (error) {

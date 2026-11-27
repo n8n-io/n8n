@@ -34,6 +34,7 @@ const COMPARED_KEYS = [
 	'messageBudget',
 	'credentials',
 	'credentialFixture',
+	'requiresMemoryCompaction',
 	'datasets',
 	// Round-trips faithfully: PATCH /cases/:id reconciles scenario rows by name
 	// (lang-tracer #48) and the export emits them back in disk shape.
@@ -121,6 +122,9 @@ function projectComparable(src: unknown): Record<string, unknown> {
 		// The export only emits `messageBudget` for multi-turn cases (it's ignored for
 		// single-turn auto-approve builds), so ignore it there to stay convergent.
 		if (key === 'messageBudget' && !isMultiTurn) continue;
+		// The export omits a stored `false` for requiresMemoryCompaction (the column
+		// default), so a disk `false` folds to absent to keep re-pushes convergent.
+		if (key === 'requiresMemoryCompaction' && value === false) continue;
 		// The loader defaults an absent disk `datasets` while the export omits (or
 		// nulls) the stored default — fold the default to absent on both sides, and
 		// compare order-insensitively since tiers are a set.

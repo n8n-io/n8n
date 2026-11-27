@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
-import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Schedule } from '@n8n/scheduler';
 import { computeFirstRunAt, validateSchedule } from '@n8n/scheduler';
@@ -111,9 +110,6 @@ export class ScheduleTriggerJobRegistrar {
 	/** How a fixed second/minute interval is represented (see `SchedulerConfig`). */
 	private readonly triggerNodeMode: 'legacy' | 'new';
 
-	/** Whether a node's "Skip Durable Scheduler" toggle is honored (see `SchedulerConfig`). */
-	private readonly allowSkipDurableScheduler: boolean;
-
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
@@ -122,12 +118,14 @@ export class ScheduleTriggerJobRegistrar {
 		private readonly owner: WorkflowScheduledJobOwner,
 	) {
 		this.intercepting =
+			// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 			globalConfig.scheduler.enabled && workflowsConfig.useWorkflowPublicationService;
 		this.defaultTimezone = globalConfig.generic.timezone;
+		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		this.triggerNodeMode = globalConfig.scheduler.triggerNodeMode;
-		this.allowSkipDurableScheduler = globalConfig.scheduler.allowSkipDurableScheduler;
 		this.logger = this.logger.scoped('scheduler');
 
+		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		if (globalConfig.scheduler.enabled && !workflowsConfig.useWorkflowPublicationService) {
 			this.logger.warn(
 				'N8N_SCHEDULER_ENABLED is set but the workflow publication service is disabled. The durable scheduler cannot take over schedule and cron triggers, which keep using the legacy in-memory engine.',
@@ -145,8 +143,7 @@ export class ScheduleTriggerJobRegistrar {
 	interceptsNode(node: INode): boolean {
 		if (
 			!this.intercepting ||
-			(node.type !== SCHEDULE_TRIGGER_NODE_TYPE && node.type !== CRON_NODE_TYPE) ||
-			(this.allowSkipDurableScheduler && node.parameters?.skipDurableScheduler === true)
+			(node.type !== SCHEDULE_TRIGGER_NODE_TYPE && node.type !== CRON_NODE_TYPE)
 		) {
 			return false;
 		}
@@ -380,26 +377,6 @@ export class ScheduleTriggerJobRegistrar {
 	 */
 	async removeWorkflow(workflowId: string): Promise<void> {
 		await this.jobProvisioner.deprovisionOwnerTaskType(
-			this.owner.ref(workflowId),
-			SCHEDULE_TRIGGER_TASK_TYPE,
-		);
-	}
-
-	/**
-	 * Delete the workflow's durable jobs within a caller-owned transaction, so a
-	 * publication deactivation commits their removal atomically with its
-	 * `active = false` write instead of routing through the leader. Durable rows
-	 * are DB state: their removal must not depend on a leader hand-off landing,
-	 * or a lost one leaves jobs firing a workflow already marked inactive. Keyed
-	 * and idempotent like {@link removeWorkflow}, so the leader's later
-	 * per-node teardown finds nothing left to do.
-	 *
-	 * @param manager The transaction the caller's deactivation writes run in.
-	 * @param workflowId The deactivating workflow whose durable jobs to delete.
-	 */
-	async removeWorkflowInTransaction(manager: EntityManager, workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionOwnerTaskTypeInTransaction(
-			manager,
 			this.owner.ref(workflowId),
 			SCHEDULE_TRIGGER_TASK_TYPE,
 		);

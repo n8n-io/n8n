@@ -3,7 +3,6 @@ import type { Logger } from '@n8n/backend-common';
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import type { EntityManager } from '@n8n/db';
 import type { CronDefinition } from '@n8n/scheduler';
 import { Cron as CronNode } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
@@ -87,15 +86,11 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 	const lastProvisionedGrace = () => lastRequest().misfireGraceSeconds;
 
-	const makeRegistrar = ({
-		schedulerEnabled = true,
-		publicationEnabled = true,
-		allowSkipDurableScheduler = false,
-	} = {}) =>
+	const makeRegistrar = ({ schedulerEnabled = true, publicationEnabled = true } = {}) =>
 		new ScheduleTriggerJobRegistrar(
 			mockLogger(),
 			mock<GlobalConfig>({
-				scheduler: { enabled: schedulerEnabled, allowSkipDurableScheduler },
+				scheduler: { enabled: schedulerEnabled },
 				generic: { timezone: 'UTC' },
 			}),
 			mock<WorkflowsConfig>({ useWorkflowPublicationService: publicationEnabled }),
@@ -141,39 +136,13 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			expect(makeRegistrar().interceptsNode(other)).toBe(false);
 		});
 
-		// Only the Schedule Trigger declares `skipDurableScheduler`; the Workflow
-		// constructor strips it from any other node, so the toggle cases use that type.
-		it('does not intercept a node opted out via skip when the escape hatch is enabled', () => {
-			const skippingNode = mock<INode>({
+		it('ignores a stale saved skipDurableScheduler parameter', () => {
+			const staleNode = mock<INode>({
 				id: NODE_ID,
 				type: SCHEDULE_TRIGGER_NODE_TYPE,
 				parameters: { skipDurableScheduler: true },
 			});
-			expect(makeRegistrar({ allowSkipDurableScheduler: true }).interceptsNode(skippingNode)).toBe(
-				false,
-			);
-		});
-
-		it('still intercepts a skipping node when the escape hatch is disabled', () => {
-			const skippingNode = mock<INode>({
-				id: NODE_ID,
-				type: SCHEDULE_TRIGGER_NODE_TYPE,
-				parameters: { skipDurableScheduler: true },
-			});
-			expect(makeRegistrar({ allowSkipDurableScheduler: false }).interceptsNode(skippingNode)).toBe(
-				true,
-			);
-		});
-
-		it('intercepts a node that has not opted out even when the escape hatch is enabled', () => {
-			const keepingNode = mock<INode>({
-				id: NODE_ID,
-				type: SCHEDULE_TRIGGER_NODE_TYPE,
-				parameters: { skipDurableScheduler: false },
-			});
-			expect(makeRegistrar({ allowSkipDurableScheduler: true }).interceptsNode(keepingNode)).toBe(
-				true,
-			);
+			expect(makeRegistrar().interceptsNode(staleNode)).toBe(true);
 		});
 	});
 
@@ -977,7 +946,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				const registrar = new ScheduleTriggerJobRegistrar(
 					mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) }),
 					mock<GlobalConfig>({
-						scheduler: { enabled: true, allowSkipDurableScheduler: false },
+						scheduler: { enabled: true },
 						generic: { timezone: 'UTC' },
 					}),
 					mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
@@ -1148,20 +1117,6 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			await makeRegistrar({ schedulerEnabled: false }).removeWorkflow(WORKFLOW_ID);
 
 			expect(jobProvisioner.deprovisionOwnerTaskType).toHaveBeenCalledWith(
-				OWNER_REF,
-				SCHEDULE_TRIGGER_TASK_TYPE,
-			);
-		});
-	});
-
-	describe('removeWorkflowInTransaction', () => {
-		it("removes the workflow's durable jobs through the caller's transaction", async () => {
-			const manager = mock<EntityManager>();
-
-			await makeRegistrar().removeWorkflowInTransaction(manager, WORKFLOW_ID);
-
-			expect(jobProvisioner.deprovisionOwnerTaskTypeInTransaction).toHaveBeenCalledWith(
-				manager,
 				OWNER_REF,
 				SCHEDULE_TRIGGER_TASK_TYPE,
 			);

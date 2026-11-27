@@ -1,3 +1,6 @@
+import { AgenticTokenCacheInstance, InvokeAgentScope } from '@microsoft/opentelemetry';
+import { TracingSourcesConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { IWebhookFunctions, NodeEgressFilter } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -36,9 +39,10 @@ vi.mock('@microsoft/agents-hosting', () => ({
 	}),
 }));
 
-vi.mock('@microsoft/agents-a365-observability', () => ({
-	ExecutionType: {
-		HumanToAgent: 'HumanToAgent',
+vi.mock('@microsoft/opentelemetry', () => ({
+	AgenticTokenCacheInstance: {
+		refreshObservabilityToken: vi.fn(),
+		getObservabilityToken: vi.fn(),
 	},
 	InvokeAgentScope: {
 		start: vi.fn().mockReturnValue({
@@ -60,17 +64,6 @@ vi.mock('@microsoft/agents-a365-observability', () => ({
 			}),
 		};
 	}),
-	ObservabilityManager: {
-		configure: vi.fn().mockReturnValue({
-			start: vi.fn(),
-			shutdown: vi.fn(),
-		}),
-	},
-	defaultObservabilityConfigurationProvider: {
-		getConfiguration: vi.fn().mockReturnValue({
-			observabilityAuthenticationScopes: ['observability-scope'],
-		}),
-	},
 }));
 
 vi.mock('@microsoft/agents-a365-runtime', () => ({
@@ -238,6 +231,24 @@ describe('microsoft-utils', () => {
 			};
 		});
 
+		function useExportSettings(exportEnabled: boolean) {
+			const configs = new Map<unknown, unknown>([
+				[TracingSourcesConfig, { microsoftAgent365ExportEnabled: exportEnabled }],
+			]);
+			vi.mocked(Container.get).mockImplementation((type) => configs.get(type));
+		}
+
+		const defaultContainerGet = vi.mocked(Container.get).getMockImplementation();
+
+		beforeEach(() => {
+			useExportSettings(true);
+			vi.mocked(AgenticTokenCacheInstance.getObservabilityToken).mockReturnValue('export-token');
+		});
+
+		afterEach(() => {
+			vi.mocked(Container.get).mockImplementation(defaultContainerGet!);
+		});
+
 		test('should not register installationUpdate handler', async () => {
 			const mockTurnContext = {
 				activity: {
@@ -370,32 +381,18 @@ describe('microsoft-utils', () => {
 			expect(agent.run).toHaveBeenCalledWith(mockTurnContext);
 		});
 
-		test('should exchange observability token only when observability is enabled', async () => {
-			const originalEnv = process.env;
-			process.env = {
-				...originalEnv,
-				ENABLE_OBSERVABILITY: 'true',
-				ENABLE_A365_OBSERVABILITY_EXPORTER: 'true',
-			};
+		const exportTurnContext = {
+			activity: {
+				type: 'message',
+				text: 'Test input',
+				recipient: { agenticAppId: 'agent-id', name: 'Agent', tenantId: 'tenant-id' },
+				conversation: { id: 'conversation-id' },
+			},
+			sendActivity: vi.fn(),
+			turnState: { set: vi.fn() },
+		};
 
-			const mockTurnContext = {
-				activity: {
-					type: 'message',
-					text: 'Test input',
-					recipient: { agenticAppId: 'agent-id', name: 'Agent', tenantId: 'tenant-id' },
-					conversation: { id: 'conversation-id' },
-				},
-				sendActivity: vi.fn(),
-				turnState: { set: vi.fn() },
-			};
-
-			(invokeAgent as Mock).mockResolvedValue('Test response');
-			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
-				if (param === 'options.welcomeMessage') return 'Welcome!';
-				if (param === 'systemPrompt') return 'Test agent';
-				return undefined;
-			});
-
+		test("fills the agent's export token when the export to Microsoft is on", async () => {
 			const callback = configureAdapterProcessCallback(
 				nodeContext,
 				agent,
@@ -403,44 +400,21 @@ describe('microsoft-utils', () => {
 				activityCapture,
 			);
 
-			await callback(mockTurnContext as any);
+			await callback(exportTurnContext as any);
 
-			process.env = originalEnv;
+			const [agentId, tenantId, turnContext, authorization] = vi.mocked(
+				AgenticTokenCacheInstance.refreshObservabilityToken,
+			).mock.calls[0];
+			await authorization.exchangeToken(turnContext, 'agentic', { scopes: ['export-scope'] });
 
-			expect(agent.authorization.exchangeToken).toHaveBeenCalledWith(
-				mockTurnContext,
-				['observability-scope'],
-				'agentic',
-			);
-			expect(agent.authorization.exchangeToken).toHaveBeenCalledWith(
-				mockTurnContext,
-				'agentic',
-				expect.objectContaining({ scopes: ['mcp-scope'] }),
-			);
+			expect([agentId, tenantId]).toEqual(['agent-id', 'tenant-id']);
+			expect(agent.authorization.exchangeToken).toHaveBeenCalledWith(exportTurnContext, 'agentic', {
+				scopes: ['export-scope'],
+			});
 		});
 
-		test('should not exchange observability token when observability is disabled', async () => {
-			const originalEnv = process.env;
-			process.env = { ...originalEnv, ENABLE_OBSERVABILITY: 'false' };
-
-			const mockTurnContext = {
-				activity: {
-					type: 'message',
-					text: 'Test input',
-					recipient: { agenticAppId: 'agent-id', name: 'Agent', tenantId: 'tenant-id' },
-					conversation: { id: 'conversation-id' },
-				},
-				sendActivity: vi.fn(),
-				turnState: { set: vi.fn() },
-			};
-
-			(invokeAgent as Mock).mockResolvedValue('Test response');
-			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
-				if (param === 'options.welcomeMessage') return 'Welcome!';
-				if (param === 'systemPrompt') return 'Test agent';
-				return undefined;
-			});
-
+		test('does not fetch an export token when the export is off', async () => {
+			useExportSettings(false);
 			const callback = configureAdapterProcessCallback(
 				nodeContext,
 				agent,
@@ -448,21 +422,103 @@ describe('microsoft-utils', () => {
 				activityCapture,
 			);
 
-			await callback(mockTurnContext as any);
+			await callback(exportTurnContext as any);
 
-			process.env = originalEnv;
+			expect(AgenticTokenCacheInstance.refreshObservabilityToken).not.toHaveBeenCalled();
+		});
 
-			expect(agent.authorization.exchangeToken).not.toHaveBeenCalledWith(
-				mockTurnContext,
-				['observability-scope'],
-				'agentic',
+		test('warns and handles the message when no export token is issued', async () => {
+			vi.mocked(AgenticTokenCacheInstance.getObservabilityToken).mockReturnValue(null);
+			const logger = mock<IWebhookFunctions['logger']>();
+			Object.assign(nodeContext, { logger });
+			const callback = configureAdapterProcessCallback(
+				nodeContext,
+				agent,
+				credentials,
+				activityCapture,
 			);
-			// MCP token exchange still happens regardless
-			expect(agent.authorization.exchangeToken).toHaveBeenCalledWith(
-				mockTurnContext,
-				'agentic',
-				expect.objectContaining({ scopes: ['mcp-scope'] }),
+
+			await callback(exportTurnContext as any);
+
+			await vi.waitFor(() =>
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('no observability token was issued'),
+				),
 			);
+			expect(agent.run).toHaveBeenCalledWith(exportTurnContext);
+		});
+
+		function pendingRefresh() {
+			let finishRefresh = () => {};
+			const refresh = new Promise<undefined>((resolve) => {
+				finishRefresh = () => resolve(undefined);
+			});
+			return { refresh, finishRefresh };
+		}
+
+		function turnOfAgent(agentId: string) {
+			return {
+				...exportTurnContext,
+				activity: {
+					...exportTurnContext.activity,
+					recipient: { agenticAppId: agentId, name: 'Agent', tenantId: 'tenant-id' },
+				},
+			};
+		}
+
+		test('handles the message while the export token is still being fetched', async () => {
+			const { refresh, finishRefresh } = pendingRefresh();
+			vi.mocked(AgenticTokenCacheInstance.refreshObservabilityToken).mockReturnValueOnce(refresh);
+			const turnContext = turnOfAgent('slow-agent');
+			const callback = configureAdapterProcessCallback(
+				nodeContext,
+				agent,
+				credentials,
+				activityCapture,
+			);
+
+			await callback(turnContext as any);
+			finishRefresh();
+
+			expect(agent.run).toHaveBeenCalledWith(turnContext);
+		});
+
+		test('fetches one export token for concurrent turns of the same agent', async () => {
+			const { refresh, finishRefresh } = pendingRefresh();
+			vi.mocked(AgenticTokenCacheInstance.refreshObservabilityToken).mockReturnValueOnce(refresh);
+			const callback = configureAdapterProcessCallback(
+				nodeContext,
+				agent,
+				credentials,
+				activityCapture,
+			);
+
+			await callback(turnOfAgent('busy-agent') as any);
+			await callback(turnOfAgent('busy-agent') as any);
+			finishRefresh();
+
+			expect(AgenticTokenCacheInstance.refreshObservabilityToken).toHaveBeenCalledTimes(1);
+		});
+
+		test('warns once per agent while no export token is issued', async () => {
+			vi.mocked(AgenticTokenCacheInstance.getObservabilityToken).mockReturnValue(null);
+			const logger = mock<IWebhookFunctions['logger']>();
+			Object.assign(nodeContext, { logger });
+			const callback = configureAdapterProcessCallback(
+				nodeContext,
+				agent,
+				credentials,
+				activityCapture,
+			);
+
+			await callback(turnOfAgent('unpermitted-agent') as any);
+			await vi.waitFor(() => expect(logger.warn).toHaveBeenCalledTimes(1));
+			await callback(turnOfAgent('unpermitted-agent') as any);
+			await vi.waitFor(() =>
+				expect(AgenticTokenCacheInstance.getObservabilityToken).toHaveBeenCalledTimes(2),
+			);
+
+			expect(logger.warn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should handle MCP token exchange failure gracefully', async () => {
@@ -481,8 +537,9 @@ describe('microsoft-utils', () => {
 
 			agent.authorization.exchangeToken = vi
 				.fn()
-				.mockResolvedValueOnce({ token: 'observability-token' })
 				.mockRejectedValueOnce(new Error('Token exchange failed'));
+			const logger = mock<IWebhookFunctions['logger']>();
+			Object.assign(nodeContext, { logger });
 
 			(invokeAgent as Mock).mockResolvedValue('Test response');
 			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
@@ -500,6 +557,7 @@ describe('microsoft-utils', () => {
 
 			await callback(mockTurnContext as any);
 
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Token exchange failed'));
 			expect(agent.run).toHaveBeenCalled();
 		});
 
@@ -569,45 +627,6 @@ describe('microsoft-utils', () => {
 			await callback(mockTurnContext as any);
 
 			expect(activityCapture.input).toBe('User input message');
-		});
-
-		test('should handle observability when enabled', async () => {
-			const originalEnv = process.env;
-			process.env.ENABLE_OBSERVABILITY = 'true';
-			process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
-
-			const mockTurnContext = {
-				activity: {
-					type: 'message',
-					text: 'Test input',
-					recipient: { agenticAppId: 'agent-id', name: 'Agent', tenantId: 'tenant-id' },
-					conversation: { id: 'conversation-id' },
-				},
-				sendActivity: vi.fn(),
-				turnState: {
-					set: vi.fn(),
-				},
-			};
-
-			(invokeAgent as Mock).mockResolvedValue('Test response');
-			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
-				if (param === 'options.welcomeMessage') return 'Welcome!';
-				if (param === 'systemPrompt') return 'Test agent';
-				return undefined;
-			});
-
-			const callback = configureAdapterProcessCallback(
-				nodeContext,
-				agent,
-				credentials,
-				activityCapture,
-			);
-
-			await callback(mockTurnContext as any);
-
-			process.env = originalEnv;
-
-			expect(agent.run).toHaveBeenCalled();
 		});
 	});
 
@@ -1534,6 +1553,29 @@ describe('microsoft-utils', () => {
 				{ configurable: { thread_id: 'conversation-id' } },
 				undefined,
 			);
+		});
+
+		test('refreshes the export token before the turn span ends', async () => {
+			vi.mocked(Container.get).mockReturnValueOnce({ microsoftAgent365ExportEnabled: true });
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) =>
+				param === 'systemPrompt' ? 'Test prompt' : undefined,
+			);
+			(invokeAgent as Mock).mockResolvedValue('Response');
+			const callback = configureActivityCallback(
+				nodeContext,
+				credentials,
+				mcpTokenRef,
+				mockAuthorization,
+				{ input: '', output: [], activity: {} },
+			);
+
+			await callback(mockTurnContext);
+
+			const [refresh] = vi.mocked(AgenticTokenCacheInstance.refreshObservabilityToken).mock
+				.invocationCallOrder;
+			const [dispose] = vi.mocked(InvokeAgentScope.start).mock.results[0].value.dispose.mock
+				.invocationCallOrder;
+			expect(refresh).toBeLessThan(dispose);
 		});
 
 		test('should send agent response to turn context', async () => {

@@ -2,11 +2,11 @@ operationId: listDataTableColumns
 tags:
   - DataTable
 summary: List columns of a data table
-description: Retrieve all columns for a specific data table.
+description: |-
+  Retrieve all columns for a specific data table.
+
+  Requires the `dataTableColumn:read` API key scope.
 x-required-scope: dataTableColumn:read
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -68,3 +68,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

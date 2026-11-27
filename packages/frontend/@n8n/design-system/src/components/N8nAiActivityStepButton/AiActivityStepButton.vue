@@ -10,7 +10,7 @@ const props = withDefaults(
 		fullWidth?: boolean;
 	}>(),
 	{
-		size: 'small',
+		size: 'medium',
 		loading: false,
 		interactive: true,
 		fullWidth: false,
@@ -58,35 +58,43 @@ function handleClick(event: MouseEvent) {
 .button {
 	max-width: 90%;
 	justify-content: flex-start;
-	color: var(--ai-activity-step--color, var(--text-color--subtler));
-	font-size: var(--font-size--sm);
+	color: var(--n8n-ai-activity-step--color, var(--text-color--subtler));
 	position: relative;
-	// Inherit header styles through the group without selecting nested buttons.
-	padding: var(--ai-activity-step--padding, 0);
-	height: var(--ai-activity-step--height, var(--button--height));
-	min-height: var(--ai-activity-step--min-height, 0);
+	padding: var(--n8n-ai-activity-step--padding, 0);
+	height: var(--n8n-ai-activity-step--height, var(--button--height));
+	min-height: var(--n8n-ai-activity-step--min-height, 0);
 
-	--button--padding: 0;
-	--button--font-size: var(--font-size--sm);
+	/**
+	 * Matches the text size of the chat markdown around the step. N8nChatMessage
+	 * sets the markdown size, and it changes on large screens.
+	 */
+	--n8n-ai-activity-step--font-size--resolved: var(
+		--n8n-ai-activity-step--font-size,
+		var(--n8n-markdown--font-size--base, var(--font-size--sm))
+	);
+
+	/** Overrides for N8nButton **/
+	--button--font-size: var(--n8n-ai-activity-step--font-size--resolved);
 	--button--color--background-active: transparent;
 	--button--color--background-hover: transparent;
 
 	&:hover {
-		color: var(--ai-activity-step--color, var(--text-color--subtle));
+		color: var(--n8n-ai-activity-step--color, var(--text-color--subtle));
 	}
 
 	&.nonInteractive {
 		cursor: default;
-		opacity: 1;
 
 		&:hover {
 			color: var(--text-color--subtler);
 		}
 	}
 
+	/** The size classes of N8nButton set its font size with a stronger selector. */
 	> * {
 		width: 100%;
 		overflow: hidden;
+		font-size: var(--n8n-ai-activity-step--font-size--resolved);
 	}
 
 	:global(.n8n-icon) {
@@ -95,6 +103,7 @@ function handleClick(event: MouseEvent) {
 }
 
 .label {
+	min-width: 0;
 	max-width: 100%;
 	white-space: nowrap;
 	overflow: hidden;
@@ -120,12 +129,12 @@ function handleClick(event: MouseEvent) {
 
 .shimmer {
 	--animation--shimmer--duration: 1.5s;
-	--animation--shimmer--background: color-mix(
-		in srgb,
-		var(--text-color--subtler) 30%,
-		var(--background--subtle) 70%
+	--animation--shimmer--foreground: color-mix(
+		in oklch,
+		var(--n8n-ai-activity-step--color, var(--text-color--subtler)),
+		transparent 50%
 	);
-	--animation--shimmer--foreground: var(--text-color--subtler);
+	--animation--shimmer--background: var(--n8n-ai-activity-step--color, var(--text-color--subtler));
 	@include motion.shimmer;
 }
 </style>

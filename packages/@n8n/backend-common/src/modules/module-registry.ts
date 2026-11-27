@@ -7,21 +7,22 @@ import type { NodeLoader } from 'n8n-workflow';
 import path from 'path';
 import { pathToFileURL } from 'url';
 
-import { MissingModuleError } from './errors/missing-module.error';
-import { ModuleConfusionError } from './errors/module-confusion.error';
-import { ModulesConfig } from './modules.config';
-import type { ModuleName } from './modules.config';
 import { LicenseState } from '../license-state';
 import { Logger } from '../logging/logger';
+import { MissingModuleError } from './errors/missing-module.error';
+import { ModuleConfusionError } from './errors/module-confusion.error';
+import { ModuleLoadError } from './errors/module-load.error';
+import { ModulesConfig } from './modules.config';
+import type { ModuleName } from './modules.config';
+
+/** Modules that load from workspace packages instead of the n8n modules directory. */
+export type PackagedModules = Partial<Record<ModuleName, () => Promise<unknown>>>;
+
+const getModuleEntryPath = (modulesDir: string, moduleName: string, isEnterprise = false) =>
+	path.join(modulesDir, isEnterprise ? `${moduleName}.ee` : moduleName, `${moduleName}.module.js`);
 
 export const getModuleEntryUrl = (modulesDir: string, moduleName: string, isEnterprise = false) =>
-	pathToFileURL(
-		path.join(
-			modulesDir,
-			isEnterprise ? `${moduleName}.ee` : moduleName,
-			`${moduleName}.module.js`,
-		),
-	).href;
+	pathToFileURL(getModuleEntryPath(modulesDir, moduleName, isEnterprise)).href;
 
 @Service()
 export class ModuleRegistry {
@@ -45,14 +46,23 @@ export class ModuleRegistry {
 		// policy-infrastructure leads: it registers the enforcement implementation
 		// that every policy feature's checks are run by.
 		'policy-infrastructure',
+		// inbound-auth-core binds the inbound-auth contracts that later modules inject. Modules
+		// initialize in this order, and an unbound abstract constructor parameter resolves to
+		// `undefined` in the container, so it has to run before every consumer.
+		'inbound-auth-core',
 		'insights',
 		'external-secrets',
 		'community-packages',
 		'data-table',
-		// oauth-server precedes mcp: the mcp module registers its protected
-		// resource with the oauth-server module's registry on init.
+		// oauth-server precedes mcp and mcp-servers: mcp registers a protected
+		// resource with the oauth-server module's registry on init, and the
+		// custom MCP servers runtime will do the same.
 		'oauth-server',
 		'mcp',
+		'mcp-servers',
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		'mcp-discovery',
+		// EOF Experiment cleanup
 		'provisioning',
 		'breaking-changes',
 		'source-control',
@@ -76,12 +86,30 @@ export class ModuleRegistry {
 		'runtime-credentials',
 		'mcp-registry',
 		'workflow-reviews',
+		'inbox',
+		'promotions',
+		// skills precedes instance-ai and agents: agents keeps its skills in the
+		// skills module, so skills must start first. See `eligibleModules`.
+		'skills',
 		'instance-ai',
+		// knowledge precedes agents: a module counts as active only after its own
+		// init, and the agents module reads `isActive('knowledge')` in `settings()`.
+		'knowledge',
 		'agents',
-		'inbound-auth-core',
+		'agent-evals',
+		'scim',
+		'type-availability-policies',
 	];
 
 	private readonly activeModules: string[] = [];
+
+	private warnedSkillsKept = false;
+
+	private readonly packagedModules: PackagedModules = {};
+
+	registerPackagedModules(packagedModules: PackagedModules) {
+		Object.assign(this.packagedModules, packagedModules);
+	}
 
 	get eligibleModules(): ModuleName[] {
 		const { enabledModules, disabledModules } = this.modulesConfig;
@@ -92,7 +120,19 @@ export class ModuleRegistry {
 
 		const defaultPlusEnabled = [...new Set([...this.defaultModules, ...enabledModules])];
 
-		return defaultPlusEnabled.filter((m) => !disabledModules.includes(m));
+		// Agents keep their skills in the skills module, so the agents module needs the skills module.
+		const agentsOn = defaultPlusEnabled.includes('agents') && !disabledModules.includes('agents');
+		const keepSkills = agentsOn && disabledModules.includes('skills');
+		if (keepSkills && !this.warnedSkillsKept) {
+			this.warnedSkillsKept = true;
+			this.logger.warn(
+				'The "skills" module cannot be disabled while the "agents" module is enabled, because agents keep their skills in the skills module. n8n keeps the "skills" module enabled. To disable it, also disable the "agents" module.',
+			);
+		}
+
+		return defaultPlusEnabled.filter(
+			(m) => !disabledModules.includes(m) || (keepSkills && m === 'skills'),
+		);
 	}
 
 	/**
@@ -120,21 +160,46 @@ export class ModuleRegistry {
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
-			try {
-				await import(getModuleEntryUrl(modulesDir, moduleName));
-			} catch (primaryError) {
+			const importPackagedModule = this.packagedModules[moduleName];
+
+			if (importPackagedModule) {
 				try {
-					await import(getModuleEntryUrl(modulesDir, moduleName, true));
+					await importPackagedModule();
 				} catch (error) {
-					const loggedError =
-						primaryError instanceof Error &&
-						'code' in primaryError &&
-						primaryError.code !== 'MODULE_NOT_FOUND'
-							? primaryError
-							: error;
+					throw new ModuleLoadError(moduleName, error);
+				}
+
+				continue;
+			}
+
+			const entryPath = getModuleEntryPath(modulesDir, moduleName);
+
+			try {
+				await import(pathToFileURL(entryPath).href);
+			} catch (primaryError) {
+				// Only an absent entrypoint means the module may live in the enterprise
+				// directory instead. If the entrypoint is on disk, the failure comes from
+				// its own code - e.g. a dependency it cannot resolve - so surface it.
+				// Retrying with the enterprise path would replace it with a "cannot find
+				// module" error for a directory that never existed, and send the reader
+				// looking for a naming mistake. The filesystem is the reliable test here:
+				// a missing dependency and a missing entrypoint can both surface as
+				// `ERR_MODULE_NOT_FOUND`.
+				if (existsSync(entryPath)) throw new ModuleLoadError(moduleName, primaryError);
+
+				const enterpriseEntryPath = getModuleEntryPath(modulesDir, moduleName, true);
+
+				try {
+					await import(pathToFileURL(enterpriseEntryPath).href);
+				} catch (enterpriseError) {
+					if (existsSync(enterpriseEntryPath)) {
+						throw new ModuleLoadError(moduleName, enterpriseError);
+					}
+
+					// Neither entrypoint is on disk.
 					throw new MissingModuleError(
 						moduleName,
-						loggedError instanceof Error ? loggedError.message : '',
+						primaryError instanceof Error ? primaryError.message : '',
 					);
 				}
 			}

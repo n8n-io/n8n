@@ -6,21 +6,30 @@ import {
 	getSuccessorNodeIds,
 	type GraphNode,
 } from '../graph';
-import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
+import type { EngineLogger } from '../logging';
 import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
+import type { CancelExecutionService } from './cancel-execution.service';
 import { countExpectedSettledSteps } from './completion';
-import type { ExecutionRecord, ExecutionStore } from './execution-store';
+import { isMissingExecution, type ExecutionRecord, type ExecutionStore } from './execution-store';
 import {
 	isLiveExecutionStatus,
 	isSettledStatus,
 	stepKeyId,
+	type StepError,
 	type StepKey,
 	type StepKeyId,
+	type StepSlots,
 } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
-import type { StepRecord, StepStore } from './step-store';
+import { StepNotFoundError, type StepRecord, type StepStore } from './step-store';
+import {
+	collectSubExecutionResult,
+	resumeAwaitingParent,
+	terminalNodeIds,
+} from './sub-execution-resume';
 import { validateStepContext } from './validate-step-context';
 
 /**
@@ -41,17 +50,63 @@ export class StepSettledHandler {
 		private readonly stepStore: StepStore,
 		private readonly stepQueue: WorkQueue<StepMessage>,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
-		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
+		private readonly cancelExecution: CancelExecutionService,
+		private readonly logger: EngineLogger,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
-		const [step, execution] = await Promise.all([
+		const [stepLoad, executionLoad] = await Promise.allSettled([
 			this.stepStore.loadStep(event.stepId),
 			this.executionStore.loadExecution(event.executionId),
 		]);
+		// Test the execution first: its deletion also deletes the step row.
+		if (executionLoad.status === 'rejected') {
+			if (isMissingExecution(executionLoad.reason, event.executionId)) {
+				if (stepLoad.status === 'rejected') {
+					if (stepLoad.reason instanceof StepNotFoundError) return;
+					throw stepLoad.reason;
+				}
+				// A step of another execution means a wrong message, which must still fail.
+				if (stepLoad.value.executionId === event.executionId) return;
+			}
+			throw executionLoad.reason;
+		}
+		if (stepLoad.status === 'rejected') {
+			// A deletion that commits between the two reads removes the step row after the
+			// execution was read.
+			if (
+				stepLoad.reason instanceof StepNotFoundError &&
+				(await this.executionIsGone(event.executionId))
+			) {
+				return;
+			}
+			throw stepLoad.reason;
+		}
+		const step = stepLoad.value;
+		const execution = executionLoad.value;
 		const node = validateStepContext(step, execution);
 
+		await this.advanceExecution(execution, step, node);
+
+		// We acknowledge the settled step once its successors have been planned.
+		// Not awaited, so the next message does not wait for this write.
+		void this.stepStore.acknowledgeSettledStep(step.id).catch((error: unknown) => {
+			this.logger.warn('Acknowledgement of a settled step failed', {
+				executionId: execution.id,
+				stepId: step.id,
+				error,
+			});
+		});
+	}
+
+	/** Applies the consequences of the settled step to its execution. */
+	private async advanceExecution(
+		execution: ExecutionRecord,
+		step: StepRecord,
+		node: GraphNode,
+	): Promise<void> {
 		// v1 parity: an error that escapes a node ends the whole execution, not
 		// just its branch.
 		if (step.status === 'failed') {
@@ -84,6 +139,13 @@ export class StepSettledHandler {
 		await this.executionStore.refreshLiveStatus(execution.id);
 	}
 
+	private async executionIsGone(executionId: string): Promise<boolean> {
+		return await this.executionStore.loadExecution(executionId).then(
+			() => false,
+			(error: unknown) => isMissingExecution(error, executionId),
+		);
+	}
+
 	private async failExecution(
 		execution: ExecutionRecord,
 		step: StepRecord,
@@ -91,18 +153,34 @@ export class StepSettledHandler {
 	): Promise<void> {
 		// Only the worker whose write won announces the outcome.
 		const finished = await this.executionStore.finishExecution(execution.id, 'failed');
+		await this.stepStore.cancelPendingSteps(execution.id);
 		if (finished) {
-			this.lifecycleEventPublisher.publish({
+			this.lifecycleEventPublisherFactory.create(execution).publish({
 				type: 'execution:failed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
-				at: new Date().toISOString(),
+				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, 'failed');
+			if (execution.parent?.awaited) {
+				const { executionStore, stepStore, stepQueue } = this;
+				await resumeAwaitingParent({ executionStore, stepStore, stepQueue }, execution, {
+					status: 'failed',
+					error: await this.failureOf(execution),
+				});
+			}
+			await this.cancelExecution.cancelSubExecutions(execution.id);
 		}
+	}
 
-		// TODO(CAT-3990): this sweep names no rows, so it announces nothing.
-		await this.stepStore.cancelPendingSteps(execution.id);
+	/**
+	 * The error to report for a failed execution: the failed step that settled
+	 * first, as the read path reports it. Not the step that ended the run,
+	 * because parallel branches can fail in any order.
+	 */
+	private async failureOf(execution: ExecutionRecord): Promise<StepError> {
+		const [failed] = await this.stepStore.loadFailedSteps(execution.id);
+		return failed?.error ?? { name: 'Error', message: `Execution ${execution.id} failed` };
 	}
 
 	/** Plans the settled step's direct successors, returning how many were queued. */
@@ -120,23 +198,32 @@ export class StepSettledHandler {
 			execution.id,
 			decisionKeys(execution.graph, loops, step, terminalIterations),
 		);
-		const { toQueue, toSkip } = decideSuccessors(
+		const { toQueue, toSeed, toSkip } = decideSuccessors(
 			execution.graph,
 			loops,
 			step,
 			steps,
 			terminalIterations,
 		);
-		if (toQueue.length === 0 && toSkip.length === 0) return 0;
+		if (toQueue.length === 0 && toSeed.length === 0 && toSkip.length === 0) return 0;
+
+		// Seeded steps had their outputs passed in at execution start, so we just
+		// write them to the step store and announce completion rather than
+		// enqueueing them to run.
+		const seededOutputs = await this.executionStore.loadSeededOutputs(execution.id, toSeed);
 
 		// One batch, so a settlement's consequence lands atomically and a fan-out
 		// costs one round trip. A row another planner got to first isn't
 		// returned, so it isn't announced twice either.
-		// TODO(CAT-2938): a crash between the insert and the publishes strands
-		// the rows forever; the reconciler re-announces stale queued steps and
-		// settled steps whose decidable successors have no rows.
+		// If we crash after creating the steps but before announcing them, the
+		// reconciler re-announces them.
 		const created = await this.stepStore.createSteps(execution.id, [
 			...toQueue.map((key) => ({ ...key, status: 'queued' as const })),
+			...toSeed.map((key) => ({
+				...key,
+				status: 'completed' as const,
+				outputs: seededOutputsFor(execution.id, key, seededOutputs),
+			})),
 			...toSkip.map((key) => ({ ...key, status: 'skipped' as const })),
 		]);
 
@@ -145,8 +232,9 @@ export class StepSettledHandler {
 
 	/**
 	 * Announces the created rows — `step:ready` for queued ones, `step:settled`
-	 * for skips, which settle at birth — and returns how many were queued.
-	 * Published only after the rows exist, so a consumer can always load them.
+	 * for skips and seeded steps, which settle at birth — and returns how many
+	 * were queued. Published only after the rows exist, so a consumer can always
+	 * load them.
 	 */
 	private async announceCreatedSteps(
 		executionId: string,
@@ -202,13 +290,33 @@ export class StepSettledHandler {
 			failed ? 'failed' : 'completed',
 		);
 		if (finished) {
-			this.lifecycleEventPublisher.publish({
+			this.lifecycleEventPublisherFactory.create(execution).publish({
 				type: failed ? 'execution:failed' : 'execution:completed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
-				at: new Date().toISOString(),
+				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
+			if (execution.parent?.awaited) {
+				const { executionStore, stepStore, stepQueue } = this;
+				await resumeAwaitingParent(
+					{ executionStore, stepStore, stepQueue },
+					execution,
+					failed
+						? { status: 'failed', error: await this.failureOf(execution) }
+						: {
+								status: 'completed',
+								result: collectSubExecutionResult(
+									execution.graph,
+									await this.stepStore.loadStepsByNodeIds(
+										execution.id,
+										terminalNodeIds(execution.graph),
+									),
+								),
+							},
+				);
+			}
+			if (failed) await this.cancelExecution.cancelSubExecutions(execution.id);
 		}
 	}
 
@@ -266,4 +374,23 @@ export class StepSettledHandler {
 		}
 		return new Set([trigger.id, ...getDescendantNodeIds(execution.graph, trigger.id)]);
 	}
+}
+
+/**
+ * The start boundary stores outputs for every pass of every node it marks, so
+ * a marked node without outputs for a pass the run reaches is a bug, not a
+ * node to run instead.
+ */
+function seededOutputsFor(
+	executionId: string,
+	key: StepKey,
+	seededOutputs: Map<StepKeyId, StepSlots>,
+): StepSlots {
+	const outputs = seededOutputs.get(stepKeyId(key));
+	if (outputs === undefined) {
+		throw new UnexpectedError(
+			`Execution ${executionId} marks node ${key.nodeId} as seeded but holds no outputs for iteration ${key.iteration}`,
+		);
+	}
+	return outputs;
 }

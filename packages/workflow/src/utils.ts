@@ -247,13 +247,14 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 export { sleep } from '@n8n/utils/sleep';
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
-	if (mimeType.startsWith('application/json')) return 'json';
-	if (mimeType.startsWith('text/html')) return 'html';
-	if (mimeType.startsWith('image/')) return 'image';
-	if (mimeType.startsWith('audio/')) return 'audio';
-	if (mimeType.startsWith('video/')) return 'video';
-	if (mimeType.startsWith('text/') || mimeType.startsWith('application/javascript')) return 'text';
-	if (mimeType.startsWith('application/pdf')) return 'pdf';
+	const essence = mimeType.split(';')[0].trim().toLowerCase();
+	if (essence === 'application/json') return 'json';
+	if (essence === 'text/html') return 'html';
+	if (essence.startsWith('image/')) return 'image';
+	if (essence.startsWith('audio/')) return 'audio';
+	if (essence.startsWith('video/')) return 'video';
+	if (essence.startsWith('text/') || essence === 'application/javascript') return 'text';
+	if (essence === 'application/pdf') return 'pdf';
 	return;
 }
 
@@ -353,7 +354,13 @@ export function hasKey<T extends PropertyKey>(value: unknown, key: T): value is 
 	return value !== null && typeof value === 'object' && value.hasOwnProperty(key);
 }
 
-const unsafeObjectProperties = new Set([
+/**
+ * Names rejected for static and literal member access by the expression
+ * transform, and for runtime-built keys by each engine's runtime sanitizer.
+ * Exported so other engine runtimes can be checked against it
+ * (test/expression-sanitize-parity.test.ts).
+ */
+export const unsafeObjectProperties: ReadonlySet<string> = new Set([
 	'__proto__',
 	'prototype',
 	'constructor',
@@ -389,6 +396,24 @@ const unsafeObjectProperties = new Set([
  */
 export function isSafeObjectProperty(property: string) {
 	return !unsafeObjectProperties.has(property);
+}
+
+/**
+ * Checks if a value can be used as an own key of a plain object: it has to be a string,
+ * and not a name that resolves to an inherited member.
+ *
+ * Use this where the key comes from data rather than from code — a node name, or a
+ * connection field in a stored workflow. `isSafeObjectProperty` is declared
+ * `(property: string)` but only tests the name, so a value that is not a string at
+ * runtime passes it and is then coerced by the bracket access that follows:
+ * `obj[['__proto__']]` writes to `obj['__proto__']`.
+ *
+ * It is a separate function on purpose. `isSafeObjectProperty` is also called with keys
+ * that are legitimately not strings, such as the numeric literal in `items[0]` while an
+ * expression is sanitised, so it cannot require a string itself.
+ */
+export function isUsableObjectKey(value: unknown): value is string {
+	return typeof value === 'string' && isSafeObjectProperty(value);
 }
 
 // eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern

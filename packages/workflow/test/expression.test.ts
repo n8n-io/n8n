@@ -251,6 +251,28 @@ describe('Expression', () => {
 			expect(testFn).not.toHaveBeenCalled();
 		});
 
+		it.each([
+			[
+				'caller',
+				'={{ (function () { function recover() {} try { return recover["call" + "er"]; } catch (e) { return "threw: " + e.message; } })() }}',
+			],
+			[
+				'callee',
+				'={{ (function () { function recover() {} try { return recover["cal" + "lee"]; } catch (e) { return "threw: " + e.message; } })() }}',
+			],
+			[
+				'arguments',
+				'={{ (function () { function recover() {} try { return recover["argu" + "ments"]; } catch (e) { return "threw: " + e.message; } })() }}',
+			],
+		])(
+			'should reject computed access to "%s" when the key is built at runtime',
+			(name, expression) => {
+				expect(evaluate(expression)).toBe(
+					`threw: Cannot access "${name}" due to security concerns`,
+				);
+			},
+		);
+
 		it('should include runIndex and itemIndex in error when .constructor is used', () => {
 			let thrownError: ExpressionError | undefined;
 			try {
@@ -271,6 +293,41 @@ describe('Expression', () => {
 			expect(thrownError).toBeInstanceOf(ExpressionError);
 			expect(thrownError?.context.runIndex).toBe(2);
 			expect(thrownError?.context.itemIndex).toBe(3);
+		});
+
+		describe('when it returns objects as strings', () => {
+			const evaluateAsString = (value: string) =>
+				expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {}, undefined, true);
+
+			it('should throw for an invalid DateTime', () => {
+				expect(() => evaluateAsString('={{ DateTime.invalid("test") }}')).toThrow(
+					'invalid DateTime',
+				);
+			});
+
+			it('should not throw for a plain object that carries the luxon DateTime flag', () => {
+				expect(() => evaluateAsString('={{ { isLuxonDateTime: true } }}')).not.toThrow();
+			});
+
+			it('should add spaces after keys and between object entries', () => {
+				expect(evaluateAsString('={{ { a: 1, b: [1, 2], c: "d" } }}')).toBe(
+					'[Object: {"a": 1, "b": [1,2], "c": "d"}]',
+				);
+			});
+
+			it('should keep a string value that starts with a colon unchanged', () => {
+				expect(evaluateAsString('={{ { text: ":no_entry: foo" } }}')).toBe(
+					'[Object: {"text": ":no_entry: foo"}]',
+				);
+			});
+
+			it('should keep a string value that contains a quote and a colon unchanged', () => {
+				expect(evaluateAsString("={{ { text: 'x\":y' } }}")).toBe('[Object: {"text": "x\\":y"}]');
+			});
+
+			it('should keep a string value that ends with a comma unchanged', () => {
+				expect(evaluateAsString('={{ ["a,", "b"] }}')).toBe('[Array: ["a,", "b"]]');
+			});
 		});
 
 		describe('SafeObject security wrapper', () => {

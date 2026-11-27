@@ -2,7 +2,7 @@ import '../openapi-extend';
 import validator from 'validator';
 import { z } from 'zod';
 
-import { promotionDirectionSchema } from '../dto/promotions/promotion-config.dto';
+import { promotionDirectionSchema } from '../dto/promotions/promotion-environment.dto';
 
 /**
  * Runtime: the id stays a string, because the services these routes call expect a string.
@@ -20,8 +20,10 @@ const NANOID_REGEX = /^[A-Za-z0-9]{16}$/;
 
 export const executionIdParamSchema = numericIdParamSchema('The ID of the execution.');
 
-export const workflowIdParamSchema = stringIdParamSchema('The ID of the workflow.');
-export const workflowVersionIdParamSchema = stringIdParamSchema('The ID of the workflow version.');
+export const workflowIdParamSchema = stringIdParamSchema('The ID of the workflow');
+export const agentIdParamSchema = stringIdParamSchema('The ID of the agent.');
+export const agentVersionIdParamSchema = stringIdParamSchema('The ID of the agent version.');
+export const workflowVersionIdParamSchema = stringIdParamSchema('The ID of the workflow version');
 export const testRunIdParamSchema = stringIdParamSchema('The ID of the test run.');
 export const projectIdParamSchema = stringIdParamSchema('The ID of the project.');
 export const tagIdParamSchema = stringIdParamSchema('The ID of the tag.');
@@ -37,11 +39,20 @@ export const userUuidParamSchema = z
 	.string()
 	.refine((value) => validator.isUUID(value), { message: 'must be a valid ID' })
 	.openapi({ param: { description: 'The ID of the user.' } });
+export const aiPreferenceIdParamSchema = z
+	.string()
+	.refine((value) => validator.isUUID(value), { message: 'must be a valid ID' })
+	.openapi({ format: 'uuid', param: { description: 'The ID of the AI preference.' } });
 export const roleSlugParamSchema = stringIdParamSchema('The slug of the role.');
 export const roleMappingRuleIdParamSchema = stringIdParamSchema('The ID of the role mapping rule.');
-export const promotionConnectionIdParamSchema = stringIdParamSchema(
-	'The ID of the promotion connection.',
-);
+export const promotionEnvironmentIdParamSchema = z
+	.string()
+	.refine((value) => validator.isUUID(value), { message: 'must be a valid ID' })
+	.openapi({ format: 'uuid', param: { description: 'The ID of the promotion environment.' } });
+export const promotionReviewIdParamSchema = z
+	.string()
+	.refine((value) => validator.isUUID(value), { message: 'must be a valid ID' })
+	.openapi({ format: 'uuid', param: { description: 'The ID of the promotion review.' } });
 export const promotionProviderIdParamSchema = stringIdParamSchema(
 	'The ID of the promotion provider.',
 );
@@ -67,6 +78,9 @@ export const columnIdParamSchema = z
 	.regex(NANOID_REGEX, 'must match format "nanoid"')
 	.openapi({ format: 'nanoid', param: { description: 'The ID of the column' } });
 export const variableIdParamSchema = stringIdParamSchema('The ID of the variable.');
+export const logStreamingDestinationIdParamSchema = stringIdParamSchema(
+	'The id of the log streaming destination.',
+);
 export const nodeTypePolicyIdParamSchema = stringIdParamSchema(
 	'The ID of the node type policy document.',
 );

@@ -131,6 +131,30 @@ describe('PrometheusQueueMetricsService', () => {
 		});
 	});
 
+	describe('job-completion-missed event handler', () => {
+		it('should create the completion-missed counter with a status label', () => {
+			service.init();
+
+			expect(promClient.Counter).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: 'n8n_scaling_mode_queue_jobs_completion_missed',
+					labelNames: ['status'],
+				}),
+			);
+		});
+
+		it('should count a missed completion under its execution status', () => {
+			service.init();
+			const handler = getEventHandler('job-completion-missed');
+			vi.clearAllMocks();
+
+			expect(handler).toBeDefined();
+			handler!({ status: 'deleted' });
+
+			expect(mockCounterInc).toHaveBeenCalledWith({ status: 'deleted' }, 1);
+		});
+	});
+
 	describe('job-counts-updated event handler', () => {
 		it('should update gauges and counters with correct values from job counts', () => {
 			service.init();

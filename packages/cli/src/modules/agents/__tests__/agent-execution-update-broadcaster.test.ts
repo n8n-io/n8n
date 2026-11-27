@@ -3,9 +3,7 @@ import type { UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { Push } from '@/push';
-import type { RoleService } from '@/services/role.service';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher, PushProxy, RoleService } from '@n8n/backend-services';
 
 import { AgentPushRecipientsService } from '../agent-push-recipients.service';
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
@@ -23,7 +21,7 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 	const logger = mock<Logger>();
 	const userRepository = mock<UserRepository>();
 	const roleService = mock<RoleService>();
-	const push = mock<Push>();
+	const push = mock<PushProxy>();
 	const publisher = mock<Publisher>();
 	const instanceSettings = mock<InstanceSettings>();
 	const threadRepository = mock<AgentExecutionThreadRepository>();
@@ -72,6 +70,49 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		]);
 	});
 
+	it('sends a generated thread title to the users of the thread and relays it from workers', async () => {
+		Object.defineProperty(instanceSettings, 'isWorker', { value: true, configurable: true });
+		const title = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			title: 'Berlin rain alert',
+		};
+
+		broadcaster.notifyThreadTitleUpdated(title);
+
+		await vi.waitFor(() =>
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-agent-thread-title-update',
+				payload: { data: title, userIds: ['user-1', 'user-2'] },
+			}),
+		);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{ type: 'agentThreadTitleUpdated', data: title },
+			['user-1', 'user-2'],
+		);
+
+		push.sendToUsers.mockClear();
+		broadcaster.handleThreadTitleRelay({ data: title, userIds: ['user-2'] });
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{ type: 'agentThreadTitleUpdated', data: title },
+			['user-2'],
+		);
+	});
+
+	it('sends no thread title for a thread of another agent', async () => {
+		broadcaster.notifyThreadTitleUpdated({
+			projectId: 'project-1',
+			agentId: 'agent-2',
+			threadId: 'thread-1',
+			title: 'Berlin rain alert',
+		});
+
+		await vi.waitFor(() => expect(threadRepository.findOneBy).toHaveBeenCalled());
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(push.sendToUsers).not.toHaveBeenCalled();
+	});
+
 	it('delivers relayed invalidations locally without publishing them again', () => {
 		broadcaster.handleRelay({ data: update, userIds: ['user-2'] });
 
@@ -96,6 +137,27 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 			expect(command).toMatchObject({ payload: { userIds: ['user-2'] } });
 		}
 		for (const [, userIds] of push.sendToUsers.mock.calls) expect(userIds).toEqual(['user-2']);
+	});
+
+	it('resolves the owner of a private thread by agent:execute, so chat-only members get updates', async () => {
+		threadRepository.findOneBy.mockResolvedValue({
+			...thread,
+			accessScope: 'user',
+			ownerId: 'user-2',
+		});
+
+		broadcaster.notify(update);
+
+		await vi.waitFor(() => expect(push.sendToUsers).toHaveBeenCalled());
+		expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['agent:execute']);
+		expect(roleService.rolesWithScope).not.toHaveBeenCalledWith('project', ['agent:read']);
+	});
+
+	it('resolves the readers of a shared project thread by agent:read', async () => {
+		broadcaster.notify(update);
+
+		await vi.waitFor(() => expect(push.sendToUsers).toHaveBeenCalled());
+		expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['agent:read']);
 	});
 
 	it.each(['isWorker', 'isMultiMain'] as const)(

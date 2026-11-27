@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
-import { screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
+import { defineComponent, ref } from 'vue';
 
 import N8nUserSelect from '.';
 import { createComponentRenderer } from '../../__tests__/render';
@@ -15,7 +16,9 @@ const getRenderedOptions = async () => {
 
 const filterInput = async (filterText: string) => {
 	const input = screen.getByRole('combobox');
-	await userEvent.type(input, filterText);
+	await userEvent.click(input);
+	// Set the query in one input event. Per-character events repeat filtering and DOM updates.
+	await fireEvent.update(input, filterText);
 };
 
 const sampleUsers: IUser[] = [
@@ -141,35 +144,34 @@ describe('UserSelect', () => {
 		});
 	});
 
-	it('filters users by email (case-sensitive for filter term, if full name does not match)', async () => {
-		renderComponent({
-			props: {
-				users: sampleUsers,
-			},
-		});
+	it.each([
+		{ query: 'alice@example.com', expectedIds: ['u1'] },
+		{ query: 'Example.com', expectedIds: [] },
+		{ query: 'example.com', expectedIds: sampleUsers.map((user) => user.id) },
+	])(
+		'filters users by email with the case-sensitive query "$query"',
+		async ({ query, expectedIds }) => {
+			renderComponent({ props: { users: sampleUsers } });
 
-		await filterInput('alice@example.com');
-		await waitFor(async () => {
-			const options = await getRenderedOptions();
-			expect(options.length).toBe(1);
-			expect(options[0]).toHaveAttribute('id', 'user-select-option-id-u1');
-		});
+			await filterInput(query);
 
-		await userEvent.click(document.body);
+			if (expectedIds.length === 0) {
+				await waitFor(() => {
+					expect(screen.getByText('No matching users')).toBeVisible();
+					expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+				});
+				return;
+			}
 
-		await filterInput('Example.com'); // Email part of filter is case-sensitive in the component's logic
-		await waitFor(() => {
-			expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-		});
-
-		await userEvent.click(document.body);
-
-		await filterInput('example.com'); // Matches all users with email containing 'example.com'
-		await waitFor(async () => {
-			const options = await getRenderedOptions();
-			expect(options.length).toBe(sampleUsers.length);
-		});
-	});
+			await waitFor(async () => {
+				const options = await getRenderedOptions();
+				expect(options).toHaveLength(expectedIds.length);
+				expect(Array.from(options, (option) => option.id)).toEqual(
+					expect.arrayContaining(expectedIds.map((id) => `user-select-option-id-${id}`)),
+				);
+			});
+		},
+	);
 
 	it('filters by full name and email and sorts by last name', async () => {
 		const specificUsers: IUser[] = [
@@ -415,5 +417,175 @@ describe('UserSelect', () => {
 			const optionIds = Array.from(options).map((o) => o.getAttribute('id'));
 			expect(optionIds).not.toContain('user-select-option-id-u1');
 		});
+	});
+
+	it('accepts typing for the next user after selecting a user without another click', async () => {
+		const user = userEvent.setup();
+		const remoteMethod = vi.fn();
+		const onAddMember = vi.fn();
+		// IAM-1904: Project settings removes each added user and leaves modelValue empty.
+		const memberPicker = defineComponent({
+			components: { N8nUserSelect },
+			setup() {
+				const users = ref(sampleUsers);
+				const addMember = (userId: string) => {
+					onAddMember(userId);
+					users.value = users.value.filter((member) => member.id !== userId);
+				};
+				return { users, addMember, remoteMethod };
+			},
+			template:
+				'<N8nUserSelect :users="users" remote :remote-method="remoteMethod" @update:model-value="addMember" />',
+		});
+		const { getByRole } = createComponentRenderer(memberPicker)({});
+		const input = getByRole('combobox');
+
+		await user.click(input);
+		await user.keyboard('alice');
+		expect(input).toHaveValue('alice');
+		await waitFor(() => expect(remoteMethod).toHaveBeenLastCalledWith('alice'));
+		await user.hover(getByRole('option', { name: /Alice Smith/ }));
+		await user.keyboard('{Enter}');
+		expect(onAddMember).toHaveBeenCalledExactlyOnceWith('u1');
+		await waitFor(() => expect(input).toHaveValue(''));
+		expect(input).toHaveFocus();
+
+		// Type into the current focus. Clicking the input again hides the regression.
+		await user.keyboard('bob');
+		expect(input).toHaveValue('bob');
+		await waitFor(() => expect(remoteMethod).toHaveBeenLastCalledWith('bob'));
+		await user.hover(getByRole('option', { name: /Bob Johnson/ }));
+		await user.keyboard('{Enter}');
+		expect(onAddMember).toHaveBeenNthCalledWith(2, 'u2');
+		expect(onAddMember).toHaveBeenCalledTimes(2);
+	});
+
+	it('closes the dropdown and keeps the selected user when the parent updates the value', async () => {
+		const picker = defineComponent({
+			components: { N8nUserSelect },
+			setup() {
+				return { users: sampleUsers, selected: ref('') };
+			},
+			template: '<N8nUserSelect v-model="selected" :users="users" />',
+		});
+		const { getByRole, queryByRole } = createComponentRenderer(picker)({});
+
+		await userEvent.click(getByRole('combobox'));
+		await userEvent.click(getByRole('option', { name: /Alice Smith/ }));
+
+		await waitFor(() => {
+			expect(queryByRole('listbox')).not.toBeInTheDocument();
+			expect(getByRole('combobox')).toHaveValue('Alice Smith (alice@example.com)');
+		});
+	});
+
+	it('allows the action picker to close with Escape after a selection', async () => {
+		const user = userEvent.setup();
+		const picker = defineComponent({
+			components: { N8nUserSelect },
+			setup() {
+				const users = ref(sampleUsers);
+				const removeUser = (id: string) => {
+					users.value = users.value.filter((user) => user.id !== id);
+				};
+				return { users, removeUser };
+			},
+			template: '<N8nUserSelect :users="users" @update:model-value="removeUser" />',
+		});
+		const { getByRole, queryByRole } = createComponentRenderer(picker)({});
+		await user.click(getByRole('combobox'));
+		await user.click(getByRole('option', { name: /Alice Smith/ }));
+		expect(getByRole('combobox')).toHaveFocus();
+		expect(getByRole('listbox')).toBeVisible();
+
+		await user.keyboard('{Escape}');
+
+		await waitFor(() => expect(queryByRole('listbox')).not.toBeInTheDocument());
+	});
+
+	it('keeps the dropdown closed while the parent saves the selected user', async () => {
+		const picker = defineComponent({
+			components: { N8nUserSelect },
+			props: { selectedUser: String },
+			setup() {
+				return { users: sampleUsers };
+			},
+			template: '<N8nUserSelect :model-value="selectedUser" :users="users" />',
+		});
+		const { getByRole, queryByRole, rerender } = createComponentRenderer(picker)({
+			props: { selectedUser: '' },
+		});
+
+		await userEvent.click(getByRole('combobox'));
+		await userEvent.click(getByRole('option', { name: /Alice Smith/ }));
+		await waitFor(() => expect(queryByRole('listbox')).not.toBeInTheDocument());
+
+		await rerender({ selectedUser: 'u1' });
+		expect(getByRole('combobox')).toHaveValue('Alice Smith (alice@example.com)');
+		expect(queryByRole('listbox')).not.toBeInTheDocument();
+	});
+
+	it('should show the name and the email of the selected user', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1' },
+		});
+
+		await waitFor(() =>
+			expect(getByRole('combobox')).toHaveValue('Alice Smith (alice@example.com)'),
+		);
+	});
+
+	it('should show only the name of the selected user when hideEmailInLabel is set', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1', hideEmailInLabel: true },
+		});
+
+		await waitFor(() => expect(getByRole('combobox')).toHaveValue('Alice Smith'));
+	});
+
+	it('should show the email of a selected user without a name when hideEmailInLabel is set', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u5', hideEmailInLabel: true },
+		});
+
+		await waitFor(() => expect(getByRole('combobox')).toHaveValue('eve@example.com'));
+	});
+
+	it('should show the avatar of the selected user when showAvatar is set', async () => {
+		const { getByTestId, queryByTestId, rerender } = renderComponent({
+			props: { users: sampleUsers, showAvatar: true },
+		});
+
+		expect(queryByTestId('user-select-avatar')).not.toBeInTheDocument();
+		await rerender({ modelValue: 'u1' });
+		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('AS'));
+	});
+
+	it('should take the avatar initials from the full name when the user has no first or last name', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				users: [{ id: 'u9', email: 'nina@example.com', fullName: 'Nina Park' }],
+				modelValue: 'u9',
+				showAvatar: true,
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('NP'));
+	});
+
+	it('should not show an avatar by default', () => {
+		const { queryByTestId } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1' },
+		});
+
+		expect(queryByTestId('user-select-avatar')).not.toBeInTheDocument();
+	});
+
+	it('should mark the select as borderless when borderless is set', () => {
+		const { getByTestId } = renderComponent({
+			props: { users: sampleUsers, borderless: true },
+		});
+
+		expect(getByTestId('user-select-trigger')).toHaveClass('borderless');
 	});
 });

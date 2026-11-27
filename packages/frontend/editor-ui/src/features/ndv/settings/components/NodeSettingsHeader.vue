@@ -51,7 +51,7 @@ const emit = defineEmits<{
 		<N8nIconButton
 			v-if="!hideExecute && isExecuting"
 			data-test-id="ndv-stop-execution-button"
-			variant="subtle"
+			variant="outline"
 			icon="square"
 			size="small"
 			:class="$style.stop"
@@ -76,7 +76,7 @@ const emit = defineEmits<{
 
 <style lang="scss" module>
 .header {
-	--tabs--arrow-buttons--color: var(--color--background--light-3);
+	--n8n-tabs--arrow-buttons--color: var(--color--background--light-3);
 
 	display: flex;
 	align-items: center;
@@ -88,10 +88,6 @@ const emit = defineEmits<{
 
 .tabs {
 	align-self: flex-end;
-}
-
-.tabs :global(#communityNode) {
-	padding-right: var(--spacing--2xs);
 }
 
 .stop {

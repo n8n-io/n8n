@@ -124,10 +124,15 @@ const publishedWorkflowVersionId = computed(() => {
 	return publishedVersionId;
 });
 
+// One slow action at a time, so a repeated click cannot clone twice.
+const pendingVersionId = ref<WorkflowVersionId | null>(null);
+
 const actions = computed<Array<UserAction<IUser>>>(() =>
 	availableActionTypes.value.map((value) => ({
 		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
 		disabled:
+			(pendingVersionId.value !== null &&
+				(value === 'clone' || value === 'restore' || value === 'download')) ||
 			(value === 'clone' && !workflowPermissions.value.create) ||
 			((value === 'restore' || value === 'name') && !workflowPermissions.value.update) ||
 			((value === 'publish' || value === 'unpublish') && !workflowPermissions.value.publish),
@@ -362,7 +367,7 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 	});
 };
 
-const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAction['data']) => {
+const unpublishWorkflowVersion = (id: WorkflowVersionId) => {
 	if (publishedWorkflowVersionId.value !== id) {
 		return;
 	}
@@ -391,7 +396,7 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAc
 		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 		data: {
 			workflowId: workflowId.value,
-			versionName: data.versionName,
+			workflowName: publishedWorkflow.value?.name ?? '',
 			eventBus: unpublishEventBus,
 		},
 	});
@@ -458,6 +463,19 @@ const nameWorkflowVersion = async (id: WorkflowVersionId, data: WorkflowHistoryA
 	});
 };
 
+const runSlowAction = async (id: WorkflowVersionId, run: () => Promise<void>) => {
+	if (pendingVersionId.value) {
+		return;
+	}
+
+	pendingVersionId.value = id;
+	try {
+		await run();
+	} finally {
+		pendingVersionId.value = null;
+	}
+};
+
 const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 	try {
 		switch (action) {
@@ -466,22 +484,28 @@ const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 				sendTelemetry('User opened version in new tab');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
-				await workflowHistoryStore.downloadVersion(workflowId.value, id, data);
-				sendTelemetry('User downloaded version');
+				await runSlowAction(id, async () => {
+					await workflowHistoryStore.downloadVersion(workflowId.value, id, data);
+					sendTelemetry('User downloaded version');
+				});
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.CLONE:
-				await cloneWorkflowVersion(id, data);
-				sendTelemetry('User cloned version');
+				await runSlowAction(id, async () => {
+					await cloneWorkflowVersion(id, data);
+					sendTelemetry('User cloned version');
+				});
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
-				await restoreWorkflowVersion(id);
-				sendTelemetry('User restored version');
+				await runSlowAction(id, async () => {
+					await restoreWorkflowVersion(id);
+					sendTelemetry('User restored version');
+				});
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.PUBLISH:
 				publishWorkflowVersion(id, data);
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.UNPUBLISH:
-				unpublishWorkflowVersion(id, data);
+				unpublishWorkflowVersion(id);
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.NAME:
 				await nameWorkflowVersion(id, data);
@@ -657,6 +681,7 @@ watchEffect(async () => {
 				:evaluated-prune-time-in-hours="workflowHistoryStore.evaluatedPruneTime"
 				:is-list-loading="isListLoading"
 				:published-version-id="publishedWorkflowVersionId"
+				:pending-version-id="pendingVersionId"
 				:is-workflow-diffs-enabled="isWorkflowDiffsEnabled"
 				@action="onAction"
 				@preview="onPreview"
@@ -664,7 +689,9 @@ watchEffect(async () => {
 				@load-more="loadMore"
 				@upgrade="onUpgrade"
 			/>
+			<!-- Keep pagination state scoped to one workflow. -->
 			<WorkflowPublishTimelineContent
+				:key="workflowId"
 				v-if="canRender && activeTab === 'publishTimeline'"
 				:workflow-id="workflowId"
 				:selected-version-id="versionId"
@@ -680,6 +707,7 @@ watchEffect(async () => {
 				:actions="actions"
 				:is-list-loading="isListLoading"
 				:is-first-item-shown="isFirstItemShown"
+				:pending-version-id="pendingVersionId"
 				@action="onAction"
 			/>
 		</div>
@@ -734,18 +762,8 @@ watchEffect(async () => {
 	align-items: center;
 	padding: var(--spacing--xs) 0 0 var(--spacing--sm);
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 	position: relative;
-
-	&::after {
-		content: '';
-		position: absolute;
-		bottom: 1px;
-		left: 0;
-		right: 0;
-		height: var(--border-width);
-		background-color: var(--color--foreground);
-		z-index: 1;
-	}
 }
 
 .closeButton {

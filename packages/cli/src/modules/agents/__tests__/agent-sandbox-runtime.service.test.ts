@@ -6,14 +6,12 @@ import type {
 } from '@n8n/agents/sandbox';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
-import type { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { AiService } from '../../../services/ai.service';
 import type { SandboxSettingsService } from '../../../services/sandbox-settings.service';
 
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -42,31 +40,14 @@ const otherPrincipalHash = hashAgentSandboxPrincipal({
 	type: 'n8n-user',
 	userId: 'user/123:raw',
 });
-const workspaceSandboxId = 'cd7bd5bf-d6c4-5a24-a100-43c5158ab50d';
-const otherWorkspaceSandboxId = '4197eecc-3092-54b8-9196-a4fecccea156';
-const knowledgeSandboxId = 'a54b9053-9f50-51e5-b971-e02942ff7b6b';
+const publicWorkspaceSandboxId = 'cd7bd5bf-d6c4-5a24-a100-43c5158ab50d';
+const publicKnowledgeSandboxId = 'a54b9053-9f50-51e5-b971-e02942ff7b6b';
+const workspaceSandboxId = '1e99acd3-e09d-5d6a-90dd-6767c2865bac';
+const otherWorkspaceSandboxId = '627f3230-e7ec-5b27-83f3-15958c492912';
+const knowledgeSandboxId = '2aad0203-68a6-5485-bb9b-dd4e05f00e09';
 
 type TestWorkspaceSandbox = WorkspaceSandbox &
 	Required<Pick<WorkspaceSandbox, '_start' | 'destroy' | 'deleteRemote' | 'executeCommand'>>;
-
-function makeAiService(overrides: Partial<AiService> = {}): AiService {
-	const aiService = mock<AiService>();
-	aiService.isProxyEnabled.mockReturnValue(false);
-	return Object.assign(aiService, overrides);
-}
-
-function makeProxyAiService(): AiService {
-	const client = mock<AiAssistantClient>();
-	client.getBuilderApiProxyToken.mockResolvedValue({
-		accessToken: 'proxy-token',
-		tokenType: 'Bearer',
-	});
-	client.getSandboxProxyBaseUrl.mockReturnValue('https://sandbox-proxy.example');
-	return makeAiService({
-		isProxyEnabled: vi.fn().mockReturnValue(true),
-		getClient: vi.fn().mockResolvedValue(client),
-	});
-}
 
 function makeAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
 	const repository = mock<AgentRepository>();
@@ -74,7 +55,7 @@ function makeAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
 		id: agentId,
 		projectId,
 		activeVersionId: null,
-	} as Agent);
+	} as ProjectAgent);
 	return repository;
 }
 
@@ -84,10 +65,11 @@ function makeSandboxSettingsService(
 	const service = mock<SandboxSettingsService>();
 	service.isAgentSandboxEnabled.mockReturnValue(true);
 	service.getProvider.mockReturnValue(provider);
-	service.resolveDaytonaConfig.mockResolvedValue({
-		apiUrl: 'https://daytona.example',
-		apiKey: 'test-key',
-	});
+	service.resolveDaytonaSandboxConfig.mockImplementation(async (_projectId, options) => ({
+		...options,
+		daytonaApiUrl: 'https://daytona.example',
+		daytonaApiKey: 'test-key',
+	}));
 	service.resolveN8nSandboxConfig.mockResolvedValue({
 		serviceUrl: 'https://sandbox.example',
 		apiKey: 'sandbox-key',
@@ -98,14 +80,12 @@ function makeSandboxSettingsService(
 function makeService({
 	configOverrides = {},
 	logger = mock<Logger>(),
-	aiService = makeAiService(),
 	instanceSettings = mock<InstanceSettings>({ instanceId }),
 	agentRepository = makeAgentRepository(),
 	sandboxSettingsService = makeSandboxSettingsService(),
 }: {
 	configOverrides?: Partial<AgentsConfig>;
 	logger?: Logger;
-	aiService?: AiService;
 	instanceSettings?: InstanceSettings;
 	agentRepository?: AgentRepository;
 	sandboxSettingsService?: SandboxSettingsService;
@@ -117,10 +97,10 @@ function makeService({
 			sandboxSnapshot: '',
 			sandboxTimeout: 300_000,
 			sandboxEphemeral: false,
+			sandboxEgressPolicy: 'opt-in',
 			...configOverrides,
 		} as AgentsConfig,
 		logger,
-		aiService,
 		instanceSettings,
 		agentRepository,
 		sandboxSettingsService,
@@ -152,23 +132,146 @@ describe('AgentSandboxRuntimeService', () => {
 		createFilesystemMock.mockReturnValue(mock<WorkspaceFilesystem>());
 	});
 
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'under disabled policy, blocks %s egress for workspace and knowledge sandboxes even if an agent requests it',
+		async (provider) => {
+			const service = makeService({
+				configOverrides: { sandboxEgressPolicy: 'disabled' },
+				sandboxSettingsService: makeSandboxSettingsService(provider),
+			});
+
+			const workspace = await service.acquireWorkspaceSandbox(projectId, agentId, principalHash, {
+				sandboxEgress: true,
+			});
+			const knowledge = await service.acquireKnowledgeSandbox(projectId, agentId);
+
+			expect(workspace.egressEnabled).toBe(false);
+			expect(knowledge.egressEnabled).toBe(false);
+			expect(createSandboxMock.mock.calls.map(([config]) => config.egress)).toEqual([
+				'none',
+				'none',
+			]);
+		},
+	);
+
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'under opt-in policy, keeps %s workspace egress off by default and enables it only when the agent opts in',
+		async (provider) => {
+			const service = makeService({
+				configOverrides: { sandboxEgressPolicy: 'opt-in' },
+				sandboxSettingsService: makeSandboxSettingsService(provider),
+			});
+
+			const defaultWorkspace = await service.acquireWorkspaceSandbox(
+				projectId,
+				agentId,
+				principalHash,
+			);
+			const optedInWorkspace = await service.acquireWorkspaceSandbox(
+				projectId,
+				agentId,
+				principalHash,
+				{ sandboxEgress: true },
+			);
+			const knowledge = await service.acquireKnowledgeSandbox(projectId, agentId);
+
+			expect(defaultWorkspace.egressEnabled).toBe(false);
+			expect(optedInWorkspace.egressEnabled).toBe(true);
+			expect(knowledge.egressEnabled).toBe(false);
+			expect(createSandboxMock.mock.calls.map(([config]) => config.egress)).toEqual([
+				'none',
+				'public',
+				'none',
+			]);
+			expect(createSandboxMock.mock.calls.map(([config]) => config.id)).toEqual(
+				provider === 'daytona'
+					? [
+							`agent-ws-${workspaceSandboxId}`,
+							`agent-ws-${publicWorkspaceSandboxId}`,
+							`agent-kb-${knowledgeSandboxId}`,
+						]
+					: [workspaceSandboxId, publicWorkspaceSandboxId, knowledgeSandboxId],
+			);
+		},
+	);
+
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'under opt-out policy, keeps %s public workspace identity by default, lets an agent disable egress, and keeps knowledge egress disabled',
+		async (provider) => {
+			const service = makeService({
+				configOverrides: { sandboxEgressPolicy: 'opt-out' },
+				sandboxSettingsService: makeSandboxSettingsService(provider),
+			});
+
+			const defaultWorkspace = await service.acquireWorkspaceSandbox(
+				projectId,
+				agentId,
+				principalHash,
+			);
+			const optedOutWorkspace = await service.acquireWorkspaceSandbox(
+				projectId,
+				agentId,
+				principalHash,
+				{ sandboxEgress: false },
+			);
+			const knowledge = await service.acquireKnowledgeSandbox(projectId, agentId);
+
+			expect(defaultWorkspace.egressEnabled).toBe(true);
+			expect(optedOutWorkspace.egressEnabled).toBe(false);
+			expect(knowledge.egressEnabled).toBe(false);
+			expect(createSandboxMock.mock.calls.map(([config]) => config.egress)).toEqual([
+				'public',
+				'none',
+				'none',
+			]);
+			expect(createSandboxMock.mock.calls.map(([config]) => config.id)).toEqual(
+				provider === 'daytona'
+					? [
+							`agent-ws-${publicWorkspaceSandboxId}`,
+							`agent-ws-${workspaceSandboxId}`,
+							`agent-kb-${knowledgeSandboxId}`,
+						]
+					: [publicWorkspaceSandboxId, workspaceSandboxId, knowledgeSandboxId],
+			);
+		},
+	);
+
+	it('uses the same restricted sandbox identities across service instances', async () => {
+		const first = makeService();
+		const second = makeService();
+
+		const firstWorkspace = await first.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+		const secondWorkspace = await second.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+		const firstKnowledge = await first.acquireKnowledgeSandbox(projectId, agentId);
+		const secondKnowledge = await second.acquireKnowledgeSandbox(projectId, agentId);
+
+		expect(firstWorkspace.cacheKey).toBe(secondWorkspace.cacheKey);
+		expect(firstKnowledge.cacheKey).toBe(secondKnowledge.cacheKey);
+		expect(createSandboxMock.mock.calls.map(([config]) => config.id)).toEqual([
+			`agent-ws-${workspaceSandboxId}`,
+			`agent-ws-${workspaceSandboxId}`,
+			`agent-kb-${knowledgeSandboxId}`,
+			`agent-kb-${knowledgeSandboxId}`,
+		]);
+	});
+
 	it('creates and starts the deterministic direct-mode Daytona knowledge sandbox', async () => {
-		const aiService = makeAiService();
 		const sandboxSettingsService = makeSandboxSettingsService();
 		const service = makeService({
 			configOverrides: {
 				sandboxSnapshot: 'n8n/agent-knowledge:1.2.3',
 				sandboxEphemeral: true,
 			},
-			aiService,
 			sandboxSettingsService,
 		});
 		const expectedName = `agent-kb-${knowledgeSandboxId}`;
 
 		await service.warmKnowledgeSandbox(projectId, agentId);
 
-		expect(aiService.getClient).not.toHaveBeenCalled();
-		expect(sandboxSettingsService.resolveDaytonaConfig).toHaveBeenCalled();
+		expect(sandboxSettingsService.resolveDaytonaSandboxConfig).toHaveBeenCalledWith(projectId, {
+			image: 'daytonaio/sandbox:0.5.0',
+			snapshot: 'n8n/agent-knowledge:1.2.3',
+		});
 		expect(createSandboxMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				enabled: true,
@@ -336,53 +439,15 @@ describe('AgentSandboxRuntimeService', () => {
 		expect(createSandboxMock).not.toHaveBeenCalled();
 	});
 
-	it('mints refreshable proxy tokens on demand with project scope', async () => {
-		const client = mock<AiAssistantClient>();
-		client.getBuilderApiProxyToken
-			.mockResolvedValueOnce({ accessToken: 'proxy-token-1', tokenType: 'Bearer' })
-			.mockResolvedValueOnce({ accessToken: 'proxy-token-2', tokenType: 'Bearer' });
-		client.getSandboxProxyBaseUrl.mockReturnValue('https://sandbox-proxy.example');
-		const aiService = makeAiService({
-			isProxyEnabled: vi.fn().mockReturnValue(true),
-			getClient: vi.fn().mockResolvedValue(client),
-		});
-		const service = makeService({
-			configOverrides: { sandboxSnapshot: 'n8n/agent-knowledge:1.2.3' },
-			aiService,
-		});
-
-		await service.warmKnowledgeSandbox(projectId, agentId);
-
-		const config = createSandboxMock.mock.calls[0][0] as DaytonaSandboxConfig;
-		expect(config.daytonaApiUrl).toBe('https://sandbox-proxy.example');
-		expect(config.snapshot).toBe('n8n/agent-knowledge:1.2.3');
-		expect(config.image).toBeUndefined();
-		expect(client.getBuilderApiProxyToken).not.toHaveBeenCalled();
-
-		await expect(config.getAuthToken?.()).resolves.toBe('proxy-token-1');
-		await expect(config.getAuthToken?.()).resolves.toBe('proxy-token-2');
-		expect(client.getBuilderApiProxyToken).toHaveBeenCalledTimes(2);
-		expect(client.getBuilderApiProxyToken.mock.calls[0][0]).toEqual({ id: projectId });
-		expect(client.getBuilderApiProxyToken.mock.calls[1][0]).toEqual({ id: projectId });
-	});
-
-	it('requires a proxy snapshot instead of creating from an image', async () => {
-		const service = makeService({
-			configOverrides: { sandboxSnapshot: '' },
-			aiService: makeProxyAiService(),
-		});
-
-		await expect(service.warmKnowledgeSandbox(projectId, agentId)).rejects.toThrow(
-			/requires a snapshot.*N8N_AGENTS_AI_SANDBOX_SNAPSHOT/s,
-		);
-		expect(createSandboxMock).not.toHaveBeenCalled();
-	});
-
 	it('surfaces a snapshot failure without falling back to an image', async () => {
 		createSandboxMock.mockRejectedValueOnce(new Error('snapshot missing'));
+		const sandboxSettingsService = makeSandboxSettingsService();
+		sandboxSettingsService.resolveDaytonaSandboxConfig.mockResolvedValue({
+			daytonaApiUrl: 'https://sandbox-proxy.example',
+			snapshot: 'n8n/agent-knowledge:missing',
+		});
 		const service = makeService({
-			configOverrides: { sandboxSnapshot: 'n8n/agent-knowledge:missing' },
-			aiService: makeProxyAiService(),
+			sandboxSettingsService,
 		});
 
 		await expect(service.warmKnowledgeSandbox(projectId, agentId)).rejects.toThrow(
@@ -412,8 +477,12 @@ describe('AgentSandboxRuntimeService', () => {
 		await service.destroyKnowledgeSandbox(projectId, agentId);
 
 		expect(destroyedIds).toEqual([
+			`agent-ws-${publicWorkspaceSandboxId}`,
+			publicWorkspaceSandboxId,
 			`agent-ws-${workspaceSandboxId}`,
 			workspaceSandboxId,
+			`agent-kb-${publicKnowledgeSandboxId}`,
+			publicKnowledgeSandboxId,
 			`agent-kb-${knowledgeSandboxId}`,
 			knowledgeSandboxId,
 		]);

@@ -3,6 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { useCredentialsStore } from '../credentials.store';
+import type { CredentialRestriction } from '@n8n/api-types';
 import type { ICredentialsResponse } from '../credentials.types';
 import CredentialsView from './CredentialsView.vue';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -19,6 +20,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import * as projectsApi from '@/features/collaboration/projects/projects.api';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 
 const mockAuthorize = vi.fn();
 const mockIsOAuthCredentialType = vi.fn(() => true);
@@ -175,6 +177,15 @@ describe('CredentialsView', () => {
 				name: CREDENTIAL_SELECT_MODAL_KEY,
 				data: {},
 			});
+		});
+
+		it('loads the policy of the project that a new credential goes to', async () => {
+			await router.push('/team-1/credentials');
+			const policies = mockedStore(useTypeAvailabilityPoliciesStore);
+
+			renderComponent();
+
+			expect(policies.fetchForProject).toHaveBeenCalledWith('team-1');
 		});
 
 		it('should not show the modal on the route if the user has no scope to create credential in the project', async () => {
@@ -427,6 +438,292 @@ describe('CredentialsView', () => {
 			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
 		});
+
+		// Regression tests for IAM-1646: search must narrow active filters rather than bypass them.
+		it('should keep the active type filter when typing a search term that matches another type display name', async () => {
+			await router.push({ name: VIEWS.CREDENTIALS, query: { type: ['postgres'] } });
+			const credentialTypes = [
+				{
+					name: 'postgres',
+					displayName: 'Postgres',
+					properties: [],
+				},
+				{
+					name: 'googleCloudStorageOAuth2Api',
+					displayName: 'Google Cloud Storage OAuth2 API',
+					properties: [],
+				},
+				{
+					name: 'jiraSoftwareCloudApi',
+					displayName: 'Jira SW Cloud API',
+					properties: [],
+				},
+			];
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentialTypes = credentialTypes;
+			credentialsStore.credentialTypesById = Object.fromEntries(
+				credentialTypes.map((type) => [type.name, type]),
+			);
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'Cloud Postgres DB',
+					type: 'postgres',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+				{
+					id: '2',
+					name: 'Local Postgres DB',
+					type: 'postgres',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+				{
+					id: '3',
+					name: 'Google Cloud Storage account',
+					type: 'googleCloudStorageOAuth2Api',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+				{
+					id: '4',
+					name: 'Jira account',
+					type: 'jiraSoftwareCloudApi',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+			];
+
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+
+			// Before searching, only Postgres credentials are visible.
+			expect(getAllByTestId('resources-list-item')).toHaveLength(2);
+
+			await fireEvent.input(getByTestId('resources-list-search'), { target: { value: 'cloud' } });
+			await flushPromises();
+
+			const items = getAllByTestId('resources-list-item');
+			expect(items).toHaveLength(1);
+			expect(items[0]).toHaveTextContent('Cloud Postgres DB');
+		});
+
+		it('should keep the active owner filter when typing a search term that matches a credential type display name', async () => {
+			const teamA = createTestProject({ id: 'team-a', name: 'Team A', type: ProjectTypes.Team });
+			const teamB = createTestProject({ id: 'team-b', name: 'Team B', type: ProjectTypes.Team });
+			await router.push({ name: VIEWS.CREDENTIALS, query: { homeProject: teamA.id } });
+
+			const jiraType = {
+				name: 'jiraSoftwareCloudApi',
+				displayName: 'Jira SW Cloud API',
+				properties: [],
+			};
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentialTypes = [jiraType];
+			credentialsStore.credentialTypesById = { [jiraType.name]: jiraType };
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'Team A Jira',
+					type: 'jiraSoftwareCloudApi',
+					homeProject: teamA,
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+				{
+					id: '2',
+					name: 'Team B Jira',
+					type: 'jiraSoftwareCloudApi',
+					homeProject: teamB,
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+			];
+
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+
+			// Before searching, only Team A credentials are visible.
+			expect(getAllByTestId('resources-list-item')).toHaveLength(1);
+
+			await fireEvent.input(getByTestId('resources-list-search'), { target: { value: 'cloud' } });
+			await flushPromises();
+
+			const items = getAllByTestId('resources-list-item');
+			expect(items).toHaveLength(1);
+			expect(items[0]).toHaveTextContent('Team A Jira');
+		});
+
+		it('should still match by credential type display name when active filters are satisfied', async () => {
+			await router.push({
+				name: VIEWS.CREDENTIALS,
+				query: { type: ['jiraSoftwareCloudApi'] },
+			});
+			const jiraType = {
+				name: 'jiraSoftwareCloudApi',
+				displayName: 'Jira SW Cloud API',
+				properties: [],
+			};
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentialTypes = [jiraType];
+			credentialsStore.credentialTypesById = { [jiraType.name]: jiraType };
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'Confluence check',
+					type: 'jiraSoftwareCloudApi',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+			];
+
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+
+			await fireEvent.input(getByTestId('resources-list-search'), { target: { value: 'cloud' } });
+			await flushPromises();
+
+			const items = getAllByTestId('resources-list-item');
+			expect(items).toHaveLength(1);
+			expect(items[0]).toHaveTextContent('Confluence check');
+		});
+
+		it('should combine search, type, and owner filters together', async () => {
+			const teamA = createTestProject({ id: 'team-a', name: 'Team A', type: ProjectTypes.Team });
+			const teamB = createTestProject({ id: 'team-b', name: 'Team B', type: ProjectTypes.Team });
+			await router.push({
+				name: VIEWS.CREDENTIALS,
+				query: { type: ['jiraSoftwareCloudApi'], homeProject: teamA.id },
+			});
+
+			const credentialTypes = [
+				{
+					name: 'jiraSoftwareCloudApi',
+					displayName: 'Jira SW Cloud API',
+					properties: [],
+				},
+				{
+					name: 'postgres',
+					displayName: 'Postgres',
+					properties: [],
+				},
+			];
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentialTypes = credentialTypes;
+			credentialsStore.credentialTypesById = Object.fromEntries(
+				credentialTypes.map((type) => [type.name, type]),
+			);
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'Team A Jira',
+					type: 'jiraSoftwareCloudApi',
+					homeProject: teamA,
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+				{
+					id: '2',
+					name: 'Team B Jira',
+					type: 'jiraSoftwareCloudApi',
+					homeProject: teamB,
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+				{
+					id: '3',
+					name: 'Team A Cloud Postgres',
+					type: 'postgres',
+					homeProject: teamA,
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+			];
+
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+
+			await fireEvent.input(getByTestId('resources-list-search'), { target: { value: 'cloud' } });
+			await flushPromises();
+
+			const items = getAllByTestId('resources-list-item');
+			expect(items).toHaveLength(1);
+			expect(items[0]).toHaveTextContent('Team A Jira');
+		});
+
+		it('should show no results when search only matches credentials excluded by the type filter', async () => {
+			await router.push({
+				name: VIEWS.CREDENTIALS,
+				query: { type: ['slackApi'] },
+			});
+			const credentialTypes = [
+				{
+					name: 'slackApi',
+					displayName: 'Slack API',
+					properties: [],
+				},
+				{
+					name: 'githubApi',
+					displayName: 'GitHub API',
+					properties: [],
+				},
+			];
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentialTypes = credentialTypes;
+			credentialsStore.credentialTypesById = Object.fromEntries(
+				credentialTypes.map((type) => [type.name, type]),
+			);
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'Workspace Slack',
+					type: 'slackApi',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+				{
+					id: '2',
+					name: 'Org GitHub',
+					type: 'githubApi',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+			];
+
+			const { queryAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+
+			await fireEvent.input(getByTestId('resources-list-search'), { target: { value: 'GitHub' } });
+			await flushPromises();
+
+			expect(queryAllByTestId('resources-list-item')).toHaveLength(0);
+			expect(getByTestId('resources-list-empty')).toBeInTheDocument();
+		});
 	});
 
 	describe('credentials shared with all users and projects', () => {
@@ -551,6 +848,195 @@ describe('CredentialsView', () => {
 
 			expect(mockAuthorize).toHaveBeenCalled();
 			expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('restricted credentials', () => {
+		const typeRestricted = {
+			reason: 'typeRestricted' as const,
+			restriction: { name: 'slackApi', available: false, scope: 'project' as const },
+		};
+		const nodesRestricted = {
+			reason: 'nodesRestricted' as const,
+			restriction: { name: 'n8n-nodes-base.jira', available: false, scope: 'instance' as const },
+			nodeTypes: ['n8n-nodes-base.jira'],
+		};
+
+		const credential = (
+			id: string,
+			type: string,
+			restriction?: CredentialRestriction,
+			overrides: Partial<ICredentialsResponse> = {},
+		): ICredentialsResponse => ({
+			id,
+			name: `${type} credential`,
+			type,
+			createdAt: '2021-05-05T00:00:00Z',
+			updatedAt: '2021-05-05T00:00:00Z',
+			scopes: ['credential:update'],
+			isManaged: false,
+			homeProject: {
+				id: 'team-1',
+				name: 'team-1',
+				icon: null,
+				type: ProjectTypes.Team,
+				createdAt: '',
+				updatedAt: '',
+			},
+			...(restriction ? { restriction } : {}),
+			...overrides,
+		});
+
+		const setup = ({
+			enabled = true,
+			credentials = [credential('1', 'slackApi', typeRestricted), credential('2', 'gmailOAuth2')],
+		}: { enabled?: boolean; credentials?: ICredentialsResponse[] } = {}) => {
+			const policies = mockedStore(useTypeAvailabilityPoliciesStore);
+			policies.isEnabled = enabled;
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = credentials;
+			credentialsStore.restrictionsById = Object.fromEntries(
+				credentials.flatMap(({ id, restriction }) => (restriction ? [[id, restriction]] : [])),
+			);
+			return credentialsStore;
+		};
+
+		it.each([true, false])(
+			'asks the server for restrictions only when the policies module is on (%s)',
+			async (enabled) => {
+				const credentialsStore = setup({ enabled });
+
+				renderComponent();
+				await flushPromises();
+
+				expect(credentialsStore.fetchAllCredentials).toHaveBeenCalledWith(
+					expect.objectContaining({ includeRestrictions: enabled }),
+				);
+			},
+		);
+
+		it('marks a credential that the server restricts, on Overview too', async () => {
+			setup();
+
+			const { getAllByTestId } = renderComponent();
+
+			const [slack, gmail] = getAllByTestId('resources-list-item');
+			expect(within(slack).getByTestId('credential-card-restricted')).toHaveTextContent(
+				'Restricted',
+			);
+			expect(within(gmail).queryByTestId('credential-card-restricted')).not.toBeInTheDocument();
+		});
+
+		it('marks nothing when the policies module is off', async () => {
+			setup({ enabled: false });
+
+			const { queryByTestId, getByTestId, findByTestId } = renderComponent();
+			await flushPromises();
+			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
+
+			expect(await findByTestId('credential-filter-setup-needed')).toBeInTheDocument();
+			expect(queryByTestId('credential-card-restricted')).not.toBeInTheDocument();
+			expect(queryByTestId('credential-filter-cannot-be-used')).not.toBeInTheDocument();
+		});
+
+		it('filters on the credentials that cannot be used and keeps the filter in the URL', async () => {
+			await router.push('/team-1/credentials');
+			setup();
+
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+			expect(getAllByTestId('resources-list-item')).toHaveLength(2);
+
+			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
+			await fireEvent.click(getByTestId('credential-filter-cannot-be-used-all'));
+
+			await waitFor(() => expect(getAllByTestId('resources-list-item')).toHaveLength(1));
+			expect(getByTestId('resources-list-item')).toHaveTextContent('slackApi credential');
+			await waitFor(() =>
+				expect(router.currentRoute.value.query.cannotBeUsed).toBe('typeRestricted,nodesRestricted'),
+			);
+		});
+
+		it('restores the filter from the URL and matches only the selected reason', async () => {
+			await router.push({
+				path: '/team-1/credentials',
+				query: { cannotBeUsed: 'nodesRestricted,unknown' },
+			});
+			setup();
+
+			const { queryAllByTestId } = renderComponent();
+			await flushPromises();
+
+			expect(queryAllByTestId('resources-list-item')).toHaveLength(0);
+		});
+
+		it('marks a restricted credential that has no home project', async () => {
+			setup({
+				credentials: [credential('1', 'slackApi', typeRestricted, { homeProject: undefined })],
+			});
+
+			const { getByTestId } = renderComponent();
+			await flushPromises();
+
+			expect(getByTestId('credential-card-restricted')).toHaveTextContent('Restricted');
+		});
+
+		it('marks credentials on Overview before the personal project loads, and loads its policy after', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = null;
+			setup();
+			const policies = mockedStore(useTypeAvailabilityPoliciesStore);
+
+			const { getAllByTestId } = renderComponent();
+			await flushPromises();
+
+			expect(getAllByTestId('credential-card-restricted')).toHaveLength(1);
+			expect(policies.fetchForProject).not.toHaveBeenCalled();
+
+			projectsStore.personalProject = createTestProject({ id: 'personal-1' });
+			await flushPromises();
+
+			expect(policies.fetchForProject).toHaveBeenCalledWith('personal-1');
+		});
+
+		it('filters on restricted nodes only', async () => {
+			await router.push('/team-1/credentials');
+			setup({
+				credentials: [
+					credential('1', 'slackApi', typeRestricted),
+					credential('2', 'jiraSoftwareCloudApi', nodesRestricted),
+					credential('3', 'gmailOAuth2'),
+				],
+			});
+
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+			expect(getAllByTestId('resources-list-item')).toHaveLength(3);
+
+			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
+			await fireEvent.click(getByTestId('credential-filter-cannot-be-used-nodesRestricted'));
+
+			await waitFor(() => expect(getAllByTestId('resources-list-item')).toHaveLength(1));
+			expect(getByTestId('resources-list-item')).toHaveTextContent(
+				'jiraSoftwareCloudApi credential',
+			);
+			expect(getByTestId('credential-card-restricted')).toHaveTextContent('Restricted');
+			await waitFor(() =>
+				expect(router.currentRoute.value.query.cannotBeUsed).toBe('nodesRestricted'),
+			);
+		});
+
+		it('ignores a filter kept in the URL when the policies module is off', async () => {
+			await router.push({
+				path: '/team-1/credentials',
+				query: { cannotBeUsed: 'typeRestricted' },
+			});
+			setup({ enabled: false });
+
+			const { getAllByTestId } = renderComponent();
+			await flushPromises();
+
+			expect(getAllByTestId('resources-list-item')).toHaveLength(2);
 		});
 	});
 });

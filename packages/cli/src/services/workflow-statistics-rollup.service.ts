@@ -1,12 +1,14 @@
 import { Logger } from '@n8n/backend-common';
-import { DatabaseConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
-import { DbConnection, DbLock, DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import {
+	DbLock,
+	DbLockService,
+	AgentExecutionStatisticsRepository,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
-import { strict } from 'node:assert';
+import { sleep } from '@n8n/utils/sleep';
+import { ErrorReporter } from 'n8n-core';
+import { OperationalError } from '@n8n/errors';
 
 import { WorkflowStatisticsService } from './workflow-statistics.service';
 
@@ -14,28 +16,17 @@ type RollupResult = Awaited<ReturnType<WorkflowStatisticsRepository['rollupIncre
 
 const BATCH_SIZE = 5000;
 
-/** Steady cadence once the backlog is drained. */
-const STEADY_INTERVAL_MS = 5 * Time.seconds.toMilliseconds;
-
-/** Fast cadence while a batch comes back full, i.e. backlog remaining. */
-const BUSY_INTERVAL_MS = 250;
+/** Pause between full batches, i.e. while backlog remains. */
+const BATCH_DELAY_MS = 250;
 
 /** Consecutive lock skips after which to warn that the lock is persistently held elsewhere. */
 const SKIP_WARN_THRESHOLD = 5;
 
 /**
- * Folds statistics increments in the `workflow_statistics_delta` table
- * into the `workflow_statistics` table.
+ * Folds workflow and agent statistics increments into their counters.
  */
 @Service()
 export class WorkflowStatisticsRollupService {
-	private timeout: NodeJS.Timeout | undefined;
-
-	/** Tracks the in-flight tick so `shutdown` can await it. */
-	private inflightRollup: Promise<void> | undefined;
-
-	private isShuttingDown = false;
-
 	private consecutiveLockSkips = 0;
 
 	private totalLockSkips = 0;
@@ -43,73 +34,34 @@ export class WorkflowStatisticsRollupService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly instanceSettings: InstanceSettings,
-		private readonly dbConnection: DbConnection,
-		private readonly databaseConfig: DatabaseConfig,
 		private readonly dbLockService: DbLockService,
 		private readonly repository: WorkflowStatisticsRepository,
 		private readonly statisticsService: WorkflowStatisticsService,
+		private readonly agentExecutionStatisticsRepository: AgentExecutionStatisticsRepository,
 	) {
 		this.logger = this.logger.scoped('workflow-statistics');
 	}
 
-	get shouldRun() {
-		return (
-			this.databaseConfig.type === 'postgresdb' &&
-			this.dbConnection.connectionState.migrated &&
-			this.instanceSettings.instanceType === 'main' &&
-			this.instanceSettings.isLeader &&
-			!this.isShuttingDown
-		);
+	/**
+	 * Fold batches until one comes back partial, the signal aborts, or the run
+	 * budget has no room left for another batch. The optional budget is in
+	 * milliseconds. It limits additional batches, but does not interrupt a batch.
+	 */
+	async rollup(signal: AbortSignal, runBudgetMs = Number.POSITIVE_INFINITY): Promise<void> {
+		const deadline = Date.now() + runBudgetMs;
+		let batchStartedAt = Date.now();
+		while (
+			!signal.aborted &&
+			(await this.rollupBatch()) >= BATCH_SIZE &&
+			hasTimeForNextBatch(batchStartedAt, deadline)
+		) {
+			await this.waitBetweenBatches(signal);
+			batchStartedAt = Date.now();
+		}
 	}
 
-	init() {
-		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
-
-		if (this.shouldRun) this.start();
-	}
-
-	@OnLeaderTakeover()
-	start() {
-		if (!this.shouldRun || this.timeout !== undefined) return;
-
-		this.scheduleNext(0);
-		this.logger.debug('Workflow statistics rollup interval started');
-	}
-
-	@OnLeaderStepdown()
-	stop() {
-		clearTimeout(this.timeout);
-		this.timeout = undefined;
-	}
-
-	@OnShutdown()
-	async shutdown() {
-		this.isShuttingDown = true;
-		clearTimeout(this.timeout);
-		this.timeout = undefined;
-		await this.inflightRollup;
-	}
-
-	private scheduleNext(delayMs: number) {
-		this.timeout = setTimeout(() => {
-			let nextDelayMs = STEADY_INTERVAL_MS;
-			this.inflightRollup = this.rollup()
-				.then((increments) => {
-					if (increments >= BATCH_SIZE) nextDelayMs = BUSY_INTERVAL_MS; // backlog remaining
-				})
-				.catch((error) => {
-					this.errorReporter.error(error, { shouldBeLogged: true });
-				})
-				.finally(() => {
-					this.inflightRollup = undefined;
-					if (this.timeout !== undefined) this.scheduleNext(nextDelayMs);
-				});
-		}, delayMs);
-	}
-
-	/** Fold one batch of increments and fire any resulting milestones. Returns increments folded. */
-	private async rollup(): Promise<number> {
+	/** Fold each buffer and fire workflow milestones. Return the largest batch size. */
+	private async rollupBatch(): Promise<number> {
 		const result = await this.foldBatch();
 		if (!result) return 0;
 
@@ -118,18 +70,31 @@ export class WorkflowStatisticsRollupService {
 		return result.increments;
 	}
 
-	/** Fold a batch under an advisory lock. Returns null if another instance holds the lock. */
+	private async waitBetweenBatches(signal: AbortSignal): Promise<void> {
+		try {
+			await sleep(BATCH_DELAY_MS, signal);
+		} catch {
+			// `sleep` rejects only on abort, which the loop checks for on its own.
+		}
+	}
+
+	/** Fold a batch under an advisory lock. Returns null if another run or process holds the lock. */
 	private async foldBatch(): Promise<RollupResult | null> {
 		try {
-			const result = await this.dbLockService.tryWithLock(
+			const result = await this.dbLockService.tryWithLockContext(
 				DbLock.WORKFLOW_STATISTICS_ROLLUP,
-				async (tx) => await this.repository.rollupIncrements(tx, BATCH_SIZE),
+				async (ctx) => {
+					const workflows = await this.repository.rollupIncrementsInContext(ctx, BATCH_SIZE);
+					const agentIncrements =
+						await this.agentExecutionStatisticsRepository.rollupAgentIncrements(ctx, BATCH_SIZE);
+					return { ...workflows, increments: Math.max(workflows.increments, agentIncrements) };
+				},
 			);
 			this.consecutiveLockSkips = 0;
 			return result;
 		} catch (error) {
 			if (error instanceof OperationalError) {
-				this.registerLockSkip(); // another instance holds the lock
+				this.registerLockSkip(); // another run or process holds the lock
 				return null;
 			}
 			throw error;
@@ -137,9 +102,9 @@ export class WorkflowStatisticsRollupService {
 	}
 
 	/**
-	 * Occasional skips are expected around leader transitions; persistent skips suggest a process
-	 * outside this deployment holds the lock, e.g. a second n8n instance sharing this database
-	 * (advisory locks are not schema- or table-prefix-scoped).
+	 * Occasional skips are expected around leader transitions and when a slow run overlaps the next
+	 * one; persistent skips suggest a process outside this deployment holds the lock, e.g. a second
+	 * n8n instance sharing this database (advisory locks are not schema- or table-prefix-scoped).
 	 */
 	private registerLockSkip() {
 		this.consecutiveLockSkips++;
@@ -148,7 +113,7 @@ export class WorkflowStatisticsRollupService {
 		if (this.consecutiveLockSkips % SKIP_WARN_THRESHOLD !== 0) return;
 
 		this.logger.warn(
-			'Workflow statistics rollup repeatedly skipped: lock held by another process',
+			'Workflow statistics rollup repeatedly skipped: lock held by another run or process',
 			{
 				consecutiveLockSkips: this.consecutiveLockSkips,
 				totalLockSkips: this.totalLockSkips,
@@ -171,4 +136,10 @@ export class WorkflowStatisticsRollupService {
 			}
 		}
 	}
+}
+
+/** Whether the pause and a batch as long as the last one both end before the deadline. */
+function hasTimeForNextBatch(lastBatchStartedAt: number, deadline: number): boolean {
+	const now = Date.now();
+	return now + (now - lastBatchStartedAt) + BATCH_DELAY_MS < deadline;
 }

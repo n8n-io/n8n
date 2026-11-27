@@ -6,7 +6,12 @@ import {
 	ScrollAreaThumb,
 	ScrollAreaViewport,
 } from 'reka-ui';
-import { computed, ref, nextTick, type Ref } from 'vue';
+import { computed, ref, nextTick, useCssModule, type Ref } from 'vue';
+
+import { useScrollEdges } from '../../composables/useScrollEdges';
+
+/** Viewport edge, or axis, that fades out. Matches the `scroll-mask` mixin. */
+export type ScrollAreaEdgeFade = 'top' | 'bottom' | 'left' | 'right' | 'y' | 'x';
 
 export interface Props {
 	/**
@@ -15,14 +20,17 @@ export interface Props {
 	 * - always: always shows scrollbars
 	 * - scroll: shows scrollbars when scrolling
 	 * - hover: shows scrollbars on hover
+	 * @default 'hover'
 	 */
 	type?: 'auto' | 'always' | 'scroll' | 'hover';
 	/**
 	 * Reading direction for RTL support
+	 * @default 'ltr'
 	 */
 	dir?: 'ltr' | 'rtl';
 	/**
 	 * Time in milliseconds before scrollbars auto-hide
+	 * @default 600
 	 */
 	scrollHideDelay?: number;
 	/**
@@ -35,16 +43,26 @@ export interface Props {
 	maxWidth?: string;
 	/**
 	 * Whether to show horizontal scrollbar
+	 * @default false
 	 */
 	enableHorizontalScroll?: boolean;
 	/**
 	 * Whether to show vertical scrollbar
+	 * @default true
 	 */
 	enableVerticalScroll?: boolean;
 	/**
 	 * Change the default rendered element for the one passed as a child, merging their props and behavior.
+	 * @default false
 	 */
 	asChild?: boolean;
+	/**
+	 * Fade the content out at this edge of the viewport, or at both edges of this axis, while
+	 * content is still hidden past that edge. The fade hides once you reach it, so the last
+	 * item stays solid. The fade is a CSS mask, so it works on any background. Set
+	 * `--scroll-area--fade-size` on the component to change its depth.
+	 */
+	edgeFade?: ScrollAreaEdgeFade;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -56,6 +74,7 @@ const props = withDefaults(defineProps<Props>(), {
 	enableHorizontalScroll: false,
 	enableVerticalScroll: true,
 	asChild: false,
+	edgeFade: undefined,
 });
 
 // Type for the ScrollAreaRoot instance with the viewport property
@@ -64,6 +83,7 @@ interface ScrollAreaRootWithViewport {
 }
 
 const rootRef = ref<ScrollAreaRootWithViewport>();
+const $style = useCssModule();
 
 const viewportStyle = computed(() => {
 	const style: Record<string, string> = {};
@@ -96,6 +116,42 @@ function getViewportElement(): HTMLElement | undefined {
 
 	return undefined;
 }
+
+const fadeTarget = computed(() => (props.edgeFade ? (getViewportElement() ?? null) : null));
+const verticalEdges = useScrollEdges(fadeTarget, { axis: 'vertical' });
+const horizontalEdges = useScrollEdges(fadeTarget, { axis: 'horizontal' });
+
+function isHorizontalFade(edge: ScrollAreaEdgeFade): boolean {
+	return edge === 'left' || edge === 'right' || edge === 'x';
+}
+
+const edgeFadeClass = computed(() => {
+	const edge = props.edgeFade;
+	if (!edge) return undefined;
+
+	const horizontal = isHorizontalFade(edge);
+	const canScrollStart = horizontal
+		? horizontalEdges.canScrollLeft.value
+		: verticalEdges.canScrollTop.value;
+	const canScrollEnd = horizontal
+		? horizontalEdges.canScrollRight.value
+		: verticalEdges.canScrollBottom.value;
+
+	if (edge === 'top') return canScrollStart ? $style.fadeTop : undefined;
+	if (edge === 'bottom') return canScrollEnd ? $style.fadeBottom : undefined;
+	if (edge === 'left') return canScrollStart ? $style.fadeLeft : undefined;
+	if (edge === 'right') return canScrollEnd ? $style.fadeRight : undefined;
+	if (edge === 'y') {
+		if (canScrollStart && canScrollEnd) return $style.fadeY;
+		if (canScrollStart) return $style.fadeTop;
+		if (canScrollEnd) return $style.fadeBottom;
+		return undefined;
+	}
+	if (canScrollStart && canScrollEnd) return $style.fadeX;
+	if (canScrollStart) return $style.fadeLeft;
+	if (canScrollEnd) return $style.fadeRight;
+	return undefined;
+});
 
 /**
  * Scrolls the viewport to the bottom
@@ -170,7 +226,11 @@ defineExpose({
 		:scroll-hide-delay="scrollHideDelay"
 		:class="$style.scrollAreaRoot"
 	>
-		<ScrollAreaViewport :as-child="asChild" :class="$style.viewport" :style="viewportStyle">
+		<ScrollAreaViewport
+			:as-child="asChild"
+			:class="[$style.viewport, edgeFadeClass]"
+			:style="viewportStyle"
+		>
 			<slot />
 		</ScrollAreaViewport>
 
@@ -195,6 +255,8 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/mixins';
+
 .scrollAreaRoot {
 	position: relative;
 	overflow: hidden;
@@ -208,6 +270,41 @@ defineExpose({
 	height: 100%;
 	border-radius: inherit;
 	overflow-anchor: none;
+}
+
+/* The mask sits on the viewport, so the scrollbar next to it stays untouched. */
+$fade-size: var(--scroll-area--fade-size, var(--spacing--sm));
+
+.fadeTop {
+	scroll-padding-top: $fade-size;
+	@include mixins.scroll-mask(top, $fade-size);
+}
+
+.fadeBottom {
+	scroll-padding-bottom: $fade-size;
+	@include mixins.scroll-mask(bottom, $fade-size);
+}
+
+.fadeLeft {
+	scroll-padding-left: $fade-size;
+	@include mixins.scroll-mask(left, $fade-size);
+}
+
+.fadeRight {
+	scroll-padding-right: $fade-size;
+	@include mixins.scroll-mask(right, $fade-size);
+}
+
+.fadeY {
+	scroll-padding-top: $fade-size;
+	scroll-padding-bottom: $fade-size;
+	@include mixins.scroll-mask(y, $fade-size);
+}
+
+.fadeX {
+	scroll-padding-left: $fade-size;
+	scroll-padding-right: $fade-size;
+	@include mixins.scroll-mask(x, $fade-size);
 }
 
 .scrollbar {

@@ -1,5 +1,5 @@
 import { MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE } from '../agent-chat-attachments.constants';
-import { AgentChatMessageDto } from '../dto';
+import { AgentChatMessageDto, AgentPreviewChatMessageDto, SystemAgentChatMessageDto } from '../dto';
 
 describe('AgentChatMessageDto', () => {
 	const attachment = {
@@ -62,6 +62,30 @@ describe('AgentChatMessageDto', () => {
 		expect(result.success).toBe(false);
 	});
 
+	it('accepts an object client context and keeps it in the parsed payload', () => {
+		const clientContext = { timeZone: 'Europe/Helsinki', nested: { ids: ['a', 'b'] }, flag: null };
+		const payload = { message: 'hello', clientContext };
+		expect(AgentChatMessageDto.parse(payload)).toEqual(payload);
+		expect(AgentChatMessageDto.safeParse({ message: 'hello', clientContext: {} }).success).toBe(
+			true,
+		);
+	});
+
+	it('accepts a payload without a client context', () => {
+		const parsed = AgentChatMessageDto.parse({ message: 'hello' });
+		expect(parsed).not.toHaveProperty('clientContext');
+	});
+
+	it.each([
+		['null', null],
+		['an array', [{ timeZone: 'UTC' }]],
+		['a string', 'UTC'],
+		['a number', 1],
+		['a boolean', true],
+	])('rejects a client context that is %s', (_label, clientContext) => {
+		expect(AgentChatMessageDto.safeParse({ message: 'hello', clientContext }).success).toBe(false);
+	});
+
 	it('rejects attachments with empty fileName or mimeType', () => {
 		expect(
 			AgentChatMessageDto.safeParse({
@@ -75,5 +99,32 @@ describe('AgentChatMessageDto', () => {
 				attachments: [{ ...attachment, mimeType: '' }],
 			}).success,
 		).toBe(false);
+	});
+});
+
+describe('chat message mode', () => {
+	it('accepts a test run only in the preview chat', () => {
+		expect(AgentPreviewChatMessageDto.parse({ message: 'Hi', mode: 'test' })).toMatchObject({
+			mode: 'test',
+		});
+		expect(AgentPreviewChatMessageDto.safeParse({ message: 'Hi', mode: 'live' }).success).toBe(
+			true,
+		);
+	});
+
+	it.each([
+		['n8n Chat', AgentChatMessageDto],
+		['a system agent', SystemAgentChatMessageDto],
+	])('rejects a test run in %s instead of running it live', (_surface, dto) => {
+		const payload = { message: 'Hi', sessionId: '0f8fad5b-d9cb-469f-a165-70867728950e' };
+		expect(dto.safeParse({ ...payload, mode: 'test' }).success).toBe(false);
+		expect(dto.safeParse({ ...payload, mode: 'live' }).success).toBe(true);
+		expect(dto.safeParse(payload).success).toBe(true);
+	});
+
+	it('keeps the message rules in the preview chat', () => {
+		expect(AgentPreviewChatMessageDto.safeParse({ message: '  ', mode: 'test' }).success).toBe(
+			false,
+		);
 	});
 });

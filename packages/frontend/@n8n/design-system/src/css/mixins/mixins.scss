@@ -57,23 +57,27 @@ $E: null;
 	@include scroll-bar;
 	scrollbar-color: transparent transparent;
 
-	&::-webkit-scrollbar-thumb {
-		background-color: transparent;
-	}
-
 	&:hover {
 		scrollbar-color: var.$scrollbar-background-color transparent;
-
-		&::-webkit-scrollbar-thumb {
-			background-color: var.$scrollbar-background-color;
-
-			&:hover {
-				background-color: var.$scrollbar-hover-background-color;
-			}
-		}
 	}
 }
 
+/** Set the grid size and dot colour. Set the dot diameter separately if needed. */
+@mixin dotted-background(
+	$size: var(--spacing--2xs),
+	$dot-color: var(--border-color),
+	$dot-size: var(--spacing--5xs)
+) {
+	background-image: radial-gradient(
+		circle,
+		$dot-color calc($dot-size / 2),
+		transparent calc($dot-size / 2)
+	);
+	background-size: $size $size;
+}
+
+// $edge is the viewport edge, or axis, that fades out.
+// $size is the fade depth. @default var(--spacing--sm)
 @mixin scroll-mask($edge, $size: var(--spacing--sm)) {
 	@if $edge == top {
 		mask-image: linear-gradient(to bottom, transparent 0, black $size, black 100%);
@@ -101,6 +105,27 @@ $E: null;
 		);
 	} @else {
 		@error "Unsupported scroll mask edge: #{$edge}";
+	}
+}
+
+// Top fade, bottom fade, or both, while the matching data attributes are set.
+// Bind `scrollMaskAttrs` from useScrollEdges on the scroller.
+// Each fade hides once that edge has no hidden content.
+// $size is the fade depth. @default var(--spacing--sm)
+@mixin scroll-mask-when-y($size: var(--spacing--sm)) {
+	scroll-padding-top: $size;
+	scroll-padding-bottom: $size;
+
+	&[data-scroll-mask-top][data-scroll-mask-bottom] {
+		@include scroll-mask(y, $size);
+	}
+
+	&[data-scroll-mask-top]:not([data-scroll-mask-bottom]) {
+		@include scroll-mask(top, $size);
+	}
+
+	&[data-scroll-mask-bottom]:not([data-scroll-mask-top]) {
+		@include scroll-mask(bottom, $size);
 	}
 }
 

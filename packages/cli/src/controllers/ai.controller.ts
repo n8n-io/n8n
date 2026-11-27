@@ -11,10 +11,12 @@ import {
 	AiBuilderChatRequestDto,
 	AiSessionRetrievalRequestDto,
 	AiUsageSettingsRequestDto,
+	AiModelTrainingSettingsRequestDto,
 	AiTruncateMessagesRequestDto,
 	AiClearSessionRequestDto,
 	AiGatewayUsageQueryDto,
 } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, Query, RestController, GlobalScope } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError, NetworkError } from '@n8n_io/ai-assistant-sdk';
@@ -28,6 +30,7 @@ import {
 	ContentTooLargeError,
 	InternalServerError,
 	NotFoundError,
+	ResponseError,
 	ServiceUnavailableError,
 	TooManyRequestsError,
 } from '@n8n/errors';
@@ -47,6 +50,7 @@ export class AiController {
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	private toAiAssistantResponseError(error: APIResponseError) {
@@ -66,6 +70,9 @@ export class AiController {
 
 	/** Maps a failure from a service call to the HTTP error the client should see. */
 	private toResponseError(error: unknown) {
+		if (error instanceof ResponseError) {
+			return error;
+		}
 		// The AI assistant service could not be reached (DNS, refused connection, timeout).
 		if (error instanceof NetworkError) {
 			return new ServiceUnavailableError(error.message);
@@ -114,7 +121,7 @@ export class AiController {
 					mode: payload.payload.mode,
 					resumeData: payload.payload.resumeData,
 				},
-				req.user,
+				req.user.toIUser(),
 				signal,
 			);
 
@@ -173,7 +180,7 @@ export class AiController {
 			const handleClose = () => abortController.abort();
 			res.on('close', handleClose);
 
-			const aiResponse = await this.aiService.chat(payload, req.user);
+			const aiResponse = await this.aiService.chat(payload, req.user.toIUser());
 			if (aiResponse.body) {
 				res.header('Content-type', 'application/json-lines').flush();
 				try {
@@ -206,7 +213,7 @@ export class AiController {
 		@Body payload: AiApplySuggestionRequestDto,
 	): Promise<AiAssistantSDK.ApplySuggestionResponse> {
 		try {
-			return await this.aiService.applySuggestion(payload, req.user);
+			return await this.aiService.applySuggestion(payload, req.user.toIUser());
 		} catch (e) {
 			throw this.toResponseError(e);
 		}
@@ -225,7 +232,8 @@ export class AiController {
 		@Body payload: AiAskRequestDto,
 	): Promise<AiAssistantSDK.AskAiResponsePayload> {
 		try {
-			return await this.aiService.askAi(payload, req.user);
+			// oxlint-disable-next-line typescript/no-deprecated
+			return await this.aiService.askAi(payload, req.user.toIUser());
 		} catch (e) {
 			throw this.toResponseError(e);
 		}
@@ -250,7 +258,7 @@ export class AiController {
 		try {
 			const sessions = await this.workflowBuilderService.getSessions(
 				payload.workflowId,
-				req.user,
+				req.user.toIUser(),
 				payload.codeBuilder,
 			);
 			return sessions;
@@ -303,7 +311,7 @@ export class AiController {
 		_: Response,
 	): Promise<AiAssistantSDK.BuilderInstanceCreditsResponse> {
 		try {
-			return await this.workflowBuilderService.getBuilderInstanceCredits(req.user);
+			return await this.workflowBuilderService.getBuilderInstanceCredits(req.user.toIUser());
 		} catch (e) {
 			throw this.toResponseError(e);
 		}
@@ -319,7 +327,7 @@ export class AiController {
 		try {
 			const success = await this.workflowBuilderService.truncateMessagesAfter(
 				payload.workflowId,
-				req.user,
+				req.user.toIUser(),
 				payload.messageId,
 				payload.versionCardId,
 			);
@@ -337,7 +345,7 @@ export class AiController {
 		@Body payload: AiClearSessionRequestDto,
 	): Promise<{ success: boolean }> {
 		try {
-			await this.workflowBuilderService.clearSession(payload.workflowId, req.user);
+			await this.workflowBuilderService.clearSession(payload.workflowId, req.user.toIUser());
 			return { success: true };
 		} catch (e) {
 			throw this.toResponseError(e);
@@ -351,10 +359,29 @@ export class AiController {
 		_res: Response,
 		@Body payload: AiUsageSettingsRequestDto,
 	): Promise<void> {
+		// The setting is deprecated. It can only be turned on.
+		if (!payload.allowSendingParameterValues) {
+			throw new BadRequestError('Turning off sending parameter values is no longer supported.');
+		}
+		if (!this.globalConfig.ai.allowSendingParameterValues) {
+			throw new BadRequestError(
+				'Sending parameter values is turned off by the N8N_AI_ALLOW_SENDING_PARAMETER_VALUES environment variable. Remove it and restart n8n to turn this on.',
+			);
+		}
 		try {
 			await this.aiUsageService.updateAiUsageSettings(payload.allowSendingParameterValues);
 		} catch (e) {
 			throw this.toResponseError(e);
 		}
+	}
+
+	@Post('/model-training-settings')
+	@GlobalScope('aiAssistant:manage')
+	async updateModelTrainingSettings(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: AiModelTrainingSettingsRequestDto,
+	): Promise<void> {
+		await this.aiUsageService.updateModelTrainingSetting(payload.allowModelTraining);
 	}
 }

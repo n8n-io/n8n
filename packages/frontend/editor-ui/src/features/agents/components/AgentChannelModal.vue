@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import type { AgentApproval } from '@n8n/api-types';
+import type {
+	AgentApproval,
+	AgentConfigValidationIssue,
+	AgentTaskDto,
+	ChatIntegrationDescriptor,
+} from '@n8n/api-types';
+import { AGENT_TASK_NAME_MAX_LENGTH, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, type DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, onUnmounted, ref, watch } from 'vue';
 
@@ -10,18 +16,24 @@ import {
 	createAgentChannelRuntime,
 	getAgentChannelPlatform,
 } from '../channels/registry';
+import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import type {
+	AgentChannelRestart,
 	AgentChannelRuntime,
 	AgentChannelView,
 	AgentChannelViewExpose,
 } from '../channels/types';
 import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
+import { useAgentChannelRemoval } from '../composables/useAgentChannelRemoval';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import AgentChannelApprovalSetting from './AgentChannelApprovalSetting.vue';
 import AgentChannelListItem from './AgentChannelListItem.vue';
+import AgentTaskForm from './AgentTaskForm.vue';
+import AgentTestButton from './AgentTestButton.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
+import { AGENT_SCHEDULE_VIEW_TYPE } from '../constants';
 
 export type ChannelView = AgentChannelView;
 
@@ -30,15 +42,36 @@ interface Props {
 	agentId: string;
 	projectId: string;
 	view: ChannelView;
+	disabled?: boolean;
 	isPublished?: boolean;
 	simpleSetup?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
+	/** n8n Chat's saved description, seeded into its view when opened. */
+	savedDescription?: string;
+	/** Persists n8n Chat's description. It skips the request when nothing changed. */
+	saveDescription?: (description: string) => Promise<void>;
+	/** Shows the schedule row and the schedule views. */
+	showSchedule?: boolean;
+	/** The task that the schedule edit view shows. */
+	task?: AgentTaskDto | null;
+	/** The saved enabled state of `task`. */
+	taskEnabled?: boolean;
+	isRunnable?: boolean;
+	validationIssues?: AgentConfigValidationIssue[];
+	previewDisabledReason?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
+	disabled: false,
 	isPublished: false,
 	simpleSetup: false,
 	ensureAgentPersisted: undefined,
+	showSchedule: false,
+	task: null,
+	taskEnabled: true,
+	isRunnable: false,
+	validationIssues: () => [],
+	previewDisabledReason: undefined,
 });
 
 const emit = defineEmits<{
@@ -47,14 +80,18 @@ const emit = defineEmits<{
 	'channel-connected': [channelType: string];
 	'channel-disconnected': [channelType: string];
 	'agent-changed': [];
+	'tasks-changed': [];
+	'preview-task': [instructions: string];
 }>();
 
 const i18n = useI18n();
 const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
+const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
 const {
 	fetchStatus,
+	n8nChatPublishedEnabled,
 	connectedCredentials,
 	integrationSettings,
 	integrationApproval,
@@ -66,9 +103,8 @@ const {
 	isConfigured: isIntegrationConfigured,
 	hasRuntimeError,
 	connect,
-	disconnect,
 	clearError: clearIntegrationError,
-} = useAgentIntegrationStatus(props.projectId, props.agentId);
+} = integrationStatus;
 
 const currentView = ref<ChannelView>(props.view);
 const openedFromList = ref(props.view === 'list');
@@ -76,11 +112,14 @@ const viewSession = ref(0);
 const credentialIdAtEditOpen = ref('');
 const channelActionInFlight = ref(false);
 const saveAttempted = ref(false);
-const pendingDisconnect = ref<{
-	channelType: string;
-	credentialId: string;
-	closeAfter: boolean;
-} | null>(null);
+
+/**
+ * A setup whose remaining steps happen outside n8n writes several times and
+ * reaches no single terminal step, so the first successful write is the
+ * completion. Later writes must not report it again: each one would re-run the
+ * `trigger-added` telemetry and the channel reload on the agent page.
+ */
+const connectReported = ref(false);
 
 function channelTypeFromView(view: ChannelView): string | null {
 	if (view === 'list') return null;
@@ -101,10 +140,46 @@ const selectedChannelType = computed(() => {
 
 const isSetupMode = computed(() => currentView.value.endsWith('_setup'));
 const isEditMode = computed(() => currentView.value.endsWith('_edit'));
+const isN8nChatSelected = computed(() => selectedChannelType.value === N8N_CHAT_INTEGRATION_TYPE);
+const isScheduleSelected = computed(
+	() => props.showSchedule && selectedChannelType.value === AGENT_SCHEDULE_VIEW_TYPE,
+);
+
+const scheduleIntegration = computed<ChatIntegrationDescriptor>(() => ({
+	type: AGENT_SCHEDULE_VIEW_TYPE,
+	label: i18n.baseText('agents.builder.tasks.title'),
+	icon: 'clock',
+	credentialTypes: [],
+}));
+const taskFormRef = ref<InstanceType<typeof AgentTaskForm>>();
+const taskName = ref('');
+/** The task the schedule view shows. Setup always starts a new task. */
+const scheduleTask = computed(() => (isEditMode.value ? props.task : null));
+const taskBusy = computed(
+	() => taskFormRef.value?.saving === true || taskFormRef.value?.deleting === true,
+);
+
+const { withN8nChat } = useN8nChatChannel();
+const channelList = computed(() => withN8nChat(catalog.value ?? []));
+const n8nChatAvailableLabel = computed(() => i18n.baseText('agents.channels.n8nChat.available'));
+const removeChannelLabel = computed(() =>
+	i18n.baseText(
+		isN8nChatSelected.value
+			? 'agents.channels.n8nChat.makeUnavailable'
+			: 'agents.channels.modal.removeChannel',
+	),
+);
+const n8nChatSaveLabel = computed(() =>
+	i18n.baseText(isSetupMode.value ? 'agents.channels.n8nChat.makeAvailable' : 'generic.save'),
+);
+const n8nChatMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => [
+	{ id: 'edit', label: i18n.baseText('agents.channels.n8nChat.edit') },
+	{ id: 'remove', label: i18n.baseText('agents.channels.n8nChat.makeUnavailable') },
+]);
 
 const currentIntegration = computed(() => {
 	if (!selectedChannelType.value) return null;
-	return catalog.value?.find((i) => i.type === selectedChannelType.value) ?? null;
+	return channelList.value.find((i) => i.type === selectedChannelType.value) ?? null;
 });
 
 /** The channel whose setup view is on screen, so the close event fires once per start. */
@@ -229,21 +304,33 @@ const channelViewLoading = computed(() => channelViewRef.value?.loading === true
 const actionInFlight = computed(
 	() =>
 		channelActionInFlight.value ||
+		taskBusy.value ||
+		removingChannel.value ||
 		channelViewLoading.value ||
 		(selectedChannelType.value ? isLoading(selectedChannelType.value) : false),
 );
 const listLoading = computed(
 	() => actionInFlight.value || Object.values(runtimes).some((runtime) => runtime.loading.value),
 );
-const disconnectConfirmationComponent = computed(() => {
-	const pending = pendingDisconnect.value;
-	return pending
-		? getAgentChannelPlatform(pending.channelType).disconnectConfirmationComponent
-		: undefined;
-});
-const disconnectConfirmationLoading = computed(() => {
-	const pending = pendingDisconnect.value;
-	return pending ? isLoading(pending.channelType) : false;
+const {
+	pendingDisconnect,
+	disconnectConfirmationComponent,
+	removing: removingChannel,
+	requestDisconnect,
+	confirmDisconnect,
+} = useAgentChannelRemoval({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	isPublished: () => props.isPublished,
+	disabled: () => props.disabled || channelActionInFlight.value || channelViewLoading.value,
+	status: integrationStatus,
+	runtimeFor,
+	onRemoved: (channelType, { restartWith }) => {
+		if (!isIntegrationConfigured(channelType)) emit('channel-disconnected', channelType);
+		emit('agent-changed');
+		if (restartWith) restartSetup(channelType, restartWith);
+		else completeAndClose();
+	},
 });
 
 const headerContentDisabled = computed(
@@ -276,18 +363,34 @@ watch(
 	},
 );
 
-const showFooterActions = computed(() => isEditMode.value && selectedChannelType.value !== null);
+// n8n Chat's setup view also needs a footer ("Make available"), unlike every
+// other channel's setup, which connects straight from its own view.
+const setupCanFinish = computed(
+	() => isSetupMode.value && channelViewRef.value?.canFinish === true,
+);
+const showFooterActions = computed(
+	() =>
+		selectedChannelType.value !== null &&
+		(isScheduleSelected.value ||
+			isEditMode.value ||
+			(isSetupMode.value && isN8nChatSelected.value)),
+);
 
 const currentChannelCredentialId = computed(() =>
 	getChannelCredentialId(selectedChannelType.value),
 );
+/** A channel view can say that the channel runs without a credential. */
+const credentialMissing = computed(
+	() => channelViewRef.value?.credentialRequired !== false && !currentChannelCredentialId.value,
+);
 const headerText = computed(() => {
 	const isListMode = currentView.value === 'list';
 	const channel = selectedChannelType.value;
+	if (isScheduleSelected.value) return taskName.value;
 	if (channel && !isListMode) {
 		return currentIntegration.value?.label ?? channel;
 	}
-	return i18n.baseText('agents.channels.modal.title');
+	return i18n.baseText('agents.builder.addTrigger.modal.title');
 });
 const currentStep = computed(() => (currentView.value === 'list' ? 'list' : 'configure'));
 
@@ -323,10 +426,17 @@ function connectAction(channelType: string) {
 	);
 }
 
+function listDescription(channelType: string): string | undefined {
+	return getAgentChannelPlatform(channelType).getListDescription?.({
+		text: (key) => i18n.baseText(key),
+	});
+}
+
 function goToSetup(channelType: string) {
 	clearIntegrationError(channelType);
 	openedFromList.value = true;
 	saveAttempted.value = false;
+	connectReported.value = false;
 	currentView.value = `${channelType}_setup`;
 }
 
@@ -334,6 +444,7 @@ function goToEdit(channelType: string) {
 	prepareChannelEdit(channelType);
 	openedFromList.value = true;
 	saveAttempted.value = false;
+	connectReported.value = false;
 	currentView.value = `${channelType}_edit`;
 }
 
@@ -341,6 +452,7 @@ function goBackToList() {
 	if (actionInFlight.value) return;
 	prepareChannelEdit(null);
 	saveAttempted.value = false;
+	connectReported.value = false;
 	currentView.value = 'list';
 }
 
@@ -351,6 +463,17 @@ function goBackToList() {
  */
 function completeAndClose() {
 	emit('update:open', false);
+}
+
+/**
+ * Done is the save for a setup that never ran one. The routes that bind the
+ * credential themselves emit `persist`; a step already finished when the setup
+ * reopened does not, so closing on Done left the channel unbound and absent
+ * from the agent. Staying open on a failure keeps the reason on screen.
+ */
+async function finishSetup() {
+	if (!setupCanFinish.value) return completeAndClose();
+	if (await writeChannelConfig()) completeAndClose();
 }
 
 function handleModalOpenUpdate(isOpen: boolean) {
@@ -389,22 +512,31 @@ async function runBeforeSave(): Promise<boolean> {
 	}
 }
 
-async function saveChannelConfig() {
-	if (actionInFlight.value) return;
+/**
+ * Writes the channel config and reports whether it landed. Separate from
+ * closing, because a setup whose remaining steps happen outside n8n writes
+ * what it has and leaves the dialog open.
+ */
+async function writeChannelConfig(): Promise<boolean> {
+	if (actionInFlight.value) return false;
 	saveAttempted.value = true;
 	const channelType = selectedChannelType.value;
-	const credentialId = currentChannelCredentialId.value;
-	if (!channelType || !credentialId) return;
-	if (channelViewRef.value?.validationError) return;
-	if (!channelApprovalValid.value) return;
+	// The lookup falls back to the connected credential. A channel that needs none
+	// (an API channel switched to none) must keep a cleared selection empty.
+	const credentialId =
+		channelType && channelViewRef.value?.credentialRequired === false
+			? (selectedCredentials.value[channelType] ?? '')
+			: currentChannelCredentialId.value;
+	if (!channelType || credentialMissing.value) return false;
+	if (channelViewRef.value?.validationError) return false;
+	if (!channelApprovalValid.value) return false;
 
 	// Swapping the credential of a configured channel is one request: the
 	// backend brings the new channel up, swaps both entries in a single write,
-	// and only then releases the old one.
+	// and only then releases the old one. The old credential can be '' for a
+	// channel that runs without one.
 	const credentialIdToReplace =
-		isEditMode.value &&
-		credentialIdAtEditOpen.value &&
-		credentialIdAtEditOpen.value !== credentialId
+		isEditMode.value && isConfigured(channelType) && credentialIdAtEditOpen.value !== credentialId
 			? credentialIdAtEditOpen.value
 			: undefined;
 
@@ -412,133 +544,160 @@ async function saveChannelConfig() {
 	try {
 		if (!(await persistAgent())) {
 			trackSetupFailure(channelType, 'persist');
-			return;
+			return false;
 		}
 		if (!(await runBeforeSave())) {
 			trackSetupFailure(channelType, 'before_save');
-			return;
+			return false;
 		}
 		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
-			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
+			...(credentialIdToReplace !== undefined
+				? { replaces: { credentialId: credentialIdToReplace } }
+				: {}),
 			// Only the edit view shows the approval control, so only it may carry one.
 			...(isEditMode.value && channelApproval.value ? { approval: channelApproval.value } : {}),
 		});
+		await channelViewRef.value?.afterSave?.();
 	} catch {
 		// Only `connect` is left to throw here, and `useAgentIntegrationStatus`
 		// exposes that failure to the setup view.
 		trackSetupFailure(channelType, 'connect');
+		return false;
+	} finally {
+		channelActionInFlight.value = false;
+	}
+
+	emit('agent-changed');
+	reportConnected(channelType);
+	return true;
+}
+
+async function saveChannelConfig() {
+	if (!(await writeChannelConfig())) return;
+	const channelType = selectedChannelType.value;
+	// Through `finishConnect`, so one place decides whether a connect closes the
+	// modal. The report it makes first has already happened and is one-shot.
+	if (channelType) finishConnect(channelType);
+}
+
+function reportConnected(channelType: string) {
+	if (connectReported.value) return;
+	connectReported.value = true;
+	endSetupTracking(true);
+	emit('channel-connected', channelType);
+}
+
+function finishConnect(channelType: string) {
+	reportConnected(channelType);
+	// A view that drives steps of its own past the connect closes itself, by
+	// emitting `done`.
+	if (!channelViewRef.value?.keepOpenAfterConnect) completeAndClose();
+}
+
+/** Same shape as `persistAgent`: reports its own failure and returns whether it saved. */
+async function persistDescription(description: string): Promise<boolean> {
+	try {
+		await props.saveDescription?.(description);
+		return true;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
+		return false;
+	}
+}
+
+/**
+ * n8n Chat has no credential and no per-platform view logic, so it saves
+ * separately rather than bending `saveChannelConfig` to a channel that skips
+ * most of what that function does (credentials, `beforeSave`, approval).
+ */
+async function saveN8nChat() {
+	if (actionInFlight.value) return;
+	// Read the view before any await: it can unmount while a request runs.
+	const description = channelViewRef.value?.description;
+	if (description === undefined) return;
+	const settingUp = isSetupMode.value;
+	channelActionInFlight.value = true;
+	try {
+		if (!(await persistAgent())) {
+			trackSetupFailure(N8N_CHAT_INTEGRATION_TYPE, 'persist');
+			return;
+		}
+		if (!(await persistDescription(description))) return;
+		if (settingUp) {
+			await connect(N8N_CHAT_INTEGRATION_TYPE, '');
+		}
+	} catch (error) {
+		// Only `connect` is left to throw here. The n8n Chat view shows no inline
+		// error, so the failure goes to a toast.
+		toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
+		trackSetupFailure(N8N_CHAT_INTEGRATION_TYPE, 'connect');
 		return;
 	} finally {
 		channelActionInFlight.value = false;
 	}
 
-	endSetupTracking(true);
-	emit('channel-connected', channelType);
 	emit('agent-changed');
+	if (settingUp) {
+		finishConnect(N8N_CHAT_INTEGRATION_TYPE);
+		return;
+	}
 	completeAndClose();
 }
 
 function handlePlatformConnected() {
 	const channelType = selectedChannelType.value;
 	if (!channelType) return;
-	endSetupTracking(true);
-	emit('channel-connected', channelType);
 	emit('agent-changed');
+	finishConnect(channelType);
+}
+
+function removeCurrentChannel(restartWith?: AgentChannelRestart) {
+	const channelType = selectedChannelType.value;
+	if (!channelType) return;
+	void requestDisconnect(
+		channelType,
+		credentialIdAtEditOpen.value || connectedCredentials.value[channelType] || '',
+		restartWith,
+	);
+}
+
+function restartSetup(channelType: string, restart: AgentChannelRestart) {
+	runtimeFor(channelType).reset?.(restart);
+	prepareChannelEdit(null);
+	selectedCredentials.value[channelType] = restart.credentialId;
+	viewSession.value += 1;
+	goToSetup(channelType);
+}
+
+async function saveTask() {
+	if (!(await taskFormRef.value?.save())) return;
+	emit('tasks-changed');
 	completeAndClose();
 }
 
-async function handleDisconnected(
-	channelType: string,
-	credentialId?: string,
-	options: { deleteExternalResource?: boolean } = {},
-) {
-	// Draft channels (configured but missing a credential) have no connected
-	// credential — send '' so the backend removes the draft entry by type.
-	const result = await disconnect(
-		channelType,
-		credentialId ?? connectedCredentials.value[channelType] ?? '',
-		options,
-	);
-	await fetchStatus([channelType]);
-	if (!isIntegrationConfigured(channelType)) {
-		emit('channel-disconnected', channelType);
-	}
-	emit('agent-changed');
-	return result;
+async function removeTask() {
+	if (!(await taskFormRef.value?.remove())) return;
+	emit('tasks-changed');
+	completeAndClose();
 }
 
-async function disconnectChannel(
-	channelType: string,
-	credentialId: string,
-	closeAfter: boolean,
-	deleteExternalResource?: boolean,
-) {
-	try {
-		const result = await handleDisconnected(channelType, credentialId, {
-			deleteExternalResource,
-		});
-		if (result.warning) {
-			const presentation = getAgentChannelPlatform(channelType).presentDisconnectWarning?.(
-				result.warning,
-				{ text: (key) => i18n.baseText(key) },
-			);
-			if (presentation) {
-				toast.showMessage({
-					type: 'warning',
-					title: presentation.title,
-					message: presentation.message,
-					duration: 0,
-				});
-			}
-		}
-		pendingDisconnect.value = null;
-		if (closeAfter) completeAndClose();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.channels.modal.removeChannelError'));
-	}
+function previewTask() {
+	const objective = taskFormRef.value?.previewObjective();
+	if (!objective || props.previewDisabledReason) return;
+	completeAndClose();
+	emit('preview-task', objective);
 }
 
-function requestDisconnect(channelType: string, credentialId: string, closeAfter: boolean) {
-	// The list view can target a channel other than the selected one, so its own
-	// loading state is checked on top of the modal-wide action.
-	if (actionInFlight.value || isLoading(channelType)) return;
-	const platform = getAgentChannelPlatform(channelType);
-	if (
-		platform.shouldConfirmDisconnect?.(runtimeFor(channelType), credentialId, {
-			isPublished: props.isPublished,
-		})
-	) {
-		pendingDisconnect.value = { channelType, credentialId, closeAfter };
-		return;
-	}
-	void disconnectChannel(channelType, credentialId, closeAfter);
-}
-
-function confirmDisconnect(deleteExternalResource: boolean) {
-	const pending = pendingDisconnect.value;
-	if (!pending) return;
-	void disconnectChannel(
-		pending.channelType,
-		pending.credentialId,
-		pending.closeAfter,
-		deleteExternalResource,
-	);
-}
-
-function removeCurrentChannel() {
-	const channelType = selectedChannelType.value;
-	if (!channelType) return;
-	requestDisconnect(
-		channelType,
-		credentialIdAtEditOpen.value || connectedCredentials.value[channelType] || '',
-		true,
-	);
+/** The list's "Make unavailable" menu item. n8n Chat has no credential to carry. */
+function handleChannelRemove(channelType: string) {
+	void requestDisconnect(channelType, '');
 }
 
 async function loadChannelState() {
 	const integrations = await ensureLoaded(props.projectId).catch(() => catalog.value ?? []);
 	await Promise.all([
-		loadSharedChannelState(integrations),
+		// n8n Chat is not in the catalog, but its status must refresh too.
+		loadSharedChannelState(withN8nChat(integrations)),
 		...integrations.map(({ type }) => runtimeFor(type).load()),
 	]);
 	if (isEditMode.value) {
@@ -554,6 +713,7 @@ watch(
 			void loadChannelState();
 			openedFromList.value = props.view === 'list';
 			saveAttempted.value = false;
+			connectReported.value = false;
 			currentView.value = props.view;
 		} else {
 			captureConnectedCredential(null);
@@ -568,13 +728,21 @@ watch(
 		:open="open"
 		:step="currentStep"
 		:title="headerText"
+		:editable-title="isScheduleSelected"
+		:title-placeholder="
+			isScheduleSelected ? i18n.baseText('agents.builder.tasks.name.placeholder') : ''
+		"
+		:title-max-length="AGENT_TASK_NAME_MAX_LENGTH"
+		:title-error="isScheduleSelected ? (taskFormRef?.visibleNameError ?? '') : ''"
 		:show-back="currentView !== 'list' && openedFromList"
 		:show-footer="showFooterActions"
+		:show-cancel="!isN8nChatSelected"
 		:busy="actionInFlight"
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
 		@interact-outside="handleInteractOutside"
 		@update:open="handleModalOpenUpdate"
+		@update:title="taskName = $event"
 		@back="goBackToList"
 	>
 		<template #headerActions>
@@ -590,19 +758,52 @@ watch(
 			<div v-show="currentView === 'list'" key="list" :class="$style.listView">
 				<ul :class="$style.channelList">
 					<AgentChannelListItem
-						v-for="integration in catalog"
+						v-for="integration in channelList"
 						:key="integration.type"
 						:integration="integration"
+						:description="listDescription(integration.type)"
 						:configured="isConfigured(integration.type)"
 						:connected="isConnected(integration.type)"
 						:not-running="hasRuntimeError(integration.type)"
 						:runtime-error="runtimeErrors[integration.type]"
 						:loading="listLoading"
 						:connect-action="connectAction(integration.type)"
+						:configured-label="
+							integration.type === N8N_CHAT_INTEGRATION_TYPE ? n8nChatAvailableLabel : undefined
+						"
+						:menu-items="
+							integration.type === N8N_CHAT_INTEGRATION_TYPE ? n8nChatMenuItems : undefined
+						"
 						@setup="goToSetup"
 						@edit="goToEdit"
+						@remove="handleChannelRemove"
+					/>
+					<AgentChannelListItem
+						v-if="showSchedule"
+						:integration="scheduleIntegration"
+						:description="i18n.baseText('agents.builder.tasks.description')"
+						:configured="false"
+						:connected="false"
+						:loading="listLoading"
+						:connect-action="{ label: i18n.baseText('generic.add') }"
+						data-testid="agent-channel-schedule-row"
+						@setup="goToSetup"
 					/>
 				</ul>
+			</div>
+
+			<div v-if="isScheduleSelected" :class="$style.editView">
+				<AgentTaskForm
+					:key="`${currentView}-${viewSession}-${scheduleTask?.id ?? 'new'}`"
+					ref="taskFormRef"
+					v-model:name="taskName"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:task="scheduleTask"
+					:is-published="isPublished"
+					:enabled="isEditMode ? taskEnabled : true"
+					:ensure-agent-persisted="ensureAgentPersisted"
+				/>
 			</div>
 
 			<div
@@ -612,6 +813,7 @@ watch(
 			>
 				<component
 					:is="isSetupMode ? currentPlatform.setupComponent : currentPlatform.editComponent"
+					v-bind="isN8nChatSelected ? { availableInChat: n8nChatPublishedEnabled } : {}"
 					:key="viewSession"
 					ref="channelViewRef"
 					v-model="selectedCredentials[currentIntegration.type]"
@@ -628,20 +830,38 @@ watch(
 					"
 					:error-is-conflict="errorIsConflict[currentIntegration.type]"
 					:saved-settings="integrationSettings[currentIntegration.type]"
+					:saved-credential-id="connectedCredentials[currentIntegration.type] ?? ''"
 					:is-published="isPublished"
 					:agent-name="agentId"
 					:project-id="projectId"
 					:agent-id="agentId"
+					:ensure-agent-persisted="ensureAgentPersisted"
+					:persist-channel="writeChannelConfig"
 					:force-new-credential="false"
 					:simple-setup="simpleSetup"
 					:runtime="currentRuntime"
+					:saved-description="isN8nChatSelected ? savedDescription : undefined"
 					@create="createCredential"
 					@edit="editCredential"
 					@connect="saveChannelConfig"
+					@persist="writeChannelConfig"
 					@connected="handlePlatformConnected"
-				/>
+					@done="finishSetup"
+					@restart="removeCurrentChannel"
+				>
+					<template
+						v-if="isEditMode && currentIntegration.type === 'slack' && approvableActions.length > 0"
+						#additionalSettings
+					>
+						<AgentChannelApprovalSetting
+							v-model="channelApproval"
+							:actions="approvableActions"
+							@update:valid="channelApprovalValid = $event"
+						/>
+					</template>
+				</component>
 				<N8nText
-					v-if="saveAttempted && !currentChannelCredentialId"
+					v-if="saveAttempted && credentialMissing"
 					size="small"
 					color="danger"
 					data-testid="agent-channel-credential-required"
@@ -650,7 +870,7 @@ watch(
 				</N8nText>
 
 				<AgentChannelApprovalSetting
-					v-if="isEditMode && approvableActions.length > 0"
+					v-if="isEditMode && currentIntegration.type !== 'slack' && approvableActions.length > 0"
 					v-model="channelApproval"
 					:actions="approvableActions"
 					@update:valid="channelApprovalValid = $event"
@@ -658,21 +878,77 @@ watch(
 			</div>
 		</div>
 
-		<template v-if="showFooterActions" #footerLeft>
+		<template v-if="isScheduleSelected && isEditMode" #footerLeft>
+			<N8nButton
+				variant="ghost"
+				size="medium"
+				:loading="taskFormRef?.deleting"
+				:disabled="disabled || actionInFlight"
+				data-testid="agent-task-delete"
+				@click="removeTask"
+			>
+				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+				{{ i18n.baseText('agents.builder.tasks.delete') }}
+			</N8nButton>
+		</template>
+		<template v-else-if="showFooterActions && isEditMode && !isScheduleSelected" #footerLeft>
 			<N8nButton
 				variant="ghost"
 				size="medium"
 				:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
-				:disabled="actionInFlight || !selectedChannelType"
+				:disabled="disabled || actionInFlight || !selectedChannelType"
 				data-testid="agent-channel-remove-channel"
-				@click="removeCurrentChannel"
+				@click="removeCurrentChannel()"
 			>
-				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
-				{{ i18n.baseText('agents.channels.modal.removeChannel') }}
+				<template v-if="!isN8nChatSelected" #icon><N8nIcon icon="trash-2" :size="16" /></template>
+				{{ removeChannelLabel }}
 			</N8nButton>
+		</template>
+		<template v-if="isScheduleSelected" #footerBeforeCancel>
+			<AgentTestButton
+				:disabled-reason="previewDisabledReason"
+				:is-runnable="isRunnable"
+				:validation-issues="validationIssues"
+				variant="ghost"
+				test-id="agent-task-preview"
+				@open-preview="previewTask"
+			/>
 		</template>
 		<template v-if="showFooterActions" #footerActions>
 			<N8nButton
+				v-if="isScheduleSelected"
+				variant="solid"
+				size="medium"
+				:loading="taskFormRef?.saving"
+				:disabled="actionInFlight"
+				data-testid="agent-task-save"
+				@click="saveTask"
+			>
+				{{ i18n.baseText('generic.save') }}
+			</N8nButton>
+			<template v-else-if="isN8nChatSelected">
+				<N8nButton
+					variant="ghost"
+					size="medium"
+					:disabled="actionInFlight"
+					data-testid="agent-channel-cancel"
+					@click="handleModalOpenUpdate(false)"
+				>
+					{{ i18n.baseText('generic.cancel') }}
+				</N8nButton>
+				<N8nButton
+					variant="solid"
+					size="medium"
+					:loading="actionInFlight"
+					:disabled="actionInFlight"
+					data-testid="agent-channel-save-channel-config"
+					@click="saveN8nChat"
+				>
+					{{ n8nChatSaveLabel }}
+				</N8nButton>
+			</template>
+			<N8nButton
+				v-else
 				variant="solid"
 				size="medium"
 				:loading="actionInFlight"
@@ -680,14 +956,14 @@ watch(
 				data-testid="agent-channel-save-channel-config"
 				@click="saveChannelConfig"
 			>
-				{{ i18n.baseText('generic.save') }}
+				{{ channelViewRef?.saveLabel || i18n.baseText('generic.save') }}
 			</N8nButton>
 		</template>
 		<component
 			:is="disconnectConfirmationComponent"
 			v-if="pendingDisconnect && disconnectConfirmationComponent"
 			:open="true"
-			:loading="disconnectConfirmationLoading"
+			:loading="removingChannel"
 			@cancel="pendingDisconnect = null"
 			@confirm="confirmDisconnect"
 		/>

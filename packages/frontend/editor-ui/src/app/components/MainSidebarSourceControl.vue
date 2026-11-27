@@ -1,23 +1,27 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip, N8nVisuallyHidden } from '@n8n/design-system';
 defineProps<{
 	isCollapsed: boolean;
 }>();
 
 const sourceControlStore = useSourceControlStore();
 const projectStore = useProjectsStore();
+const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const tooltipOpenDelay = ref(300);
+const pullReasonId = useId();
+const pushReasonId = useId();
 
 const currentBranch = computed(() => {
 	return sourceControlStore.preferences.branchName;
@@ -41,6 +45,7 @@ const hasPullPermission = computed(() => {
 const sourceControlAvailable = computed(
 	() =>
 		sourceControlStore.isEnterpriseSourceControlEnabled &&
+		!isPromotionsEnabled.value &&
 		(hasPullPermission.value || hasPushPermission.value),
 );
 
@@ -134,6 +139,7 @@ function pullWorkfolder() {
 			<div :class="$style.buttonContainer">
 				<N8nTooltip
 					:disabled="!isCollapsed && hasPullPermission"
+					as-child
 					:show-after="tooltipOpenDelay"
 					:placement="isCollapsed ? 'right' : 'top'"
 				>
@@ -152,14 +158,21 @@ function pullWorkfolder() {
 						data-test-id="main-sidebar-source-control-pull"
 						icon="arrow-down"
 						:disabled="!hasPullPermission"
+						focusable-when-disabled
+						:aria-describedby="!hasPullPermission ? pullReasonId : undefined"
+						:aria-label="i18n.baseText('settings.sourceControl.button.pull')"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
 						@click="pullWorkfolder"
 					/>
 				</N8nTooltip>
+				<N8nVisuallyHidden v-if="!hasPullPermission" :id="pullReasonId">{{
+					i18n.baseText('settings.sourceControl.button.pull.forbidden')
+				}}</N8nVisuallyHidden>
 				<N8nTooltip
 					:disabled="
 						!isCollapsed && !sourceControlStore.preferences.branchReadOnly && hasPushPermission
 					"
+					as-child
 					:show-after="tooltipOpenDelay"
 					:placement="isCollapsed ? 'right' : 'top'"
 				>
@@ -179,9 +192,21 @@ function pullWorkfolder() {
 						icon="arrow-up"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
 						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
+						focusable-when-disabled
+						:aria-describedby="
+							sourceControlStore.preferences.branchReadOnly || !hasPushPermission
+								? pushReasonId
+								: undefined
+						"
+						:aria-label="i18n.baseText('settings.sourceControl.button.push')"
 						@click="pushWorkfolder"
 					/>
 				</N8nTooltip>
+				<N8nVisuallyHidden
+					v-if="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
+					:id="pushReasonId"
+					>{{ i18n.baseText('settings.sourceControl.button.push.forbidden') }}</N8nVisuallyHidden
+				>
 			</div>
 		</div>
 	</div>

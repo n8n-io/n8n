@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeItemRestriction } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
-import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
-import { ElSwitch } from 'element-plus';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nSwitch,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+import {
+	describeTypeRestriction,
+	RestrictedNodePopover,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 
 const props = defineProps<{
 	nodeType: INodeTypeDescription;
@@ -18,6 +27,8 @@ const props = defineProps<{
 	installing?: boolean;
 	/** Non-admin cannot install; button is disabled with contact-admin tooltip. */
 	installDisabled?: boolean;
+	/** The user's role cannot use this tool type, so only removal is possible. */
+	roleBlocked?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -28,6 +39,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const installReasonId = useId();
 
 const description = computed(() => {
 	if (props.configuredNode && props.configuredNode.name !== props.nodeType.displayName) {
@@ -55,6 +67,21 @@ const actionDisabled = computed(
 
 const rowRef = ref<HTMLElement | null>(null);
 const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
+
+const toggleTooltip = computed(() => {
+	if (restriction.value) {
+		return describeTypeRestriction('chatTool', props.nodeType.displayName, restriction.value);
+	}
+	return props.enabled
+		? i18n.baseText('chatHub.toolsManager.disableTool')
+		: i18n.baseText('chatHub.toolsManager.enableTool');
+});
+
+const toggleLabel = computed(() =>
+	i18n.baseText('chatHub.toolsManager.toggleLabel', {
+		interpolate: { toolName: displayName.value, status: toggleTooltip.value },
+	}),
+);
 </script>
 
 <template>
@@ -62,7 +89,10 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 		ref="rowRef"
 		:class="[
 			$style.item,
-			{ [$style.configured]: mode === 'configured', [$style.restricted]: !!restriction },
+			{
+				[$style.configured]: mode === 'configured',
+				[$style.restricted]: !!restriction || roleBlocked,
+			},
 		]"
 	>
 		<div :class="$style.iconWrapper">
@@ -91,18 +121,42 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 			<N8nText :class="$style.description" size="small" color="text-light">
 				{{ description }}
 			</N8nText>
+			<N8nText
+				v-if="
+					mode === 'available' && !restriction && communityPreview && installDisabled && !installing
+				"
+				:id="installReasonId"
+				size="small"
+				color="text-light"
+				>{{ i18n.baseText('communityNodeInfo.contact.admin') }}</N8nText
+			>
 		</div>
 
 		<div :class="$style.actions">
 			<RestrictedNodePopover
 				v-if="restriction"
 				:node-type-name="nodeType.displayName"
-				:scope="restriction.scope"
+				:restriction="restriction"
 				:anchor="rowRef"
 			/>
 
+			<N8nTooltip
+				v-if="roleBlocked"
+				:content="i18n.baseText('chatHub.toolsManager.roleBlocked')"
+				placement="top"
+			>
+				<span
+					:class="$style.marker"
+					tabindex="0"
+					role="img"
+					:aria-label="i18n.baseText('chatHub.toolsManager.roleBlocked')"
+				>
+					<N8nIcon icon="lock" size="small" data-test-id="chat-tool-role-blocked-icon" />
+				</span>
+			</N8nTooltip>
+
 			<template v-if="mode === 'configured'">
-				<N8nTooltip :content="i18n.baseText('chatHub.toolsManager.configure')">
+				<N8nTooltip v-if="!roleBlocked" :content="i18n.baseText('chatHub.toolsManager.configure')">
 					<N8nIconButton
 						icon="settings"
 						variant="ghost"
@@ -122,15 +176,12 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 					/>
 				</N8nTooltip>
 
-				<N8nTooltip
-					:content="
-						enabled
-							? i18n.baseText('chatHub.toolsManager.disableTool')
-							: i18n.baseText('chatHub.toolsManager.enableTool')
-					"
-				>
-					<ElSwitch
+				<N8nTooltip v-if="!roleBlocked" :content="toggleTooltip">
+					<N8nSwitch
 						:model-value="enabled"
+						size="large"
+						:disabled="!!restriction && !enabled"
+						:aria-label="toggleLabel"
 						:class="$style.toggle"
 						@update:model-value="emit('toggle', Boolean($event))"
 					/>
@@ -140,25 +191,26 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 			<template v-else-if="!restriction">
 				<N8nTooltip
 					v-if="communityPreview && installDisabled && !installing"
-					:content="i18n.baseText('communityNodeInfo.contact.admin')"
+					as-child
 					placement="top"
 				>
-					<span>
-						<N8nButton
-							variant="subtle"
-							size="small"
-							icon="plus"
-							:loading="installing"
-							:disabled="true"
-							data-test-id="chat-tool-install-button"
-						>
-							{{ actionLabel }}
-						</N8nButton>
-					</span>
+					<template #content>{{ i18n.baseText('communityNodeInfo.contact.admin') }}</template>
+					<N8nButton
+						variant="outline"
+						size="small"
+						icon="plus"
+						:loading="installing"
+						:disabled="true"
+						focusable-when-disabled
+						:aria-describedby="installReasonId"
+						data-test-id="chat-tool-install-button"
+					>
+						{{ actionLabel }}
+					</N8nButton>
 				</N8nTooltip>
 				<N8nButton
 					v-else
-					variant="subtle"
+					variant="outline"
 					size="small"
 					icon="plus"
 					:loading="installing"
@@ -200,6 +252,20 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 	.iconWrapper,
 	.content {
 		opacity: 0.45;
+	}
+}
+
+// Matches the lock marker of the availability policy popover.
+.marker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--3xs);
+	color: var(--color--text--tint-1);
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+		outline-offset: 2px;
 	}
 }
 

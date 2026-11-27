@@ -19,6 +19,7 @@ import type {
 	QueryValues,
 	QueryWithValues,
 	SortRule,
+	StartAfter,
 	WhereClause,
 } from './interfaces';
 import { generatePairedItemData } from '../../../../utils/utilities';
@@ -141,28 +142,19 @@ export function parseParameterLoadingError(node: INode, error: unknown): NodeOpe
 	return new NodeOperationError(node, message);
 }
 
-export function addWhereClauses(
-	_node: INode,
-	_itemIndex: number,
-	query: string,
+function buildWhereConditions(
 	clauses: WhereClause[],
 	replacements: QueryValues,
 	combineConditions: string,
 ): [string, QueryValues] {
-	if (clauses.length === 0) return [query, replacements];
-
-	let combineWith = 'AND';
-
-	if (combineConditions === 'OR') {
-		combineWith = 'OR';
-	}
+	const combineWith = combineConditions === 'OR' ? 'OR' : 'AND';
 
 	let replacementIndex = replacements.length + 1;
 
-	let whereQuery = ' WHERE';
+	const conditions: string[] = [];
 	const values: QueryValues = [];
 
-	clauses.forEach((clause, index) => {
+	clauses.forEach((clause) => {
 		if (clause.condition === 'equal') {
 			clause.condition = '=';
 		}
@@ -183,12 +175,56 @@ export function addWhereClauses(
 			replacementIndex = replacementIndex + 1;
 		}
 
-		const operator = index === clauses.length - 1 ? '' : ` ${combineWith}`;
-
-		whereQuery += ` ${columnReplacement} ${clause.condition}${valueReplacement}${operator}`;
+		conditions.push(`${columnReplacement} ${clause.condition}${valueReplacement}`);
 	});
 
-	return [`${query}${whereQuery}`, replacements.concat(...values)];
+	return [conditions.join(` ${combineWith} `), replacements.concat(...values)];
+}
+
+export function addWhereClauses(
+	_node: INode,
+	_itemIndex: number,
+	query: string,
+	clauses: WhereClause[],
+	replacements: QueryValues,
+	combineConditions: string,
+): [string, QueryValues] {
+	if (clauses.length === 0) return [query, replacements];
+
+	const [conditions, values] = buildWhereConditions(clauses, replacements, combineConditions);
+
+	return [`${query} WHERE ${conditions}`, values];
+}
+
+/**
+ * Adds the Start After condition after the user's conditions. The brackets keep
+ * an OR in the user's conditions from also matching rows before the cursor.
+ * The value stays text, so Postgres casts it to the type of the column.
+ */
+export function addStartAfterClause(
+	query: string,
+	clauses: WhereClause[],
+	replacements: QueryValues,
+	combineConditions: string,
+	startAfter: StartAfter,
+	descending: boolean,
+): [string, QueryValues] {
+	const [conditions, values]: [string, QueryValues] =
+		clauses.length === 0
+			? ['', replacements]
+			: buildWhereConditions(clauses, replacements, combineConditions);
+
+	if (startAfter.value === undefined) {
+		return [conditions ? `${query} WHERE ${conditions}` : query, values];
+	}
+
+	const withCursor = [...values, startAfter.column, startAfter.value];
+	const cursorCondition = `$${withCursor.length - 1}:name ${descending ? '<' : '>'} $${withCursor.length}`;
+
+	return [
+		`${query} WHERE ${conditions ? `(${conditions}) AND ` : ''}${cursorCondition}`,
+		withCursor,
+	];
 }
 
 export function addSortRules(
@@ -230,22 +266,22 @@ export function addReturning(
 	return [`${query} RETURNING $${replacementIndex}:name`, [...replacements, outputColumns]];
 }
 
-// Strip SQL comments and string literals so they can't interfere with statement
-// classification. Strings collapse to empty quotes / empty dollar tags so paren and
-// semicolon structure outside strings is preserved.
+// Mask SQL comments and quoted text so they cannot interfere with statement
+// classification or query parameter matching. The output keeps the same length so
+// matches can be mapped back to the original query.
 
 // `\` is an escape only inside E-strings (`E'...'`). For standard strings, with
 // `standard_conforming_strings = on` (PG default since 9.1), `\` is a literal.
 // The `E` prefix must be a standalone token, not the trailing char of an identifier.
 const isEStringPrefix = (query: string, quoteIndex: number): boolean => {
-	if (quoteIndex === 0) return false;
 	const prev = query[quoteIndex - 1];
-	if (prev !== 'E' && prev !== 'e') return false;
-	if (quoteIndex === 1) return true;
-	return !/[A-Za-z0-9_]/.test(query[quoteIndex - 2]);
+	return (prev === 'E' || prev === 'e') && !isPostgresIdentifierCharacter(query[quoteIndex - 2]);
 };
 
-const stripStringsAndComments = (query: string): string => {
+const isPostgresIdentifierCharacter = (character: string | undefined): boolean =>
+	character !== undefined && /[A-Za-z0-9_$\u0080-\uFFFF]/.test(character);
+
+const stripStringsAndComments = (query: string, treatBackslashesAsEscapes = false): string => {
 	const len = query.length;
 	let out = '';
 	let i = 0;
@@ -254,21 +290,35 @@ const stripStringsAndComments = (query: string): string => {
 		const next = query[i + 1];
 
 		if (c === '/' && next === '*') {
-			const end = query.indexOf('*/', i + 2);
-			i = end === -1 ? len : end + 2;
-			out += ' ';
+			const start = i;
+			let depth = 1;
+			i += 2;
+			while (i < len && depth > 0) {
+				if (query[i] === '/' && query[i + 1] === '*') {
+					depth++;
+					i += 2;
+				} else if (query[i] === '*' && query[i + 1] === '/') {
+					depth--;
+					i += 2;
+				} else {
+					i++;
+				}
+			}
+			out += ' '.repeat(i - start);
 			continue;
 		}
 
 		if (c === '-' && next === '-') {
-			const newline = query.indexOf('\n', i + 2);
-			i = newline === -1 ? len : newline;
-			out += ' ';
+			const start = i;
+			i += 2;
+			while (i < len && query[i] !== '\n' && query[i] !== '\r') i++;
+			out += ' '.repeat(i - start);
 			continue;
 		}
 
 		if (c === "'") {
-			const allowBackslashEscape = isEStringPrefix(query, i);
+			const start = i;
+			const allowBackslashEscape = treatBackslashesAsEscapes || isEStringPrefix(query, i);
 			i++;
 			while (i < len) {
 				if (allowBackslashEscape && query[i] === '\\' && i + 1 < len) {
@@ -285,31 +335,38 @@ const stripStringsAndComments = (query: string): string => {
 				}
 				i++;
 			}
-			out += "''";
+			out += `'${' '.repeat(i - start - 1)}`;
 			continue;
 		}
 
 		if (c === '"') {
+			const start = i;
 			i++;
-			while (i < len && query[i] !== '"') {
-				if (query[i] === '\\' && i + 1 < len) {
-					i += 2;
-					continue;
+			while (i < len) {
+				if (query[i] === '"') {
+					if (query[i + 1] === '"') {
+						i += 2;
+						continue;
+					}
+					i++;
+					break;
 				}
 				i++;
 			}
-			if (i < len) i++;
-			out += '""';
+			out += `"${' '.repeat(i - start - 1)}`;
 			continue;
 		}
 
 		if (c === '$') {
-			const tagMatch = query.slice(i).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/);
+			const tagMatch = isPostgresIdentifierCharacter(query[i - 1])
+				? null
+				: query.slice(i).match(/^\$(?:[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_\u0080-\uFFFF]*)?\$/);
 			if (tagMatch) {
+				const start = i;
 				const tag = tagMatch[0];
 				const end = query.indexOf(tag, i + tag.length);
 				i = end === -1 ? len : end + tag.length;
-				out += ' ';
+				out += `$${' '.repeat(i - start - 1)}`;
 				continue;
 			}
 		}
@@ -318,6 +375,37 @@ const stripStringsAndComments = (query: string): string => {
 		i++;
 	}
 	return out;
+};
+
+const POSITIONAL_PARAMETER_PATTERN =
+	/(?<![A-Za-z0-9_$\u0080-\uFFFF])\$[1-9][0-9]{0,16}(?![0-9])(?:(?:\^|~|#)|:(?:raw|alias|name|json|csv|list|value))?(?![A-Za-z0-9_$\u0080-\uFFFF]|:[A-Za-z0-9_$\u0080-\uFFFF])/g;
+
+export const formatPostgresQuery = (
+	pgp: PgpClient,
+	query: QueryWithValues,
+	standardConformingStrings: boolean,
+): string => {
+	if (query.values === undefined) return query.query;
+
+	const queryMask = stripStringsAndComments(query.query, !standardConformingStrings);
+
+	return query.query.replace(POSITIONAL_PARAMETER_PATTERN, (match, offset: number) => {
+		const end = offset + match.length;
+		const isExecutable = queryMask.slice(offset, end) === match;
+
+		return isExecutable ? pgp.as.format(match, query.values, query.options) : match;
+	});
+};
+
+type QueryExecutor = {
+	one<T>(query: string): Promise<T>;
+};
+
+const usesStandardConformingStrings = async (executor: QueryExecutor): Promise<boolean> => {
+	const result = await executor.one<{ standard_conforming_strings: 'on' | 'off' }>(
+		'SHOW standard_conforming_strings',
+	);
+	return result.standard_conforming_strings === 'on';
 };
 
 // Split on `;` outside of string literals. Since `stripStringsAndComments` already
@@ -383,10 +471,20 @@ export function configureQueryRunner(
 			options.operation === 'select' ? [] : [{ json: { success: true } }];
 
 		const queryBatching = (options.queryBatching as QueryMode) || 'single';
+		const useSafeQueryParameters = (options.nodeVersion as number) >= 2.9;
 
 		if (queryBatching === 'single') {
 			try {
-				returnData = (await db.multi(pgp.helpers.concat(queries)))
+				const queryResults = useSafeQueryParameters
+					? await db.task(async (task) => {
+							const standardConformingStrings = await usesStandardConformingStrings(task);
+							const queriesToRun = queries.map((query) =>
+								formatPostgresQuery(pgp, query, standardConformingStrings),
+							);
+							return await task.multi(pgp.helpers.concat(queriesToRun));
+						})
+					: await db.multi(pgp.helpers.concat(queries));
+				returnData = queryResults
 					.map((result, i) => {
 						return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
 							itemData: { item: i },
@@ -432,7 +530,14 @@ export function configureQueryRunner(
 						const values = queries[i].values;
 
 						let transactionResults;
-						if ((options?.nodeVersion as number) < 2.3) {
+						if (useSafeQueryParameters) {
+							const standardConformingStrings = await usesStandardConformingStrings(transaction);
+							transactionResults = (
+								await transaction.multi(
+									formatPostgresQuery(pgp, queries[i], standardConformingStrings),
+								)
+							).flat();
+						} else if ((options?.nodeVersion as number) < 2.3) {
 							transactionResults = await transaction.any(query, values);
 						} else {
 							transactionResults = (await transaction.multi(query, values)).flat();
@@ -472,7 +577,12 @@ export function configureQueryRunner(
 						const values = queries[i].values;
 
 						let transactionResults;
-						if ((options?.nodeVersion as number) < 2.3) {
+						if (useSafeQueryParameters) {
+							const standardConformingStrings = await usesStandardConformingStrings(task);
+							transactionResults = (
+								await task.multi(formatPostgresQuery(pgp, queries[i], standardConformingStrings))
+							).flat();
+						} else if ((options?.nodeVersion as number) < 2.3) {
 							transactionResults = await task.any(query, values);
 						} else {
 							transactionResults = (await task.multi(query, values)).flat();
@@ -617,6 +727,165 @@ export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'pu
 		[schema, table],
 	);
 	return unique as IDataObject[];
+}
+
+type StartAfterColumnInfo = {
+	data_type: string;
+	is_text: boolean;
+	not_null: boolean;
+	is_unique: boolean;
+	has_child_tables: boolean;
+};
+
+/**
+ * Reads what Start After needs about the column from the catalog in one query, because the node checks it before each page.
+ * indnkeyatts leaves out INCLUDE columns. PostgreSQL 10 does not have it, so the query reads it through to_jsonb.
+ * A select also gets the rows of child tables, but a unique index covers one table. A partitioned table is safe.
+ */
+async function getStartAfterColumnInfo(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+	column: string,
+): Promise<StartAfterColumnInfo | null> {
+	return await db.oneOrNone<StartAfterColumnInfo>(
+		`
+		SELECT
+			format_type(COALESCE(NULLIF(t.typbasetype, 0), a.atttypid), NULL) AS data_type,
+			t.typcategory = 'S' AS is_text,
+			a.attnotnull AS not_null,
+			EXISTS (
+				SELECT 1
+				FROM pg_index i
+				WHERE i.indrelid = c.oid
+					AND i.indkey[0] = a.attnum
+					AND (i.indisprimary OR i.indisunique)
+					AND i.indisvalid
+					AND i.indpred IS NULL
+					AND COALESCE((to_jsonb(i) ->> 'indnkeyatts')::int, i.indnatts) = 1
+			) AS is_unique,
+			c.relkind <> 'p' AND EXISTS (SELECT 1 FROM pg_inherits WHERE inhparent = c.oid) AS has_child_tables
+		FROM pg_attribute a
+		JOIN pg_class c ON c.oid = a.attrelid
+		JOIN pg_namespace n ON n.oid = c.relnamespace
+		JOIN pg_type t ON t.oid = a.atttypid
+		WHERE n.nspname = $1 AND c.relname = $2 AND a.attname = $3 AND a.attnum > 0 AND NOT a.attisdropped;
+		`,
+		[schema, table, column],
+	);
+}
+
+/**
+ * `= ''` uses the unique index. octet_length leaves out values that are only equal to '',
+ * for example a blank char(n) value, which n8n gets back as spaces.
+ */
+async function hasEmptyText(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+	column: string,
+): Promise<boolean> {
+	const { has_empty_text } = await db.one<{ has_empty_text: boolean }>(
+		"SELECT EXISTS (SELECT 1 FROM $1:name.$2:name WHERE $3:name = '' AND octet_length($3:name) = 0) AS has_empty_text",
+		[schema, table, column],
+	);
+	return has_empty_text;
+}
+
+const TIMESTAMP_TYPES = ['timestamp without time zone', 'timestamp with time zone'];
+// n8n outputs values of these types, and of arrays, as objects, so they cannot be a Start After value
+const OBJECT_TYPES = ['bytea', 'interval', 'json', 'jsonb'];
+
+async function getStartAfterColumnProblem(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+	column: string,
+	largeNumbersOutput: PostgresNodeOptions['largeNumbersOutput'],
+	lookForEmptyText: boolean,
+): Promise<{ message: string; description: string } | undefined> {
+	const columnInfo = await getStartAfterColumnInfo(db, schema, table, column);
+
+	if (!columnInfo) {
+		return {
+			message: `Cannot find column "${column}" in "${schema}.${table}"`,
+			description: 'Check that the table exists and has this column.',
+		};
+	}
+	if (columnInfo.has_child_tables) {
+		return {
+			message: `Start After does not support "${schema}.${table}" because other tables inherit from it`,
+			description: `The node also gets the rows of the child tables. The unique index of "${table}" does not cover these rows, so a value of "${column}" can repeat and a page can skip rows. Use a table that has no child tables.`,
+		};
+	}
+	if (TIMESTAMP_TYPES.includes(columnInfo.data_type)) {
+		return {
+			message: `Start After does not support the timestamp column "${column}"`,
+			description: `"${column}" has the type ${columnInfo.data_type}. n8n can change the time zone and the precision of these values in the output, so the next page can repeat or skip rows. Use another unique column, for example the primary key.`,
+		};
+	}
+	if (OBJECT_TYPES.includes(columnInfo.data_type) || columnInfo.data_type.endsWith('[]')) {
+		return {
+			message: `Start After does not support the column "${column}" of type ${columnInfo.data_type}`,
+			description:
+				'n8n outputs these values as objects, so they cannot be the Start After value. Use a unique column with text or numbers.',
+		};
+	}
+	if (columnInfo.data_type === 'numeric' && largeNumbersOutput === 'numbers') {
+		return {
+			message: `Set Output Large-Format Numbers As to Text to page by "${column}"`,
+			description: `"${column}" is a NUMERIC column. With Numbers, n8n can round its values in the output, so the next page can repeat or skip rows.`,
+		};
+	}
+	if (!columnInfo.is_unique) {
+		return {
+			message: `Column "${column}" has no unique index that Start After can use`,
+			description:
+				'Start After needs a primary key or a unique index on this column alone. These do not count: a unique index on more than one column, with a WHERE condition or on an expression. A view has no indexes. If values repeat, a page skips the rows that share the last value.',
+		};
+	}
+	if (!columnInfo.not_null) {
+		return {
+			message: `Column "${column}" can be null`,
+			description: `Start After needs a column that is never null. A null value never comes after another value, so no page returns the rows with null. Make "${column}" NOT NULL, or use another unique column, for example the primary key.`,
+		};
+	}
+	// After the unique index check, so the lookup can use the index
+	if (lookForEmptyText && columnInfo.is_text && (await hasEmptyText(db, schema, table, column))) {
+		return {
+			message: `Column "${column}" has empty text in one row`,
+			description:
+				'An empty Value gets the first page. If a page ends on this row, the next page is the first page again, and the loop can repeat forever. With Sort DESC, the last page always ends on this row. Use another unique column, for example the primary key.',
+		};
+	}
+
+	return undefined;
+}
+
+export async function checkStartAfterColumn(
+	db: PgpDatabase,
+	node: INode,
+	itemIndex: number,
+	schema: string,
+	table: string,
+	column: string,
+	largeNumbersOutput?: PostgresNodeOptions['largeNumbersOutput'],
+	lookForEmptyText = true,
+) {
+	const problem = await getStartAfterColumnProblem(
+		db,
+		schema,
+		table,
+		column,
+		largeNumbersOutput,
+		lookForEmptyText,
+	);
+	if (problem) {
+		throw new NodeOperationError(node, problem.message, {
+			itemIndex,
+			description: problem.description,
+		});
+	}
 }
 
 export async function getEnums(db: PgpDatabase): Promise<Map<string, string[]>> {

@@ -19,6 +19,7 @@ import { VariableRequirementsExtractor } from '../../variable/variable-requireme
 import type { WorkflowVariableRequirement } from '../../variable/variable.types';
 import { WorkflowExporter } from '../workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
+import { PackageWorkflowInvalidError } from '../../package-export.errors';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -69,7 +70,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [workflow.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(finder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(
@@ -91,7 +92,7 @@ describe('WorkflowExporter', () => {
 				workflowIds: ['present_1', 'missing-or-denied'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 			}),
 		).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
 	});
@@ -108,7 +109,7 @@ describe('WorkflowExporter', () => {
 				workflowIds: ['present_1', 'missing'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 			}),
 		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
 	});
@@ -125,7 +126,7 @@ describe('WorkflowExporter', () => {
 				workflowIds: ['present_1', 'denied-1'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 			}),
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
@@ -141,7 +142,7 @@ describe('WorkflowExporter', () => {
 				workflowIds: ['present_1', 'missing'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 			}),
 		).rejects.toThrow();
 
@@ -158,11 +159,16 @@ describe('WorkflowExporter', () => {
 			workflowIds: [workflow.id, workflow.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(entries).toEqual([
-			{ id: workflow.id, name: workflow.name, target: 'workflows/repeated-wf_repeated' },
+			{
+				id: workflow.id,
+				name: workflow.name,
+				target: 'workflows/repeated-wf_repeated',
+				isArchived: false,
+			},
 		]);
 		expect(
 			writer.files.filter((f) => f.path === 'workflows/repeated-wf_repeated/workflow.json'),
@@ -180,7 +186,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [a.id, b.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(entries.map(({ id }) => id)).toEqual([a.id, b.id]);
@@ -216,22 +222,43 @@ describe('WorkflowExporter', () => {
 			workflowIds: [workflow.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		const workflowFile = writer.files.find(
 			(f) => f.path === 'workflows/my-workflow-wf_abc1234567/workflow.json',
 		);
 		expect(workflowFile).toBeDefined();
-		expect(jsonParse<unknown>(workflowFile!.content)).toMatchObject({
-			nodes: [
-				{
-					credentials: {
-						googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
-					},
-				},
-			],
+		// Exact match proves the display name is absent; id and managed flag remain.
+		const parsed = jsonParse<{ nodes: Array<{ credentials: Record<string, unknown> }> }>(
+			workflowFile!.content,
+		);
+		expect(parsed.nodes[0].credentials.googlePalmApi).toEqual({
+			id: null,
+			__aiGatewayManaged: true,
 		});
+	});
+
+	it('throws a 422 that names the workflow and invalid fields when stored data fails the schema', async () => {
+		const workflow = makeWorkflow({
+			nodes: [{ id: 'n1', name: 'Node', type: 'x', typeVersion: 1, parameters: {} }] as never,
+		});
+		const { exporter } = makeExporter([workflow]);
+
+		const error = await exporter
+			.export({
+				user,
+				workflowIds: [workflow.id],
+				writer: new CapturingWriter(),
+				includeTags: true,
+				versionPolicy: 'latest',
+			})
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(PackageWorkflowInvalidError);
+		expect((error as PackageWorkflowInvalidError).httpStatusCode).toBe(422);
+		expect((error as PackageWorkflowInvalidError).message).toContain(workflow.id);
+		expect((error as PackageWorkflowInvalidError).message).toContain('nodes.0.position');
 	});
 
 	it('writes node groups into workflow.json', async () => {
@@ -248,7 +275,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [workflow.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		const workflowFile = writer.files.find(
@@ -271,7 +298,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [workflow.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		const workflowFile = writer.files.find(
@@ -292,7 +319,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [workflow.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			basePrefix: 'folders/in_progress',
 		});
 
@@ -313,7 +340,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [a.id, b.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		const targets = entries.map((e) => e.target);
@@ -330,7 +357,7 @@ describe('WorkflowExporter', () => {
 		const a = makeWorkflow({ id: 'wf_a' });
 		const b = makeWorkflow({ id: 'wf_b' });
 		const extractor = mock<CredentialRequirementsExtractor>();
-		extractor.extract.mockImplementation((workflow) => [
+		extractor.extractFromWorkflow.mockImplementation((workflow) => [
 			{
 				workflowId: workflow.id,
 				credentialId: `cred-from-${workflow.id}`,
@@ -346,10 +373,10 @@ describe('WorkflowExporter', () => {
 			workflowIds: [a.id, b.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
-		expect(extractor.extract).toHaveBeenCalledTimes(2);
+		expect(extractor.extractFromWorkflow).toHaveBeenCalledTimes(2);
 		expect(requirements.credentials).toEqual<WorkflowCredentialRequirement[]>([
 			{
 				workflowId: 'wf_a',
@@ -381,7 +408,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [a.id, b.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(extractor.extract).toHaveBeenCalledTimes(2);
@@ -406,7 +433,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [a.id, b.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(extractor.extract).toHaveBeenCalledTimes(2);
@@ -435,7 +462,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [a.id, b.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(requirements.nodeTypes).toEqual([

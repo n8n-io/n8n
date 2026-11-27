@@ -1,6 +1,6 @@
-import { isUniqueConstraintError } from '@n8n/db';
+import { dbNowLiteral, isUniqueConstraintError, parseDbTime } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
 import type { InstanceReportDataPoint } from '../entities/instance-monitoring-report';
@@ -13,8 +13,8 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 	}
 
 	/**
-	 * The report a retry may resume, or `null` when there is nothing to resume.
-	 * It is the newest row, and only if that row is still `pending`.
+	 * The active report, or `null` when there is nothing to resume.
+	 * It is the newest row, and only if it is `pending` or `sending`.
 	 *
 	 * At most one report is genuinely pending: the scheduler settles a stale row
 	 * before it creates the next one. But earlier versions left a failed report
@@ -31,7 +31,35 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 	async findPending(): Promise<InstanceMonitoringReport | null> {
 		const [latest] = await this.find({ order: { createdAt: 'DESC', id: 'DESC' }, take: 1 });
 
-		return latest?.status === 'pending' ? latest : null;
+		return latest?.status === 'pending' || latest?.status === 'sending' ? latest : null;
+	}
+
+	/** Use one clock for claim age and retry delays across mains. */
+	async readDbNow(): Promise<Date> {
+		const isPostgres = this.manager.connection.options.type === 'postgres';
+		const [row]: Array<{ dbNow: Date | string }> = await this.query(
+			`SELECT ${dbNowLiteral(isPostgres)} AS "dbNow"`,
+		);
+		return parseDbTime(row.dbNow);
+	}
+
+	/** Return the claim timestamp. Failure writes must match this claim. */
+	async claimForSend(id: string): Promise<Date | null> {
+		const startedAt = await this.readDbNow();
+		const result = await this.update(
+			{ id, status: 'pending' },
+			{ status: 'sending', lastAttemptAt: startedAt },
+		);
+		return result.affected === 1 ? startedAt : null;
+	}
+
+	/** Release a claim left by a stopped main. A newer claim stays in place. */
+	async releaseStaleSend(id: string, startedAt: Date | null): Promise<boolean> {
+		const result = await this.update(
+			{ id, status: 'sending', lastAttemptAt: startedAt ?? IsNull() },
+			{ status: 'pending' },
+		);
+		return result.affected === 1;
 	}
 
 	/**
@@ -48,7 +76,10 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 	 * lost — only a delivered report crosses a day off.
 	 */
 	async hasSettledToday(now: Date): Promise<boolean> {
-		return await this.existsBy({ reportDate: utcDay(now), status: Not('pending') });
+		return await this.existsBy({
+			reportDate: utcDay(now),
+			status: In(['delivered', 'skipped_after_max_retries']),
+		});
 	}
 
 	/**
@@ -113,25 +144,49 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 		return report?.deliveredAt ?? null;
 	}
 
-	async markDelivered(id: string, deliveredAt: Date): Promise<void> {
-		await this.increment({ id }, 'attempts', 1);
-		await this.update(
-			{ id },
-			{ status: 'delivered', deliveredAt, lastAttemptAt: deliveredAt, lastError: null },
+	/** An acceptance confirms delivery even after another main reclaims the report. */
+	async markDelivered(id: string, deliveredAt: Date): Promise<boolean> {
+		const result = await this.update(
+			{ id, status: Not('delivered') },
+			{
+				attempts: () => 'attempts + 1',
+				status: 'delivered',
+				deliveredAt,
+				lastAttemptAt: deliveredAt,
+				lastError: null,
+			},
 		);
+		return result.affected === 1;
 	}
 
-	async recordFailure(id: string, error: string, failedAt: Date): Promise<void> {
-		await this.increment({ id }, 'attempts', 1);
-		await this.update({ id }, { lastAttemptAt: failedAt, lastError: error });
+	async recordFailure(
+		id: string,
+		claimedAt: Date,
+		error: string,
+		failedAt: Date,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id, status: 'sending', lastAttemptAt: claimedAt },
+			{
+				attempts: () => 'attempts + 1',
+				status: 'pending',
+				lastAttemptAt: failedAt,
+				lastError: error,
+			},
+		);
+		return result.affected === 1;
 	}
 
 	/**
 	 * Stop trying to deliver this report. Its days are covered by the next one.
 	 * Already delivered report stays delivered.
 	 */
-	async markSkipped(id: string): Promise<void> {
-		await this.update({ id, status: 'pending' }, { status: 'skipped_after_max_retries' });
+	async markSkipped(id: string): Promise<boolean> {
+		const result = await this.update(
+			{ id, status: 'pending' },
+			{ status: 'skipped_after_max_retries' },
+		);
+		return result.affected === 1;
 	}
 }
 

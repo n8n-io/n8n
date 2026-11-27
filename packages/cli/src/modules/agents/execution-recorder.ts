@@ -3,6 +3,7 @@ import {
 	applyForwardedChildChunk,
 	emptyChildTrace,
 	settleChildTrace,
+	WORKFLOW_WAIT_SUSPEND_TYPE,
 	type PersistedChildTrace,
 	type AgentBackgroundJobSignal,
 } from '@n8n/api-types';
@@ -200,59 +201,18 @@ function sanitizeExecutionLogRecord(value: unknown): Record<string, unknown> | u
 	return isRecord(sanitized) ? sanitized : undefined;
 }
 
-export interface ToolCallDetails {
-	toolName: string;
-	displayName?: string;
-	kind: ToolRegistryEntry['kind'];
-	input: unknown;
-	node?: {
-		type: string;
-		typeVersion?: number;
-		parameters?: Record<string, unknown>;
-	};
-	workflow?: {
-		id?: string;
-		name?: string;
-		triggerType?: string;
-	};
-}
-
-/** Build the sanitized, resolved tool configuration shown in preview approvals. */
-export function buildToolCallDetails(
-	registry: ToolRegistry,
-	toolName: string,
-	input: unknown,
-): ToolCallDetails {
-	const entry = registry.get(toolName);
-	const kind = entry?.kind ?? 'tool';
-	const details: ToolCallDetails = {
-		toolName,
-		kind,
-		input: sanitizeExecutionLogValue(input),
-	};
-
-	if (entry?.nodeDisplayName) details.displayName = entry.nodeDisplayName;
-
-	if (kind === 'node' && entry?.nodeType) {
-		details.node = {
-			type: entry.nodeType,
-			...(entry.nodeTypeVersion !== undefined && { typeVersion: entry.nodeTypeVersion }),
-			...(entry.nodeParameters !== undefined && {
-				parameters: sanitizeExecutionLogRecord(
-					resolveTemplatesInValue(entry.nodeParameters, isRecord(input) ? input : {}),
-				),
-			}),
-		};
-	} else if (kind === 'workflow') {
-		details.workflow = {
-			...(entry?.workflowId !== undefined && { id: entry.workflowId }),
-			...(entry?.workflowName !== undefined && { name: entry.workflowName }),
-			...(entry?.triggerType !== undefined && { triggerType: entry.triggerType }),
-		};
-		if (entry?.workflowName) details.displayName = entry.workflowName;
+export function buildApprovalArgs(input: unknown, entry?: ToolRegistryEntry): unknown {
+	const sanitizedInput = sanitizeExecutionLogValue(input);
+	if (!entry?.nodeParameters || Object.keys(entry.nodeParameters).length === 0) {
+		return sanitizedInput;
 	}
 
-	return details;
+	return {
+		parameters: sanitizeExecutionLogRecord(
+			resolveTemplatesInValue(entry.nodeParameters, isRecord(sanitizedInput) ? sanitizedInput : {}),
+		),
+		...(isRecord(input) && Object.keys(input).length === 0 ? {} : { input: sanitizedInput }),
+	};
 }
 
 export interface RecordedUsage {
@@ -276,6 +236,7 @@ export type TimelineEvent =
 			startTime: number;
 			endTime: number;
 			success: boolean;
+			canceled?: boolean;
 			workflowId?: string;
 			workflowName?: string;
 			workflowExecutionId?: string;
@@ -291,6 +252,8 @@ export type TimelineEvent =
 			 */
 			nodeParameters?: Record<string, unknown>;
 			childTrace?: PersistedChildTrace;
+			/** Host-only data from the tool's `toTraceOutput`, e.g. recalled memory entry ids. */
+			traceOutput?: unknown;
 	  }
 	| {
 			type: 'suspension';
@@ -305,6 +268,20 @@ export type TimelineEvent =
 			toolCallId: string;
 			response: unknown;
 			timestamp: number;
+	  }
+	| {
+			type: 'guardrail';
+			code: string;
+			timestamp: number;
+	  }
+	| {
+			/** A custom event that a system-agent provider emitted during the turn. */
+			type: 'host-event';
+			name: string;
+			/** A later event with the same name and key replaces this one. */
+			key?: string;
+			payload: unknown;
+			timestamp: number;
 	  };
 
 /**
@@ -317,10 +294,15 @@ export interface MessageRecord {
 	finishReason: string;
 	usage: RecordedUsage | null;
 	totalCost: number | null;
+	/** Input tokens read from the prompt cache. A subset of `usage.promptTokens`. */
+	cacheReadTokens: number | null;
+	/** Input tokens written to the prompt cache. A subset of `usage.promptTokens`. */
+	cacheWriteTokens: number | null;
 	timeline: TimelineEvent[];
 	startTime: number;
 	duration: number;
 	error: string | null;
+	guardrailCode: string | null;
 }
 
 export class ExecutionRecorder {
@@ -334,16 +316,26 @@ export class ExecutionRecorder {
 	) {
 		this.startTime = startedAt.getTime();
 		this.registry = registry ?? new Map();
+
 		if (backgroundJobSignal) {
 			this.timeline.push({
 				type: 'background-task-signal',
 				timestamp: this.startTime,
 				signal: {
-					tasks: backgroundJobSignal.tasks.map(({ id, title, kind, status }) => ({
+					...(backgroundJobSignal.isFinal ? { isFinal: true } : {}),
+					tasks: backgroundJobSignal.tasks.map(({ id, title, kind, status, files }) => ({
 						id,
 						title: scrubSecretsInText(title),
 						kind,
 						status,
+						...(files?.length
+							? {
+									files: files.map((file) => ({
+										...file,
+										fileName: scrubSecretsInText(file.fileName),
+									})),
+								}
+							: {}),
 					})),
 				},
 			});
@@ -362,9 +354,15 @@ export class ExecutionRecorder {
 
 	private finishReason = 'unknown';
 
+	private guardrailCode: string | null = null;
+
 	private usage: RecordedUsage | null = null;
 
 	private totalCost: number | null = null;
+
+	private cacheReadTokens: number | null = null;
+
+	private cacheWriteTokens: number | null = null;
 
 	private timeline: TimelineEvent[] = [];
 
@@ -399,12 +397,65 @@ export class ExecutionRecorder {
 	recordHitlResponse(toolCallId: string, response: unknown): void {
 		this.flushReasoningBuffer();
 		this.flushTextBuffer();
+		// The workflow wake-up arrives before its approval result is read.
+		const wakeUp = this.timeline.findIndex(
+			(event) =>
+				event.type === 'hitl-response' &&
+				event.toolCallId === toolCallId &&
+				isRecord(event.response) &&
+				event.response.type === 'workflow_finished',
+		);
+		if (wakeUp !== -1 && isRecord(response) && typeof response.approved === 'boolean') {
+			this.timeline.splice(wakeUp, 1);
+		}
 		this.appendCompletedEvent({
 			type: 'hitl-response',
 			toolCallId,
 			response: sanitizeExecutionLogValue(response),
 			timestamp: Date.now(),
 		});
+	}
+
+	/**
+	 * Record a custom host event at its position in the turn. The payload is
+	 * stored as the host sent it. Host code builds it, not the model, and the
+	 * secret heuristics of the other recorded values damage ordinary fields
+	 * such as `credentialType`. When the turn already has an event with the
+	 * same name and key, the new payload replaces the old one in its position.
+	 * Returns the recorded event, so that the live stream can send the same
+	 * payload.
+	 */
+	recordHostEvent(
+		name: string,
+		payload: unknown,
+		key?: string,
+	): Extract<TimelineEvent, { type: 'host-event' }> {
+		// Copy, so a host that changes the object later does not change the record.
+		const recorded = structuredClone(payload);
+		if (key !== undefined) {
+			const index = this.timeline.findIndex(
+				(item) => item.type === 'host-event' && item.name === name && item.key === key,
+			);
+			const existing = this.timeline[index];
+			if (existing?.type === 'host-event') {
+				const replaced = { ...existing, payload: recorded };
+				this.timeline[index] = replaced;
+				// Text or reasoning can still stream here, so keep it in the snapshot.
+				this.emitTimelineSnapshot(this.activeBlock());
+				return replaced;
+			}
+		}
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		const event: Extract<TimelineEvent, { type: 'host-event' }> = {
+			type: 'host-event',
+			name,
+			...(key !== undefined ? { key } : {}),
+			payload: recorded,
+			timestamp: Date.now(),
+		};
+		this.appendCompletedEvent(event);
+		return event;
 	}
 
 	/** Feed a stream chunk into the recorder. */
@@ -438,6 +489,21 @@ export class ExecutionRecorder {
 			case 'tool-call':
 				this.recordToolCall(chunk.toolCallId, chunk.toolName, chunk.input);
 				break;
+			case 'tool-approval':
+				if (chunk.phase === 'resolved') {
+					this.recordHitlResponse(chunk.toolCallId, chunk.response);
+				} else {
+					this.flushReasoningBuffer();
+					this.flushTextBuffer();
+					this.appendCompletedEvent({
+						type: 'suspension',
+						toolName: chunk.toolName,
+						toolCallId: chunk.toolCallId,
+						timestamp: Date.now(),
+						suspendPayload: sanitizeExecutionLogValue(chunk.request),
+					});
+				}
+				break;
 			case 'tool-execution-start':
 				this.recordToolExecutionStart(chunk.toolCallId, chunk.startTime);
 				break;
@@ -465,16 +531,28 @@ export class ExecutionRecorder {
 				break;
 			}
 			case 'tool-result':
-				this.recordToolResult(
-					chunk.toolCallId,
-					chunk.toolName,
-					chunk.output,
-					chunk.isError === true,
-				);
+				this.recordToolResult(chunk);
+				break;
+			case 'usage':
+				this.usage = {
+					promptTokens: chunk.usage.promptTokens,
+					completionTokens: chunk.usage.completionTokens,
+					totalTokens: chunk.usage.totalTokens,
+				};
+				this.model = chunk.model;
+				this.totalCost = chunk.usage.cost ?? null;
 				break;
 			case 'finish':
 				this.flushReasoningBuffer();
 				this.flushTextBuffer();
+				if (chunk.guardrail) {
+					this.guardrailCode = chunk.guardrail.code;
+					this.appendCompletedEvent({
+						type: 'guardrail',
+						code: chunk.guardrail.code,
+						timestamp: Date.now(),
+					});
+				}
 				this.finishReason = chunk.finishReason;
 				if (chunk.usage) {
 					this.usage = {
@@ -482,14 +560,31 @@ export class ExecutionRecorder {
 						completionTokens: chunk.usage.completionTokens,
 						totalTokens: chunk.usage.totalTokens,
 					};
+					this.totalCost = chunk.usage.cost ?? null;
+					this.cacheReadTokens = chunk.usage.inputTokenDetails?.cacheRead ?? null;
+					this.cacheWriteTokens = chunk.usage.inputTokenDetails?.cacheWrite ?? null;
 				}
-				this.model = chunk.model ?? null;
-				this.totalCost = chunk.usage?.cost ?? null;
+				this.model = chunk.model ?? this.model;
 				break;
 			case 'tool-call-suspended':
 				this.flushReasoningBuffer();
 				this.flushTextBuffer();
 				this._suspended = true;
+				if (
+					isRecord(chunk.suspendPayload) &&
+					chunk.suspendPayload.type === WORKFLOW_WAIT_SUSPEND_TYPE &&
+					!this.timeline.some(
+						(event) => event.type === 'hitl-response' && event.toolCallId === chunk.toolCallId,
+					) &&
+					this.timeline.some(
+						(event) =>
+							event.type === 'suspension' &&
+							event.toolCallId === chunk.toolCallId &&
+							isRecord(event.suspendPayload) &&
+							event.suspendPayload.type === 'approval',
+					)
+				)
+					break;
 				this.appendCompletedEvent({
 					type: 'suspension',
 					toolName: chunk.toolName ?? '',
@@ -533,10 +628,13 @@ export class ExecutionRecorder {
 			finishReason: this.finishReason,
 			usage: this.usage,
 			totalCost: this.totalCost,
+			cacheReadTokens: this.cacheReadTokens,
+			cacheWriteTokens: this.cacheWriteTokens,
 			timeline: this.timeline,
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
 			error: this.error,
+			guardrailCode: this.guardrailCode,
 		};
 	}
 
@@ -591,24 +689,7 @@ export class ExecutionRecorder {
 		if (this.timelineSnapshotTimer) return;
 		this.timelineSnapshotTimer = setTimeout(() => {
 			this.timelineSnapshotTimer = undefined;
-			const now = Date.now();
-			if (this.textStartTime !== null && this.textBuffer.length > 0) {
-				this.emitTimelineSnapshot({
-					type: 'text',
-					content: this.textBuffer.join(''),
-					timestamp: this.textStartTime,
-					endTime: now,
-				});
-			} else if (this.reasoningStartTime !== null && this.reasoningBuffer.length > 0) {
-				this.emitTimelineSnapshot({
-					type: 'reasoning',
-					content: this.reasoningBuffer.join(''),
-					timestamp: this.reasoningStartTime,
-					endTime: now,
-				});
-			} else {
-				this.emitTimelineSnapshot();
-			}
+			this.emitTimelineSnapshot(this.activeBlock());
 		}, TIMELINE_BLOCK_MAX_DURATION_MS);
 		this.timelineSnapshotTimer.unref();
 	}
@@ -709,15 +790,15 @@ export class ExecutionRecorder {
 	 * timeline entry to close. In that case we synthesize one from the
 	 * registry so workflow rows and execution-log links still render.
 	 */
-	private recordToolResult(
-		toolCallId: string,
-		name: string,
-		output: unknown,
-		isError: boolean,
-	): void {
+	private recordToolResult(chunk: StreamChunk & { type: 'tool-result' }): void {
+		const { toolCallId, toolName: name, output } = chunk;
+		const isError = chunk.isError === true;
+		const canceled = chunk.canceled === true;
 		const recordedOutput = sanitizeExecutionLogValue(
 			isError ? normaliseToolErrorOutput(output) : output,
 		);
+		const traceOutput =
+			chunk.traceOutput !== undefined ? sanitizeExecutionLogValue(chunk.traceOutput) : undefined;
 
 		const pendingTimeline = [...this.timeline]
 			.reverse()
@@ -729,6 +810,8 @@ export class ExecutionRecorder {
 		if (pendingTimeline) {
 			pendingTimeline.output = recordedOutput;
 			pendingTimeline.success = !isError;
+			if (canceled) pendingTimeline.canceled = true;
+			if (traceOutput !== undefined) pendingTimeline.traceOutput = traceOutput;
 			// `tool-execution-end` (real per-tool finish) normally closed this entry
 			// already; only fall back to the batched result time if it never fired.
 			if (pendingTimeline.endTime === 0) {
@@ -760,6 +843,8 @@ export class ExecutionRecorder {
 			startTime: now,
 			endTime: now,
 			success: !isError,
+			...(canceled ? { canceled: true } : {}),
+			...(traceOutput !== undefined ? { traceOutput } : {}),
 			workflowId: entry?.workflowId,
 			workflowName: entry?.workflowName,
 			triggerType: entry?.triggerType,
@@ -783,6 +868,28 @@ export class ExecutionRecorder {
 	private appendCompletedEvent(event: TimelineEvent): void {
 		this.timeline.push(event);
 		this.emitTimelineSnapshot();
+	}
+
+	/** The text or reasoning block that still streams, as it would be flushed now. */
+	private activeBlock(): TimelineEvent | undefined {
+		const now = Date.now();
+		if (this.textStartTime !== null && this.textBuffer.length > 0) {
+			return {
+				type: 'text',
+				content: this.textBuffer.join(''),
+				timestamp: this.textStartTime,
+				endTime: now,
+			};
+		}
+		if (this.reasoningStartTime !== null && this.reasoningBuffer.length > 0) {
+			return {
+				type: 'reasoning',
+				content: this.reasoningBuffer.join(''),
+				timestamp: this.reasoningStartTime,
+				endTime: now,
+			};
+		}
+		return undefined;
 	}
 
 	private emitTimelineSnapshot(activeEvent?: TimelineEvent): void {

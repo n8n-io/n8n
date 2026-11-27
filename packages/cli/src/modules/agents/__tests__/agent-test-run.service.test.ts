@@ -6,13 +6,22 @@ import {
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { User } from '@n8n/db';
+import { ForbiddenError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import type { SimulationSession } from '../simulation/simulation-session';
+import type { SimulationSessionService } from '../simulation/simulation-session.service';
+
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn(),
+}));
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -65,9 +74,12 @@ function makeService() {
 	const agentValidationService = mock<AgentValidationService>();
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
+	const simulationSessions = mock<SimulationSessionService>();
+	simulationSessions.openForDraftRun.mockResolvedValue(undefined);
 	agentExecutionService.findThreadById.mockResolvedValue(null);
 	agentExecutionService.canUseDraftThread.mockResolvedValue(true);
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+	vi.mocked(userHasScopes).mockResolvedValue(true);
 
 	return {
 		service: new AgentTestRunService(
@@ -75,11 +87,13 @@ function makeService() {
 			agentValidationService,
 			agentExecutionOrchestratorService,
 			n8nCheckpointStorage,
+			simulationSessions,
 		),
 		agentExecutionService,
 		agentValidationService,
 		agentExecutionOrchestratorService,
 		n8nCheckpointStorage,
+		simulationSessions,
 	};
 }
 
@@ -123,6 +137,44 @@ describe('AgentTestRunService', () => {
 				],
 			}),
 		);
+	});
+
+	it.each([undefined, ''])(
+		'prepares a new session with a generated id when sessionId is %j',
+		async (sessionId) => {
+			const { service, agentExecutionService } = makeService();
+
+			const result = await service.prepareDraftRun({
+				agentId,
+				projectId,
+				user,
+				sessionId,
+				credentialProvider,
+			});
+
+			expect(result).toEqual({
+				status: 'ready',
+				sessionId: expect.stringMatching(/^[0-9a-f-]{36}$/),
+				sessionMode: 'new',
+			});
+			expect(agentExecutionService.canUseDraftThread).not.toHaveBeenCalled();
+		},
+	);
+
+	it('flags a run that stopped on the iteration cap', async () => {
+		const { service, agentExecutionOrchestratorService } = makeService();
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
+			config.onExecutionRecorded?.('execution-1');
+			yield { type: 'text-delta', id: 'text-1', delta: 'Working on it' };
+			yield { type: 'finish', finishReason: 'max-iterations' };
+		});
+
+		await expect(service.executePreparedDraftRun(preparedDraftRunInput)).resolves.toEqual({
+			status: 'completed',
+			response: 'Working on it',
+			executionId: 'execution-1',
+			maxIterations: true,
+		});
 	});
 
 	it('resumes a prepared draft run with its selected memory scope', async () => {
@@ -442,6 +494,29 @@ describe('AgentTestRunService', () => {
 		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
 	});
 
+	it('rejects a draft run and resume from a user without agent:read', async () => {
+		const { service, agentValidationService, agentExecutionOrchestratorService } = makeService();
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+
+		await expect(
+			service.prepareDraftRun({ agentId, projectId, user, previewChat: true, credentialProvider }),
+		).rejects.toThrow(ForbiddenError);
+		await expect(
+			service.resumePreparedDraftRun({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tool-call-1',
+				resumeData: { approved: true },
+				user,
+				chatSurface: 'preview',
+			}),
+		).rejects.toThrow(ForbiddenError);
+		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, { projectId });
+		expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
+		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
+	});
+
 	it('returns missing configuration without starting a run', async () => {
 		const { service, agentValidationService, agentExecutionOrchestratorService } = makeService();
 		agentValidationService.validateAgentIsRunnable.mockResolvedValue({
@@ -482,5 +557,145 @@ describe('AgentTestRunService', () => {
 				: service.executePreparedDraftRun({ ...preparedDraftRunInput, onChunk: vi.fn() });
 		await expect(execution).rejects.toBe(executionError);
 		expect(settled).toBe(true);
+	});
+
+	describe('test runs (safe testing)', () => {
+		const toolResult = (toolCallId: string): StreamChunk => ({
+			type: 'tool-result',
+			toolCallId,
+			toolName: 'send_slack',
+			output: { ok: true },
+		});
+
+		async function runWithStream(
+			service: AgentTestRunService,
+			orchestrator: ReturnType<typeof makeService>['agentExecutionOrchestratorService'],
+			chunks: StreamChunk[],
+			onChunk = vi.fn(),
+		) {
+			orchestrator.executeForChat.mockImplementation(async function* (config) {
+				await config.simulation?.(config.memory.threadId);
+				yield* chunks;
+				config.onExecutionRecorded?.('execution-1');
+			});
+			return await service.executePreparedDraftRun({ ...preparedDraftRunInput, onChunk });
+		}
+
+		it('leaves a draft run unchanged when there is no test-run session', async () => {
+			const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+			const onChunk = vi.fn();
+
+			const result = await runWithStream(
+				service,
+				agentExecutionOrchestratorService,
+				[toolResult('tc-1')],
+				onChunk,
+			);
+
+			expect(result).toEqual({ status: 'completed', response: '', executionId: 'execution-1' });
+			expect(onChunk).toHaveBeenCalledWith(toolResult('tc-1'));
+			expect(simulationSessions.openForDraftRun).toHaveBeenCalledWith({
+				user,
+				agentId,
+				projectId,
+				testChatId: 'session-1',
+				message: 'Hi',
+				testRunRequested: false,
+			});
+		});
+
+		it.each([
+			{ chatMode: 'test' as const, requested: true },
+			{ chatMode: 'live' as const, requested: false },
+			{ chatMode: undefined, requested: false },
+		])(
+			'asks for a test run only in test mode (mode: $chatMode)',
+			async ({ chatMode, requested }) => {
+				const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+				agentExecutionOrchestratorService.executeForChat.mockImplementation(
+					async function* (config) {
+						await config.simulation?.(config.memory.threadId);
+						yield* [];
+						config.onExecutionRecorded?.('execution-1');
+					},
+				);
+
+				await service.executePreparedDraftRun({
+					...preparedDraftRunInput,
+					...(chatMode ? { chatMode } : {}),
+				});
+
+				expect(simulationSessions.openForDraftRun).toHaveBeenCalledWith(
+					expect.objectContaining({ testRunRequested: requested }),
+				);
+			},
+		);
+
+		it('streams each tool result with its route, marks the execution and saves the world', async () => {
+			const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+			const session = mock<SimulationSession>({ worldId: 'world-1' });
+			session.takeDecision.mockImplementation((toolCallId) =>
+				toolCallId === 'tc-1'
+					? { route: 'simulated_made_up', reason: 'invented_by_llm' }
+					: undefined,
+			);
+			simulationSessions.openForDraftRun.mockResolvedValue(session);
+			const onChunk = vi.fn();
+
+			const result = await runWithStream(
+				service,
+				agentExecutionOrchestratorService,
+				[toolResult('tc-1'), toolResult('tc-local')],
+				onChunk,
+			);
+
+			expect(onChunk).toHaveBeenCalledWith({
+				...toolResult('tc-1'),
+				simulation: { route: 'simulated_made_up', reason: 'invented_by_llm' },
+			});
+			expect(onChunk).toHaveBeenCalledWith(toolResult('tc-local'));
+			expect(result).toMatchObject({
+				status: 'completed',
+				simulation: {
+					worldId: 'world-1',
+					toolCalls: [
+						{
+							toolCallId: 'tc-1',
+							toolName: 'send_slack',
+							route: 'simulated_made_up',
+							reason: 'invented_by_llm',
+						},
+					],
+				},
+			});
+		});
+
+		it('resolves the session for a resumed draft run too', async () => {
+			const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+			const session = mock<SimulationSession>({ worldId: 'world-1' });
+			session.takeDecision.mockReturnValue({
+				route: 'blocked',
+				reason: 'unsupported_by_simulator',
+			});
+			simulationSessions.openForDraftRun.mockResolvedValue(session);
+			agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
+				await config.simulation?.('session-1');
+				yield toolResult('tc-2');
+				config.onExecutionRecorded?.('execution-2');
+			});
+
+			const result = await service.resumePreparedDraftRun({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-2',
+				resumeData: { approved: true },
+				user,
+			});
+
+			expect(result).toMatchObject({
+				simulation: { toolCalls: [expect.objectContaining({ route: 'blocked' })] },
+			});
+		});
 	});
 });

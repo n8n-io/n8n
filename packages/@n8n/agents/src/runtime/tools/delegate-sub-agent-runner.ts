@@ -240,6 +240,9 @@ function createDelegateSubAgentRequest(
 			? { parentExecutionCounter: withoutMessageCount(ctx.executionCounter) }
 			: {}),
 		...(ctx.parentTelemetry !== undefined ? { parentTelemetry: ctx.parentTelemetry } : {}),
+		...(ctx.onGuardrailNotice !== undefined
+			? { parentOnGuardrailNotice: ctx.onGuardrailNotice }
+			: {}),
 		...(policy !== undefined ? { policy } : {}),
 	};
 }
@@ -433,11 +436,12 @@ function stringifyUnknown(value: unknown): string {
  * (the n8n CLI runner does).
  */
 
-/** Render the default delegation prompt from a request's goal / context / expectedOutput. */
+/** Render the default delegation prompt from a request's goal / context / expectedOutput / fileIds. */
 export function renderDelegateSubAgentPrompt(request: {
 	goal: string;
 	context?: string;
 	expectedOutput?: string;
+	fileIds?: string[];
 }): string {
 	const sections = [
 		'You are a focused subagent working on a specific delegated task.',
@@ -450,6 +454,10 @@ export function renderDelegateSubAgentPrompt(request: {
 
 	if (request.expectedOutput) {
 		sections.push(`EXPECTED OUTPUT:\n${request.expectedOutput}`);
+	}
+
+	if (request.fileIds?.length) {
+		sections.push(`FILES (pass these fileIds to tools):\n${request.fileIds.join('\n')}`);
 	}
 
 	sections.push(
@@ -477,6 +485,10 @@ function resolveDelegateSubAgentStatus(
 		// error, so the state decides which of the two this really was.
 		return result.getState().status === 'cancelled' ? 'cancelled' : 'failed';
 	}
+	// A child agent hit a guardrail stop.
+	if (result.finishReason === 'guardrail') {
+		return 'failed';
+	}
 	if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
 		return 'suspended';
 	}
@@ -495,6 +507,17 @@ export function failedDelegatedChildSuspendOutput(
 		error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
 		...(model !== undefined ? { model } : {}),
 	};
+}
+
+function guardrailStopMessage(code: string | undefined): string {
+	switch (code) {
+		case 'budget.session':
+			return 'The sub-agent run was stopped: the session cost cap is spent.';
+		case 'budget.monthly':
+			return 'The sub-agent run was stopped: the monthly budget is spent.';
+		default:
+			return `The sub-agent run was stopped by a guardrail (${code ?? 'unknown code'}).`;
+	}
 }
 
 /** Map an agent {@link GenerateResult} into the delegate tool's output shape. */
@@ -518,7 +541,11 @@ export function generateResultToDelegateSubAgentOutput(
 				}
 			: {}),
 		...(result.finishReason !== undefined ? { finishReason: result.finishReason } : {}),
-		...(result.error !== undefined ? { error: stringifyUnknown(result.error) } : {}),
+		...(result.error !== undefined
+			? { error: stringifyUnknown(result.error) }
+			: result.finishReason === 'guardrail'
+				? { error: guardrailStopMessage(result.guardrail?.code) }
+				: {}),
 		...(status === 'suspended' && result.pendingSuspend !== undefined
 			? { pendingSuspend: result.pendingSuspend }
 			: {}),

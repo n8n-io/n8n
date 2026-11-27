@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from '@n8n/api-types';
+import {
+	DEFAULT_AGENT_PERSONALISATION,
+	resolveAgentPersonalisation,
+	type AgentJsonConfig,
+} from '@n8n/api-types';
 import { N8nIcon } from '@n8n/design-system';
 
 type AgentPersonalisation = NonNullable<AgentJsonConfig['personalisation']>;
@@ -13,13 +17,9 @@ const props = withDefaults(
 	{ personalisation: null, size: 24 },
 );
 
-const resolved = computed<AgentPersonalisation>(() => {
-	const value = props.personalisation;
-	return {
-		icon: value?.icon ?? DEFAULT_AGENT_PERSONALISATION.icon,
-		gradient: { ...DEFAULT_AGENT_PERSONALISATION.gradient, ...value?.gradient },
-	};
-});
+const resolved = computed<AgentPersonalisation>(() =>
+	resolveAgentPersonalisation(props.personalisation),
+);
 
 const tileStyle = computed<Record<string, string>>(() => ({
 	'--agent-personalisation-gradient-from': resolved.value.gradient.from,
@@ -35,8 +35,16 @@ const iconSize = computed(() => Math.round(props.size * 0.6));
 </script>
 
 <template>
-	<div :class="$style.tile" :style="tileStyle" data-test-id="agent-personalisation-icon-tile">
-		<N8nIcon :icon="resolved.icon" :size="iconSize" />
+	<div
+		:class="['n8n-agent-icon', $style.tile]"
+		:style="tileStyle"
+		data-test-id="agent-personalisation-icon-tile"
+	>
+		<N8nIcon
+			:icon="resolved.icon"
+			:fallback-icon="DEFAULT_AGENT_PERSONALISATION.icon"
+			:size="iconSize"
+		/>
 	</div>
 </template>
 

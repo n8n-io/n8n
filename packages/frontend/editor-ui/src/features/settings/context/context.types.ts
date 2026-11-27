@@ -1,4 +1,4 @@
-import type { AiPreferenceDto } from '@n8n/api-types';
+import type { AiPreferenceDto, AiPreferenceSortOption } from '@n8n/api-types';
 
 /** One `ai_preference` row, as `GET /rest/ai-preferences` returns it. */
 export type Preference = AiPreferenceDto;
@@ -8,6 +8,9 @@ export interface PreferenceListQuery {
 	take?: number;
 	/** Only these rows. The API reads them as one comma-separated parameter. */
 	ids?: string[];
+	/** Case-insensitive substring of the preference text. */
+	search?: string;
+	sortBy?: AiPreferenceSortOption;
 }
 
 /** What the current user may do to one row. */

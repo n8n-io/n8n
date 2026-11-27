@@ -1,104 +1,308 @@
 <script setup lang="ts">
 import {
 	computed,
+	provide,
+	readonly,
 	ref,
+	shallowRef,
 	toRef,
 	watch,
 	onMounted,
 	onBeforeUnmount,
 	useTemplateRef,
 	nextTick,
+	type Ref,
 } from 'vue';
 import {
 	N8nAiActivityStepGroup,
+	N8nAttachment,
+	N8nAttachmentGroup,
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
-	N8nInput,
+	N8nIconButton,
 	N8nLink,
 	N8nText,
 	N8nTooltip,
+	type IconName,
+	N8nChatScrollArea,
+	type ChatScrollAreaExposed,
 } from '@n8n/design-system';
 import { createReusableTemplate, useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
 	type AgentChatQueueItem,
+	type AgentSessionFile,
 	type AgentBuilderOpenSuspension,
+	type AgentSseEvent,
+	type ProviderAttachmentCapabilities,
 	APPROVAL_TOOL_NAME,
 	WAIT_TOOL_NAME,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
-	PROVIDER_CAPABILITIES,
+	getProviderAttachmentCapabilities,
+	acceptedMimeTypesFromCapabilities,
+	AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
+	AGENT_SANDBOX_FILES_FLAG,
 } from '@n8n/api-types';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useToast } from '@n8n/composables/useToast';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
-import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
+import ChatMessageQueue from '@/features/ai/shared/components/ChatMessageQueue.vue';
+import type {
+	ChatMessageQueueSteerAction,
+	ChatMessageQueueItem,
+} from '@/features/ai/shared/components/chatMessageQueue.types';
+import { useAttachmentPreviews } from '@/features/ai/shared/composables/useAttachmentPreviews';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import {
 	findTailOpenInteractive,
+	getMessageInteractives,
 	parseApprovalInput,
 } from '@/features/ai/shared/agentsChat/messageMappers';
+import {
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	type AgentsChatInteractionExtension,
+} from '@/features/ai/shared/agentsChat/interactionRegistry';
+import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
+import type { ChatMessage, ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
+import { resolveFileMimeType } from '@/app/utils/fileUtils';
+import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 import AgentChatMessageList from './AgentChatMessageList.vue';
+import AgentChatPlan from './AgentChatPlan.vue';
+import AgentChatTaskStopNotice from './AgentChatTaskStopNotice.vue';
+import SessionFilesList from './SessionFilesList.vue';
+import { isRetryableChatError } from '../utils/errors';
+import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
+import {
+	mergeClientContextPatches,
+	type AgentChatComposerAttachment,
+	type AgentChatComposerChip,
+} from '../utils/composer-attachments';
 import type {
 	AgentContinueLoadedEvent,
+	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
-import { AGENT_SESSION_DETAIL_VIEW, TOOL_CALL_STATE } from '../constants';
+import { AGENT_SESSION_DETAIL_VIEW, CHAT_MESSAGE_ROLE, TOOL_CALL_STATE } from '../constants';
+import {
+	isBudgetStopCode,
+	budgetNoticeCodesForField,
+	type BudgetAmountField,
+} from '../utils/budget-config';
 import { TIME } from '@/app/constants/durations';
-import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
-import ApprovalCard from './interactive/ApprovalCard.vue';
+import { useAgentChatTaskControls } from '../composables/useAgentChatTaskControls';
+import {
+	getChatAttachmentUrl,
+	getSessionFiles,
+	type AgentChatChannel,
+} from '../composables/useAgentApi';
+import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
+import ToolApprovalCard from '@/features/ai/shared/components/ToolApprovalCard.vue';
+
+const IME_COMPOSITION_KEYCODE = 229;
 
 const props = withDefaults(
 	defineProps<{
 		visible?: boolean;
+		autofocus?: boolean;
 		projectId: string;
 		agentId: string;
 		mode?: 'panel' | 'inline';
 		continueSessionId?: string;
 		newSession?: boolean;
 		agentConfig: AgentJsonConfig | null;
+		/** Shows this plain icon in the empty state instead of the agent's icon tile. */
+		emptyStateIcon?: IconName;
+		/** Replaces the model-derived attachment support, for pages that get no model. */
+		attachmentCapabilities?: ProviderAttachmentCapabilities;
+		/**
+		 * Replaces the accepted file types, as an `accept` string. Use it for a
+		 * host whose agent reads more types than its model, for example with a
+		 * file tool.
+		 */
+		acceptedMimeTypes?: string;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
-		canEditAgent?: boolean;
 		canSendToAssistant?: boolean;
+		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 		backgroundJobsActive?: boolean;
+		/** `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'` talks to the published n8n Chat channel; `'system'` talks to a system agent, such as the n8n Assistant. */
+		channel?: AgentChatChannel;
+		/**
+		 * The n8n Chat entry page: centers the empty state and the composer together until a
+		 * new chat gets its first message, and shows that message right away when sent.
+		 */
+		centerEmptyState?: boolean;
+		budgetCards?: boolean;
+		/**
+		 * Persists a raised budget cap. Omitted when the user cannot edit the
+		 * agent (or editing is locked) — the notice cards then hide the
+		 * increase action. Resolves true once the new cap is saved.
+		 */
+		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
+		/**
+		 * Builds the client context that is sent with each new message (for
+		 * example the user's time zone). Project agents ignore it.
+		 */
+		clientContext?: () => Record<string, unknown> | undefined;
+		/**
+		 * The resources that a sent message shows, from the client context it
+		 * sends. The `user-message-references` slot renders them.
+		 */
+		messageReferences?: (clientContext: Record<string, unknown> | undefined) => unknown[];
+		/**
+		 * Replaces the default composer placeholder. The placeholders for an open
+		 * question card and for a non-empty queue still take priority.
+		 */
+		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
+		composerHeight?: string;
+		/** The most characters the composer accepts. Without it, the composer default applies. */
+		maxLength?: number;
+		/**
+		 * Shows the attach button of the composer. A host that opens the file
+		 * picker from its own `footer-start` menu sets this to false and calls
+		 * the exposed `openFilePicker`.
+		 */
+		showAttachButton?: boolean;
+		attachButtonIcon?: 'paperclip' | 'plus';
+		/**
+		 * Card types of the host agent. Only this chat maps and renders them. The
+		 * list is read once, when the panel is set up.
+		 */
+		interactionExtensions?: readonly AgentsChatInteractionExtension[];
+		/**
+		 * Disables the composer, for example when the host knows the server would
+		 * refuse the turn. Cards that wait for an answer stay usable. Host sends are
+		 * not blocked; use `beforeSend` to refuse them.
+		 */
+		disabled?: boolean;
+		/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
+		thinkingLabel?: string;
+		/** Replaces the generic "Session stopped" of a stopped turn. The Assistant sets it. */
+		stoppedLabel?: string;
 	}>(),
 	{
 		visible: true,
 		mode: 'panel',
 		continueSessionId: undefined,
 		newSession: false,
-		canEditAgent: true,
 		canSendToAssistant: false,
+		dismissedFixToolCallIds: () => [],
 		beforeSend: undefined,
 		inputDraft: undefined,
 		backgroundJobsActive: false,
+		channel: 'chat',
+		centerEmptyState: false,
+		budgetCards: false,
+		increaseBudget: undefined,
+		clientContext: undefined,
+		messageReferences: undefined,
+		placeholder: undefined,
+		showAttachButton: true,
+		acceptedMimeTypes: undefined,
+		attachButtonIcon: 'paperclip',
+		interactionExtensions: () => [],
+		disabled: false,
 	},
 );
 
 const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
+	'content-change': [hasContent: boolean];
+	/** The composer text became empty: a send or the user cleared it. `sendHostMessage` does not. */
+	'draft-cleared': [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
+	/** The chat's first user message, for a host to title a thread that has no title yet. */
+	'first-user-message': [text: string | undefined];
+	/** The agent became unavailable in this channel (unpublished before send, or mid-run/resume). */
+	'agent-unavailable': [];
+	/**
+	 * The server accepted a new message. Answers to an open card do not emit this.
+	 * `clientContext` is the context sent with it: the `clientContext` prop, then
+	 * the patches of the composer chips.
+	 */
+	'message-accepted': [
+		payload: { text: string; files: File[]; clientContext?: Record<string, unknown> },
+	];
+	/** Each event of the chat stream, as received. A host can keep them for a debug export. */
+	'stream-event': [event: AgentSseEvent];
+	/** The user removed the card of a staged chip. The panel already dropped the chip. */
+	'composer-attachment-removed': [id: string];
+	/**
+	 * The chat posts a new message now, before the server answers, so a refused
+	 * send emits this too. Typed text that cancels an open card emits this, but
+	 * answers to the card do not.
+	 */
+	'message-sending': [
+		payload: {
+			text: string;
+			files: File[];
+			clientContext?: Record<string, unknown>;
+			isFirstMessage: boolean;
+		},
+	];
+}>();
+
+defineSlots<{
+	/** Replaces the default empty state. */
+	'empty-state'?: () => unknown;
+	/** Content between the transcript and the composer, for example offers. */
+	'inline-offers'?: () => unknown;
+	/** Content docked above the composer, for example a checklist. */
+	'above-input'?: () => unknown;
+	/**
+	 * Chips that the host draws above the attachment cards, for example chips
+	 * with `hostRendered`. The panel shows the other staged chips as cards, in
+	 * one group with the files.
+	 */
+	'composer-attachments'?: () => unknown;
+	/**
+	 * Controls at the start of the composer footer. `disabled` is true while the
+	 * composer does not take input, as for the built-in attach button.
+	 */
+	'footer-start'?: (props: { disabled: boolean }) => unknown;
+	'composer-start'?: () => unknown;
+	/** Controls at the end of the composer footer, next to the send button. */
+	'composer-actions'?: () => unknown;
+	/**
+	 * Actions for a finished agent reply, next to the default copy action.
+	 * `executionId` is the agent execution of the turn, when it is known.
+	 */
+	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
+	/** Content below the composer. */
+	'input-footer'?: () => unknown;
+	/** The `references` of a user message, for example mentioned workflows. */
+	'user-message-references'?: (props: { message: ChatMessage }) => unknown;
+	/** Content below the composer or an approval card. */
+	'composer-footer'?: () => unknown;
 }>();
 
 const locale = useI18n();
+const { isMacOs } = useDeviceSupport();
+const rootStore = useRootStore();
 const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
 
 const {
+	capabilities,
 	messages,
 	queuedMessages,
 	removingQueueIds,
@@ -106,10 +310,15 @@ const {
 	canSteer,
 	steerQueuedMessage,
 	removeQueuedMessage,
-	updateQueuedMessage,
+	reorderQueuedMessage,
+	isReorderingQueue,
 	isSubmitting,
 	isLoadingHistory,
+	hasOlderMessages,
+	loadOlderMessages,
+	getFullHistory,
 	isStreaming,
+	isStreamAttached,
 	refresh,
 	isCancelling,
 	messagingState,
@@ -118,109 +327,297 @@ const {
 	loadHistory,
 	sendMessage,
 	stopGenerating,
+	requestTaskStop,
 	detachStream,
 	resume,
 	cancelAndSteer,
 	dismissFatalError,
 	dismissWarning,
+	clearBudgetNotices,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
 	agentId: toRef(props, 'agentId'),
 	continueSessionId: toRef(props, 'continueSessionId'),
 	newSession: toRef(props, 'newSession'),
+	channel: toRef(props, 'channel'),
 	onHistoryLoaded: (count) => {
 		if (props.continueSessionId) {
 			emit('continue-loaded', { sessionId: props.continueSessionId, count });
 		}
 	},
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
+	onUsageUpdated: (update) => emit('usage-updated', update),
+	onAgentUnavailable: () => emit('agent-unavailable'),
+	budgetCards: props.budgetCards,
+	interactionExtensions: props.interactionExtensions,
+	onStreamEvent: (event) => emit('stream-event', event),
+	messageReferences: (clientContext) => props.messageReferences?.(clientContext) ?? [],
 });
 
-const queueEdit = ref<{
-	item: AgentChatQueueItem;
-	text: string;
-	unavailable: boolean;
-	saving: boolean;
-}>();
-const queueRows = computed(() => {
-	const edit = queueEdit.value;
-	if (edit && !queuedMessages.value.some((item) => item.id === edit.item.id)) {
-		return [...queuedMessages.value, edit.item];
-	}
-	return queuedMessages.value;
-});
-const [DefineQueueList, QueueList] = createReusableTemplate<{ items: AgentChatQueueItem[] }>({
-	inheritAttrs: false,
-});
-const canSaveQueueEdit = computed(() => {
-	const edit = queueEdit.value;
-	return (
-		edit &&
-		!edit.saving &&
-		!edit.unavailable &&
-		(edit.text.trim().length > 0 || !!edit.item.attachments?.length)
-	);
-});
-watch(queuedMessages, (items) => {
-	const edit = queueEdit.value;
-	if (!edit) return;
-	const current = items.find((item) => item.id === edit.item.id);
-	edit.unavailable = !current || !!current.steeringExecutionId;
-});
-function startQueueEdit(item: AgentChatQueueItem) {
-	if (item.steeringExecutionId) return;
-	queueEdit.value = { item, text: item.message, unavailable: false, saving: false };
+provide(
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	computed(() => props.interactionExtensions),
+);
+
+const editingQueueId = ref<string>();
+provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
+	getChatAttachmentUrl(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		attachmentId,
+		props.channel,
+		props.continueSessionId,
+	),
+);
+
+// The stream adds a sent message only once its run starts. On the entry page the first
+// message shows right away instead, so the page doesn't sit in its empty state meanwhile.
+const firstMessagePreview = ref<ChatMessage>();
+// Queue item of the previewed message, once the server has queued it.
+const previewQueueId = ref<string>();
+const isPreviewingFirstMessage = computed(
+	() => !!firstMessagePreview.value && messages.value.length === 0,
+);
+const queueRows = computed(() =>
+	isPreviewingFirstMessage.value
+		? queuedMessages.value.filter((item) => item.id !== previewQueueId.value)
+		: queuedMessages.value,
+);
+const queueExpanded = ref(false);
+const queueOrder = shallowRef<AgentChatQueueItem[]>();
+const displayedQueueRows = computed(() => queueOrder.value ?? queueRows.value);
+const queueDisplayItems = computed<ChatMessageQueueItem[]>(() =>
+	displayedQueueRows.value.map((item) => ({
+		id: item.id,
+		message: item.message,
+		attachmentNames: item.attachments?.map((attachment) => attachment.fileName),
+		notice: item.steeringExecutionId ? locale.baseText('agents.chat.queue.steering') : undefined,
+	})),
+);
+const queueSteerAction = computed<ChatMessageQueueSteerAction>(() => ({
+	label: locale.baseText('agents.chat.queue.steer'),
+	tooltip: locale.baseText('agents.chat.queue.steerTooltip'),
+	icon: 'corner-down-right',
+}));
+
+function isDisplayedQueueItemBusy(item: ChatMessageQueueItem) {
+	const queuedItem = displayedQueueRows.value.find((entry) => entry.id === item.id);
+	return !queuedItem || isQueueItemBusy(queuedItem);
 }
+
+function editQueuedMessage(id: string) {
+	const item = queuedMessages.value.find((entry) => entry.id === id);
+	if (item) void startQueueEdit(item);
+}
+
+async function loadChatAttachmentFile(attachment: ChatMessageAttachment): Promise<File> {
+	if (attachment.file) return attachment.file;
+	if (!attachment.fileId) throw new Error('Attachment is unavailable');
+	const url = getChatAttachmentUrl(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		attachment.fileId,
+		props.channel,
+	);
+	const response = await fetch(url, { credentials: 'include' });
+	if (!response.ok) throw new Error(`Attachment download failed: ${response.status}`);
+	return new File([await response.blob()], attachment.fileName, { type: attachment.mimeType });
+}
+
+async function startQueueEdit(item: AgentChatQueueItem) {
+	// A disabled composer could not send the message again, so it stays queued.
+	if (props.disabled || hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) {
+		return;
+	}
+	queueExpanded.value = true;
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	function isCurrentTarget() {
+		return (
+			!disposed &&
+			props.projectId === target.projectId &&
+			props.agentId === target.agentId &&
+			props.continueSessionId === target.continueSessionId
+		);
+	}
+	editingQueueId.value = item.id;
+	try {
+		/** Load attachments before removal so a failed download leaves the message queued. */
+		const files = await Promise.all(
+			(item.attachments ?? []).map((attachment) =>
+				loadChatAttachmentFile({ ...attachment, fileId: attachment.id }),
+			),
+		);
+		if (!isCurrentTarget() || hasDraft.value) return;
+		const result = await removeQueuedMessage(item.id);
+		if (result !== 'removed' || !isCurrentTarget()) return;
+		inputText.value = item.message;
+		attachedFiles.value = files;
+		editingQueueId.value = undefined;
+		await nextTick();
+		if (isCurrentTarget()) focusInput();
+	} catch (error) {
+		if (isCurrentTarget()) toast.showError(error, locale.baseText('agents.chat.queue.removeError'));
+	} finally {
+		if (isCurrentTarget()) editingQueueId.value = undefined;
+	}
+}
+
+/** Allows Option/Alt + Up to edit the last sent queued message */
+function onChatInputKeydown(event: KeyboardEvent) {
+	/** Keep text navigation, modified shortcuts, and composition unchanged. */
+	if (
+		event.key === 'ArrowUp' &&
+		event.target instanceof HTMLTextAreaElement &&
+		event.target === chatInput.value?.getInputElement() &&
+		!event.target.value &&
+		!event.defaultPrevented &&
+		!event.altKey &&
+		!event.ctrlKey &&
+		!event.metaKey &&
+		!event.shiftKey &&
+		!event.isComposing &&
+		event.keyCode !== IME_COMPOSITION_KEYCODE &&
+		!event.repeat &&
+		hasAttachmentCards.value &&
+		removingAttachments.value.size === 0
+	) {
+		event.preventDefault();
+		event.stopPropagation();
+		attachmentGroupRef.value?.focus();
+		return;
+	}
+
+	if (
+		!(event.target instanceof HTMLTextAreaElement) ||
+		event.key !== 'ArrowUp' ||
+		!event.altKey ||
+		event.ctrlKey ||
+		event.metaKey ||
+		event.shiftKey ||
+		event.isComposing ||
+		event.repeat ||
+		hasDraft.value ||
+		isSubmissionBlocked.value
+	) {
+		return;
+	}
+	const item = queuedMessages.value.at(-1);
+	if (!item || isQueueItemBusy(item)) return;
+	event.preventDefault();
+	event.stopPropagation();
+	void startQueueEdit(item);
+}
+
 function isQueueItemBusy(item: AgentChatQueueItem) {
 	return (
+		!!editingQueueId.value ||
+		isReorderingQueue.value ||
 		!!item.steeringExecutionId ||
 		steeringQueueIds.value.has(item.id) ||
 		removingQueueIds.value.has(item.id)
 	);
 }
-async function saveQueueEdit() {
-	const edit = queueEdit.value;
-	if (!edit || !canSaveQueueEdit.value) return;
-	edit.saving = true;
-	const result = await updateQueuedMessage(edit.item.id, edit.text);
-	if (queueEdit.value !== edit) return;
-	edit.saving = false;
-	if (result === 'updated') queueEdit.value = undefined;
-	else if (result === 'unavailable') edit.unavailable = true;
+function canMoveQueueItem(items: AgentChatQueueItem[], from: number, to: number) {
+	if (editingQueueId.value || from === to || !items[from] || !items[to]) return false;
+	// The preview hides a queued item, so a reorder would send a stale queue order.
+	if (isPreviewingFirstMessage.value && previewQueueId.value) return false;
+	return !items.slice(Math.min(from, to), Math.max(from, to) + 1).some(isQueueItemBusy);
 }
-function onQueueEditKeydown(event: KeyboardEvent) {
-	if (event.isComposing) return;
-	if (event.key === 'Escape') {
-		event.preventDefault();
-		event.stopPropagation();
-		if (!queueEdit.value?.saving) queueEdit.value = undefined;
-	} else if (event.key === 'Enter' && !event.shiftKey) {
-		event.preventDefault();
-		event.stopPropagation();
-		void saveQueueEdit();
+function canDragQueueItem(index: number) {
+	const items = displayedQueueRows.value;
+	return canMoveQueueItem(items, index, index - 1) || canMoveQueueItem(items, index, index + 1);
+}
+function startQueueDrag() {
+	queueOrder.value = [...queueRows.value];
+	queueExpanded.value = true;
+}
+function canDropQueueItem(event: { draggedContext: { index: number; futureIndex: number } }) {
+	const { index, futureIndex } = event.draggedContext;
+	return canMoveQueueItem(displayedQueueRows.value, index, futureIndex);
+}
+function endQueueDrag(event: { oldIndex?: number; newIndex?: number }) {
+	const items = queueOrder.value;
+	queueOrder.value = undefined;
+	if (items && event.oldIndex !== undefined && event.newIndex !== undefined) {
+		void moveQueueItem(items, event.oldIndex, event.newIndex);
 	}
 }
+async function moveQueueItem(items: AgentChatQueueItem[], from: number, to: number) {
+	if (!canMoveQueueItem(items, from, to)) return;
+	const item = items[from];
+	const reordered = [...items];
+	reordered.splice(from, 1);
+	reordered.splice(to, 0, item);
+	queueOrder.value = reordered;
+	queueExpanded.value = true;
+	await reorderQueuedMessage(
+		item.id,
+		items[to].id,
+		items.filter((entry) => !entry.steeringExecutionId).map((entry) => entry.id),
+	);
+	if (queueOrder.value !== reordered) return;
+	queueOrder.value = undefined;
+}
 
-const { jobs: backgroundJobs, respondToApproval } = useAgentBackgroundJobs({
+const {
+	currentPlan,
+	planExpanded,
+	planStopActive,
+	planCardProps,
+	showPlanCard,
+	backgroundJobs,
+	showBackgroundJobs,
+	canStopBackgroundJobs,
+	backgroundStoppingIds,
+	backgroundStopLabel,
+	tasksStopping,
+	stopDisabled,
+	stopNotice,
+	preparingSummary,
+	summaryMissing,
+	stopTasks,
+	respondToApproval,
+} = useAgentChatTaskControls({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.continueSessionId,
-	active: () => props.backgroundJobsActive,
-	receivedJobs: () => messages.value.flatMap((message) => message.backgroundJobSignal?.tasks ?? []),
+	channel: () => props.channel,
+	backgroundJobsActive: () => props.backgroundJobsActive,
+	visible: () => props.visible,
+	messages: () => messages.value,
+	requestStop: requestTaskStop,
+	hasPendingApprovals: () => hasPendingApprovals.value,
+	focusInput,
 });
+
 const backgroundRunningCount = computed(
 	() => backgroundJobs.value.filter((job) => job.status === 'running').length,
 );
+const backgroundInProgress = computed(
+	() => backgroundRunningCount.value > 0 || backgroundStoppingIds.value.size > 0,
+);
 const backgroundTitle = computed(() => {
+	const stoppingCount = backgroundStoppingIds.value.size;
+
+	if (stoppingCount > 0) {
+		return locale.baseText('agents.chat.backgroundTasks.stoppingCount', {
+			adjustToNumber: stoppingCount,
+			interpolate: { count: stoppingCount },
+		});
+	}
+
 	if (backgroundJobs.value.some((job) => job.status === 'suspended')) {
 		return locale.baseText('agents.chat.backgroundTasks.status.suspended');
 	}
+
 	const count = backgroundRunningCount.value;
-	if (count === 0) {
-		return locale.baseText('agents.chat.backgroundTasks.finished', {
-			adjustToNumber: backgroundJobs.value.length,
-		});
-	}
+
 	return locale.baseText('agents.chat.backgroundTasks.runningCount', {
 		adjustToNumber: count,
 		interpolate: { count },
@@ -235,6 +632,14 @@ const backgroundTraceRoute = computed(() => ({
 	},
 }));
 const backgroundJobStatuses = computed(() => ({
+	stopping: {
+		icon: 'loader-circle',
+		label: locale.baseText('agents.chat.backgroundTasks.status.stopping'),
+	},
+	paused: {
+		icon: 'circle-pause',
+		label: locale.baseText('agents.chat.backgroundTasks.status.paused'),
+	},
 	running: {
 		icon: 'loader-circle',
 		label: locale.baseText('agents.chat.backgroundTasks.status.running'),
@@ -258,12 +663,36 @@ const backgroundJobStatuses = computed(() => ({
 	},
 }));
 
-const backgroundApprovals = computed(() =>
-	backgroundJobs.value.flatMap((job) => {
-		if (job.status !== 'suspended' || !job.approval) return [];
+const backgroundApproval = computed(() => {
+	if (!props.backgroundJobsActive) return undefined;
+
+	for (const job of backgroundJobs.value) {
+		if (job.status !== 'suspended' || !job.approval) continue;
+
 		const input = parseApprovalInput(job.approval.suspendPayload);
-		return input ? [{ id: job.id, title: job.title, approval: job.approval, input }] : [];
-	}),
+
+		if (input) return { id: job.id, title: job.title, approval: job.approval, input };
+	}
+
+	return undefined;
+});
+const pendingApproval = computed(() => {
+	const tail = messages.value.at(-1);
+	if (!tail) return undefined;
+	for (const payload of getMessageInteractives(tail)) {
+		if (
+			payload.toolName !== APPROVAL_TOOL_NAME ||
+			payload.resolvedAt !== undefined ||
+			!payload.runId
+		) {
+			continue;
+		}
+		return { runId: payload.runId, toolCallId: payload.toolCallId, input: payload.input };
+	}
+	return undefined;
+});
+const hasPendingApprovals = computed(
+	() => pendingApproval.value !== undefined || backgroundApproval.value !== undefined,
 );
 const pendingBackgroundResponses = ref(new Set<string>());
 
@@ -295,19 +724,31 @@ async function respondToBackgroundApproval(
 	}
 }
 const backgroundJobRows = computed(() =>
-	backgroundJobs.value.map((job) => ({
-		...job,
-		label: locale.baseText(
-			job.kind === 'workflow'
-				? 'agents.chat.backgroundTasks.workflow'
-				: 'agents.chat.backgroundTasks.subagent',
-			{ interpolate: { title: job.title } },
-		),
-		indicator:
-			backgroundJobStatuses.value[
-				job.kind === 'workflow' && job.status === 'running' ? 'waiting' : job.status
-			],
-	})),
+	backgroundJobs.value.map((job) => {
+		const stopping = backgroundStoppingIds.value.has(job.id);
+		const stopped =
+			job.status === 'paused' ||
+			(job.kind === 'workflow' && job.status === 'cancelled' && job.pauseRequested);
+		let indicator = backgroundJobStatuses.value[job.status];
+		if (stopping) indicator = backgroundJobStatuses.value.stopping;
+		else if (stopped) indicator = backgroundJobStatuses.value.paused;
+		else if (job.kind === 'workflow' && job.status === 'running')
+			indicator = backgroundJobStatuses.value.waiting;
+		return {
+			...job,
+			stopping,
+			stopped,
+			label: locale.baseText(
+				job.kind === 'workflow'
+					? 'agents.chat.backgroundTasks.workflow'
+					: job.kind === 'approval'
+						? 'agents.chat.backgroundTasks.approvalFor'
+						: 'agents.chat.backgroundTasks.subagent',
+				{ interpolate: { title: job.title } },
+			),
+			indicator,
+		};
+	}),
 );
 const now = ref(Date.now());
 const documentVisibility = useDocumentVisibility();
@@ -321,7 +762,7 @@ const { pause: pauseTimer, resume: resumeTimer } = useIntervalFn(
 watch(
 	() =>
 		props.backgroundJobsActive &&
-		backgroundRunningCount.value > 0 &&
+		backgroundInProgress.value &&
 		documentVisibility.value === 'visible',
 	(active) => {
 		if (active) {
@@ -334,43 +775,127 @@ watch(
 const backgroundElapsed = computed(() => {
 	const startedAt = backgroundJobs.value[0]?.startedAt;
 	const start = startedAt ? Date.parse(startedAt) : now.value;
-	const end = backgroundRunningCount.value
+	const end = backgroundInProgress.value
 		? now.value
 		: Math.max(...backgroundJobs.value.map((job) => Date.parse(job.settledAt ?? '') || now.value));
-	const seconds = Number.isFinite(start) ? Math.max(0, Math.floor((end - start) / TIME.SECOND)) : 0;
-	const minutes = Math.floor(seconds / 60);
-	const remainder = String(seconds % 60).padStart(2, '0');
-	return minutes < 60
-		? `${minutes}:${remainder}`
-		: `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}:${remainder}`;
+	return formatAgentElapsedTime(end - start);
 });
 
 const attachedFiles = ref<File[]>([]);
-const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
-const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
-const showBackgroundJobs = computed(
-	() => props.backgroundJobsActive && backgroundJobs.value.length > 0,
+/** Files and chip ids whose card plays its removal. */
+const removingAttachments = ref(new Set<File | string>());
+
+const { previewUrl } = useAttachmentPreviews(() => attachedFiles.value);
+const draftFileKeys = new WeakMap<File, number>();
+let nextDraftFileKey = 0;
+
+function draftFileKey(file: File): number {
+	let key = draftFileKeys.get(file);
+	if (key === undefined) {
+		key = nextDraftFileKey++;
+		draftFileKeys.set(file, key);
+	}
+	return key;
+}
+
+/** Host chips need text or files before the message can be sent. */
+const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
+const cardChips = computed(() =>
+	composerAttachments.value.map(({ chip }) => chip).filter((chip) => !chip.hostRendered),
+);
+const hasAttachmentCards = computed(
+	() => cardChips.value.length > 0 || attachedFiles.value.length > 0,
 );
 
+/** Clear stale removal state only after the draft files or chips change. */
+watch(
+	() => [...attachedFiles.value, ...cardChips.value.map(({ id }) => id)],
+	(items) => {
+		for (const item of removingAttachments.value) {
+			if (!items.includes(item)) removingAttachments.value.delete(item);
+		}
+	},
+);
+const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+const attachmentGroupRef =
+	useTemplateRef<InstanceType<typeof N8nAttachmentGroup>>('attachmentGroupRef');
+const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
+const backgroundJobStopButton =
+	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
+const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
+
 function focusInput(options?: FocusOptions) {
-	chatInput.value?.focus(options);
+	if (props.visible) chatInput.value?.focus(options);
 }
+
+/** Moves focus to the card that the run waits on, for a host that points the user to it. */
+function focusOpenInteraction() {
+	if (hasOpenApproval.value) {
+		approvalCards.value?.querySelector<HTMLElement>('button')?.focus();
+		return;
+	}
+	// An open question is the last card of the transcript, and the composer answers it.
+	scrollArea.value?.scrollToBottom();
+	focusInput();
+}
+
+let forceFocusPending = true;
+watch(
+	[chatInput, () => props.autofocus, () => props.visible],
+	async ([input, autofocus, visible], [, previousAutofocus, wasVisible], onCleanup) => {
+		if (!autofocus || !visible) {
+			forceFocusPending = false;
+			return;
+		}
+		if (!previousAutofocus || !wasVisible) forceFocusPending = true;
+		if (!input) return;
+		let cancelled = false;
+		onCleanup(() => {
+			cancelled = true;
+		});
+		await nextTick();
+		if (cancelled || !props.autofocus || !props.visible || chatInput.value !== input) return;
+		const activeElement = document.activeElement;
+		if (
+			!forceFocusPending &&
+			activeElement instanceof HTMLElement &&
+			activeElement !== document.body &&
+			activeElement !== document.documentElement
+		) {
+			return;
+		}
+		forceFocusPending = false;
+		focusInput();
+	},
+);
 
 watch(
 	[
 		showBackgroundJobs,
+		canStopBackgroundJobs,
+		hasPendingApprovals,
 		() => props.projectId,
 		() => props.agentId,
 		() => props.continueSessionId,
 		() => props.visible,
 	],
-	async ([shown, ...target], [wasShown, ...previousTarget], onCleanup) => {
+	async (
+		[shown, stopShown, approvalsShown, ...target],
+		[wasShown, stopWasShown, approvalsWereShown, ...previousTarget],
+		onCleanup,
+	) => {
+		const removedFocusedControl =
+			(!shown && wasShown && backgroundJobCard.value?.contains(document.activeElement)) ||
+			(!stopShown &&
+				stopWasShown &&
+				backgroundJobStopButton.value?.$el === document.activeElement) ||
+			(!approvalsShown &&
+				approvalsWereShown &&
+				approvalCards.value?.contains(document.activeElement));
 		if (
-			shown ||
-			!wasShown ||
+			!removedFocusedControl ||
 			!props.visible ||
-			target.some((value, index) => value !== previousTarget[index]) ||
-			!backgroundJobCard.value?.contains(document.activeElement)
+			target.some((value, index) => value !== previousTarget[index])
 		) {
 			return;
 		}
@@ -379,13 +904,13 @@ watch(
 		onCleanup(() => {
 			cancelled = true;
 		});
-		// Check focus before the card disappears, then wait for the composer to update.
+		// Check focus before the control disappears, then wait for the composer to update.
 		await nextTick();
 		if (
 			cancelled ||
 			disposed ||
 			!props.visible ||
-			showBackgroundJobs.value ||
+			hasPendingApprovals.value ||
 			document.activeElement !== document.body
 		) {
 			return;
@@ -395,22 +920,22 @@ watch(
 );
 
 const attachmentCapabilities = computed(() => {
+	if (props.attachmentCapabilities) return props.attachmentCapabilities;
 	const provider = props.agentConfig?.model?.split('/')[0];
-	return provider ? PROVIDER_CAPABILITIES[provider]?.attachments : undefined;
+	return provider ? getProviderAttachmentCapabilities(provider) : undefined;
 });
-const showAttach = computed(() => {
-	const capabilities = attachmentCapabilities.value;
-	return !!capabilities && (capabilities.image || capabilities.pdf || capabilities.audio);
-});
+// Data files work with every model, so the attach button shows unless the host turns uploads off.
+const showAttach = computed(() =>
+	props.acceptedMimeTypes !== undefined ? props.acceptedMimeTypes.length > 0 : true,
+);
 const acceptedMimeTypes = computed(() => {
+	if (props.acceptedMimeTypes !== undefined) return props.acceptedMimeTypes;
 	const capabilities = attachmentCapabilities.value;
-	if (!capabilities) return undefined;
 	return [
-		capabilities.image ? 'image/*' : null,
-		capabilities.pdf ? 'application/pdf' : null,
-		capabilities.audio ? 'audio/*' : null,
+		capabilities ? acceptedMimeTypesFromCapabilities(capabilities) : '',
+		AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
 	]
-		.filter((entry): entry is string => entry !== null)
+		.filter(Boolean)
 		.join(',');
 });
 
@@ -425,6 +950,23 @@ function handleFilesSelected(files: File[]) {
 			});
 			break;
 		}
+		// Handed-off files (n8n Assistant picker) skip the composer's `accept` filter.
+		if (
+			!showAttach.value ||
+			!isFileAcceptedByAccept(
+				file.name,
+				resolveFileMimeType(file.name, file.type),
+				acceptedMimeTypes.value,
+			)
+		) {
+			toast.showMessage({
+				type: 'error',
+				title: locale.baseText('agents.chat.attachments.unsupportedType', {
+					interpolate: { fileName: file.name },
+				}),
+			});
+			continue;
+		}
 		if (file.size > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
 			toast.showMessage({
 				type: 'error',
@@ -438,6 +980,18 @@ function handleFilesSelected(files: File[]) {
 			continue;
 		}
 		attachedFiles.value.push(file);
+	}
+}
+
+/** The composer drops a file whose type is not accepted. Tell the user, the same as for a picked file. */
+function handleFilesRejected(files: File[]) {
+	for (const file of files) {
+		toast.showMessage({
+			type: 'error',
+			title: locale.baseText('agents.chat.attachments.unsupportedType', {
+				interpolate: { fileName: file.name },
+			}),
+		});
 	}
 }
 
@@ -460,9 +1014,23 @@ const hasDraft = computed(
 	() => inputText.value.trim().length > 0 || attachedFiles.value.length > 0,
 );
 const isPreparingToSend = ref(false);
+/**
+ * The composer takes no input while the host disables it, a send starts, or a
+ * queued message moves back into it.
+ */
+const isComposerBlocked = computed(
+	() => props.disabled || isPreparingToSend.value || !!editingQueueId.value,
+);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
 let submittingQueuedExternalMessage = false;
+// The bubble a hand-off installed before it was sent. Its own `onSubmit` takes it.
+let handoffPreview: ChatMessage | undefined;
+// Files a hand-off staged into `attachedFiles`, tracked so an abandoned hand-off
+// can drop only its own files and leave the user's own picks alone.
+let externalAttachedFiles: File[] = [];
+// The client context a hand-off sends with its own message only, on top of the `clientContext` prop.
+let externalClientContext: Record<string, unknown> | undefined;
 
 type SubmitResult = 'sent' | 'busy' | 'rejected';
 
@@ -512,15 +1080,93 @@ const hasOpenWaitCard = computed(() => openInteractive.value?.toolName === WAIT_
 const hasOpenInteractiveQuestion = computed(
 	() => hasOpenInteraction.value && !hasOpenApproval.value && !hasOpenWaitCard.value,
 );
+
+/**
+ * The resume for the open card when its extension answers it with the composer
+ * text, or `undefined` to keep cancel-and-steer. Only extension cards can do
+ * this, so the built-in cards keep their composer behavior.
+ */
+function getExtensionComposerResume(text: string) {
+	const payload = openInteractive.value;
+	if (payload?.toolName !== INTERACTION_EXTENSION_TOOL_NAME || !payload.runId) return undefined;
+	const extension = props.interactionExtensions.find(({ key }) => key === payload.extensionKey);
+	const resumeData = extension?.composerResumeData?.(payload.input, text);
+	if (resumeData === undefined) return undefined;
+	return { runId: payload.runId, toolCallId: payload.toolCallId, resumeData };
+}
+
 const hasOpenSuspension = computed(
 	() =>
 		messages.value[messages.value.length - 1]?.toolCalls?.some(
 			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
 		) ?? false,
 );
-const isSubmissionBlocked = computed(
-	() => isPreparingToSend.value || isSubmitting.value || isLoadingHistory.value,
+// Cap stops block Send: only a saved cap change resolves them. A credits stop
+// does not — the wallet tops up outside this flow, and polling it would add a
+// wallet read the gateway already does on the retry. Send again: a topped-up
+// wallet runs, an empty one stops again with a fresh notice.
+const hasBudgetStop = computed(() =>
+	messages.value.some((message) =>
+		message.budgetNotices?.some(
+			(notice) => notice.code !== 'budget.credits' && isBudgetStopCode(notice.code),
+		),
+	),
 );
+const canIncreaseBudget = computed(() => props.increaseBudget !== undefined);
+const budgetIncreasePending = ref(false);
+const isRetrying = ref(false);
+const isSubmissionBlocked = computed(
+	() =>
+		removingAttachments.value.size > 0 ||
+		isRetrying.value ||
+		!!editingQueueId.value ||
+		isPreparingToSend.value ||
+		isSubmitting.value ||
+		isLoadingHistory.value ||
+		hasBudgetStop.value,
+);
+const retryMessageId = computed(() => {
+	if (!isRetryableChatError(messages.value.at(-1))) return undefined;
+	return messages.value.findLast((message) => message.role === CHAT_MESSAGE_ROLE.USER)?.id;
+});
+const retryDisabled = computed(
+	() =>
+		isSubmissionBlocked.value ||
+		hasDraft.value ||
+		showStop.value ||
+		queuedMessages.value.length > 0,
+);
+
+async function retryMessage(messageId: string) {
+	if (retryDisabled.value || retryMessageId.value !== messageId) return;
+	const message = messages.value.find((entry) => entry.id === messageId);
+	if (!message) return;
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	const isCurrentTarget = () =>
+		!disposed &&
+		target.projectId === props.projectId &&
+		target.agentId === props.agentId &&
+		target.continueSessionId === props.continueSessionId;
+	isRetrying.value = true;
+	try {
+		const files = await Promise.all((message.attachments ?? []).map(loadChatAttachmentFile));
+		if (!isCurrentTarget() || hasDraft.value || retryMessageId.value !== messageId) return;
+		isRetrying.value = false;
+		if (retryDisabled.value) return;
+		inputText.value = message.content;
+		attachedFiles.value = files;
+		await submitDraft(message.content.trim(), files);
+	} catch (error) {
+		if (isCurrentTarget()) toast.showError(error, locale.baseText('agents.chat.retry.error'));
+	} finally {
+		isRetrying.value = false;
+	}
+}
+
 // Tools still pending/running after the stream ended (desync): the backend
 // finished but their terminal events never arrived. Surfacing Stop here lets
 // the user clear the stale pulsing state without reloading the chat.
@@ -548,6 +1194,16 @@ const chatPlaceholder = computed(() => {
 		return locale.baseText('agents.chat.answerQuestionPlaceholder');
 	}
 
+	if (queuedMessages.value.length > 0) {
+		return locale.baseText(
+			isMacOs
+				? 'agents.chat.input.placeholder.withQueue.mac'
+				: 'agents.chat.input.placeholder.withQueue.other',
+		);
+	}
+
+	if (props.placeholder) return props.placeholder;
+
 	const agentName = props.agentConfig?.name?.trim();
 	return agentName
 		? locale.baseText('agents.chat.input.placeholder.withAgent', {
@@ -556,7 +1212,138 @@ const chatPlaceholder = computed(() => {
 		: locale.baseText('agents.chat.input.placeholder');
 });
 
+/**
+ * Installs the first-message bubble and returns it. Returns undefined when a bubble
+ * already shows: a second send before the first run starts must not replace it.
+ */
+function previewFirstMessage(text: string, files: File[] = []): ChatMessage | undefined {
+	if (!props.centerEmptyState || messages.value.length > 0 || firstMessagePreview.value) {
+		return undefined;
+	}
+	firstMessagePreview.value = {
+		id: 'first-message-preview',
+		role: 'user',
+		content: text,
+		status: 'success',
+		createdAt: Date.now(),
+		attachments: files.map((file) => ({
+			fileName: file.name,
+			mimeType: resolveFileMimeType(file.name, file.type) || 'application/octet-stream',
+			sizeBytes: file.size,
+			file,
+		})),
+	};
+	previewQueueId.value = undefined;
+	return firstMessagePreview.value;
+}
+watch([() => messages.value.length, fatalError], ([count, error]) => {
+	if (count > 0 || error) firstMessagePreview.value = undefined;
+});
+const displayedMessages = computed(() =>
+	isPreviewingFirstMessage.value && firstMessagePreview.value
+		? [firstMessagePreview.value]
+		: messages.value,
+);
+const displayedMessagingState = computed(() =>
+	isPreviewingFirstMessage.value ? 'waitingFirstChunk' : messagingState.value,
+);
+
+// A new n8n Chat has no history, so its first load does not hide the empty state.
+// No hand-off waits behind the load either: this page shows one as a bubble at once.
+const isLoadingNewChat = computed(
+	() => props.centerEmptyState && props.newSession && isLoadingHistory.value,
+);
+const isCenteredEmpty = computed(
+	() =>
+		props.centerEmptyState &&
+		props.newSession &&
+		displayedMessages.value.length === 0 &&
+		(!isStreaming.value || isLoadingNewChat.value),
+);
+
+/** The input renders under the centered empty state or in the scroll area overlay. Only one copy is mounted. */
+const [DefineInput, ReuseInput] = createReusableTemplate();
+
+const scrollArea = useTemplateRef<ChatScrollAreaExposed>('scrollArea');
+
+/** The user wants to see the reply to their own message, so follow it even after a scroll up. */
+watch(
+	[() => displayedMessages.value.length, () => displayedMessages.value.at(-1)?.id],
+	([length, lastId], [previousLength, previousLastId]) => {
+		if (length <= (previousLength ?? 0)) return;
+		/** Older messages loaded above the last one. The last message did not change. */
+		if (previousLength && lastId === previousLastId) return;
+		if (displayedMessages.value[length - 1]?.role !== CHAT_MESSAGE_ROLE.USER) return;
+		scrollArea.value?.scrollToBottom();
+	},
+	{ flush: 'post' },
+);
+
+const isLoadingOlderMessages = ref(false);
+/** Stops a failed load from retrying in a loop. The retry button allows a new try. */
+const loadOlderMessagesFailed = ref(false);
+
+/** Loads the next older page when the scroll area reaches the top. */
+async function onLoadOlderMessages() {
+	if (!hasOlderMessages.value || isLoadingOlderMessages.value || loadOlderMessagesFailed.value) {
+		return;
+	}
+	isLoadingOlderMessages.value = true;
+	try {
+		await loadOlderMessages();
+	} catch {
+		loadOlderMessagesFailed.value = true;
+	} finally {
+		isLoadingOlderMessages.value = false;
+	}
+}
+
+/** A new thread starts without the failure of the previous one. */
+watch(
+	() => props.continueSessionId,
+	() => {
+		loadOlderMessagesFailed.value = false;
+	},
+);
+
+function onRetryLoadOlderMessages() {
+	loadOlderMessagesFailed.value = false;
+	void onLoadOlderMessages();
+}
+
+/**
+ * The scroll area stays mounted when the chat changes. Jump to the bottom so
+ * the scroll state of the previous chat does not apply to the new one.
+ */
+watch(
+	[() => props.projectId, () => props.agentId, () => props.continueSessionId],
+	() => scrollArea.value?.scrollToBottom(),
+	{ flush: 'post' },
+);
+
+/**
+ * The first send moves the composer from the centered empty state into the
+ * scroll area, which mounts a new input. Keep focus on the new input.
+ */
+watch(
+	isCenteredEmpty,
+	async (centered, wasCentered) => {
+		if (centered || !wasCentered) return;
+		const composer: unknown = chatInput.value?.$el;
+		if (!(composer instanceof Element) || !composer.contains(document.activeElement)) return;
+		await nextTick();
+		if (disposed) return;
+		focusInput({ preventScroll: true });
+	},
+	{ flush: 'pre' },
+);
+
 watch(isStreaming, (v) => emit('update:streaming', v));
+watch(
+	() => messages.value.find((message) => message.role === CHAT_MESSAGE_ROLE.USER)?.content,
+	(text) => emit('first-user-message', text),
+	{ immediate: true },
+);
 watch(isSubmissionBlocked, (blocked) => {
 	if (!blocked) void submitQueuedExternalMessage();
 });
@@ -571,41 +1358,153 @@ watch(
 	() => [props.projectId, props.agentId, props.continueSessionId],
 	() => {
 		queuedExternalMessage = undefined;
-		queueEdit.value = undefined;
+		externalClientContext = undefined;
+		handoffPreview = undefined;
+		editingQueueId.value = undefined;
+		queueExpanded.value = false;
+		queueOrder.value = undefined;
+		firstMessagePreview.value = undefined;
+		// A blocked hand-off's own files must not ride out with the next message to
+		// the new target; a file the user picked themselves stays.
+		if (externalAttachedFiles.length) {
+			attachedFiles.value = attachedFiles.value.filter(
+				(file) => !externalAttachedFiles.includes(file),
+			);
+			externalAttachedFiles = [];
+		}
 	},
 );
 
 function consumeQueuedExternalMessage(message: string) {
 	if (queuedExternalMessage !== message) return;
 	queuedExternalMessage = undefined;
+	externalClientContext = undefined;
 	emit('initial-consumed');
 }
 
+/**
+ * Call this when a message is accepted, on both the normal send path and the
+ * cancel-and-steer path (answering an open question card). It is the single
+ * place that needs to track a send on the n8n Chat channel.
+ */
+function trackSentToN8nChat(hadNoMessagesBeforeSend: boolean) {
+	if (props.channel !== 'n8n-chat' || !props.continueSessionId) return;
+	agentTelemetry.trackSentMessageToN8nChatAgent({
+		agentId: props.agentId,
+		threadId: props.continueSessionId,
+		isNewThread: hadNoMessagesBeforeSend,
+	});
+}
+
 async function onSubmit(): Promise<SubmitResult> {
-	const text = inputText.value.trim();
-	const files = [...attachedFiles.value];
-	if (!text && files.length === 0) return 'rejected';
-	if (isSubmissionBlocked.value) return 'busy';
+	return await submitDraft(inputText.value.trim(), [...attachedFiles.value]);
+}
+
+function emitMessageSending(message: {
+	text: string;
+	files: File[];
+	clientContext?: Record<string, unknown>;
+}) {
+	emit('message-sending', {
+		...message,
+		isFirstMessage: !messages.value.some((entry) => entry.role === 'user'),
+	});
+}
+
+/** Returns a check that is true while the panel still shows the chat it showed at the call. */
+function captureTarget(): () => boolean {
 	const target = {
 		projectId: props.projectId,
 		agentId: props.agentId,
 		continueSessionId: props.continueSessionId,
 	};
-	const isCurrentTarget = () =>
+	return () =>
 		!disposed &&
 		props.projectId === target.projectId &&
 		props.agentId === target.agentId &&
 		props.continueSessionId === target.continueSessionId;
+}
 
-	if (hasOpenInteractiveQuestion.value) {
-		if (!text) return 'rejected';
-		const result = await cancelAndSteer(text, () => {
+function shouldClearSubmittedDraft(text: string, staleControlledDraft?: string): boolean {
+	if (inputText.value.trim() === text) return true;
+	return staleControlledDraft !== undefined && inputText.value === staleControlledDraft;
+}
+
+async function submitDraft(
+	text: string,
+	files: File[],
+	options: { staleControlledDraft?: string } = {},
+): Promise<SubmitResult> {
+	if (!text && files.length === 0) return 'rejected';
+	if (isSubmissionBlocked.value) return 'busy';
+	// Taken before any await, so a user send made while this hand-off runs cannot claim it.
+	const ownedHandoffPreview = submittingQueuedExternalMessage ? handoffPreview : undefined;
+	if (ownedHandoffPreview) handoffPreview = undefined;
+	const ownedClientContext = submittingQueuedExternalMessage ? externalClientContext : undefined;
+	const hadNoMessagesBeforeSend = messages.value.length === 0;
+	const isCurrentTarget = captureTarget();
+
+	const composerResume = text ? getExtensionComposerResume(text) : undefined;
+	if (composerResume) {
+		const result = await resume(composerResume, () => {
 			if (!isCurrentTarget()) return;
-			if (inputText.value.trim() === text) inputText.value = '';
+			if (shouldClearSubmittedDraft(text, options.staleControlledDraft)) inputText.value = '';
 			consumeQueuedExternalMessage(text);
+			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		});
 		return result === 'busy' ? 'busy' : 'sent';
 	}
+
+	if (hasOpenInteractiveQuestion.value) {
+		if (!text) return 'rejected';
+		// Steering sends the text without the files or the client context.
+		emitMessageSending({ text, files: [] });
+		const result = await cancelAndSteer(text, () => {
+			if (!isCurrentTarget()) return;
+			if (shouldClearSubmittedDraft(text, options.staleControlledDraft)) inputText.value = '';
+			consumeQueuedExternalMessage(text);
+			trackSentToN8nChat(hadNoMessagesBeforeSend);
+		});
+		return result === 'busy' ? 'busy' : 'sent';
+	}
+
+	return await sendRequest({
+		text,
+		files,
+		fromComposer: true,
+		staleControlledDraft: options.staleControlledDraft,
+		handoffPreview: ownedHandoffPreview,
+		clientContext: ownedClientContext,
+	});
+}
+
+interface SendRequest {
+	text: string;
+	files: File[];
+	/**
+	 * The composer holds the message: its staged chips go with it, and an accepted
+	 * send clears the composer. A host send leaves the composer to the user.
+	 */
+	fromComposer: boolean;
+	/** Controlled draft value before handoff, so an un-flushed `v-model` echo still clears. */
+	staleControlledDraft?: string;
+	/** The bubble a hand-off installed before it was sent. */
+	handoffPreview?: ChatMessage;
+	/** Sent with this message only, on top of the `clientContext` prop. */
+	clientContext?: Record<string, unknown>;
+}
+
+async function sendRequest(request: SendRequest): Promise<SubmitResult> {
+	const {
+		text,
+		files,
+		fromComposer,
+		staleControlledDraft,
+		handoffPreview: ownedHandoffPreview,
+		clientContext: ownedClientContext,
+	} = request;
+	const hadNoMessagesBeforeSend = messages.value.length === 0;
+	const isCurrentTarget = captureTarget();
 
 	isPreparingToSend.value = true;
 	try {
@@ -616,25 +1515,64 @@ async function onSubmit(): Promise<SubmitResult> {
 		}
 		if (!isCurrentTarget()) return 'rejected';
 
-		const fingerprint = await buildAgentConfigFingerprint(
-			props.agentConfig,
-			props.connectedTriggers,
-		);
+		// The preview chat metric counts only builder test messages; n8n Chat sends have
+		// their own event (`trackSentToN8nChat`).
+		const fingerprint =
+			props.channel === 'chat'
+				? await buildAgentConfigFingerprint(props.agentConfig, props.connectedTriggers)
+				: undefined;
 		if (!isCurrentTarget()) return 'rejected';
 
-		const sending = sendMessage(text, files.length > 0 ? files : undefined, () => {
+		const installedPreview = previewFirstMessage(text, files) ?? ownedHandoffPreview;
+		let accepted = false;
+		// Build the client context after `beforeSend`, so it reflects the host state at
+		// send time. The staged chip patches go on top of it.
+		const sentAttachments = fromComposer ? [...composerAttachments.value] : [];
+		const hostClientContext = props.clientContext?.();
+		const clientContext = mergeClientContextPatches(
+			sentAttachments,
+			ownedClientContext ? { ...hostClientContext, ...ownedClientContext } : hostClientContext,
+		);
+		const sentFiles = files.length > 0 ? files : undefined;
+		const onAccepted = (queueId?: string) => {
+			accepted = true;
 			if (!isCurrentTarget()) return;
-			agentTelemetry.trackSubmittedMessage({
-				agentId: props.agentId,
-				status: props.agentStatus,
-				agentConfig: fingerprint,
-			});
-			if (inputText.value.trim() === text) inputText.value = '';
+			// The retry is the wallet re-check: drop the stale credits stop. A
+			// wallet still empty stops this run with a fresh notice.
+			clearBudgetNotices(new Set(['budget.credits']));
+			emit('message-accepted', { text, files, clientContext });
+			if (installedPreview && firstMessagePreview.value === installedPreview) {
+				previewQueueId.value = queueId;
+			}
+			if (fingerprint) {
+				agentTelemetry.trackSubmittedMessage({
+					agentId: props.agentId,
+					status: props.agentStatus,
+					agentConfig: fingerprint,
+				});
+			}
+			queueExpanded.value = false;
+			trackSentToN8nChat(hadNoMessagesBeforeSend);
+			if (!fromComposer) return;
+			if (shouldClearSubmittedDraft(text, staleControlledDraft)) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
+			composerAttachments.value = composerAttachments.value.filter(
+				(attachment) => !sentAttachments.includes(attachment),
+			);
+			externalAttachedFiles = [];
 			consumeQueuedExternalMessage(text);
-		});
+		};
+		emitMessageSending({ text, files, clientContext });
+		const sending = sendMessage(text, sentFiles, onAccepted, clientContext);
 		isPreparingToSend.value = false;
 		const result = await sending;
+		// A send the server never accepted (busy, failed, lost) won't bring the real
+		// messages that replace the preview, so drop it here -- but only while this
+		// send's own preview is still the one showing. A newer hand-off's own preview
+		// must survive this one settling late.
+		if (!accepted && firstMessagePreview.value === installedPreview) {
+			firstMessagePreview.value = undefined;
+		}
 		if (result === 'busy') return 'busy';
 		return 'sent';
 	} finally {
@@ -642,45 +1580,308 @@ async function onSubmit(): Promise<SubmitResult> {
 	}
 }
 
-function sendMessageFromOutside(message: string) {
+/**
+ * Drops the stop notices a persisted cap change resolves. Call only after the
+ * new cap is saved: a failed or skipped save must keep the stop card up and
+ * Send blocked, because the next run would stop against the old cap again.
+ */
+function clearBudgetStops(fields: BudgetAmountField[]) {
+	clearBudgetNotices(new Set(fields.flatMap(budgetNoticeCodesForField)));
+}
+
+async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: number }) {
+	if (!props.increaseBudget || budgetIncreasePending.value) return;
+	// The save outlives this panel. A session switch reuses the instance, and
+	// clearing then would drop the new session's stop and unblock its Send.
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	budgetIncreasePending.value = true;
+	try {
+		const saved = await props.increaseBudget(payload);
+		const stillCurrent =
+			!disposed &&
+			props.projectId === target.projectId &&
+			props.agentId === target.agentId &&
+			props.continueSessionId === target.continueSessionId;
+		if (!saved || !stillCurrent) return;
+		clearBudgetStops([payload.field]);
+	} finally {
+		budgetIncreasePending.value = false;
+	}
+}
+
+/**
+ * Sends a host message without the composer: the user's draft, files, and staged
+ * chips stay where they are. Unlike `sendMessageFromOutside`, a blocked send is
+ * not queued and does not answer an open card; it returns `'busy'` instead.
+ */
+async function sendHostMessage(
+	text: string,
+	clientContext?: Record<string, unknown>,
+): Promise<SubmitResult> {
+	if (!text) return 'rejected';
+	if (isSubmissionBlocked.value || hasOpenInteraction.value) return 'busy';
+	return await sendRequest({ text, files: [], fromComposer: false, clientContext });
+}
+
+function sendMessageFromOutside(
+	message: string,
+	files?: File[],
+	clientContext?: Record<string, unknown>,
+) {
 	queuedExternalMessage = message;
-	inputText.value = message;
+	externalAttachedFiles = files ?? [];
+	externalClientContext = clientContext;
+	// Staged as the composer's own attachments, with the same count and size checks
+	// as a picked file: `onSubmit` reads `attachedFiles`, so they ride along with
+	// every retry `submitQueuedExternalMessage` makes while blocked.
+	if (files?.length) handleFilesSelected(files);
+	handoffPreview = previewFirstMessage(message, attachedFiles.value);
+	// A previewed message already shows as a bubble; `submitQueuedExternalMessage` fills
+	// the composer itself right before it submits.
+	if (!firstMessagePreview.value) inputText.value = message;
 	void submitQueuedExternalMessage();
 }
 
 async function submitQueuedExternalMessage() {
 	const message = queuedExternalMessage;
-	if (!message || submittingQueuedExternalMessage || isSubmissionBlocked.value) return;
+	// An empty text is still a send when files are staged with it.
+	if (message === undefined || submittingQueuedExternalMessage || isSubmissionBlocked.value) return;
 
+	const isCurrentTarget = captureTarget();
 	submittingQueuedExternalMessage = true;
 	let result: SubmitResult = 'rejected';
+	const wroteDraft = !handoffPreview;
+	const staleControlledDraft =
+		wroteDraft && props.inputDraft !== undefined ? inputText.value : undefined;
 	try {
-		inputText.value = message;
-		result = await onSubmit();
+		if (wroteDraft) inputText.value = message;
+		result = await submitDraft(message.trim(), [...attachedFiles.value], {
+			staleControlledDraft,
+		});
 	} finally {
 		submittingQueuedExternalMessage = false;
 	}
 
-	if (result === 'rejected' && queuedExternalMessage === message) {
+	// The chat does not retry a busy send either, so its text becomes the user's draft.
+	if ((result === 'rejected' || result === 'busy') && queuedExternalMessage === message) {
 		queuedExternalMessage = undefined;
+		// The draft is the user's now, so the hand-off's context does not go with it.
+		externalClientContext = undefined;
+		firstMessagePreview.value = undefined;
+		// The files stay in the composer as the user's draft now.
+		externalAttachedFiles = [];
+		if (!wroteDraft && isCurrentTarget() && !inputText.value.trim()) {
+			inputText.value = message;
+		}
 	}
-	if (queuedExternalMessage && queuedExternalMessage !== message && !isSubmissionBlocked.value) {
+	if (
+		queuedExternalMessage !== undefined &&
+		queuedExternalMessage !== message &&
+		!isSubmissionBlocked.value
+	) {
 		await nextTick();
 		void submitQueuedExternalMessage();
 	}
 }
 
-function getConversationMarkdown(): string {
-	return messages.value
+/** The whole conversation, also the older turns that the chat did not load. */
+async function getConversationMarkdown(): Promise<string> {
+	return (await getFullHistory())
 		.filter((message) => message.content.trim().length > 0)
 		.map((message) => {
-			const speaker = message.role === 'user' ? 'User' : 'Agent';
+			const speaker = message.role === CHAT_MESSAGE_ROLE.USER ? 'User' : 'Agent';
 			return `**${speaker}:**\n\n${message.content.trim()}`;
 		})
 		.join('\n\n---\n\n');
 }
 
-defineExpose({ focusInput, getConversationMarkdown, sendMessageFromOutside });
+/** True when the composer has text, staged files or staged chips. */
+function isDirty(): boolean {
+	return hasDraft.value || composerAttachments.value.length > 0;
+}
+
+watch(isDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
+watch(
+	() => inputText.value.trim() === '',
+	(isEmpty) => {
+		if (isEmpty) emit('draft-cleared');
+	},
+);
+
+/** Puts text into the composer without sending it. */
+function setDraft(text: string) {
+	inputText.value = text;
+}
+
+/** Clears the composer only while it still holds this text, so the user's edits stay. */
+function clearDraftIfMatches(text: string) {
+	if (inputText.value === text) inputText.value = '';
+}
+
+function openFilePicker() {
+	chatInput.value?.openFilePicker();
+}
+
+/** Returns the composer textarea while it is mounted, for example to anchor a picker. */
+function getInputElement(): HTMLTextAreaElement | undefined {
+	return chatInput.value?.getInputElement();
+}
+
+/**
+ * Inserts text at the composer caret and replaces the selected text. Without a
+ * mounted composer, appends the text to the draft.
+ */
+async function insertText(text: string) {
+	const current = inputText.value;
+	const element = getInputElement();
+	const start = element ? Math.min(element.selectionStart, current.length) : current.length;
+	const end = element ? Math.min(Math.max(element.selectionEnd, start), current.length) : start;
+	inputText.value = current.slice(0, start) + text + current.slice(end);
+	await nextTick();
+	const caret = start + text.length;
+	const updated = getInputElement();
+	if (!updated) return;
+	updated.focus();
+	updated.setSelectionRange(caret, caret);
+}
+
+/**
+ * Stages a host chip in the composer. `clientContextPatch` goes with the next
+ * message that the server accepts, then the chip is removed. Answers to an
+ * open card do not send it. Chips belong to the draft: like the composer text,
+ * they stay when the session changes. Remove a chip that belongs to one session.
+ */
+function addComposerAttachment(
+	chip: AgentChatComposerChip,
+	clientContextPatch?: Record<string, unknown>,
+) {
+	const attachment: AgentChatComposerAttachment = { chip, clientContextPatch };
+	const index = composerAttachments.value.findIndex((item) => item.chip.id === chip.id);
+	if (index === -1) {
+		composerAttachments.value = [...composerAttachments.value, attachment];
+		return;
+	}
+	composerAttachments.value = composerAttachments.value.map((item, itemIndex) =>
+		itemIndex === index ? attachment : item,
+	);
+}
+
+function removeComposerAttachment(id: string) {
+	composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
+}
+
+function handleChipRemove(id: string) {
+	removeComposerAttachment(id);
+	emit('composer-attachment-removed', id);
+}
+
+// Session files: every channel has the list route.
+const posthog = usePostHog();
+const showSessionFilesToggle = computed(
+	() =>
+		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true && Boolean(props.continueSessionId),
+);
+const sessionFilesOpen = ref(false);
+const sessionFiles = ref<AgentSessionFile[]>([]);
+const sessionFilesLoading = ref(false);
+const sessionFilesError = ref(false);
+
+function sessionFileHref(fileId: string) {
+	return getChatAttachmentUrl(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		fileId,
+		props.channel,
+		props.continueSessionId,
+	);
+}
+
+async function loadSessionFiles() {
+	const threadId = props.continueSessionId;
+	const { channel } = props;
+	if (!threadId) return;
+	sessionFilesLoading.value = true;
+	sessionFilesError.value = false;
+	try {
+		const { files } = await getSessionFiles(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			threadId,
+			channel,
+		);
+		if (props.continueSessionId === threadId) sessionFiles.value = files;
+	} catch {
+		// A response for a previous session must not change the state of the open one.
+		if (props.continueSessionId === threadId) sessionFilesError.value = true;
+	} finally {
+		if (props.continueSessionId === threadId) sessionFilesLoading.value = false;
+	}
+}
+
+async function toggleSessionFiles() {
+	sessionFilesOpen.value = !sessionFilesOpen.value;
+	if (sessionFilesOpen.value) await loadSessionFiles();
+}
+
+// A turn stores its sandbox files before it ends, so reload when the stream stops.
+watch(isStreaming, async (streaming) => {
+	if (!streaming && sessionFilesOpen.value) await loadSessionFiles();
+});
+watch(
+	() => props.continueSessionId,
+	() => {
+		sessionFilesOpen.value = false;
+		sessionFiles.value = [];
+		sessionFilesError.value = false;
+		sessionFilesLoading.value = false;
+	},
+);
+
+defineExpose({
+	focusInput,
+	getConversationMarkdown,
+	sendMessageFromOutside,
+	sendHostMessage,
+	clearBudgetStops,
+	isDirty,
+	setDraft,
+	clearDraftIfMatches,
+	openFilePicker,
+	getInputElement,
+	insertText,
+	addComposerAttachment,
+	removeComposerAttachment,
+	// Read-only views of the chat state, for hosts that derive their own UI from it.
+	messages: readonly(messages),
+	/** The chips staged with `addComposerAttachment`, until the message that sends them is accepted. */
+	composerAttachments: readonly(composerAttachments),
+	isStreaming: computed(() => isStreaming.value),
+	/**
+	 * A live stream delivers the events of the run. `isStreaming` is also true for a run
+	 * that the chat follows only through history, for example after a reload.
+	 */
+	isStreamAttached: computed(() => isStreamAttached.value),
+	/** A message is sent and the server has not started the reply yet. */
+	isSubmitting: computed(() => isSubmitting.value),
+	/** The chat waits for the user to answer a card, such as an approval or a question. A waiting card does not count, because the workflow resumes the run. */
+	isAwaitingUserAnswer: computed(() => hasOpenInteraction.value && !hasOpenWaitCard.value),
+	/** The card that the chat waits on is an approval. */
+	isAwaitingUserApproval: computed(() => hasOpenApproval.value),
+	focusOpenInteraction,
+	/** The chat shows a card that the run waits on, including a waiting card. */
+	hasOpenInteraction: computed(() => hasOpenInteraction.value),
+	/** The chat streams, cannot take a send, or waits for the user to answer a card. */
+	isBusy: computed(
+		() => isStreaming.value || isSubmissionBlocked.value || hasOpenInteraction.value,
+	),
+	isLoadingHistory: computed(() => isLoadingHistory.value),
+});
 
 onMounted(() => {
 	void loadHistory();
@@ -693,7 +1894,296 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
+	<aside
+		v-if="visible"
+		:class="[
+			mode === 'inline' ? $style.inlinePanel : $style.panel,
+			{ [$style.centeredEmpty]: isCenteredEmpty },
+		]"
+	>
+		<DefineInput>
+			<div :class="$style.inputArea">
+				<slot name="above-input" />
+				<SessionFilesList
+					v-if="sessionFilesOpen"
+					:files="sessionFiles"
+					:file-href="sessionFileHref"
+					:loading="sessionFilesLoading"
+					:error="sessionFilesError"
+				/>
+				<div
+					v-if="showBackgroundJobs"
+					ref="backgroundJobCard"
+					:class="$style.backgroundJobs"
+					data-testid="agent-background-jobs"
+				>
+					<N8nAiActivityStepGroup
+						:key="continueSessionId"
+						:label="backgroundTitle"
+						full-width
+						content-position="above"
+					>
+						<template #prefix>
+							<N8nIcon
+								:icon="backgroundInProgress ? 'loader-circle' : 'circle'"
+								:spin="backgroundInProgress"
+								size="small"
+								:class="{ [$style.jobSpinner]: backgroundInProgress }"
+								aria-hidden="true"
+							/>
+						</template>
+						<template #header-trailing>
+							<span
+								:class="$style.jobTimer"
+								aria-live="off"
+								data-testid="agent-background-jobs-timer"
+								>{{ backgroundElapsed }}</span
+							>
+						</template>
+						<div :class="$style.backgroundJobDetails">
+							<ul :class="$style.backgroundJobList">
+								<li v-for="job in backgroundJobRows" :key="job.id">
+									<span
+										role="img"
+										:aria-label="job.indicator.label"
+										:title="job.indicator.label"
+										:class="[
+											$style.jobStatus,
+											{ [$style.jobWaiting]: job.indicator.icon === 'circle' },
+										]"
+										:data-status="job.status"
+									>
+										<N8nIcon
+											:icon="job.indicator.icon"
+											:spin="job.indicator.icon === 'loader-circle'"
+											size="small"
+											:class="{ [$style.jobSpinner]: job.indicator.icon === 'loader-circle' }"
+										/>
+									</span>
+									<span :class="$style.jobLabel">{{ job.label }}</span>
+									<N8nText
+										v-if="job.stopping || job.stopped"
+										:class="$style.jobProgress"
+										size="small"
+										color="text-light"
+										aria-hidden="true"
+									>
+										{{ job.indicator.label }}
+									</N8nText>
+								</li>
+							</ul>
+							<div :class="$style.backgroundJobActions">
+								<N8nLink
+									v-if="continueSessionId && capabilities.traceLinks"
+									:to="backgroundTraceRoute"
+									theme="text"
+									size="small"
+									underline
+									data-testid="agent-background-jobs-trace"
+								>
+									<span :class="$style.jobTraceLabel">
+										<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
+										{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
+									</span>
+								</N8nLink>
+								<N8nButton
+									v-if="canStopBackgroundJobs || tasksStopping"
+									ref="backgroundJobStopButton"
+									variant="ghost"
+									size="small"
+									:class="$style.jobStopButton"
+									:disabled="stopDisabled"
+									data-testid="agent-background-jobs-stop"
+									@click="stopTasks"
+								>
+									<span :class="$style.jobTraceLabel">
+										<N8nIcon icon="filled-square" size="small" aria-hidden="true" />
+										{{ backgroundStopLabel }}
+									</span>
+								</N8nButton>
+							</div>
+						</div>
+					</N8nAiActivityStepGroup>
+				</div>
+				<div v-if="hasPendingApprovals">
+					<AgentChatPlan
+						v-if="currentPlan && showPlanCard && planStopActive"
+						v-model:expanded="planExpanded"
+						:plan="currentPlan"
+						:trace-route="
+							continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+						"
+						v-bind="planCardProps"
+						@stop="stopTasks"
+					/>
+					<div ref="approvalCards" :class="$style.approvalCards" data-testid="agent-chat-approvals">
+						<ToolApprovalCard
+							v-if="pendingApproval"
+							:key="pendingApproval.toolCallId"
+							:input="pendingApproval.input"
+							:agent-name="agentConfig?.name"
+							:tools="agentConfig?.tools"
+							@submit="
+								resume({
+									runId: pendingApproval.runId,
+									toolCallId: pendingApproval.toolCallId,
+									resumeData: $event,
+								})
+							"
+						/>
+						<ToolApprovalCard
+							v-else-if="backgroundApproval"
+							:key="`${backgroundApproval.id}:${backgroundApproval.approval.toolCallId}`"
+							:input="backgroundApproval.input"
+							:task-title="backgroundApproval.title"
+							:agent-name="agentConfig?.name"
+							:tools="agentConfig?.tools"
+							:disabled="pendingBackgroundResponses.has(backgroundApproval.approval.toolCallId)"
+							@submit="respondToBackgroundApproval(backgroundApproval.approval, $event)"
+						/>
+						<slot name="composer-start" />
+					</div>
+				</div>
+				<div v-else :class="$style.composer">
+					<ChatInputBase
+						ref="chatInput"
+						v-model="inputText"
+						:block-canvas-shortcuts="false"
+						:placeholder="chatPlaceholder"
+						:placeholder-preview="
+							!hasOpenInteractiveQuestion && queuedMessages.length === 0
+								? props.placeholderPreview
+								: undefined
+						"
+						:composer-height="composerHeight"
+						:max-length="maxLength"
+						:is-streaming="false"
+						:show-stop-button="showStop"
+						show-voice
+						:show-attach="showAttach"
+						:show-attach-button="false"
+						:accepted-mime-types="acceptedMimeTypes"
+						:can-submit="!props.disabled && !isSubmissionBlocked && hasDraft"
+						:disabled="isComposerBlocked"
+						data-testid="chat-input"
+						@submit="onSubmit"
+						@stop="stopGenerating"
+						@files-selected="handleFilesSelected"
+						@files-rejected="handleFilesRejected"
+						@keydown="onChatInputKeydown"
+					>
+						<template #above>
+							<ChatMessageQueue
+								v-if="displayedQueueRows.length"
+								:displayed-items="queueDisplayItems"
+								:expanded="queueExpanded"
+								:is-reordering="isReorderingQueue"
+								:can-edit="!props.disabled && !hasDraft && !isSubmissionBlocked"
+								:steer-action="queueSteerAction"
+								:can-steer="canSteer"
+								:can-drag-queue-item="canDragQueueItem"
+								:is-queue-item-busy="isDisplayedQueueItemBusy"
+								:can-drop-queue-item="canDropQueueItem"
+								@update:expanded="queueExpanded = $event"
+								@drag-start="startQueueDrag"
+								@drag-end="endQueueDrag"
+								@steer="steerQueuedMessage"
+								@edit="editQueuedMessage"
+								@remove="removeQueuedMessage"
+							/>
+							<AgentChatPlan
+								v-else-if="currentPlan && showPlanCard"
+								v-model:expanded="planExpanded"
+								v-bind="planCardProps"
+								@stop="stopTasks"
+								:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
+								:plan="currentPlan"
+								:trace-route="
+									continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+								"
+							/>
+						</template>
+						<template v-if="hasAttachmentCards || $slots['composer-attachments']" #attachments>
+							<div v-if="$slots['composer-attachments']" :class="$style.attachmentsStrip">
+								<slot name="composer-attachments" />
+							</div>
+							<N8nAttachmentGroup
+								v-if="hasAttachmentCards"
+								ref="attachmentGroupRef"
+								:class="$style.attachmentGroup"
+							>
+								<N8nAttachment
+									v-for="chip in cardChips"
+									:key="chip.id"
+									:file-name="chip.label"
+									:icon="chip.icon"
+									:is-removable="true"
+									data-test-id="agent-chat-composer-chip"
+									@remove-start="removingAttachments.add(chip.id)"
+									@remove="handleChipRemove(chip.id)"
+									@remove-end="removingAttachments.delete(chip.id)"
+								/>
+								<N8nAttachment
+									v-for="file in attachedFiles"
+									:key="draftFileKey(file)"
+									:file-name="file.name"
+									:mime-type="file.type"
+									:size-bytes="file.size"
+									:src="previewUrl(file)"
+									:is-removable="true"
+									@remove-start="removingAttachments.add(file)"
+									@remove="handleFileRemove(file)"
+									@remove-end="removingAttachments.delete(file)"
+								/>
+							</N8nAttachmentGroup>
+						</template>
+						<template #footer-start>
+							<slot name="composer-start" />
+							<N8nTooltip
+								v-if="showAttach && showAttachButton"
+								as-child
+								:content="locale.baseText('chatInputBase.button.attach')"
+								placement="top"
+							>
+								<N8nIconButton
+									variant="ghost"
+									:icon="attachButtonIcon"
+									icon-size="large"
+									:disabled="isComposerBlocked"
+									focusable-when-disabled
+									:aria-label="locale.baseText('chatInputBase.button.attach')"
+									data-test-id="chat-input-attach-button"
+									@click.stop="chatInput?.openFilePicker()"
+								/>
+							</N8nTooltip>
+							<!-- Before the files toggle: a host menu such as the Assistant "+" menu replaces the attach button. -->
+							<slot name="footer-start" :disabled="isComposerBlocked" />
+							<N8nTooltip
+								v-if="showSessionFilesToggle"
+								:content="locale.baseText('agents.chat.sessionFiles.title')"
+								placement="top"
+							>
+								<N8nIconButton
+									variant="ghost"
+									:icon="sessionFilesOpen ? 'folder-open' : 'folder'"
+									icon-size="large"
+									:aria-label="locale.baseText('agents.chat.sessionFiles.title')"
+									:aria-expanded="sessionFilesOpen"
+									data-test-id="agent-session-files-toggle"
+									@click.stop="toggleSessionFiles"
+								/>
+							</N8nTooltip>
+						</template>
+						<template v-if="$slots['composer-actions']" #right-actions>
+							<slot name="composer-actions" />
+						</template>
+					</ChatInputBase>
+					<slot name="input-footer" />
+				</div>
+				<slot name="composer-footer" />
+			</div>
+		</DefineInput>
+
 		<N8nCallout v-if="fatalError" theme="danger" :class="$style.errorBanner" slim>
 			<div :class="$style.errorBannerBody">
 				<span :class="$style.errorBannerTitle">
@@ -752,298 +2242,90 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</div>
 
-		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" :agent-config="agentConfig" />
-		<AgentChatMessageList
+		<template v-if="isCenteredEmpty">
+			<slot name="empty-state">
+				<AgentChatEmptyState :agent-config="agentConfig" :icon="emptyStateIcon" />
+			</slot>
+			<ReuseInput />
+		</template>
+		<N8nChatScrollArea
 			v-else
-			:messages="messages"
-			:messaging-state="messagingState"
-			:project-id="projectId"
-			:agent-id="agentId"
-			:session-id="continueSessionId"
-			:can-send-to-assistant="canSendToAssistant"
-			@resume="resume"
-			@send-to-assistant="emit('send-to-assistant', $event)"
-		/>
-
-		<div :class="$style.inputArea">
-			<div
-				v-if="showBackgroundJobs"
-				ref="backgroundJobCard"
-				:class="$style.backgroundJobs"
-				data-testid="agent-background-jobs"
+			ref="scrollArea"
+			:class="$style.scrollArea"
+			:loading-older="isLoadingOlderMessages"
+			@load-older="onLoadOlderMessages"
+		>
+			<template
+				v-if="
+					displayedMessages.length === 0 &&
+					((!isStreaming && !isLoadingHistory) || isLoadingNewChat) &&
+					!stopNotice &&
+					!preparingSummary &&
+					!summaryMissing &&
+					!$slots['inline-offers']
+				"
 			>
-				<N8nAiActivityStepGroup
-					:key="continueSessionId"
-					:label="backgroundTitle"
-					full-width
-					content-position="above"
+				<slot name="empty-state">
+					<AgentChatEmptyState :agent-config="agentConfig" :icon="emptyStateIcon" />
+				</slot>
+			</template>
+			<AgentChatMessageList
+				v-else
+				:messages="displayedMessages"
+				:preparing-summary="preparingSummary"
+				:summary-missing="summaryMissing"
+				:messaging-state="displayedMessagingState"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:session-id="continueSessionId"
+				:can-send-to-assistant="canSendToAssistant"
+				:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
+				:can-increase-budget="canIncreaseBudget"
+				:budget-increase-pending="budgetIncreasePending"
+				:retry-message-id="retryMessageId"
+				:retry-disabled="retryDisabled"
+				:has-older-messages="hasOlderMessages"
+				:loading-older-messages="isLoadingOlderMessages"
+				:load-older-messages-failed="loadOlderMessagesFailed"
+				:thinking-label="props.thinkingLabel"
+				:stopped-label="props.stoppedLabel"
+				:task-trace-route="
+					continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+				"
+				@retry="retryMessage"
+				@resume="resume"
+				@send-to-assistant="emit('send-to-assistant', $event)"
+				@open-build="emit('open-build')"
+				@increase-budget="onIncreaseBudget"
+				@retry-load-older="onRetryLoadOlderMessages"
+			>
+				<template v-if="$slots['message-actions']" #message-actions="actionProps">
+					<slot name="message-actions" v-bind="actionProps" />
+				</template>
+				<template
+					v-if="$slots['user-message-references']"
+					#user-message-references="referenceProps"
 				>
-					<template #prefix>
-						<N8nIcon
-							:icon="backgroundRunningCount ? 'loader-circle' : 'circle'"
-							:spin="backgroundRunningCount > 0"
-							size="small"
-							:class="{ [$style.jobSpinner]: backgroundRunningCount > 0 }"
-							aria-hidden="true"
-						/>
-					</template>
-					<template #header-trailing>
-						<span
-							:class="$style.jobTimer"
-							aria-live="off"
-							data-testid="agent-background-jobs-timer"
-							>{{ backgroundElapsed }}</span
-						>
-					</template>
-					<div :class="$style.backgroundJobDetails">
-						<ul :class="$style.backgroundJobList">
-							<li v-for="job in backgroundJobRows" :key="job.id">
-								<span
-									role="img"
-									:aria-label="job.indicator.label"
-									:title="job.indicator.label"
-									:class="[
-										$style.jobStatus,
-										{ [$style.jobWaiting]: job.indicator.icon === 'circle' },
-									]"
-									:data-status="job.status"
-								>
-									<N8nIcon
-										:icon="job.indicator.icon"
-										:spin="job.indicator.icon === 'loader-circle'"
-										size="small"
-										:class="{ [$style.jobSpinner]: job.indicator.icon === 'loader-circle' }"
-									/>
-								</span>
-								<span>{{ job.label }}</span>
-							</li>
-						</ul>
-						<div v-if="backgroundApprovals.length" :class="$style.backgroundApprovals">
-							<div
-								v-for="job in backgroundApprovals"
-								:key="job.approval.toolCallId"
-								:class="$style.backgroundApproval"
-							>
-								<N8nText bold size="small">{{
-									locale.baseText('agents.chat.backgroundTasks.approvalFor', {
-										interpolate: { title: job.title },
-									})
-								}}</N8nText>
-								<ApprovalCard
-									:input="job.input"
-									:disabled="pendingBackgroundResponses.has(job.approval.toolCallId)"
-									@submit="respondToBackgroundApproval(job.approval, $event)"
-								/>
-							</div>
-						</div>
-						<N8nLink
-							v-if="continueSessionId"
-							:to="backgroundTraceRoute"
-							theme="text"
-							size="small"
-							underline
-							data-testid="agent-background-jobs-trace"
-						>
-							<span :class="$style.jobTraceLabel">
-								<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
-								{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
-							</span>
-						</N8nLink>
-					</div>
-				</N8nAiActivityStepGroup>
-			</div>
-			<ChatInputBase
-				ref="chatInput"
-				v-model="inputText"
-				:placeholder="chatPlaceholder"
-				:is-streaming="false"
-				:show-stop-button="showStop"
-				show-voice
-				:show-attach="showAttach"
-				:accepted-mime-types="acceptedMimeTypes"
-				:can-submit="!isSubmissionBlocked && hasDraft"
-				:disabled="isPreparingToSend"
-				data-testid="chat-input"
-				@submit="onSubmit"
-				@stop="stopGenerating"
-				@files-selected="handleFilesSelected"
-			>
-				<template v-if="queueRows.length" #header>
-					<div :class="$style.messageQueue" data-testid="agent-message-queue">
-						<DefineQueueList v-slot="{ items }">
-							<ul :class="[$style.backgroundJobList, $style.queueList]">
-								<li v-for="item in items" :key="item.id" data-testid="agent-queued-message">
-									<div :class="$style.queuePreview" :title="item.message">
-										<N8nInput
-											v-if="queueEdit?.item.id === item.id"
-											v-model="queueEdit.text"
-											type="textarea"
-											size="small"
-											:autosize="{ minRows: 1, maxRows: 6 }"
-											:readonly="queueEdit.unavailable || queueEdit.saving"
-											:aria-label="locale.baseText('agents.chat.queue.edit')"
-											autofocus
-											@keydown="onQueueEditKeydown"
-										/>
-										<span v-else-if="item.message">{{ item.message }}</span>
-										<p
-											v-if="queueEdit?.item.id === item.id && queueEdit.unavailable"
-											:class="$style.queueEditNotice"
-											role="status"
-										>
-											{{
-												locale.baseText(
-													item.steeringExecutionId && queuedMessages.includes(item)
-														? 'agents.chat.queue.editSteeringUnavailable'
-														: 'agents.chat.queue.editUnavailable',
-												)
-											}}
-										</p>
-										<span
-											v-else-if="item.steeringExecutionId"
-											:class="$style.queueEditNotice"
-											role="status"
-										>
-											{{ locale.baseText('agents.chat.queue.steering') }}
-										</span>
-										<span v-for="attachment in item.attachments" :key="attachment.id">{{
-											attachment.fileName
-										}}</span>
-									</div>
-									<div :class="$style.queueActions">
-										<template v-if="queueEdit?.item.id === item.id">
-											<N8nTooltip
-												:content="locale.baseText('agents.chat.queue.save')"
-												:disabled="!canSaveQueueEdit"
-												placement="top"
-											>
-												<N8nButton
-													icon-only
-													variant="ghost"
-													size="xsmall"
-													:disabled="!canSaveQueueEdit"
-													:aria-label="locale.baseText('agents.chat.queue.save')"
-													@click="saveQueueEdit"
-												>
-													<template #icon
-														><N8nIcon icon="check" size="large" aria-hidden="true"
-													/></template>
-												</N8nButton>
-											</N8nTooltip>
-											<N8nTooltip
-												:content="locale.baseText('agents.chat.queue.cancelEdit')"
-												:disabled="queueEdit.saving"
-												placement="top"
-											>
-												<N8nButton
-													icon-only
-													variant="ghost"
-													size="xsmall"
-													:disabled="queueEdit.saving"
-													:aria-label="locale.baseText('agents.chat.queue.cancelEdit')"
-													@click="queueEdit = undefined"
-												>
-													<template #icon
-														><N8nIcon icon="x" size="large" aria-hidden="true"
-													/></template>
-												</N8nButton>
-											</N8nTooltip>
-										</template>
-										<template v-else>
-											<N8nTooltip
-												:content="locale.baseText('agents.chat.queue.steerTooltip')"
-												:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
-												placement="top"
-											>
-												<N8nButton
-													variant="ghost"
-													size="xsmall"
-													:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
-													:aria-label="locale.baseText('agents.chat.queue.steer')"
-													@click="steerQueuedMessage(item.id)"
-												>
-													<template #icon
-														><N8nIcon icon="corner-down-right" size="large" aria-hidden="true"
-													/></template>
-													{{ locale.baseText('agents.chat.queue.steer') }}
-												</N8nButton>
-											</N8nTooltip>
-											<N8nTooltip
-												:content="locale.baseText('agents.chat.queue.edit')"
-												:disabled="!!queueEdit || isQueueItemBusy(item)"
-												placement="top"
-											>
-												<N8nButton
-													icon-only
-													variant="ghost"
-													size="xsmall"
-													:disabled="!!queueEdit || isQueueItemBusy(item)"
-													:aria-label="locale.baseText('agents.chat.queue.edit')"
-													@click="startQueueEdit(item)"
-												>
-													<template #icon
-														><N8nIcon icon="pencil" size="large" aria-hidden="true"
-													/></template>
-												</N8nButton>
-											</N8nTooltip>
-											<N8nTooltip
-												:content="locale.baseText('agents.chat.queue.remove')"
-												:disabled="isQueueItemBusy(item)"
-												placement="top"
-											>
-												<N8nButton
-													icon-only
-													variant="ghost"
-													size="xsmall"
-													:disabled="isQueueItemBusy(item)"
-													:aria-label="locale.baseText('agents.chat.queue.remove')"
-													@click="removeQueuedMessage(item.id)"
-												>
-													<template #icon>
-														<N8nIcon icon="trash-2" size="large" aria-hidden="true" />
-													</template>
-												</N8nButton>
-											</N8nTooltip>
-										</template>
-									</div>
-								</li>
-							</ul>
-						</DefineQueueList>
-						<QueueList :items="queueRows.slice(0, 2)" />
-						<N8nAiActivityStepGroup
-							v-if="queueRows.length > 2"
-							:key="continueSessionId"
-							:label="
-								queuedMessages.length > 2
-									? locale.baseText('agents.chat.queue.title', {
-											adjustToNumber: queuedMessages.length - 2,
-											interpolate: { count: queuedMessages.length - 2 },
-										})
-									: locale.baseText('agents.chat.queue.edit')
-							"
-							full-width
-							content-position="above"
-						>
-							<QueueList :items="queueRows.slice(2)" />
-						</N8nAiActivityStepGroup>
-					</div>
+					<slot name="user-message-references" v-bind="referenceProps" />
 				</template>
-				<template v-if="attachedFiles.length > 0" #attachments>
-					<div :class="$style.attachmentsStrip">
-						<AttachmentPreview
-							v-for="(file, index) in attachedFiles"
-							:key="`${file.name}-${index}`"
-							:file="file"
-							is-removable
-							@remove="handleFileRemove"
-						/>
-					</div>
+				<!-- Host offers end the transcript, so they share its column and scroll with it. -->
+				<template v-if="stopNotice || $slots['inline-offers']" #status>
+					<AgentChatTaskStopNotice
+						v-if="stopNotice"
+						:status="stopNotice"
+						:retry-disabled="stopDisabled"
+						:trace-route="
+							continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+						"
+						@retry="stopTasks"
+					/>
+					<slot name="inline-offers" />
 				</template>
-				<template #footer-start>
-					<slot name="footer-start" />
-				</template>
-			</ChatInputBase>
-		</div>
+			</AgentChatMessageList>
+			<template #input>
+				<ReuseInput />
+			</template>
+		</N8nChatScrollArea>
 	</aside>
 </template>
 
@@ -1068,44 +2350,46 @@ onBeforeUnmount(() => {
 	min-width: 0;
 }
 
+.scrollArea {
+	flex: 1;
+	min-height: 0;
+	// Centers the scroll button over the input, which a host panel can move.
+	--n8n-chat-scroll-area--x-offset--end: var(--agent-chat-reserved-end, 0);
+}
+
+.centeredEmpty {
+	justify-content: center;
+}
+
+.composer {
+	display: flex;
+	flex-direction: column;
+}
+
 .inputArea {
 	flex-shrink: 0;
-	padding: var(--spacing--xs) var(--spacing--sm);
+	padding: var(--agent-chat-input-padding, var(--spacing--xs) var(--spacing--sm));
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	width: 100%;
-	max-width: 800px;
+	// Same as the messages: centers in the space that a host panel leaves.
+	width: calc(100% - var(--agent-chat-reserved-end, 0px));
+	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
-}
-
-.backgroundJobs,
-.messageQueue {
-	min-width: 0;
-
-	--ai-activity-step--height: auto;
-	--ai-activity-step--min-height: var(--height--xl);
-	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
-	--ai-activity-step--color: var(--text-color);
+	position: relative;
+	left: calc(var(--agent-chat-reserved-end, 0px) / -2);
 }
 
 .backgroundJobs {
+	min-width: 0;
+
+	--n8n-ai-activity-step--height: auto;
+	--n8n-ai-activity-step--min-height: var(--height--xl);
+	--n8n-ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
+	--n8n-ai-activity-step--color: var(--text-color);
 	background: var(--background--surface);
 	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--xs);
-}
-
-.messageQueue {
-	--text-color: var(--text-color--subtle);
-
-	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
-	background: var(--background--subtle);
-	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
-	border-bottom: var(--border);
-}
-
-.messageQueue :global(.n8n-icon) {
-	color: light-dark(var(--color--neutral-600), var(--color--neutral-400));
 }
 
 .backgroundJobDetails {
@@ -1118,20 +2402,8 @@ onBeforeUnmount(() => {
 	border-bottom-style: dashed;
 }
 
-.backgroundApprovals {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	width: 100%;
-	// Keep the composer visible when several children request approval.
-	max-height: 50vh;
-	overflow-y: auto;
-}
-
-.backgroundApproval {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
+.approvalCards {
+	position: relative;
 }
 
 .backgroundJobList {
@@ -1144,7 +2416,7 @@ onBeforeUnmount(() => {
 
 	li {
 		display: flex;
-		align-items: flex-start;
+		align-items: baseline;
 		gap: var(--spacing--2xs);
 		padding-block: var(--spacing--3xs);
 		font-size: var(--font-size--sm);
@@ -1154,53 +2426,14 @@ onBeforeUnmount(() => {
 	}
 }
 
-.messageQueue :global(button[aria-expanded]),
-.queueList > li {
-	font-size: var(--font-size--2xs);
-}
-
-.queueList > li {
-	align-items: center;
-	padding-inline: var(--spacing--sm);
-	color: var(--text-color);
-	border-bottom: var(--border);
-	line-height: var(--line-height--md);
-}
-
-.messageQueue > .queueList {
-	padding-block: var(--spacing--2xs);
-
-	&:last-child > li:last-child {
-		border-bottom: 0;
-	}
-}
-
-.messageQueue > .queueList:not(:last-child) {
-	padding-bottom: 0;
-}
-
-.queueActions {
-	display: flex;
-	align-self: center;
-	flex-shrink: 0;
-}
-
-.queueEditNotice {
-	margin: var(--spacing--3xs) 0;
-	font-size: var(--font-size--2xs);
-}
-
-.queuePreview {
+.jobLabel {
 	flex: 1;
 	min-width: 0;
-	display: flex;
-	flex-direction: column;
+}
 
-	span {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
+.jobProgress {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .jobStatus {
@@ -1227,6 +2460,32 @@ onBeforeUnmount(() => {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.backgroundJobActions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--sm);
+}
+
+.jobStopButton {
+	--button--color: var(--color--text);
+	--button--color--background-hover: transparent;
+	--button--color--background-active: transparent;
+
+	padding: 0;
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--lg);
+
+	&:hover:not(:disabled) {
+		color: var(--color--primary);
+	}
+
+	&:active:not(:disabled) {
+		color: var(--color--primary--shade-1);
+	}
 }
 
 .jobSpinner {
@@ -1261,7 +2520,7 @@ onBeforeUnmount(() => {
 }
 
 .errorBannerTitle {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .errorBannerDetail {
@@ -1283,12 +2542,15 @@ onBeforeUnmount(() => {
 }
 
 .warningBannerTitle {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .warningBannerDetail {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
 	word-break: break-word;
+}
+.attachmentGroup {
+	margin-block-start: calc(var(--spacing--4xs) * -1);
 }
 </style>

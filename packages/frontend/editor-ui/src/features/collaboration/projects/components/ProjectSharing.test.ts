@@ -1,4 +1,4 @@
-import { within } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems, getSelectedDropdownValue } from '@/__tests__/utils';
@@ -30,6 +30,7 @@ const mockBaseText = vi.fn((key: string) => {
 	const translations: Record<string, string> = {
 		'projects.sharing.allUsers': 'All users and projects',
 		'auth.roles.owner': 'Owner',
+		'projects.sharing.removeAccess': 'Remove access',
 	};
 	return translations[key] || key;
 });
@@ -185,6 +186,21 @@ describe('ProjectSharing', () => {
 		expect(projectSelectDropdownItems).toHaveLength(3);
 	});
 
+	it('should label the remove button "Remove access"', async () => {
+		const { getByTestId, findByText } = renderComponent({
+			props: {
+				searchFn: createTestSearchFn(personalProjects),
+				modelValue: [personalProjects[0]],
+			},
+		});
+
+		const removeButton = getByTestId('project-sharing-remove');
+		expect(removeButton).toHaveAttribute('aria-label', 'Remove access');
+
+		await userEvent.hover(removeButton);
+		expect(await findByText('Remove access')).toBeVisible();
+	});
+
 	it('should work as a simple select when model is not an array', async () => {
 		const { getByTestId, queryByTestId, emitted } = renderComponent({
 			props: {
@@ -231,6 +247,26 @@ describe('ProjectSharing', () => {
 				}),
 			],
 		]);
+	});
+
+	it('should show a selected project that is not in the returned search page', async () => {
+		const selected = createProjectSharingData('team');
+		const { getByTestId } = renderComponent({
+			props: {
+				// The count includes the selected project, which is not on the returned page.
+				searchFn: createTestSearchFnWithCount(teamProjects, teamProjects.length + 1),
+				modelValue: selected,
+			},
+		});
+
+		const projectSelect = getByTestId('project-sharing-select');
+		await waitFor(() =>
+			expect(within(projectSelect).getByRole('combobox')).toHaveValue(selected.name),
+		);
+
+		const items = await getDropdownItems(projectSelect);
+		expect(items).toHaveLength(teamProjects.length + 1);
+		expect(await getSelectedDropdownValue(items)).toBe(selected.name);
 	});
 
 	it('should render home project as owner when defined', async () => {
@@ -521,6 +557,24 @@ describe('ProjectSharing', () => {
 			});
 
 			expect(getByTestId('project-sharing-static-role')).toHaveTextContent('Can use');
+		});
+
+		it('labels the remove button "Remove access" next to the static role', async () => {
+			const { getByTestId, findByText } = renderComponent({
+				props: {
+					searchFn: createTestSearchFn(personalProjects),
+					modelValue: [personalProjects[0]],
+					roles,
+					static: false,
+					roleDescriptions: { 'credential:user': "Can't edit it" },
+				},
+			});
+
+			const removeButton = getByTestId('project-sharing-remove');
+			expect(removeButton).toHaveAttribute('aria-label', 'Remove access');
+
+			await userEvent.hover(removeButton);
+			expect(await findByText('Remove access')).toBeVisible();
 		});
 
 		it('shows the badge (replacing the select) even when not static, since roleDescriptions implies a single fixed role', () => {

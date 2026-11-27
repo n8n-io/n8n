@@ -8,6 +8,7 @@ import type { GraphNode } from '@vue-flow/core';
 
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
 import { useCanvasNodeGroupActions } from '../../../composables/useCanvasNodeGroupActions';
+import { isStickyCanvasNode } from '../../../composables/useCanvasLayout.guards';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
 import type { BoundingBox } from '../../../canvas.types';
@@ -58,9 +59,13 @@ const canExtractWorkflow = computed(
 
 // Multi-select only: a single node's add-to-chat lives on its own hover
 // toolbar (CanvasNodeToolbar). Showing it here too would duplicate that button
-// and float the multi-selection toolbar over a lone node.
+// and float the multi-selection toolbar over a lone node. Sticky notes alone
+// give the Assistant no node context, as in the canvas context menu.
 const showAddToChat = computed(
-	() => isNodeContextEnabled.value && selectedNodeIds.value.length > 1,
+	() =>
+		isNodeContextEnabled.value &&
+		selectedNodeIds.value.length > 1 &&
+		!props.selectedNodes.every(isStickyCanvasNode),
 );
 
 const isToolbarVisible = computed(
@@ -126,7 +131,7 @@ function onExtractWorkflowClick() {
 				<N8nIconButton
 					size="small"
 					variant="ghost"
-					icon="group"
+					icon="group-filled"
 					icon-size="large"
 					data-test-id="canvas-selection-toolbar-group"
 					:aria-label="i18n.baseText('canvas.selection.toolbar.group')"
@@ -142,8 +147,8 @@ function onExtractWorkflowClick() {
 				<N8nIconButton
 					size="small"
 					variant="ghost"
-					icon="workflow"
-					icon-size="large"
+					icon="workflow-filled-12"
+					icon-size="small"
 					data-test-id="canvas-selection-toolbar-extract"
 					:aria-label="extractWorkflowLabel"
 					@click.stop="onExtractWorkflowClick"
@@ -153,7 +158,7 @@ function onExtractWorkflowClick() {
 				<N8nIconButton
 					size="small"
 					variant="ghost"
-					icon="sparkles"
+					icon="sparkles-filled"
 					icon-size="large"
 					data-test-id="canvas-selection-toolbar-add-to-chat"
 					:aria-label="addToChatLabel"

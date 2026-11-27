@@ -8,7 +8,8 @@ import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { MANAGED_VERSION_KEY } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import nock from 'nock';
 import { Readable } from 'stream';
 import { mockDeep } from 'vitest-mock-extended';
@@ -103,6 +104,40 @@ describe('refreshOAuth2Token', () => {
 				oauthTokenData: expect.objectContaining({
 					access_token: 'new-token',
 					refresh_token: 'new-refresh-token',
+				}),
+			}),
+			mockAdditionalData,
+		);
+	});
+
+	test('should keep the managed app version of the stored token on refresh', async () => {
+		const oauthTokenData = {
+			access_token: 'old-token',
+			refresh_token: 'old-refresh-token',
+			[MANAGED_VERSION_KEY]: 2,
+		};
+		mockThis.getCredentials.mockResolvedValue({
+			...mockCredentialData,
+			clientSecret: undefined,
+			grantType: 'pkce',
+			oauthTokenData,
+		});
+		nock(baseUrl).post('/token').reply(200, {
+			access_token: 'new-token',
+			refresh_token: 'new-refresh-token',
+		});
+
+		await refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData);
+
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).toHaveBeenCalledWith(
+			mockNode.credentials!['test-credentials-type'],
+			'test-credentials-type',
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({
+					access_token: 'new-token',
+					[MANAGED_VERSION_KEY]: 2,
 				}),
 			}),
 			mockAdditionalData,
@@ -252,6 +287,77 @@ describe('refreshOAuth2Token', () => {
 		);
 	});
 
+	test.each([undefined, {}, { access_token: '' }])(
+		'should acquire and persist a client credentials token with initial token data %j',
+		async (oauthTokenData) => {
+			const credentials = {
+				...mockCredentialData,
+				grantType: 'clientCredentials',
+				oauthTokenData,
+			};
+			mockThis.getCredentials.mockResolvedValue(credentials);
+			mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue(
+				oauthTokenData ? { oauthTokenData } : {},
+			);
+			const tokenScope = nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					client_secret: 'test-client-secret',
+					grant_type: 'client_credentials',
+					scope: 'openid',
+				})
+				.reply(200, {
+					access_token: 'initial-token',
+					token_type: 'bearer',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual(expect.objectContaining({ access_token: 'initial-token' }));
+			expect(tokenScope.isDone()).toBe(true);
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledExactlyOnceWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({ access_token: 'initial-token' }),
+				}),
+				mockAdditionalData,
+			);
+		},
+	);
+
+	test('should reuse a client credentials token acquired before the stored credential is re-read', async () => {
+		mockThis.getCredentials.mockResolvedValue({
+			...mockCredentialData,
+			grantType: 'clientCredentials',
+			oauthTokenData: undefined,
+		});
+		mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue({
+			oauthTokenData: { access_token: 'already-acquired-token', token_type: 'bearer' },
+		});
+		const tokenScope = nock(baseUrl).post('/token').reply(200, { access_token: 'unused-token' });
+
+		const result = await refreshOAuth2Token.call(
+			mockThis,
+			'test-credentials-type',
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({ access_token: 'already-acquired-token', token_type: 'bearer' });
+		expect(tokenScope.isDone()).toBe(false);
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).not.toHaveBeenCalled();
+	});
+
 	test('should include resource when fetching a client credentials token', async () => {
 		mockThis.getCredentials.mockResolvedValue({
 			...mockCredentialData,
@@ -342,6 +448,84 @@ describe('refreshOAuth2Token', () => {
 		);
 	});
 
+	// Salesforce needs the stored instance URL after each token refresh.
+	test.each([
+		{
+			response: 'omits instance_url',
+			tokenData: { access_token: 'new-token' },
+			expectedInstanceUrl: 'https://example.my.salesforce.com',
+		},
+		{
+			response: 'returns an empty instance_url',
+			tokenData: { access_token: 'new-token', instance_url: '' },
+			expectedInstanceUrl: 'https://example.my.salesforce.com',
+		},
+		{
+			response: 'returns a null instance_url',
+			tokenData: { access_token: 'new-token', instance_url: null },
+			expectedInstanceUrl: 'https://example.my.salesforce.com',
+		},
+		{
+			response: 'returns a new instance_url',
+			tokenData: {
+				access_token: 'new-token',
+				instance_url: 'https://new-instance.my.salesforce.com',
+			},
+			expectedInstanceUrl: 'https://new-instance.my.salesforce.com',
+		},
+	])(
+		'should use the correct Salesforce instance URL when refresh $response',
+		async ({ tokenData, expectedInstanceUrl }) => {
+			const instanceUrl = 'https://example.my.salesforce.com';
+			const credentials = {
+				...mockCredentialData,
+				grantType: 'pkce',
+				authentication: 'header',
+				scope: 'full refresh_token',
+				oauthTokenData: {
+					...mockCredentialData.oauthTokenData,
+					instance_url: instanceUrl,
+				},
+			};
+			mockNode.credentials = {
+				salesforceOAuth2Api: { id: 'salesforce-credential-id', name: 'Salesforce' },
+			};
+			mockThis.getCredentials.mockResolvedValue(credentials);
+			mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue(credentials);
+			const tokenScope = nock(baseUrl)
+				.post('/token', {
+					grant_type: 'refresh_token',
+					refresh_token: 'old-refresh-token',
+				})
+				.basicAuth({ user: 'test-client-id', pass: 'test-client-secret' })
+				.reply(200, tokenData);
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'salesforceOAuth2Api',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(tokenScope.isDone()).toBe(true);
+			expect(result.instance_url).toBe(expectedInstanceUrl);
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledExactlyOnceWith(
+				mockNode.credentials.salesforceOAuth2Api,
+				'salesforceOAuth2Api',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'old-refresh-token',
+						instance_url: expectedInstanceUrl,
+					}),
+				}),
+				mockAdditionalData,
+			);
+		},
+	);
+
 	test('should throw an error if the OAuth2 token is not connected', async () => {
 		mockThis.getCredentials.mockResolvedValue({
 			...mockCredentialData,
@@ -402,6 +586,47 @@ describe('refreshOAuth2Token', () => {
 		).not.toHaveBeenCalled();
 	});
 
+	test('should discard the rejected token when refresh returns invalid_grant', async () => {
+		mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+		nock(baseUrl).post('/token').reply(400, { error: 'invalid_grant' });
+
+		await expect(
+			refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+		).rejects.toThrow('needs to be reconnected');
+
+		expect(mockAdditionalData.credentialsHelper.discardRejectedOauthTokenData).toHaveBeenCalledWith(
+			{ id: 'test-credentials-id', name: 'test-credentials-name' },
+			'test-credentials-type',
+			'old-refresh-token',
+			mockAdditionalData,
+		);
+	});
+
+	test('should still throw the reconnect error when discarding the rejected token fails', async () => {
+		mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+		mockAdditionalData.credentialsHelper.discardRejectedOauthTokenData = vi
+			.fn()
+			.mockRejectedValue(new Error('storage unavailable'));
+		nock(baseUrl).post('/token').reply(400, { error: 'invalid_grant' });
+
+		await expect(
+			refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+		).rejects.toThrow('The credential "test-credentials-name" needs to be reconnected.');
+	});
+
+	test('should not discard the token when refresh fails with another error', async () => {
+		mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+		nock(baseUrl).post('/token').reply(400, { error: 'invalid_client' });
+
+		await expect(
+			refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+		).rejects.toThrow();
+
+		expect(
+			mockAdditionalData.credentialsHelper.discardRejectedOauthTokenData,
+		).not.toHaveBeenCalled();
+	});
+
 	test('should surface an actionable reconnect message when client credentials token fetch returns invalid_grant', async () => {
 		mockThis.getCredentials.mockResolvedValue({
 			...mockCredentialData,
@@ -414,6 +639,9 @@ describe('refreshOAuth2Token', () => {
 		await expect(
 			refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
 		).rejects.toThrow('The credential "test-credentials-name" needs to be reconnected.');
+		expect(
+			mockAdditionalData.credentialsHelper.discardRejectedOauthTokenData,
+		).not.toHaveBeenCalled();
 	});
 
 	test('should rethrow non-invalid_grant token errors unchanged', async () => {

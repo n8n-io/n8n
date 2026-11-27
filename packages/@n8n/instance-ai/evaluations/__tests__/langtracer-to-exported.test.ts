@@ -55,6 +55,7 @@ describe('diskCaseToLangTracerCreate', () => {
 				datasets: ['pr', 'full'],
 				messageBudget: 4,
 				credentials: [{ type: 'slackApi', name: 'Slack' }],
+				requiresMemoryCompaction: true,
 			}),
 			'c',
 			{ suiteId: 1, setKind: 'regression', synthetic: true },
@@ -67,6 +68,7 @@ describe('diskCaseToLangTracerCreate', () => {
 		expect(body.datasets).toEqual(['pr', 'full']);
 		expect(body.messageBudget).toBe(4);
 		expect(body.credentials).toEqual([{ type: 'slackApi', name: 'Slack' }]);
+		expect(body.requiresMemoryCompaction).toBe(true);
 	});
 
 	it('omits optional keys that are absent on the disk case', () => {
@@ -83,6 +85,7 @@ describe('diskCaseToLangTracerCreate', () => {
 		expect('credentials' in body).toBe(false);
 		expect('evalTriggerType' in body).toBe(false);
 		expect('description' in body).toBe(false);
+		expect('requiresMemoryCompaction' in body).toBe(false);
 	});
 
 	it('forwards typed scenario seed tables so lang-tracer stores their rows', () => {
@@ -158,16 +161,10 @@ describe('unsupportedPushReason', () => {
 	});
 
 	it('refuses a case whose prompt version would be lost', () => {
-		expect(unsupportedPushReason(diskCase({ promptVersion: 'progressive@1' }))).toContain(
+		expect(unsupportedPushReason(diskCase({ promptVersion: 'concise@1' }))).toContain(
 			'promptVersion',
 		);
 	});
-	it.each(['default', 'progressive'] as const)(
-		'refuses a case whose %s mode would be lost',
-		(buildMode) => {
-			expect(unsupportedPushReason(diskCase({ buildMode }))).toContain('buildMode');
-		},
-	);
 
 	it('returns null for a plain conversation-driven case', () => {
 		expect(unsupportedPushReason(diskCase())).toBeNull();
@@ -398,7 +395,7 @@ describe('attach round-trip: write → export → reparse', () => {
 						id: agentId,
 						config: {
 							name: 'Notion research',
-							model: 'anthropic/claude-sonnet-4-5',
+							model: 'anthropic/claude-sonnet-5-5',
 							instructions: 'Research company notes.',
 						},
 					},

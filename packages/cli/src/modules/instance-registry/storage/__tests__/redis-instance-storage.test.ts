@@ -195,12 +195,11 @@ describe('RedisInstanceStorage', () => {
 			expect(result).toEqual([]);
 		});
 
-		it('should return empty array on error', async () => {
-			client.eval.mockRejectedValueOnce(new Error('timeout'));
+		it('should reject when the read script fails', async () => {
+			const error = new Error('timeout');
+			client.eval.mockRejectedValueOnce(error);
 
-			const result = await storage.getAllRegistrations();
-
-			expect(result).toEqual([]);
+			await expect(storage.getAllRegistrations()).rejects.toBe(error);
 		});
 
 		it('should preserve unknown fields via passthrough', async () => {
@@ -302,12 +301,11 @@ describe('RedisInstanceStorage', () => {
 			expect(result.has('main-1')).toBe(true);
 		});
 
-		it('should return empty Map on error', async () => {
-			client.get.mockRejectedValueOnce(new Error('timeout'));
+		it('should reject when the state read fails', async () => {
+			const error = new Error('timeout');
+			client.get.mockRejectedValueOnce(error);
 
-			const result = await storage.getLastKnownState();
-
-			expect(result).toEqual(new Map());
+			await expect(storage.getLastKnownState()).rejects.toBe(error);
 		});
 	});
 
@@ -326,15 +324,11 @@ describe('RedisInstanceStorage', () => {
 			);
 		});
 
-		it('should log warning on error', async () => {
-			client.set.mockRejectedValueOnce(new Error('timeout'));
+		it('should reject when the state save fails', async () => {
+			const error = new Error('timeout');
+			client.set.mockRejectedValueOnce(error);
 
-			await storage.saveLastKnownState(new Map());
-
-			expect(logger.scoped(['instance-registry', 'redis']).warn).toHaveBeenCalledWith(
-				'Failed to save last known state',
-				expect.any(Object),
-			);
+			await expect(storage.saveLastKnownState(new Map())).rejects.toBe(error);
 		});
 	});
 

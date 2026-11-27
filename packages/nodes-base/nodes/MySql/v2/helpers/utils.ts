@@ -1,3 +1,4 @@
+import type { RowDataPacket } from 'mysql2/promise';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,6 +8,14 @@ import type {
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
+
+import {
+	assertCursorColumnNotNull,
+	assertCursorColumnType,
+	assertUniqueCursorColumn,
+} from '@utils/sql-keyset-paging';
+import { isInsideQuotes } from '@utils/sql-query-parameters';
 
 import type {
 	Mysql2Pool,
@@ -21,6 +30,15 @@ import type {
 } from './interfaces';
 import { BATCH_MODE } from './interfaces';
 import { operatorOptions } from '../actions/common.descriptions';
+
+// A $N:name placeholder needs text for the identifier; a value resolved from
+// a single expression can be null or undefined, which has no identifier form.
+function toIdentifierText(value: unknown, paramNumber: string): string {
+	if (value === null || value === undefined) {
+		throw new UserError(`Parameter $${paramNumber} has no value to use as an identifier`);
+	}
+	return String(value);
+}
 
 export function escapeSqlIdentifier(identifier: string): string {
 	const parts = identifier.match(/(`[^`]*`|[^.`]+)/g) ?? [];
@@ -54,13 +72,6 @@ function findParameterMatches(rawQuery: string, regex: RegExp): ParameterMatch[]
 	return matches;
 }
 
-function isInsideQuotes(rawQuery: string, index: number): boolean {
-	const beforeMatch = rawQuery.substring(0, index);
-	const singleQuoteCount = (beforeMatch.match(/'/g) || []).length;
-	const doubleQuoteCount = (beforeMatch.match(/"/g) || []).length;
-	return singleQuoteCount % 2 !== 0 || doubleQuoteCount % 2 !== 0;
-}
-
 function filterValidMatches(matches: ParameterMatch[], rawQuery: string): ParameterMatch[] {
 	return matches.filter(({ index }) => !isInsideQuotes(rawQuery, index));
 }
@@ -79,7 +90,7 @@ function processParameterReplacements(
 			if (isName) {
 				processedQuery = processedQuery.replace(
 					matchStr,
-					escapeSqlIdentifier(replacements[matchIndex].toString()),
+					escapeSqlIdentifier(toIdentifierText(replacements[matchIndex], paramNumber)),
 				);
 			} else {
 				processedQuery = processedQuery.replace(matchStr, '?');
@@ -169,8 +180,12 @@ export const prepareQueryLegacy = (
 
 	for (const match of matches) {
 		if (match.includes(':name')) {
-			const matchIndex = Number(match.replace('$', '').replace(':name', '')) - 1;
-			query = query.replace(match, escapeSqlIdentifier(replacements[matchIndex].toString()));
+			const paramNumber = match.replace('$', '').replace(':name', '');
+			const matchIndex = Number(paramNumber) - 1;
+			query = query.replace(
+				match,
+				escapeSqlIdentifier(toIdentifierText(replacements[matchIndex], paramNumber)),
+			);
 		} else {
 			const matchIndex = Number(match.replace('$', '')) - 1;
 			query = query.replace(match, '?');
@@ -577,6 +592,90 @@ export function addSortRules(
 	});
 
 	return [`${query}${orderByQuery}`, replacements.concat.apply(replacements, values)];
+}
+
+export async function getUniqueKeyColumns(
+	pool: Mysql2Pool,
+	table: string,
+): Promise<Array<{ column: string; nullable: boolean; type: string }>> {
+	const [rows] = await pool.query<RowDataPacket[]>(`SHOW INDEX FROM ${escapeSqlIdentifier(table)}`);
+	const [columns] = await pool.query<RowDataPacket[]>(
+		`SHOW COLUMNS FROM ${escapeSqlIdentifier(table)}`,
+	);
+	const typeOf = new Map(
+		columns.map((row) => [String(row.Field).toLowerCase(), String(row.Type).toLowerCase()]),
+	);
+	const columnsByKey = new Map<string, Array<{ column: string; nullable: boolean } | null>>();
+	for (const row of rows) {
+		if (Number(row.Non_unique) !== 0) continue;
+		const key = String(row.Key_name);
+		// A functional key part has no Column_name. It still counts as a part of the key
+		columnsByKey.set(key, [
+			...(columnsByKey.get(key) ?? []),
+			row.Column_name == null
+				? null
+				: { column: String(row.Column_name).toLowerCase(), nullable: row.Null === 'YES' },
+		]);
+	}
+	return [...columnsByKey.values()].flatMap((cols) =>
+		cols.length === 1 && cols[0] !== null
+			? [{ ...cols[0], type: typeOf.get(cols[0].column) ?? '' }]
+			: [],
+	);
+}
+
+/** LENGTH leaves out values of only spaces, which most collations see as equal to ''. */
+async function hasEmptyText(pool: Mysql2Pool, table: string, column: string): Promise<boolean> {
+	const [rows] = await pool.query<RowDataPacket[]>(
+		`SELECT 1 FROM ${escapeSqlIdentifier(table)} WHERE ${escapeSqlIdentifier(column)} = '' AND LENGTH(${escapeSqlIdentifier(column)}) = 0 LIMIT 1`,
+	);
+	return rows.length > 0;
+}
+
+const TEXT_TYPES = 'char|varchar|tinytext|text|mediumtext|longtext';
+const TEXT_TYPE = new RegExp(`^(${TEXT_TYPES})\\b`);
+// n8n outputs the other types as objects, or with another time zone or precision
+const START_AFTER_TYPE = new RegExp(
+	`^(tinyint|smallint|mediumint|int|bigint|decimal|${TEXT_TYPES})\\b`,
+);
+
+/**
+ * Throws if Start After cannot page by the column without skipped or repeated rows.
+ * `uniqueColumns` comes from getUniqueKeyColumns.
+ */
+export async function checkStartAfterColumn(
+	pool: Mysql2Pool,
+	node: INode,
+	itemIndex: number,
+	table: string,
+	column: string,
+	uniqueColumns: Awaited<ReturnType<typeof getUniqueKeyColumns>>,
+	decimalNumbers: boolean,
+	lookForEmptyText: boolean,
+) {
+	const key = uniqueColumns.find((unique) => unique.column === column.toLowerCase());
+	assertUniqueCursorColumn(node, itemIndex, key ? [column] : [], column);
+	if (!key) return;
+
+	assertCursorColumnNotNull(node, itemIndex, column, key.nullable);
+	assertCursorColumnType(node, itemIndex, column, key.type, START_AFTER_TYPE);
+	if (key.type.startsWith('decimal') && decimalNumbers) {
+		throw new NodeOperationError(
+			node,
+			`Turn off Output Decimals as Numbers to page by "${column}"`,
+			{
+				itemIndex,
+				description: `"${column}" is a DECIMAL column. As numbers, n8n can round its values in the output, so the next page can repeat or skip rows.`,
+			},
+		);
+	}
+	if (lookForEmptyText && TEXT_TYPE.test(key.type) && (await hasEmptyText(pool, table, column))) {
+		throw new NodeOperationError(node, `Column "${column}" has empty text in one row`, {
+			itemIndex,
+			description:
+				'An empty Value gets the first page. If a page ends on this row, the next page is the first page again, and the loop can repeat forever. With Sort DESC, the last page always ends on this row. Use another unique column, for example the primary key.',
+		});
+	}
 }
 
 export function replaceEmptyStringsByNulls(

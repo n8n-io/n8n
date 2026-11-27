@@ -7,7 +7,7 @@ function summary(overrides: Partial<AgentCapabilitySummary> = {}): AgentCapabili
 	return {
 		id: 'agent-1',
 		name: 'Trip Planner',
-		model: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+		model: { provider: 'anthropic', model: 'claude-sonnet-5-5' },
 		channels: [],
 		tools: [],
 		mcpServers: [],
@@ -46,5 +46,17 @@ describe('isAgentWorthTesting', () => {
 
 	it('is true with a model and a skill', () => {
 		expect(isAgentWorthTesting(summary({ skills: [skill] }))).toBe(true);
+	});
+
+	it('is true when forced, even with no summary', () => {
+		expect(isAgentWorthTesting(null, true)).toBe(true);
+	});
+
+	it('is true when forced, even with a model but no tools or skills', () => {
+		expect(isAgentWorthTesting(summary(), true)).toBe(true);
+	});
+
+	it('still requires capabilities when not forced', () => {
+		expect(isAgentWorthTesting(summary(), false)).toBe(false);
 	});
 });

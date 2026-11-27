@@ -1,73 +1,39 @@
-import { encodeLuxonValue } from './luxon-transfer';
-import type { SentinelEncoder } from './transfer';
-import {
-	isPlainObject,
-	isStructuredCloneBuiltin,
-	TRANSFER_ESCAPED_KEY,
-	TRANSFER_FRAMING_KEYS,
-	TRANSFER_OPAQUE_KEY,
-	TRANSFER_VALUE_KEY,
-} from './transfer';
+import { prepareObject } from './prepare-object';
+import { prepareWithOptions, type PrepareTransferOptions } from './prepare-transfer';
+import { encodeOnce, newObjectWalk, type ObjectWalk } from './transfer';
 
-/**
- * The types that go across as a marker. Each encoder claims the values it owns
- * and passes on every other, so a new type is one entry here.
- */
-const ENCODERS: SentinelEncoder[] = [encodeLuxonValue];
+export type { PrepareTransferOptions } from './prepare-transfer';
 
-function encode(value: object): object | undefined {
-	for (const encoder of ENCODERS) {
-		const sentinel = encoder(value);
-		if (sentinel !== undefined) return sentinel;
-	}
-	return undefined;
+const FAST_TRANSFER_DEPTH = 32;
+
+/** Prepare a result for structured clone. QuickJS can opt into cycle tracking. */
+export function __prepareForTransfer(value: unknown, options?: PrepareTransferOptions): unknown {
+	return options === undefined
+		? prepareValue(value, undefined, 0)
+		: prepareWithOptions(value, options);
 }
 
-/**
- * Prepare a value for transfer across the V8 isolate boundary.
- *
- * isolated-vm's `copy: true` uses structured clone, which strips prototypes
- * from non-standard types. A class instance such as a luxon DateTime loses its
- * class identity and arrives on the host as a plain object.
- *
- * This function recursively walks a value and converts each such type into a
- * structured-cloneable marker object. The host rebuilds a real instance from
- * the marker. It runs inside the isolate before the result is transferred.
- *
- * Note: JS Date objects survive structured clone with prototype intact
- * (Date is a standard structured-cloneable type) and are not converted.
- *
- * This walk does not record the objects it has seen, because expression results
- * are not expected to refer to themselves. The host walk does record them.
- */
-export function __prepareForTransfer(value: unknown): unknown {
-	if (value === null || value === undefined) return value;
-	if (typeof value !== 'object') return value;
-
-	const sentinel = encode(value);
-	if (sentinel !== undefined) return sentinel;
-
-	if (Array.isArray(value)) return value.map(__prepareForTransfer);
-
-	if (!isPlainObject(value)) {
-		if (isStructuredCloneBuiltin(value)) return value;
-		// A class instance the host cannot rebuild. Structured clone flattens its
-		// prototype away, so a marker key on it would read as one of ours. Mark it
-		// opaque, and the host gives the contents back as data.
-		return {
-			[TRANSFER_ESCAPED_KEY]: true,
-			[TRANSFER_OPAQUE_KEY]: true,
-			[TRANSFER_VALUE_KEY]: value,
-		};
+function prepareValue(value: unknown, walk: ObjectWalk | undefined, depth: number): unknown {
+	if (
+		walk !== undefined &&
+		(typeof value === 'function' || typeof value === 'symbol' || value instanceof Promise)
+	) {
+		return undefined;
 	}
-
-	const result: Record<string, unknown> = {};
-	let collides = false;
-	for (const key of Object.keys(value)) {
-		if (TRANSFER_FRAMING_KEYS.includes(key)) collides = true;
-		result[key] = __prepareForTransfer(value[key]);
+	if (value === null || typeof value !== 'object') {
+		return value;
 	}
-	// User data can hold the same keys as our framing. Escape such an object, so
-	// the host reads the object itself as data but still walks what is inside it.
-	return collides ? { [TRANSFER_ESCAPED_KEY]: true, [TRANSFER_VALUE_KEY]: result } : result;
+	// Deep results use a cycle guard before recursive copies can exhaust the native stack.
+	// Keep the common path free of reference maps. This does not limit valid result depth.
+	if (walk === undefined && depth === FAST_TRANSFER_DEPTH) {
+		return prepareWithOptions(value, {});
+	}
+	const errorWalk = walk ?? (value instanceof Error ? newObjectWalk() : undefined);
+	const childDepth = depth + 1;
+	if (errorWalk !== undefined) {
+		return encodeOnce(value, errorWalk, (object) =>
+			prepareObject(object, (child) => prepareValue(child, errorWalk, childDepth)),
+		);
+	}
+	return prepareObject(value, (child) => prepareValue(child, undefined, childDepth));
 }

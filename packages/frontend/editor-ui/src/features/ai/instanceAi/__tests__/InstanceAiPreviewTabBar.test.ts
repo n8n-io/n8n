@@ -1,18 +1,34 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { defineComponent, h } from 'vue';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
+import { defineComponent, h, reactive } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
-import { TabsRoot } from 'reka-ui';
+import { flushPromises } from '@vue/test-utils';
+import { N8nTabsRoot } from '@n8n/design-system';
 import { readFileSync } from 'node:fs';
+import { mock } from 'vitest-mock-extended';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
-import type { ArtifactTab } from '../useCanvasPreview';
+import {
+	useCanvasPreview,
+	type ArtifactTab,
+	type BrowserTab,
+	type PreviewTab,
+} from '../useCanvasPreview';
+import type { ArtifactThread } from '../artifactThread';
 import { HOVER_DELAY } from '@/app/constants/durations';
+import { useSkillsStore } from '@/features/settings/context/skills.store';
+import { createArtifactTestRouter } from './artifactTestRouter';
 
 const mockCopy = vi.fn();
 const mockShowMessage = vi.fn();
 const mockSearchWorkflows = vi.hoisted(() => vi.fn());
 const mockFetchDataTablesApi = vi.hoisted(() => vi.fn());
+const mockListAgentsPage = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/agents/composables/useAgentApi', () => ({
+	listAgentsPage: mockListAgentsPage,
+}));
 
 vi.mock('@/features/core/dataTable/dataTable.api', () => ({
 	fetchDataTablesApi: mockFetchDataTablesApi,
@@ -53,6 +69,14 @@ const agentTab: ArtifactTab = {
 	projectId: 'proj-1',
 };
 
+const browserTab: BrowserTab = {
+	id: 'browser:task-1',
+	type: 'browser',
+	name: 'Find the price',
+	icon: 'globe',
+	taskId: 'task-1',
+};
+
 const agentTabWithoutProject: ArtifactTab = {
 	id: 'agent-2',
 	type: 'agent',
@@ -60,37 +84,51 @@ const agentTabWithoutProject: ArtifactTab = {
 	icon: 'robot',
 };
 
-// TabsList/Trigger rely on reka-ui's Tabs context, so the harness wraps the
-// bar in a TabsRoot. We also forward `activeTabId` through to the component
-// so the scroll-into-view watcher is actually exercised.
+const skillTab: ArtifactTab = {
+	id: 'skill-1',
+	type: 'skill',
+	name: 'Brand voice',
+	icon: 'book-open',
+};
+
+// TabsList/Trigger rely on the tabs context, so the harness wraps the bar in
+// N8nTabsRoot. We also forward `activeTabId` through to the component so the
+// scroll-into-view watcher is actually exercised.
 const Wrapper = defineComponent({
 	props: {
-		tabs: { type: Array as () => ArtifactTab[], required: true },
+		tabs: { type: Array as () => PreviewTab[], required: true },
 		activeTabId: { type: String, default: undefined },
 		isExpanded: { type: Boolean, default: false },
 		isExpandDisabled: { type: Boolean, default: false },
 		previewToggleLabel: { type: String, default: undefined },
+		projectId: { type: String, default: undefined },
 	},
-	emits: ['togglePreview', 'toggleExpanded', 'closeTab'],
+	emits: ['togglePreview', 'toggleExpanded', 'closeTab', 'openTab', 'reorderTab'],
 	setup(props, { emit }) {
 		return () =>
-			h(TabsRoot, { modelValue: props.activeTabId }, () =>
+			h(N8nTabsRoot, { modelValue: props.activeTabId }, () =>
 				h(InstanceAiPreviewTabBar, {
 					tabs: props.tabs,
 					activeTabId: props.activeTabId,
 					isExpanded: props.isExpanded,
 					isExpandDisabled: props.isExpandDisabled,
 					previewToggleLabel: props.previewToggleLabel,
+					projectId: props.projectId,
 					onTogglePreview: () => emit('togglePreview'),
 					onCloseTab: (tabId: string) => emit('closeTab', tabId),
+					onOpenTab: (tab: ArtifactTab) => emit('openTab', tab),
 					onToggleExpanded: () => emit('toggleExpanded'),
+					onReorderTab: (tabId: string, toIndex: number) => emit('reorderTab', tabId, toIndex),
 				}),
 			);
 	},
 });
 
 // Experiment cleanup: remove with openWorkflowInAssistant.
-const renderComponent = createComponentRenderer(Wrapper, { pinia: createTestingPinia() });
+const renderComponent = createComponentRenderer(Wrapper, {
+	pinia: createTestingPinia(),
+	global: { plugins: [createArtifactTestRouter()] },
+});
 
 async function openAgentTabContextMenu(container: Element, tabId = 'agent-1') {
 	const agentTabTrigger = container.querySelector<HTMLElement>(`[data-tab-id="${tabId}"]`);
@@ -119,6 +157,8 @@ describe('InstanceAiPreviewTabBar', () => {
 		mockSearchWorkflows.mockResolvedValue([]);
 		mockFetchDataTablesApi.mockReset();
 		mockFetchDataTablesApi.mockResolvedValue({ count: 0, data: [] });
+		mockListAgentsPage.mockReset();
+		mockListAgentsPage.mockResolvedValue({ count: 0, data: [] });
 		vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
 
@@ -160,6 +200,19 @@ describe('InstanceAiPreviewTabBar', () => {
 			buildingTab?.querySelector('[data-test-id="instance-ai-tab-building-spinner"]'),
 		).not.toBeNull();
 		expect(idleTab?.querySelector('[data-test-id="instance-ai-tab-building-spinner"]')).toBeNull();
+	});
+
+	it('shows a red dot instead of the spinner while the run waits on the user', () => {
+		const { container } = renderComponent({
+			props: {
+				tabs: [{ ...workflowTab, building: true, waiting: true }],
+				activeTabId: 'wf-1',
+			},
+		});
+
+		const tab = container.querySelector('[data-tab-id="wf-1"]');
+		expect(tab?.querySelector('[data-test-id="instance-ai-tab-waiting-dot"]')).not.toBeNull();
+		expect(tab?.querySelector('[data-test-id="instance-ai-tab-building-spinner"]')).toBeNull();
 	});
 
 	it('marks the active tab with data-state=active', () => {
@@ -228,6 +281,58 @@ describe('InstanceAiPreviewTabBar', () => {
 		});
 	});
 
+	describe('new tab picker', () => {
+		it('hides the new tab button when the thread has no project', () => {
+			const { queryByTestId } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+
+			expect(queryByTestId('instance-ai-new-tab-button')).toBeNull();
+		});
+
+		it('lists the resources of the project that are not open, and opens the picked one', async () => {
+			mockSearchWorkflows.mockResolvedValue([
+				{ id: 'wf-1', name: 'My Workflow', updatedAt: '2026-09-24T10:00:00.000Z' },
+				{ id: 'wf-2', name: 'Other Workflow', updatedAt: '2026-09-23T10:00:00.000Z' },
+			]);
+			mockListAgentsPage.mockResolvedValue({
+				count: 1,
+				data: [{ id: 'agent-9', name: 'Picked Agent', updatedAt: '2026-09-22T10:00:00.000Z' }],
+			});
+			const { getByTestId, emitted } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1', projectId: 'proj-1' },
+			});
+
+			await userEvent.click(getByTestId('instance-ai-new-tab-button'));
+
+			let items: HTMLElement[] = [];
+			await waitFor(() => {
+				items = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+				expect(items.map((item) => item.textContent?.trim())).toEqual([
+					'Other Workflow',
+					'Picked Agent',
+				]);
+			});
+			expect(mockSearchWorkflows).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'proj-1' }),
+			);
+
+			await userEvent.click(items[1]);
+
+			expect(emitted().openTab).toEqual([
+				[
+					{
+						type: 'agent',
+						id: 'agent-9',
+						name: 'Picked Agent',
+						icon: 'robot',
+						projectId: 'proj-1',
+					},
+				],
+			]);
+		});
+	});
+
 	it('emits togglePreview when the preview toggle is clicked', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: {
@@ -280,6 +385,37 @@ describe('InstanceAiPreviewTabBar', () => {
 		expect(source).not.toContain('--left--fade');
 	});
 
+	describe('skill artifacts', () => {
+		it('opens the skill hub from the context menu', async () => {
+			const { container } = renderComponent({
+				props: { tabs: [skillTab], activeTabId: skillTab.id },
+			});
+
+			await openAgentTabContextMenu(container, skillTab.id);
+			await selectContextMenuItem('Open in skill hub');
+
+			expect(window.open).toHaveBeenCalledWith(
+				'/settings/context/skills?skillId=skill-1',
+				'_blank',
+				'noopener',
+			);
+		});
+
+		it('updates the tab name when the saved skill name changes', async () => {
+			const { getByRole } = renderComponent({
+				props: { tabs: [skillTab], activeTabId: skillTab.id },
+			});
+			expect(getByRole('tab', { name: 'Brand voice' })).toBeInTheDocument();
+
+			useSkillsStore().skillNames.set(skillTab.id, 'New brand voice');
+
+			await waitFor(() =>
+				expect(getByRole('tab', { name: 'New brand voice' })).toBeInTheDocument(),
+			);
+			expect(getByRole('button', { name: 'Close New brand voice' })).toBeInTheDocument();
+		});
+	});
+
 	describe('agent artifact context menu', () => {
 		it('opens the agent in the editor from the context menu', async () => {
 			const { container } = renderComponent({
@@ -326,6 +462,160 @@ describe('InstanceAiPreviewTabBar', () => {
 			expect(window.open).toHaveBeenCalledWith('/home/agents', '_blank', 'noopener');
 		});
 	});
+
+	it('opens and copies tab links with the router base', async () => {
+		const href = '/n8n/projects/proj-1/datatables/dt-1';
+		const { container } = renderComponent({
+			props: { tabs: [dataTableTab], activeTabId: 'dt-1' },
+			global: { plugins: [createArtifactTestRouter('/n8n/')] },
+		});
+
+		await openAgentTabContextMenu(container, 'dt-1');
+		await selectContextMenuItem('Open in editor');
+		expect(window.open).toHaveBeenCalledWith(href, '_blank', 'noopener');
+
+		await openAgentTabContextMenu(container, 'dt-1');
+		await selectContextMenuItem('Copy link');
+		await waitFor(() => {
+			expect(mockCopy).toHaveBeenCalledWith(`${window.location.origin}${href}`);
+		});
+	});
+
+	describe('dragging with browser tabs', () => {
+		/** jsdom has no layout, so each tab gets a 100px box, one after the other. */
+		function layOutTabs(container: Element) {
+			container.querySelectorAll<HTMLElement>('[data-tab-item-id]').forEach((element, index) => {
+				const left = index * 104;
+				element.getBoundingClientRect = () => ({ left, width: 100, right: left + 100 }) as DOMRect;
+			});
+		}
+
+		function drag(container: Element, tabId: string, fromX: number, toX: number) {
+			const pointer = { pointerId: 1, pointerType: 'mouse', button: 0 };
+			const tab = container.querySelector(`[data-tab-item-id="${tabId}"]`)!;
+			fireEvent.pointerDown(tab, { clientX: fromX, ...pointer });
+			fireEvent.pointerMove(window, { clientX: toX, ...pointer });
+			fireEvent.pointerUp(window, { clientX: toX, ...pointer });
+		}
+
+		// The drag draws once per animation frame. Here each frame runs at once.
+		let animationFrame: MockInstance<typeof window.requestAnimationFrame>;
+		beforeEach(() => {
+			animationFrame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((drawFrame) => {
+				drawFrame(0);
+				return 0;
+			});
+		});
+
+		afterEach(() => animationFrame.mockRestore());
+
+		it('drops an artifact tab after a browser tab when it is dragged past it', () => {
+			const { container, emitted } = renderComponent({
+				props: { tabs: [workflowTab, dataTableTab, browserTab], activeTabId: 'wf-1' },
+			});
+			layOutTabs(container);
+
+			drag(container, 'wf-1', 50, 400);
+
+			expect(emitted().reorderTab).toEqual([['wf-1', 2]]);
+		});
+
+		it('drags a browser tab', () => {
+			const { container, emitted } = renderComponent({
+				props: { tabs: [workflowTab, dataTableTab, browserTab], activeTabId: 'wf-1' },
+			});
+			layOutTabs(container);
+
+			drag(container, 'browser:task-1', 250, 0);
+
+			expect(emitted().reorderTab).toEqual([['browser:task-1', 0]]);
+		});
+	});
+
+	describe('browser tabs', () => {
+		it('shows the name of the browser tab', () => {
+			const { container } = renderComponent({
+				props: { tabs: [workflowTab, browserTab], activeTabId: 'browser:task-1' },
+			});
+
+			expect(container.querySelector('[data-tab-id="browser:task-1"]')).toHaveTextContent(
+				'Find the price',
+			);
+		});
+
+		it('shows a waiting dot while the task waits for the user', () => {
+			const { getByRole } = renderComponent({
+				props: {
+					tabs: [{ ...browserTab, userAction: { reason: 'Log in, please' } }],
+					activeTabId: 'browser:task-1',
+				},
+			});
+
+			// Screen readers announce the dot, not only its label attribute.
+			expect(getByRole('img', { name: 'Needs you' })).toHaveAttribute(
+				'data-test-id',
+				'instance-ai-tab-waiting',
+			);
+		});
+
+		it('shows no waiting dot while the task works', () => {
+			const { queryByTestId } = renderComponent({
+				props: { tabs: [browserTab], activeTabId: 'browser:task-1' },
+			});
+
+			expect(queryByTestId('instance-ai-tab-waiting')).not.toBeInTheDocument();
+		});
+
+		it.each(['Open in editor', 'Copy link'])('disables "%s" in the context menu', async (label) => {
+			const { container } = renderComponent({
+				props: { tabs: [browserTab], activeTabId: 'browser:task-1' },
+			});
+
+			await openAgentTabContextMenu(container, 'browser:task-1');
+			let menuItem: HTMLElement | undefined;
+			await waitFor(() => {
+				menuItem = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+					(item) => item.textContent?.includes(label),
+				);
+				expect(menuItem).toBeDefined();
+			});
+			expect(menuItem).toHaveAttribute('data-disabled');
+			await fireEvent.click(menuItem!);
+
+			expect(window.open).not.toHaveBeenCalled();
+			expect(mockCopy).not.toHaveBeenCalled();
+		});
+
+		it('does not load a summary for a browser tab', async () => {
+			vi.useFakeTimers();
+			try {
+				const { container } = renderComponent({
+					props: { tabs: [browserTab], activeTabId: 'browser:task-1' },
+				});
+
+				await fireEvent.mouseEnter(
+					container.querySelector<HTMLElement>('[data-tab-item-id="browser:task-1"]')!,
+				);
+				await vi.advanceTimersByTimeAsync(HOVER_DELAY.SHOW);
+
+				expect(
+					document.body.querySelector('[data-test-id="instance-ai-tab-hover-card"]'),
+				).toHaveTextContent('Find the price');
+				expect(
+					document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-placeholder"]'),
+				).toBeNull();
+				expect(
+					document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-status"]'),
+				).toBeNull();
+				expect(mockSearchWorkflows).not.toHaveBeenCalled();
+				expect(mockFetchDataTablesApi).not.toHaveBeenCalled();
+				expect(mockListAgentsPage).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
 	describe('tab hover card', () => {
 		const workflowTab2: ArtifactTab = { ...workflowTab, id: 'wf-2', name: 'Second Workflow' };
 
@@ -348,7 +638,8 @@ describe('InstanceAiPreviewTabBar', () => {
 		}
 
 		beforeEach(() => {
-			vi.useFakeTimers({ shouldAdvanceTime: true });
+			// Advance time explicitly so wall time cannot cross the hover deadline.
+			vi.useFakeTimers();
 		});
 
 		afterEach(() => {
@@ -393,13 +684,74 @@ describe('InstanceAiPreviewTabBar', () => {
 			const { container, rerender } = renderComponent({
 				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 			});
-			await vi.waitFor(() => expect(mockSearchWorkflows).toHaveBeenCalled());
+			await flushPromises();
 
 			await rerender({ tabs: [{ ...workflowTab, name: 'Renamed Workflow' }], activeTabId: 'wf-1' });
 			// The refresh after the rename still returns the old name from the server.
-			await vi.waitFor(() => expect(mockSearchWorkflows).toHaveBeenCalledTimes(2));
+			await flushPromises();
 
+			expect(mockSearchWorkflows).toHaveBeenCalledTimes(2);
 			expect(container.querySelector('[data-tab-id="wf-1"]')).toHaveTextContent('Renamed Workflow');
+		});
+
+		it('shows an Assistant skill rename while another artifact stays pinned', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const skillsStore = useSkillsStore();
+			skillsStore.skillNames.set(skillTab.id, skillTab.name);
+			const thread = reactive<ArtifactThread>({
+				...mock<ArtifactThread>(),
+				id: 'thread-1',
+				artifactTurns: [],
+				producedArtifacts: new Map([
+					[skillTab.id, skillTab],
+					[workflowTab.id, workflowTab],
+				]),
+				resourceNameIndex: new Map(),
+				isStreaming: true,
+				isHydratingThread: false,
+			});
+			const preview = useCanvasPreview({ thread, threadId: () => thread.id });
+			preview.selectTab(skillTab.id);
+			preview.selectTab(workflowTab.id);
+			const { container, rerender, getByRole } = renderComponent({
+				pinia,
+				props: { tabs: preview.openTabs.value, activeTabId: preview.activeTabId.value },
+			});
+			await hoverTab(container, skillTab.id);
+			expect(getHoverCard()).toHaveTextContent(skillTab.name);
+
+			thread.producedArtifacts = new Map(thread.producedArtifacts).set(skillTab.id, {
+				...skillTab,
+				name: 'Updated brand voice',
+			});
+			thread.artifactTurns = [
+				{
+					id: 'assistant-rename',
+					role: 'assistant',
+					isLive: false,
+					toolCalls: [
+						{
+							toolCallId: 'skill-rename',
+							toolName: 'skills',
+							args: { action: 'update', skillId: skillTab.id },
+							isLoading: false,
+							result: {
+								success: true,
+								saved: { id: skillTab.id, name: 'Updated brand voice', created: true },
+							},
+						},
+					],
+				},
+			];
+			await rerender({ tabs: preview.openTabs.value, activeTabId: preview.activeTabId.value });
+
+			expect(preview.activeTabId.value).toBe(workflowTab.id);
+			expect(getByRole('tab', { name: 'Updated brand voice' })).toHaveAttribute(
+				'data-state',
+				'inactive',
+			);
+			expect(getByRole('button', { name: 'Close Updated brand voice' })).toBeInTheDocument();
+			expect(getHoverCard()).toHaveTextContent('Updated brand voice');
 		});
 
 		it('shows the current name from the tab details instead of a stale tab name', async () => {
@@ -415,11 +767,8 @@ describe('InstanceAiPreviewTabBar', () => {
 				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 			});
 
-			await vi.waitFor(() => {
-				expect(container.querySelector('[data-tab-id="wf-1"]')).toHaveTextContent(
-					'Renamed Workflow',
-				);
-			});
+			await flushPromises();
+			expect(container.querySelector('[data-tab-id="wf-1"]')).toHaveTextContent('Renamed Workflow');
 			await hoverTab(container, 'wf-1');
 			expect(getHoverCard()).toHaveTextContent('Renamed Workflow');
 		});
@@ -452,6 +801,7 @@ describe('InstanceAiPreviewTabBar', () => {
 					name: 'My Workflow',
 					updatedAt: new Date().toISOString(),
 					activeVersionId: null,
+					isArchived: false,
 				},
 			]);
 			const { container } = renderComponent({
@@ -463,6 +813,86 @@ describe('InstanceAiPreviewTabBar', () => {
 			expect(
 				document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-status"]'),
 			).toHaveTextContent('Draft');
+		});
+
+		it('shows the archived status of an archived workflow instead of draft', async () => {
+			mockSearchWorkflows.mockResolvedValue([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					updatedAt: new Date().toISOString(),
+					activeVersionId: null,
+					isArchived: true,
+				},
+			]);
+			const { container } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+
+			await hoverTab(container, 'wf-1');
+
+			const statusTag = document.body.querySelector(
+				'[data-test-id="instance-ai-tab-hover-card-status"]',
+			);
+			expect(statusTag).toHaveTextContent('Archived');
+			expect(statusTag?.className).not.toMatch(/statusTagPublished/);
+		});
+
+		it('shows the archived status even when an archived workflow still has an active version', async () => {
+			mockSearchWorkflows.mockResolvedValue([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					updatedAt: new Date().toISOString(),
+					activeVersionId: 'v1',
+					isArchived: true,
+				},
+			]);
+			const { container } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+
+			await hoverTab(container, 'wf-1');
+
+			const statusTag = document.body.querySelector(
+				'[data-test-id="instance-ai-tab-hover-card-status"]',
+			);
+			expect(statusTag).toHaveTextContent('Archived');
+			expect(statusTag?.className).not.toMatch(/statusTagPublished/);
+		});
+
+		it('updates a previously published workflow hover status to archived after it is archived', async () => {
+			mockSearchWorkflows.mockResolvedValueOnce([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					updatedAt: new Date().toISOString(),
+					activeVersionId: 'v1',
+					isArchived: false,
+				},
+			]);
+			const { container } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+			await flushPromises();
+
+			mockSearchWorkflows.mockResolvedValueOnce([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					updatedAt: new Date().toISOString(),
+					activeVersionId: null,
+					isArchived: true,
+				},
+			]);
+
+			await hoverTab(container, 'wf-1');
+
+			const statusTag = document.body.querySelector(
+				'[data-test-id="instance-ai-tab-hover-card-status"]',
+			);
+			expect(statusTag).toHaveTextContent('Archived');
+			expect(statusTag?.className).not.toMatch(/statusTagPublished/);
 		});
 
 		it('shows placeholders until the workflow details load', async () => {
@@ -505,11 +935,10 @@ describe('InstanceAiPreviewTabBar', () => {
 					activeVersionId: 'v1',
 				},
 			]);
-			await waitFor(() =>
-				expect(
-					document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-status"]'),
-				).toHaveTextContent('Published'),
-			);
+			await flushPromises();
+			expect(
+				document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-status"]'),
+			).toHaveTextContent('Published');
 			expect(getHoverCard()).toHaveTextContent('Edited');
 			expect(
 				document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-placeholder"]'),
@@ -615,7 +1044,7 @@ describe('InstanceAiPreviewTabBar', () => {
 			expect(getHoverCard()).toBeNull();
 		});
 
-		it('stays open while the pointer is on the card and closes after it leaves', async () => {
+		it('closes after the pointer leaves the tab, even when it moves onto the card', async () => {
 			const { container } = renderComponent({
 				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 			});
@@ -624,13 +1053,6 @@ describe('InstanceAiPreviewTabBar', () => {
 			const cardContent = getHoverCard()!.parentElement!;
 			await fireEvent.mouseLeave(getTabItem(container, 'wf-1'));
 			await fireEvent.pointerEnter(cardContent, { pointerType: 'mouse' });
-			await vi.advanceTimersByTimeAsync(HOVER_DELAY.LEAVE * 2);
-
-			expect(getHoverCard()).not.toBeNull();
-
-			await fireEvent.pointerLeave(cardContent, { pointerType: 'mouse' });
-			// The card closes once the pointer moves out of its grace area.
-			await fireEvent.pointerMove(document.body, { clientX: 500, clientY: 500 });
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.LEAVE);
 
 			expect(getHoverCard()).toBeNull();

@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { buildTargetUrl } from '@n8n/backend-network';
 import { sleep } from '@n8n/utils/sleep';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
@@ -14,6 +15,7 @@ import {
 	NodeConnectionTypes,
 	getCredentialAllowedDomains,
 	toHostname,
+	toParameterAdditionalKeys,
 } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
@@ -39,10 +41,18 @@ import type {
 	INodeCredentialDescription,
 	IExecutePaginationFunctions,
 } from 'n8n-workflow';
-import url from 'node:url';
 
 import { type ExecuteContext, ExecuteSingleContext } from './node-execution-context';
 import { getAdditionalKeys } from './node-execution-context/utils/get-additional-keys';
+
+/**
+ * Marks every output item of one input item with its origin, so that `.item`
+ * expressions downstream can trace it. A node may pair an item itself in a
+ * post-receive function; that value wins.
+ */
+function pairWithInputItem(items: INodeExecutionData[], itemIndex: number): INodeExecutionData[] {
+	return items.map((item) => ({ ...item, pairedItem: item.pairedItem ?? { item: itemIndex } }));
+}
 
 export class RoutingNode {
 	constructor(
@@ -137,6 +147,14 @@ export class RoutingNode {
 				}
 
 				const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+				// `$credentials` is for the strings the node description owns (`requestDefaults`,
+				// `routing`). Node parameters are author-owned and resolve without it.
+				const descriptionKeys: IWorkflowDataProxyAdditionalKeys = {
+					...additionalKeys,
+					$credentials: credentials,
+					$version: node.typeVersion,
+				};
+				const parameterKeys = toParameterAdditionalKeys(descriptionKeys);
 
 				if (nodeType.description.requestDefaults) {
 					for (const key of Object.keys(nodeType.description.requestDefaults)) {
@@ -148,7 +166,7 @@ export class RoutingNode {
 							itemIndex,
 							runIndex,
 							executeData,
-							{ ...additionalKeys, $credentials: credentials, $version: node.typeVersion },
+							descriptionKeys,
 							false,
 						) as string;
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -164,7 +182,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeData,
-						{ ...additionalKeys, $credentials: credentials, $version: node.typeVersion },
+						parameterKeys,
 						false,
 					) as string | NodeParameterValue;
 
@@ -174,42 +192,43 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						'',
-						{
-							...additionalKeys,
-							$credentials: credentials,
-							$value: value,
-							$version: node.typeVersion,
-						},
+						{ ...descriptionKeys, $value: value },
 					);
 
 					this.mergeOptions(itemContext[itemIndex].requestData, tempOptions);
 				}
 
 				if (proxy) {
-					const proxyParsed = url.parse(proxy);
-					const proxyProperties = ['host', 'port'];
+					const proxyParsed = URL.parse(proxy);
+					if (!proxyParsed) {
+						throw new NodeOperationError(node, 'The proxy is not valid', { runIndex, itemIndex });
+					}
 
-					for (const property of proxyProperties) {
-						if (
-							!(property in proxyParsed) ||
-							proxyParsed[property as keyof typeof proxyParsed] === null
-						) {
-							throw new NodeOperationError(node, 'The proxy is not valid', {
-								runIndex,
-								itemIndex,
-								description: `The proxy URL does not contain a valid value for "${property}"`,
-							});
-						}
+					const proxyPort = getExplicitPort(proxy);
+					if (!proxyParsed.hostname) {
+						throw new NodeOperationError(node, 'The proxy is not valid', {
+							runIndex,
+							itemIndex,
+							description: 'The proxy URL does not contain a valid value for "host"',
+						});
+					}
+					if (proxyPort === null) {
+						throw new NodeOperationError(node, 'The proxy is not valid', {
+							runIndex,
+							itemIndex,
+							description: 'The proxy URL does not contain a valid value for "port"',
+						});
 					}
 
 					itemContext[itemIndex].requestData.options.proxy = {
-						host: proxyParsed.hostname as string,
-						port: parseInt(proxyParsed.port!),
+						host: proxyParsed.hostname,
+						port: proxyPort,
 						protocol: proxyParsed.protocol?.replace(/:$/, '') || undefined,
 					};
 
-					if (proxyParsed.auth) {
-						const [username, password] = proxyParsed.auth.split(':');
+					const auth = getAuth(proxyParsed);
+					if (auth) {
+						const [username, password] = auth.split(':');
 						itemContext[itemIndex].requestData.options.proxy!.auth = {
 							username,
 							password,
@@ -229,31 +248,28 @@ export class RoutingNode {
 					itemContext[itemIndex].requestData.options.timeout = 300_000;
 				}
 
-				// A node parameter can drive the effective `baseURL`, making the host the caller's
-				// choice rather than the node's. Detect that by comparing the already-resolved
-				// `baseURL`'s host against the host `baseURL` would resolve to with
-				// `$parameter`/`$rawParameter` cleared (see `resolveBaseUrl`) - only the host matters,
-				// since that's all the domain allowlist checks.
-				const baseUrlOwnershipKeys: IWorkflowDataProxyAdditionalKeys = {
-					...additionalKeys,
-					$credentials: credentials,
-					$version: node.typeVersion,
-				};
-				const baseUrlIsNodeOwned =
-					toHostname(itemContext[itemIndex].requestData.options.baseURL) ===
-					toHostname(
-						this.resolveBaseUrl(itemIndex, runIndex, executeData, itemContext[itemIndex].thisArgs, {
-							...baseUrlOwnershipKeys,
-							$parameter: {},
-							$rawParameter: {},
-						}),
-					);
+				// A node parameter can drive the effective `baseURL`, or an absolute `url` can replace
+				// its host, making the host the caller's choice rather than the node's. Detect that by
+				// comparing the host the request targets against the host `baseURL` would resolve to
+				// with `$parameter`/`$rawParameter` cleared (see `resolveBaseUrl`) - only the host
+				// matters, since that's all the domain allowlist checks. Without a node-owned
+				// `baseURL` there is nothing to compare `url` against.
+				const { baseURL, url } = itemContext[itemIndex].requestData.options;
+				const ownHost = toHostname(
+					this.resolveBaseUrl(itemIndex, runIndex, executeData, itemContext[itemIndex].thisArgs, {
+						...descriptionKeys,
+						$parameter: {},
+						$rawParameter: {},
+					}),
+				);
+				const targetUrl = ownHost ? buildTargetUrl(url, baseURL) : baseURL;
+				const baseUrlIsNodeOwned = toHostname(targetUrl) === ownHost;
 				const allowedDomains = credentials
 					? getCredentialAllowedDomains({
 							node,
 							credentialData: credentials,
 							credentialOwnedSurface: baseUrlIsNodeOwned,
-							nodeEndpointUrl: itemContext[itemIndex].requestData.options.baseURL,
+							nodeEndpointUrl: targetUrl,
 						})
 					: undefined;
 				if (allowedDomains) {
@@ -306,24 +322,27 @@ export class RoutingNode {
 
 				const error = responseData.reason;
 
+				const nodeError =
+					error instanceof NodeApiError || error instanceof NodeOperationError
+						? error
+						: new NodeApiError(node, error as JsonObject, {
+								runIndex,
+								itemIndex,
+								message: error?.message,
+								description: error?.description,
+								httpCode:
+									error.isAxiosError && error.response ? String(error.response?.status) : 'none',
+							});
+
+				set(nodeError, 'context.itemIndex', itemIndex);
+				set(nodeError, 'context.runIndex', runIndex);
+
 				if (itemContext[itemIndex].thisArgs?.continueOnFail()) {
-					returnData.push({ json: {}, error: error as NodeApiError });
+					returnData.push({ json: {}, error: nodeError, pairedItem: { item: itemIndex } });
 					continue;
 				}
 
-				if (error instanceof NodeApiError) {
-					set(error, 'context.itemIndex', itemIndex);
-					set(error, 'context.runIndex', runIndex);
-					throw error;
-				}
-
-				throw new NodeApiError(node, error as JsonObject, {
-					runIndex,
-					itemIndex,
-					message: error?.message,
-					description: error?.description,
-					httpCode: error.isAxiosError && error.response ? String(error.response?.status) : 'none',
-				});
+				throw nodeError;
 			}
 
 			if (itemContext[itemIndex].requestData.maxResults) {
@@ -331,7 +350,7 @@ export class RoutingNode {
 				responseData.value.splice(itemContext[itemIndex].requestData.maxResults);
 			}
 
-			returnData.push(...responseData.value);
+			returnData.push(...pairWithInputItem(responseData.value as INodeExecutionData[], itemIndex));
 		}
 
 		return [returnData];
@@ -834,7 +853,7 @@ export class RoutingNode {
 	}
 
 	/**
-	 * Resolves the `baseURL` a request would use under the given parameter keys, replaying the
+	 * Resolves the `baseURL` a request would use under the given keys, replaying the
 	 * same requestDefaults + per-property routing computation `runNode` does, without touching
 	 * `itemContext`. Comparing this under real vs. `$parameter`/`$rawParameter`-cleared keys tells
 	 * a node-owned `baseURL` from one a caller-supplied parameter determines - whether that
@@ -846,10 +865,12 @@ export class RoutingNode {
 		runIndex: number,
 		executeData: IExecuteData,
 		thisArgs: IExecuteSingleFunctions,
-		parameterKeys: IWorkflowDataProxyAdditionalKeys,
+		descriptionKeys: IWorkflowDataProxyAdditionalKeys,
 	): string | undefined {
 		const { nodeType, context } = this;
 		const { node } = context;
+		// Same split as `runNode`: node parameters resolve without the description-only keys.
+		const parameterKeys = toParameterAdditionalKeys(descriptionKeys);
 		const scratch: DeclarativeRestApiSettings.ResultOptions = {
 			options: { qs: {}, body: {}, headers: {} },
 			preSend: [],
@@ -863,7 +884,7 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeData,
-				parameterKeys,
+				descriptionKeys,
 				false,
 			) as string;
 		}
@@ -885,7 +906,7 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				'',
-				{ ...parameterKeys, $value: value },
+				{ ...descriptionKeys, $value: value },
 				true,
 			);
 
@@ -1172,13 +1193,14 @@ export class RoutingNode {
 					value = [value];
 				}
 
-				// Resolve expressions
+				// Resolve expressions. The values are node parameters, so they resolve without
+				// the description-only keys.
 				value = this.getParameterValue(
 					value as INodeParameters[],
 					itemIndex,
 					runIndex,
 					executeSingleFunctions.getExecuteData(),
-					{ ...additionalKeys },
+					toParameterAdditionalKeys(additionalKeys ?? {}),
 					false,
 				) as INodeParameters[];
 
@@ -1254,4 +1276,26 @@ export class RoutingNode {
 
 		return { credentials, credentialDescription };
 	}
+}
+
+function getAuth(url: URL) {
+	if (!url.username && !url.password) {
+		return null;
+	}
+
+	const user = decodeURIComponent(url.username);
+	return url.password ? `${user}:${decodeURIComponent(url.password)}` : user;
+}
+
+function getExplicitPort(value: string): number | null {
+	const authorityStart = value.indexOf('//');
+	if (authorityStart < 0) return null;
+
+	const authority = value.slice(authorityStart + 2).split(/[/?#]/, 1)[0];
+	const hostAndPort = authority.slice(authority.lastIndexOf('@') + 1);
+	const match = /:(\d+)$/.exec(hostAndPort);
+	if (!match) return null;
+
+	const port = Number(match[1]);
+	return Number.isInteger(port) && port <= 65_535 ? port : null;
 }

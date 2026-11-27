@@ -22,6 +22,73 @@ const nudgeSurface = z
 	);
 
 export const MCP_TELEMETRY = defineTelemetryEvents({
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	DISCOVERY_EXPOSED: {
+		name: 'User entered MCP discovery experiment',
+		description:
+			'A user passed the durable personal eligibility check and received a live PostHog variant. Includes control and treatment, independently of clicks.',
+		properties: z.looseObject({
+			variant: z.enum(['control', 'variant']),
+			eligible_at: z
+				.number()
+				.optional()
+				.describe(
+					'The user first login plus the configured delay. Eligibility can be saved later.',
+				),
+			concurrent_experiments: z.record(z.string(), z.string()),
+		}),
+	},
+	DISCOVERY_ENTRY_VIEWED: {
+		name: 'User viewed MCP discovery entry point',
+		description:
+			'A treatment entry point became visible on screen. Recorded once per placement per editor session.',
+		properties: z.looseObject({
+			variant: z.enum(['control', 'variant']),
+			surface: z.enum(['canvas', 'sidebar', 'footer', 'create_menu']),
+			cta_stage: z.enum(['build', 'connect', 'prompt', 'build_in_claude']),
+		}),
+	},
+	DISCOVERY_ENTRY_CLICKED: {
+		name: 'User clicked MCP discovery entry point',
+		description:
+			'A user clicked an experiment entry point to open MCP settings or a new Claude browser tab.',
+		properties: z.looseObject({
+			variant: z.enum(['control', 'variant']),
+			surface: z.enum(['canvas', 'sidebar', 'footer', 'create_menu']),
+			cta_stage: z.enum(['build', 'connect', 'prompt', 'build_in_claude']),
+		}),
+	},
+	// EOF Experiment cleanup
+	PREFERENCES_ENTRY_POINT_CLICKED: {
+		name: 'User clicked MCP preferences entry point',
+		description:
+			'A user in experiment 150 clicked a link to the preferences page from the MCP settings page or the connect-client dialog. The click opens the preferences page.',
+		properties: z.looseObject({
+			variant: z.enum(['banner', 'connection_row']),
+			entry_point: z
+				.enum(['banner', 'connection_row', 'connect_dialog'])
+				.describe(
+					'The banner at the top of the page, the row in Connection details, or the link at the end of the connect-client dialog',
+				),
+		}),
+	},
+	PREFERENCES_PROMPT_COPIED: {
+		name: 'User copied MCP preferences prompt',
+		description:
+			'A user in experiment 150 copied the prompt in the connect-client dialog that asks the client to interview them and save the answers as preferences.',
+		properties: z.looseObject({
+			variant: z.enum(['banner', 'connection_row']),
+			client: z.string().describe('The client selected in the dialog, for example `claude-ai`'),
+		}),
+	},
+	PREFERENCES_BANNER_DISMISSED: {
+		name: 'User dismissed MCP preferences banner',
+		description:
+			'A user in the banner arm of experiment 150 closed the preferences banner on the MCP settings page. The banner then stays hidden in this browser.',
+		properties: z.looseObject({
+			variant: z.enum(['banner']),
+		}),
+	},
 	MCP_NUDGE_VIEWED: {
 		name: 'User viewed MCP nudge',
 		description:
@@ -115,7 +182,7 @@ export const MCP_TELEMETRY = defineTelemetryEvents({
 	AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED: {
 		name: 'User toggled auto-expose new workflows to MCP',
 		description:
-			'An admin turned the "Auto-expose new workflows" MCP setting on or off. Reports the resulting state so enabling and disabling are distinguishable.',
+			'An admin turned the "MCP access for new workflows" setting on or off. Reports the resulting state so enabling and disabling are distinguishable.',
 		properties: z.object({
 			enabled: z.boolean().describe('Resulting state of the setting, not the prior one'),
 			source: z

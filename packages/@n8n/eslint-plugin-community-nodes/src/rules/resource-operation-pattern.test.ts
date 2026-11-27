@@ -1,11 +1,71 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+import { Linter } from 'eslint';
+import { describe, expect, it } from 'vitest';
 
+import { configs } from '../plugin.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 
 const ruleTester = new RuleTester();
 
+function nodeWithProperties(properties: string, inputs = "['main']", outputs = "['main']"): string {
+	return `
+		import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+		import { NodeConnectionTypes } from 'n8n-workflow';
+
+		export class TestNode implements INodeType {
+			description: INodeTypeDescription = {
+				group: ['output'],
+				inputs: ${inputs},
+				outputs: ${outputs},
+				properties: [${properties}]
+			};
+		}`;
+}
+
 ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 	valid: [
+		{
+			name: 'AI-only node without an operation',
+			filename: '/tmp/TestNode.node.ts',
+			code: nodeWithProperties(
+				"{ name: 'model', type: 'options' }",
+				'[]',
+				'[NodeConnectionTypes.AiLanguageModel]',
+			),
+		},
+		{
+			name: 'AI-only node with an object-form output',
+			filename: '/tmp/TestNode.node.ts',
+			code: nodeWithProperties(
+				"{ name: 'model', type: 'options' }",
+				'[]',
+				"[{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' }]",
+			),
+		},
+		{
+			name: 'operation in a spread property list cannot be ruled out',
+			filename: '/tmp/TestNode.node.ts',
+			code: nodeWithProperties("{ name: 'resource', type: 'options' }, ...otherProperties"),
+		},
+		{
+			name: 'operation with externally defined options',
+			filename: '/tmp/TestNode.node.ts',
+			code: nodeWithProperties("{ name: 'operation', type: 'options', options: operationOptions }"),
+		},
+		{
+			name: 'operation with a spread option list',
+			filename: '/tmp/TestNode.node.ts',
+			code: nodeWithProperties(
+				"{ name: 'operation', type: 'options', options: [{ name: 'Get', value: 'get' }, ...moreOptions] }",
+			),
+		},
+		{
+			name: 'operation with a dynamic action value',
+			filename: '/tmp/TestNode.node.ts',
+			code: nodeWithProperties(
+				"{ name: 'operation', type: 'options', options: [{ name: 'Get', value: 'get', action: actionLabel }] }",
+			),
+		},
 		{
 			name: 'node with resources and operations (good pattern)',
 			filename: '/tmp/TestNode.node.ts',
@@ -36,10 +96,10 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 								name: 'operation',
 								type: 'options',
 								options: [
-									{ name: 'Get', value: 'get' },
-									{ name: 'Create', value: 'create' },
-									{ name: 'Update', value: 'update' },
-									{ name: 'Delete', value: 'delete' }
+									{ name: 'Get', value: 'get', action: 'Get a user' },
+									{ name: 'Create', value: 'create', action: 'Create a user' },
+									{ name: 'Update', value: 'update', action: 'Update a user' },
+									{ name: 'Delete', value: 'delete', action: 'Delete a user' }
 								],
 								default: 'get'
 							}
@@ -49,7 +109,7 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 			`,
 		},
 		{
-			name: 'node without operations property',
+			name: 'single-resource node with one operation and an action',
 			filename: '/tmp/TestNode.node.ts',
 			code: `
 				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
@@ -62,14 +122,13 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 						version: 1,
 						inputs: ['main'],
 						outputs: ['main'],
-						properties: [
-							{
-								displayName: 'API Key',
-								name: 'apiKey',
-								type: 'string',
-								default: ''
-							}
-						]
+						properties: [{
+							displayName: 'Operation',
+							name: 'operation',
+							type: 'options',
+							options: [{ name: 'Send', value: 'send', action: 'Send a message' }],
+							default: 'send'
+						}]
 					};
 				}
 			`,
@@ -116,11 +175,11 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 								name: 'operation',
 								type: 'options',
 								options: [
-									{ name: 'Get', value: 'get' },
-									{ name: 'Create', value: 'create' },
-									{ name: 'Update', value: 'update' },
-									{ name: 'Delete', value: 'delete' },
-									{ name: 'List', value: 'list' }
+									{ name: 'Get', value: 'get', action: 'Get a message' },
+									{ name: 'Create', value: 'create', action: 'Create a message' },
+									{ name: 'Update', value: 'update', action: 'Update a message' },
+									{ name: 'Delete', value: 'delete', action: 'Delete a message' },
+									{ name: 'List', value: 'list', action: 'List messages' }
 								],
 								default: 'get'
 							}
@@ -131,6 +190,155 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 		},
 	],
 	invalid: [
+		{
+			name: 'one missing action in a mixed option list',
+			filename: '/tmp/TestNode.node.ts',
+			code: nodeWithProperties(
+				"{ name: 'operation', type: 'options', options: [{ name: 'Get', value: 'get', action: 'Get a user' }, { name: 'Create', value: 'create' }] }",
+			),
+			errors: [{ messageId: 'missingActions' }],
+		},
+		{
+			name: 'empty action label',
+			filename: '/tmp/TestNode.node.ts',
+			code: nodeWithProperties(
+				"{ name: 'operation', type: 'options', options: [{ name: 'Get', value: 'get', action: '  ' }] }",
+			),
+			errors: [{ messageId: 'missingActions' }],
+		},
+		{
+			name: 'trigger still reports too many operations without resources',
+			filename: '/tmp/TestNode.node.ts',
+			code: nodeWithProperties(
+				"{ name: 'operation', type: 'options', options: [{}, {}, {}, {}, {}, {}] }",
+			).replace("group: ['output']", "group: ['trigger']"),
+			errors: [{ messageId: 'tooManyOperationsWithoutResources', data: { operationCount: '6' } }],
+		},
+		{
+			name: 'missing action in a wrapped description',
+			filename: '/tmp/TestNode.node.ts',
+			code: nodeWithProperties(
+				"{ name: 'operation', type: 'options', options: [{ name: 'Get', value: 'get' }] }",
+			).replace('};', '} as INodeTypeDescription;'),
+			errors: [{ messageId: 'missingActions' }],
+		},
+		{
+			name: 'missing action in a constructor-assigned description',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription;
+					constructor() {
+						this.description = {
+							group: ['output'],
+							properties: [{ name: 'operation', type: 'options', options: [{ name: 'Get', value: 'get' }] }]
+						};
+					}
+				}`,
+			errors: [{ messageId: 'missingActions' }],
+		},
+		{
+			// An action needs an Operation even when the node has only one resource.
+			name: 'single-action node without an operation',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						group: ['output'],
+						version: 1,
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [{
+							displayName: 'Message',
+							name: 'message',
+							type: 'string',
+							default: ''
+						}]
+					};
+				}
+			`,
+			errors: [{ messageId: 'missingActions' }],
+		},
+		{
+			name: 'operation option without an action',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						group: ['output'],
+						version: 1,
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [{
+							displayName: 'Operation',
+							name: 'operation',
+							type: 'options',
+							options: [{ name: 'Send', value: 'send' }],
+							default: 'send'
+						}]
+					};
+				}
+			`,
+			errors: [{ messageId: 'missingActions' }],
+		},
+		{
+			name: 'imported node class with a missing action',
+			filename: '/tmp/nodes/TestNode/v1/TestNodeV1.ts',
+			code: nodeWithProperties(
+				"{ name: 'operation', type: 'options', options: [{ name: 'Send', value: 'send' }] }",
+			),
+			errors: [{ messageId: 'missingActions' }],
+		},
+		{
+			// CE-2873: The .node.ts entry can import its node class from another TypeScript file.
+			name: 'imported node class with six operations and no resources',
+			filename: '/tmp/nodes/TestNode/v1/TestNodeV1.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNodeV1 implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						group: ['output'],
+						version: 1,
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{ name: 'Get', value: 'get', action: 'Get a user' },
+									{ name: 'Create', value: 'create', action: 'Create a user' },
+									{ name: 'Update', value: 'update', action: 'Update a user' },
+									{ name: 'Delete', value: 'delete', action: 'Delete a user' },
+									{ name: 'List', value: 'list', action: 'List users' },
+									{ name: 'Search', value: 'search', action: 'Search users' },
+								],
+								default: 'get',
+							},
+						],
+					};
+				}
+			`,
+			errors: [
+				{
+					messageId: 'tooManyOperationsWithoutResources',
+					data: { operationCount: '6' },
+				},
+			],
+		},
 		{
 			name: 'node with exactly 6 operations without resources (error)',
 			filename: '/tmp/TestNode.node.ts',
@@ -151,12 +359,12 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 								name: 'operation',
 								type: 'options',
 								options: [
-									{ name: 'Get', value: 'get' },
-									{ name: 'Create', value: 'create' },
-									{ name: 'Update', value: 'update' },
-									{ name: 'Delete', value: 'delete' },
-									{ name: 'List', value: 'list' },
-									{ name: 'Search', value: 'search' }
+									{ name: 'Get', value: 'get', action: 'Get a message' },
+									{ name: 'Create', value: 'create', action: 'Create a message' },
+									{ name: 'Update', value: 'update', action: 'Update a message' },
+									{ name: 'Delete', value: 'delete', action: 'Delete a message' },
+									{ name: 'List', value: 'list', action: 'List messages' },
+									{ name: 'Search', value: 'search', action: 'Search messages' }
 								],
 								default: 'get'
 							}
@@ -191,14 +399,14 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 								name: 'operation',
 								type: 'options',
 								options: [
-									{ name: 'Get User', value: 'getUser' },
-									{ name: 'Create User', value: 'createUser' },
-									{ name: 'Update User', value: 'updateUser' },
-									{ name: 'Delete User', value: 'deleteUser' },
-									{ name: 'List Users', value: 'listUsers' },
-									{ name: 'Get Project', value: 'getProject' },
-									{ name: 'Create Project', value: 'createProject' },
-									{ name: 'Update Project', value: 'updateProject' }
+									{ name: 'Get User', value: 'getUser', action: 'Get a user' },
+									{ name: 'Create User', value: 'createUser', action: 'Create a user' },
+									{ name: 'Update User', value: 'updateUser', action: 'Update a user' },
+									{ name: 'Delete User', value: 'deleteUser', action: 'Delete a user' },
+									{ name: 'List Users', value: 'listUsers', action: 'List users' },
+									{ name: 'Get Project', value: 'getProject', action: 'Get a project' },
+									{ name: 'Create Project', value: 'createProject', action: 'Create a project' },
+									{ name: 'Update Project', value: 'updateProject', action: 'Update a project' }
 								],
 								default: 'getUser'
 							}
@@ -214,4 +422,62 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 			],
 		},
 	],
+});
+
+const resourceOperationRuleId = '@n8n/community-nodes/resource-operation-pattern';
+
+function nodeWithSixOperations(hasResource: boolean): string {
+	return `
+		class TestNode extends Node {
+			description = {
+				properties: [
+					${hasResource ? "{ name: 'resource', type: 'options', options: [{ name: 'User', value: 'user' }] }," : ''}
+					{
+						name: 'operation',
+						type: 'options',
+						options: [
+							{ name: 'Get', value: 'get', action: 'Get a user' },
+							{ name: 'Create', value: 'create', action: 'Create a user' },
+							{ name: 'Update', value: 'update', action: 'Update a user' },
+							{ name: 'Delete', value: 'delete', action: 'Delete a user' },
+							{ name: 'List', value: 'list', action: 'List users' },
+							{ name: 'Search', value: 'search', action: 'Search users' },
+						],
+					},
+				],
+			};
+		}
+	`;
+}
+
+describe.each([
+	['recommended', configs.recommended],
+	['recommendedWithoutN8nCloudSupport', configs.recommendedWithoutN8nCloudSupport],
+] as const)('%s config', (_name, config) => {
+	const linter = new Linter();
+	const lint = (code: string) =>
+		linter.verify(
+			code,
+			{
+				files: ['**/*.node.ts'],
+				plugins: config.plugins,
+				rules: { [resourceOperationRuleId]: config.rules[resourceOperationRuleId] },
+			},
+			{ filename: 'TestNode.node.ts' },
+		);
+
+	// CE-3284: The resource finding must fail lint even when it is the only finding.
+	it('reports missing resources as the only error', () => {
+		expect(lint(nodeWithSixOperations(false))).toEqual([
+			expect.objectContaining({
+				ruleId: resourceOperationRuleId,
+				messageId: 'tooManyOperationsWithoutResources',
+				severity: 2,
+			}),
+		]);
+	});
+
+	it('accepts operations organized by resource', () => {
+		expect(lint(nodeWithSixOperations(true))).toEqual([]);
+	});
 });

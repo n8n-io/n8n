@@ -45,7 +45,7 @@ type Registration = {
 	 */
 	lastUsed: Date;
 
-	abortController: AbortController;
+	abortControllers: Set<AbortController>;
 
 	returnPromise: Promise<Client>;
 };
@@ -126,6 +126,8 @@ export class SSHClientsManager {
 		const existing = this.clients.get(clientHash);
 		if (existing) {
 			existing.lastUsed = new Date();
+			existing.abortControllers.add(abortController);
+			this.subscribeAbortController(clientHash, abortController);
 			return await existing.returnPromise;
 		}
 
@@ -142,7 +144,7 @@ export class SSHClientsManager {
 		this.clients.set(clientHash, {
 			client: sshClient,
 			lastUsed: new Date(),
-			abortController,
+			abortControllers: new Set([abortController]),
 			returnPromise,
 		});
 		this.clientsReversed.set(sshClient, clientHash);
@@ -157,35 +159,51 @@ export class SSHClientsManager {
 	private withCleanupHandler(sshClient: Client, abortController: AbortController, key: string) {
 		sshClient.on('error', (error) => {
 			this.logger.error('encountered error, calling cleanup', { error });
-			this.cleanupClient(key);
+			this.cleanupClient(sshClient);
 		});
 		sshClient.on('end', () => {
 			this.logger.debug('socket was disconnected, calling abort signal', {});
-			this.cleanupClient(key);
+			this.cleanupClient(sshClient);
 		});
 		sshClient.on('close', () => {
 			this.logger.debug('socket was closed, calling abort signal', {});
-			this.cleanupClient(key);
+			this.cleanupClient(sshClient);
 		});
-		abortController.signal.addEventListener('abort', () => {
-			this.logger.debug('Got abort signal, cleaning up ssh client.', {
-				reason: abortController.signal.reason,
-			});
-			this.cleanupClient(key);
-		});
+		this.subscribeAbortController(key, abortController);
 
 		return sshClient;
 	}
 
-	private cleanupClient(key: string) {
-		const registration = this.clients.get(key);
-		if (registration) {
+	/** Does nothing for a client that was already cleaned up, even if a replacement shares its settings. */
+	private cleanupClient(client: Client): void {
+		const key = this.clientsReversed.get(client);
+		const registration = key === undefined ? undefined : this.clients.get(key);
+		if (key !== undefined && registration) {
 			this.clients.delete(key);
-			registration.client.end();
-			if (!registration.abortController.signal.aborted) {
-				registration.abortController.abort();
+			this.clientsReversed.delete(client);
+			client.end();
+			for (const controller of registration.abortControllers) {
+				if (!controller.signal.aborted) {
+					controller.abort();
+				}
 			}
 		}
+	}
+
+	private subscribeAbortController(clientHash: string, abortController: AbortController) {
+		abortController.signal.addEventListener('abort', () => {
+			this.logger.debug('Got abort signal, releasing ssh client.', {
+				reason: abortController.signal.reason,
+			});
+			const registration = this.clients.get(clientHash);
+
+			if (!registration) return;
+			registration.abortControllers.delete(abortController);
+			// Other callers may still be using this client.
+			if (registration.abortControllers.size === 0) {
+				this.cleanupClient(registration.client);
+			}
+		});
 	}
 
 	onShutdown() {
@@ -195,8 +213,8 @@ export class SSHClientsManager {
 		clearInterval(this.cleanupTimer);
 		// Deregister the exit handler so listeners don't accumulate per instance.
 		process.off('exit', this.onProcessExit);
-		for (const key of this.clients.keys()) {
-			this.cleanupClient(key);
+		for (const { client } of this.clients.values()) {
+			this.cleanupClient(client);
 		}
 	}
 
@@ -205,10 +223,10 @@ export class SSHClientsManager {
 		if (clients.size === 0) return;
 
 		const now = Date.now();
-		for (const [key, { lastUsed }] of clients.entries()) {
+		for (const { client, lastUsed } of clients.values()) {
 			if (now - lastUsed.getTime() > this.config.idleTimeout * 1000) {
 				this.logger.debug('Found stale client. Cleaning it up.');
-				this.cleanupClient(key);
+				this.cleanupClient(client);
 			}
 		}
 	}

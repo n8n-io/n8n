@@ -23,7 +23,7 @@ import fsp from 'node:fs/promises';
 vi.mock('node:fs/promises');
 import { captor, mock } from 'vitest-mock-extended';
 
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { DataTableRepository } from '@n8n/backend-module-data-table';
 
 import type { VariablesService } from '../../../environments.ee/variables/variables.service.ee';
 import { SourceControlExportService } from '../source-control-export.service.ee';
@@ -116,11 +116,10 @@ describe('SourceControlExportService', () => {
 			);
 
 			// Act
-			const result = await service.exportCredentialsToWorkFolder([mock()]);
+			await service.exportCredentialsToWorkFolder([mock()]);
 
 			// Assert
-			expect(result.count).toBe(1);
-			expect(result.files).toHaveLength(1);
+			expect(fsWriteFile).toHaveBeenCalledTimes(1);
 
 			const dataCaptor = captor<string>();
 			expect(fsWriteFile).toHaveBeenCalledWith(
@@ -158,13 +157,9 @@ describe('SourceControlExportService', () => {
 			);
 
 			// Act
-			const result = await service.exportCredentialsToWorkFolder([
-				mock<SourceControlledFile>({ id: 'cred1' }),
-			]);
+			await service.exportCredentialsToWorkFolder([mock<SourceControlledFile>({ id: 'cred1' })]);
 
 			// Assert
-			expect(result.count).toBe(1);
-
 			const dataCaptor = captor<string>();
 			expect(fsWriteFile).toHaveBeenCalledWith(
 				'/mock/n8n/git/credential_stubs/cred1.json',
@@ -198,8 +193,7 @@ describe('SourceControlExportService', () => {
 			]);
 
 			// Assert
-			expect(result.missingIds).toHaveLength(1);
-			expect(result.missingIds?.[0]).toBe('cred1');
+			expect(result.missingIds).toEqual(['cred1']);
 		});
 
 		it('should export global credentials with isGlobal flag set to true', async () => {
@@ -225,14 +219,11 @@ describe('SourceControlExportService', () => {
 			);
 
 			// Act
-			const result = await service.exportCredentialsToWorkFolder([
+			await service.exportCredentialsToWorkFolder([
 				mock<SourceControlledFile>({ id: 'global-cred1' }),
 			]);
 
 			// Assert
-			expect(result.count).toBe(1);
-			expect(result.files).toHaveLength(1);
-
 			const dataCaptor = captor<string>();
 			expect(fsWriteFile).toHaveBeenCalledWith(
 				'/mock/n8n/git/credential_stubs/global-cred1.json',
@@ -287,13 +278,11 @@ describe('SourceControlExportService', () => {
 			);
 
 			// Act
-			const result = await service.exportCredentialsToWorkFolder([
+			await service.exportCredentialsToWorkFolder([
 				mock<SourceControlledFile>({ id: 'non-global-cred1' }),
 			]);
 
 			// Assert
-			expect(result.count).toBe(1);
-
 			const dataCaptor = captor<string>();
 			expect(fsWriteFile).toHaveBeenCalledWith(
 				'/mock/n8n/git/credential_stubs/non-global-cred1.json',
@@ -343,13 +332,11 @@ describe('SourceControlExportService', () => {
 			]);
 
 			// Act
-			const result = await service.exportCredentialsToWorkFolder([
+			await service.exportCredentialsToWorkFolder([
 				mock<SourceControlledFile>({ id: 'resolvable-cred1' }),
 			]);
 
 			// Assert
-			expect(result.count).toBe(1);
-
 			const dataCaptor = captor<string>();
 			expect(fsWriteFile).toHaveBeenCalledWith(
 				'/mock/n8n/git/credential_stubs/resolvable-cred1.json',
@@ -385,13 +372,11 @@ describe('SourceControlExportService', () => {
 			);
 
 			// Act
-			const result = await service.exportCredentialsToWorkFolder([
+			await service.exportCredentialsToWorkFolder([
 				mock<SourceControlledFile>({ id: 'cred-no-flag' }),
 			]);
 
 			// Assert
-			expect(result.count).toBe(1);
-
 			const dataCaptor = captor<string>();
 			expect(fsWriteFile).toHaveBeenCalledWith(
 				'/mock/n8n/git/credential_stubs/cred-no-flag.json',
@@ -458,9 +443,10 @@ describe('SourceControlExportService', () => {
 			expect(writeOrder[19]).toBeLessThan(findOrder[1]);
 			expect(writeOrder[39]).toBeLessThan(findOrder[2]);
 
-			expect(result.count).toBe(45);
 			expect(result.missingIds).toEqual([]);
-			expect(result.files.map((file) => file.id)).toEqual(credentialIds);
+			expect(fsWriteFile.mock.calls.map(([file]) => file)).toEqual(
+				credentialIds.map((id) => `/mock/n8n/git/credential_stubs/${id}.json`),
+			);
 		});
 
 		it('should report credentials missing from any batch', async () => {
@@ -473,12 +459,18 @@ describe('SourceControlExportService', () => {
 				credentialIds.map((id) => mock<SourceControlledFile>({ id })),
 			);
 
-			expect(result.count).toBe(23);
+			expect(fsWriteFile).toHaveBeenCalledTimes(23);
 			expect(result.missingIds).toEqual(['cred-19', 'cred-20']);
 		});
 	});
 
 	describe('exportTagsToWorkFolder', () => {
+		beforeEach(() => {
+			fsReadFile.mockResolvedValue(JSON.stringify({ tags: [], mappings: [] }));
+			workflowTagMappingRepository.find.mockResolvedValue([]);
+			workflowRepository.find.mockResolvedValue([]);
+		});
+
 		it('should export tags to work folder', async () => {
 			// Arrange
 			const mockTag = mock<TagEntity>({
@@ -498,7 +490,7 @@ describe('SourceControlExportService', () => {
 			const fileName = '/mock/n8n/git/tags.json';
 
 			// Act
-			const result = await service.exportTagsToWorkFolder(globalAdminContext);
+			await service.exportTagsToWorkFolder(globalAdminContext);
 
 			// Assert
 			expect(fsWriteFile).toHaveBeenCalledWith(
@@ -517,9 +509,6 @@ describe('SourceControlExportService', () => {
 					2,
 				),
 			);
-			expect(result.count).toBe(1);
-			expect(result.files).toHaveLength(1);
-			expect(result.files[0]).toMatchObject({ id: '', name: fileName });
 		});
 
 		it('should clear tags file and export it when there are no tags', async () => {
@@ -528,16 +517,13 @@ describe('SourceControlExportService', () => {
 			const fileName = '/mock/n8n/git/tags.json';
 
 			// Act
-			const result = await service.exportTagsToWorkFolder(globalAdminContext);
+			await service.exportTagsToWorkFolder(globalAdminContext);
 
 			// Assert
 			expect(fsWriteFile).toHaveBeenCalledWith(
 				fileName,
 				JSON.stringify({ tags: [], mappings: [] }, null, 2),
 			);
-			expect(result.count).toBe(0);
-			expect(result.files).toHaveLength(1);
-			expect(result.files[0]).toMatchObject({ id: '', name: fileName });
 		});
 
 		it('should load only workflow ids and replace mappings of accessible workflows', async () => {
@@ -549,6 +535,7 @@ describe('SourceControlExportService', () => {
 			});
 			const accessibleMapping = { tagId: 'tag1', workflowId: 'workflow1' } as WorkflowTagMapping;
 			const inaccessibleMapping = { tagId: 'tag2', workflowId: 'workflow2' };
+			const remoteTag = { id: 'tag2', name: 'Tag 2' };
 			tagRepository.find.mockResolvedValue([mockTag]);
 			workflowTagMappingRepository.find.mockResolvedValue([accessibleMapping]);
 			workflowRepository.find.mockResolvedValue([
@@ -556,7 +543,7 @@ describe('SourceControlExportService', () => {
 			]);
 			fsReadFile.mockResolvedValueOnce(
 				JSON.stringify({
-					tags: [],
+					tags: [remoteTag],
 					mappings: [{ tagId: 'stale', workflowId: 'workflow1' }, inaccessibleMapping],
 				}),
 			);
@@ -569,10 +556,55 @@ describe('SourceControlExportService', () => {
 			);
 			const dataCaptor = captor<string>();
 			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/tags.json', dataCaptor);
-			expect(JSON.parse(dataCaptor.value).mappings).toEqual([
-				inaccessibleMapping,
-				accessibleMapping,
-			]);
+			expect(JSON.parse(dataCaptor.value)).toEqual({
+				tags: [{ id: mockTag.id, name: mockTag.name }, remoteTag],
+				mappings: [inaccessibleMapping, accessibleMapping],
+			});
+		});
+
+		it('should keep a remote tag and its mappings when there are no local tags', async () => {
+			const remoteTag = { id: 'remote-tag', name: 'Remote tag' };
+			const remoteMappings = [
+				{ tagId: remoteTag.id, workflowId: 'workflow1' },
+				{ tagId: remoteTag.id, workflowId: 'workflow2' },
+			];
+			tagRepository.find.mockResolvedValue([]);
+			fsReadFile.mockResolvedValueOnce(
+				JSON.stringify({
+					tags: [remoteTag, { id: 'unused-tag', name: 'Unused tag' }],
+					mappings: remoteMappings,
+				}),
+			);
+
+			await service.exportTagsToWorkFolder(globalAdminContext);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/tags.json', dataCaptor);
+			expect(JSON.parse(dataCaptor.value)).toEqual({
+				tags: [remoteTag],
+				mappings: remoteMappings,
+			});
+		});
+
+		it('should skip remote mappings whose tags are missing locally and remotely', async () => {
+			const localTag = mock<TagEntity>({ id: 'local-tag', name: 'Local tag' });
+			const validMapping = { tagId: localTag.id, workflowId: 'workflow1' };
+			tagRepository.find.mockResolvedValue([localTag]);
+			fsReadFile.mockResolvedValueOnce(
+				JSON.stringify({
+					tags: [],
+					mappings: [validMapping, { tagId: 'missing-tag', workflowId: 'workflow2' }],
+				}),
+			);
+
+			await service.exportTagsToWorkFolder(globalAdminContext);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/tags.json', dataCaptor);
+			expect(JSON.parse(dataCaptor.value)).toEqual({
+				tags: [{ id: localTag.id, name: localTag.name }],
+				mappings: [validMapping],
+			});
 		});
 	});
 
@@ -585,11 +617,11 @@ describe('SourceControlExportService', () => {
 			workflowRepository.find.mockResolvedValue([mock()]);
 
 			// Act
-			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
+			await service.exportFoldersToWorkFolder(globalAdminContext);
 
 			// Assert
-			expect(result.count).toBe(1);
-			expect(result.files).toHaveLength(1);
+			expect(fsWriteFile).toHaveBeenCalledTimes(1);
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/folders.json', expect.any(String));
 		});
 
 		it('should not export empty folders', async () => {
@@ -597,11 +629,10 @@ describe('SourceControlExportService', () => {
 			folderRepository.find.mockResolvedValue([]);
 
 			// Act
-			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
+			await service.exportFoldersToWorkFolder(globalAdminContext);
 
 			// Assert
-			expect(result.count).toBe(0);
-			expect(result.files).toHaveLength(0);
+			expect(fsWriteFile).not.toHaveBeenCalled();
 		});
 
 		it('should not duplicate folders on push', async () => {
@@ -635,7 +666,7 @@ describe('SourceControlExportService', () => {
 			);
 
 			// Act
-			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
+			await service.exportFoldersToWorkFolder(globalAdminContext);
 
 			// Assert
 			// new json file should contain only the new folders
@@ -656,9 +687,7 @@ describe('SourceControlExportService', () => {
 					2,
 				),
 			);
-
-			expect(result.count).toBe(1);
-			expect(result.files).toHaveLength(1);
+			expect(fsWriteFile).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -668,11 +697,14 @@ describe('SourceControlExportService', () => {
 			variablesService.getAllCached.mockResolvedValue([mock()]);
 
 			// Act
-			const result = await service.exportGlobalVariablesToWorkFolder();
+			await service.exportGlobalVariablesToWorkFolder();
 
 			// Assert
-			expect(result.count).toBe(1);
-			expect(result.files).toHaveLength(1);
+			expect(fsWriteFile).toHaveBeenCalledTimes(1);
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/variable_stubs.json',
+				expect.any(String),
+			);
 		});
 
 		it('should not export empty variables', async () => {
@@ -680,11 +712,10 @@ describe('SourceControlExportService', () => {
 			variablesService.getAllCached.mockResolvedValue([]);
 
 			// Act
-			const result = await service.exportGlobalVariablesToWorkFolder();
+			await service.exportGlobalVariablesToWorkFolder();
 
 			// Assert
-			expect(result.count).toBe(0);
-			expect(result.files).toHaveLength(0);
+			expect(fsWriteFile).not.toHaveBeenCalled();
 		});
 	});
 
@@ -726,16 +757,12 @@ describe('SourceControlExportService', () => {
 			);
 
 			// Act
-			const result = await service.exportWorkflowsToWorkFolder([
-				mock<SourceControlledFile>({ id: workflowId }),
-			]);
+			await service.exportWorkflowsToWorkFolder([mock<SourceControlledFile>({ id: workflowId })]);
 
 			// Assert
-			expect(result.count).toBe(1);
-			expect(result.files).toHaveLength(1);
-
+			expect(fsWriteFile).toHaveBeenCalledTimes(1);
 			const dataCaptor = captor<string>();
-			expect(fsWriteFile).toHaveBeenCalledWith(expect.stringContaining(workflowId), dataCaptor);
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/workflows/wf-1.json', dataCaptor);
 			const exported = JSON.parse(dataCaptor.value);
 			expect(exported).toEqual({
 				id: workflowId,
@@ -813,7 +840,7 @@ describe('SourceControlExportService', () => {
 				.mockResolvedValueOnce(workflowIds.slice(20, 40).map(toWorkflowEntity))
 				.mockResolvedValueOnce(workflowIds.slice(40).map(toWorkflowEntity));
 
-			const result = await service.exportWorkflowsToWorkFolder(
+			await service.exportWorkflowsToWorkFolder(
 				workflowIds.map((id) => mock<SourceControlledFile>({ id })),
 			);
 
@@ -836,9 +863,9 @@ describe('SourceControlExportService', () => {
 			expect(writeOrder).toHaveLength(45);
 			expect(writeOrder[19]).toBeLessThan(findOrder[1]);
 			expect(writeOrder[39]).toBeLessThan(findOrder[2]);
-
-			expect(result.count).toBe(45);
-			expect(result.files.map((file) => file.id)).toEqual(workflowIds);
+			expect(fsWriteFile.mock.calls.map(([file]) => file)).toEqual(
+				workflowIds.map((id) => `/mock/n8n/git/workflows/${id}.json`),
+			);
 		});
 
 		it('should throw an error if workflow has no owner', async () => {
@@ -922,7 +949,7 @@ describe('SourceControlExportService', () => {
 			projectRepository.find.mockResolvedValue([project1, project2]);
 
 			// Act
-			const result = await service.exportTeamProjectsToWorkFolder(candidates);
+			await service.exportTeamProjectsToWorkFolder(candidates);
 
 			// Assert
 			expect(projectRepository.find).toHaveBeenCalledWith({
@@ -937,20 +964,7 @@ describe('SourceControlExportService', () => {
 				'/mock/n8n/git/projects/project-id-2.json',
 				expectedProject2Json,
 			);
-			expect(result.count).toBe(2);
-			expect(result.files).toHaveLength(2);
-			expect(result.files).toEqual(
-				expect.arrayContaining([
-					{
-						id: 'project-id-1',
-						name: '/mock/n8n/git/projects/project-id-1.json',
-					},
-					{
-						id: 'project-id-2',
-						name: '/mock/n8n/git/projects/project-id-2.json',
-					},
-				]),
-			);
+			expect(fsWriteFile).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -1017,13 +1031,10 @@ describe('SourceControlExportService', () => {
 			dataTableRepository.find.mockResolvedValue(mockDataTables as any);
 
 			// Act
-			const result = await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
+			await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
 
 			// Assert
-			expect(result.count).toBe(2);
-			expect(result.files).toHaveLength(2);
-			expect(result.files[0].name).toBe('/mock/n8n/git/datatables/dt1.json');
-			expect(result.files[1].name).toBe('/mock/n8n/git/datatables/dt2.json');
+			expect(fsWriteFile).toHaveBeenCalledTimes(2);
 
 			// Check first file
 			const dataCaptor1 = captor<string>();
@@ -1063,16 +1074,14 @@ describe('SourceControlExportService', () => {
 			});
 		});
 
-		it('should return empty result when no candidates provided', async () => {
+		it('should write no files when no candidates provided', async () => {
 			// Arrange
 			const candidates: any[] = [];
 
 			// Act
-			const result = await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
+			await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
 
 			// Assert
-			expect(result.count).toBe(0);
-			expect(result.files).toHaveLength(0);
 			expect(fsWriteFile).not.toHaveBeenCalled();
 		});
 

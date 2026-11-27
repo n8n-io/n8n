@@ -1,8 +1,13 @@
 import fc from 'fast-check';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INode,
+	INodeParameterResourceLocator,
+} from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import {
 	blockUrlExtractionRegexp,
@@ -17,6 +22,7 @@ import {
 	extractDatabaseMentionRLC,
 	extractPageId,
 	formatBlocks,
+	getCurrentPageId,
 	getPageId,
 	notionApiRequest,
 	notionApiRequestAllItems,
@@ -182,6 +188,41 @@ describe('Test Notion', () => {
 				const result = extractPageId(extractIdFromUrl(page));
 				expect(result).toBe(testId);
 			}
+		});
+
+		test.each([
+			['undefined', undefined],
+			['null', null],
+			['an incomplete resourceLocator object', { __rl: true, mode: 'url' }],
+			['a number', 12345],
+			['an empty string', ''],
+		])('should return an empty string when input is %s', (_, input) => {
+			expect(extractPageId(input)).toBe('');
+		});
+	});
+
+	describe('getCurrentPageId', () => {
+		test('should extract page ID from the current pageId parameter', () => {
+			const pageId = '4eb10d5001254b7faaa831d72d9445aa';
+			const getCurrentNodeParameter = vi.fn(() => `https://www.notion.com/My-Page-${pageId}`);
+			const context = { getCurrentNodeParameter } as unknown as ILoadOptionsFunctions;
+
+			expect(getCurrentPageId.call(context)).toBe(pageId);
+			expect(getCurrentNodeParameter).toHaveBeenCalledWith('pageId', { extractValue: true });
+		});
+
+		test.each([
+			['undefined', undefined],
+			['null', null],
+			['an incomplete resourceLocator object', { __rl: true, mode: 'url' }],
+			['a number', 12345],
+			['an empty string', ''],
+		])('should return an empty string when pageId parameter resolves to %s', (_, pageId) => {
+			const context = {
+				getCurrentNodeParameter: vi.fn(() => pageId),
+			} as unknown as ILoadOptionsFunctions;
+
+			expect(getCurrentPageId.call(context)).toBe('');
 		});
 	});
 });
@@ -444,29 +485,29 @@ describe('Test Notion, notionApiRequest', () => {
 	it('should use notionApi credential when authentication is apiKey', async () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValue('apiKey');
 
-		await notionApiRequest.call(mockExecuteFunctions, 'GET', '/users');
+		await notionApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/users`);
 
 		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 			'notionApi',
-			expect.objectContaining({ method: 'GET', uri: 'https://api.notion.com/v1/users' }),
+			expect.objectContaining({ method: 'GET', uri: requestUrl`https://api.notion.com/v1/users` }),
 		);
 	});
 
 	it('should use notionOAuth2Api credential when authentication is oAuth2', async () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValue('oAuth2');
 
-		await notionApiRequest.call(mockExecuteFunctions, 'GET', '/users');
+		await notionApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/users`);
 
 		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 			'notionOAuth2Api',
-			expect.objectContaining({ method: 'GET', uri: 'https://api.notion.com/v1/users' }),
+			expect.objectContaining({ method: 'GET', uri: requestUrl`https://api.notion.com/v1/users` }),
 		);
 	});
 
 	it('should default to notionApi credential when authentication parameter is not set', async () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 
-		await notionApiRequest.call(mockExecuteFunctions, 'GET', '/users');
+		await notionApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/users`);
 
 		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 			'notionApi',
@@ -516,7 +557,7 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 			mockExecuteFunctions,
 			'results',
 			'GET',
-			'/blocks/test-block/children',
+			requestPath`/blocks/test-block/children`,
 			{},
 			query,
 		);
@@ -552,7 +593,7 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 			mockExecuteFunctions,
 			'results',
 			'POST',
-			'/search',
+			requestPath`/search`,
 			{},
 			{ limit: 5 },
 		);
@@ -580,7 +621,7 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 			mockExecuteFunctions,
 			'results',
 			'POST',
-			'/search',
+			requestPath`/search`,
 			{},
 		);
 

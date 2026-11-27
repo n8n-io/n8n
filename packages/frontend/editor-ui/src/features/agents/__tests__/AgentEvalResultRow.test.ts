@@ -24,6 +24,7 @@ const result = (overrides: Partial<AgentEvalResultRecord> = {}): AgentEvalResult
 	output: { finalText: 'Here are three options in Shinjuku.' },
 	toolCalls: null,
 	metrics: null,
+	verdict: null,
 	runAt: '2026-01-01T00:00:00.000Z',
 	completedAt: '2026-01-01T00:00:30.000Z',
 	errorCode: null,
@@ -117,11 +118,16 @@ describe('AgentEvalResultRow', () => {
 			expect(emitted().vote).toEqual([['down']]);
 		});
 
-		it('disables both votes while the case is still running', () => {
-			const { getByTestId } = render({ kind: 'unrated' }, { status: 'running' });
+		it('disables both votes while the case is still running', async () => {
+			const { getByTestId, emitted } = render({ kind: 'unrated' }, { status: 'running' });
 
-			expect(getByTestId('agent-eval-vote-up')).toBeDisabled();
-			expect(getByTestId('agent-eval-vote-down')).toBeDisabled();
+			for (const testId of ['agent-eval-vote-up', 'agent-eval-vote-down']) {
+				const button = getByTestId(testId);
+				expect(button).toHaveAttribute('aria-disabled', 'true');
+				expect(button).not.toBeDisabled();
+				await userEvent.click(button);
+			}
+			expect(emitted().vote).toBeUndefined();
 		});
 
 		it('keeps errored cases rateable — "it failed" is still a judgment', () => {

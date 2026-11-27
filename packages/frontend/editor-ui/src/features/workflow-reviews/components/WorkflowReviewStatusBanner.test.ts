@@ -142,7 +142,7 @@ describe('WorkflowReviewStatusBanner', () => {
 				if (secondaryEnabled) {
 					expect(secondary).toBeEnabled();
 				} else {
-					expect(secondary).toBeDisabled();
+					expect(secondary).toHaveAttribute('aria-disabled', 'true');
 				}
 			},
 		);
@@ -221,7 +221,7 @@ describe('WorkflowReviewStatusBanner', () => {
 		});
 
 		it('explains why Submit changes is disabled for an unpublishable workflow', async () => {
-			const { getByTestId, findByText } = await openPopover({
+			const { getByTestId, findAllByText } = await openPopover({
 				review: review({ decision: 'changes_requested', decisionBy: actor }),
 				savedVersionId: 'newer-version',
 				canSubmitChanges: false,
@@ -229,11 +229,28 @@ describe('WorkflowReviewStatusBanner', () => {
 			});
 
 			const button = getByTestId('workflow-review-submit-changes-button');
-			expect(button).toBeDisabled();
+			expect(button).toHaveAttribute('aria-disabled', 'true');
+			expect(button).not.toBeDisabled();
+			expect(button).toHaveAccessibleDescription('This workflow has no trigger node');
+			expect(document.getElementById(button.getAttribute('aria-describedby')!)).toBeVisible();
 
 			await userEvent.hover(button);
 
-			expect(await findByText('This workflow has no trigger node')).toBeInTheDocument();
+			// The tooltip renders the content twice: visible and screen-reader copy
+			expect(await findAllByText('This workflow has no trigger node')).not.toHaveLength(0);
+		});
+
+		it('keeps line breaks in a multi-line blocked reason', async () => {
+			const { getByTestId, findByTestId } = await openPopover({
+				savedVersionId: 'newer-version',
+				canSubmitChanges: false,
+				submitBlockedReason: 'Blocked nodes:\nRestricted on this instance: Slack.',
+			});
+
+			await userEvent.hover(getByTestId('workflow-review-submit-changes-button'));
+
+			const hint = await findByTestId('workflow-review-submit-changes-hint');
+			expect(hint.textContent).toContain('\n');
 		});
 
 		it('treats an unknown saved version as in sync', async () => {
@@ -243,7 +260,7 @@ describe('WorkflowReviewStatusBanner', () => {
 		});
 
 		it('explains why Submit changes is disabled while in sync', async () => {
-			const { getByTestId, findByText } = await openPopover({
+			const { getByTestId, findAllByText } = await openPopover({
 				review: review({ decision: 'changes_requested', decisionBy: actor }),
 				savedVersionId: PINNED_VERSION,
 			});
@@ -251,8 +268,8 @@ describe('WorkflowReviewStatusBanner', () => {
 			await userEvent.hover(getByTestId('workflow-review-submit-changes-button'));
 
 			expect(
-				await findByText('Save your changes first to submit them to this review.'),
-			).toBeInTheDocument();
+				await findAllByText('Save your changes first to submit them to this review.'),
+			).not.toHaveLength(0);
 		});
 
 		it('hides Open review when the viewer may not open the review', async () => {

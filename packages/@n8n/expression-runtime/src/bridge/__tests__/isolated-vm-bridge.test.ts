@@ -1,3 +1,5 @@
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { IsolatedVmBridge } from '../isolated-vm-bridge';
 import type { Logger } from '../../types';
@@ -86,6 +88,101 @@ describe('IsolatedVmBridge', () => {
 			const result = bridge.execute('return typeof extend === "function"', {});
 			expect(result).toBe(true);
 			void bridge.dispose();
+		});
+	});
+
+	describe('workflow data', () => {
+		let bridge: IsolatedVmBridge;
+
+		beforeEach(async () => {
+			bridge = new IsolatedVmBridge();
+			await bridge.initialize();
+		});
+
+		afterEach(async () => {
+			await bridge.dispose();
+		});
+
+		it('should free the data of a finished call after the bridge is disposed', async () => {
+			setFlagsFromString('--expose_gc');
+			const gc = runInNewContext('gc') as unknown as () => void;
+
+			let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
+			const dataRef = new WeakRef(data);
+			expect(bridge.execute('return this.$json.value', data)).toBe(42);
+			await bridge.dispose();
+			data = undefined;
+
+			// A WeakRef keeps its target alive until the current job ends.
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			gc();
+
+			expect(dataRef.deref()).toBeUndefined();
+		});
+
+		it('should free the data of a call whose callbacks fail to build', async () => {
+			setFlagsFromString('--expose_gc');
+			const gc = runInNewContext('gc') as unknown as () => void;
+
+			vi.spyOn(
+				bridge as unknown as { createGetArrayElementRef: () => unknown },
+				'createGetArrayElementRef',
+			).mockImplementation(() => {
+				throw new Error('Callback failed');
+			});
+			let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
+			const dataRef = new WeakRef(data);
+			expect(() => bridge.execute('return 1', data!)).toThrow('Callback failed');
+			data = undefined;
+
+			// A WeakRef keeps its target alive until the current job ends.
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			gc();
+
+			expect(dataRef.deref()).toBeUndefined();
+		});
+
+		it('should return an error from a callback that runs after its call failed', () => {
+			expect(() =>
+				bridge.execute('globalThis.__getValueAtPath = $0; throw new Error("boom")', {
+					$json: { value: 42 },
+				}),
+			).toThrow('boom');
+
+			expect(
+				bridge.execute('return globalThis.__getValueAtPath(["$json", "value"])', {}),
+			).toMatchObject({
+				__isError: true,
+				message: 'Host callback called after its expression finished',
+			});
+		});
+	});
+
+	describe('result transfer', () => {
+		it('should return objects and errors after an array iterator replacement', async () => {
+			const bridge = new IsolatedVmBridge();
+			await bridge.initialize();
+			try {
+				const result = bridge.execute(
+					`
+						const error = new TypeError("bad");
+						error.code = 5;
+						const result = { plain: { a: 1, b: [1, 2] }, error };
+						Array.prototype[Symbol.iterator] = function () {
+							return { next: () => ({ done: true }) };
+						};
+						return result;
+					`,
+					{},
+				) as { plain: unknown; error: Error & { code?: number } };
+
+				expect(result.plain).toEqual({ a: 1, b: [1, 2] });
+				expect(result.error).toBeInstanceOf(TypeError);
+				expect(result.error.message).toBe('bad');
+				expect(result.error.code).toBe(5);
+			} finally {
+				await bridge.dispose();
+			}
 		});
 	});
 });

@@ -1,8 +1,7 @@
 import { sleep } from '@n8n/utils/sleep';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
-	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INode,
 	IPollFunctions,
@@ -16,7 +15,9 @@ import {
 	fetchDatabricksPage,
 	getActiveCredentialType,
 	readIdParameter,
+	withGenieDeepLink,
 } from '../actions/helpers';
+import type { DatabricksRequestOptions } from '../actions/helpers';
 
 vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
@@ -38,11 +39,15 @@ describe('databricksApiRequest', () => {
 		httpRequestWithAuthentication.mock.calls[0][1] as Record<string, unknown>;
 
 	it('should add the partner User-Agent alongside caller headers', async () => {
-		await databricksApiRequest(context, 'databricksApi', {
-			method: 'PUT',
-			url: 'https://example.databricks.com/api/2.0/fs/files/x',
-			headers: { 'Content-Type': 'application/octet-stream' },
-		});
+		await databricksApiRequest(
+			context,
+			'databricksApi',
+			requestUrl`https://example.databricks.com/api/2.0/fs/files/x`,
+			{
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/octet-stream' },
+			},
+		);
 
 		expect(capturedOptions().headers).toEqual({
 			'Content-Type': 'application/octet-stream',
@@ -51,37 +56,49 @@ describe('databricksApiRequest', () => {
 	});
 
 	it('should add headers when the caller supplies none', async () => {
-		await databricksApiRequest(context, 'databricksApi', {
-			method: 'GET',
-			url: 'https://example.databricks.com/api/2.1/unity-catalog/catalogs',
-		});
+		await databricksApiRequest(
+			context,
+			'databricksApi',
+			requestUrl`https://example.databricks.com/api/2.1/unity-catalog/catalogs`,
+			{
+				method: 'GET',
+			},
+		);
 
 		expect(capturedOptions().headers).toEqual({ 'User-Agent': 'n8n_DatabricksNode' });
 	});
 
 	it('should override a caller-supplied User-Agent', async () => {
-		await databricksApiRequest(context, 'databricksApi', {
-			method: 'GET',
-			url: 'https://example.databricks.com/api/2.1/unity-catalog/catalogs',
-			headers: { 'User-Agent': 'something-else' },
-		});
+		await databricksApiRequest(
+			context,
+			'databricksApi',
+			requestUrl`https://example.databricks.com/api/2.1/unity-catalog/catalogs`,
+			{
+				method: 'GET',
+				headers: { 'User-Agent': 'something-else' },
+			},
+		);
 
 		expect(capturedOptions().headers).toEqual({ 'User-Agent': 'n8n_DatabricksNode' });
 	});
 
 	it('should pass non-header options through untouched', async () => {
-		await databricksApiRequest(context, 'databricksApi', {
-			method: 'GET',
-			url: 'https://example.databricks.com/api/2.0/fs/files/x',
-			encoding: 'arraybuffer',
-			returnFullResponse: true,
-			qs: { page_token: 'abc' },
-			json: true,
-		});
+		await databricksApiRequest(
+			context,
+			'databricksApi',
+			requestUrl`https://example.databricks.com/api/2.0/fs/files/x`,
+			{
+				method: 'GET',
+				encoding: 'arraybuffer',
+				returnFullResponse: true,
+				qs: { page_token: 'abc' },
+				json: true,
+			},
+		);
 
 		expect(capturedOptions()).toEqual({
 			method: 'GET',
-			url: 'https://example.databricks.com/api/2.0/fs/files/x',
+			url: requestUrl`https://example.databricks.com/api/2.0/fs/files/x`,
 			encoding: 'arraybuffer',
 			returnFullResponse: true,
 			qs: { page_token: 'abc' },
@@ -96,10 +113,14 @@ describe('databricksApiRequest', () => {
 			helpers: { httpRequestWithAuthentication },
 		});
 
-		await databricksApiRequest(loadOptionsContext, 'databricksOAuth2Api', {
-			method: 'GET',
-			url: 'https://example.databricks.com/api/2.1/unity-catalog/volumes',
-		});
+		await databricksApiRequest(
+			loadOptionsContext,
+			'databricksOAuth2Api',
+			requestUrl`https://example.databricks.com/api/2.1/unity-catalog/volumes`,
+			{
+				method: 'GET',
+			},
+		);
 
 		expect(httpRequestWithAuthentication.mock.calls[0][0]).toBe('databricksOAuth2Api');
 		expect(httpRequestWithAuthentication.mock.instances[0]).toBe(loadOptionsContext);
@@ -153,10 +174,8 @@ describe('databricksApiRequest rate limiting', () => {
 			}) as unknown as JsonObject,
 		);
 
-	const request: IHttpRequestOptions = {
-		method: 'GET',
-		url: 'https://example.databricks.com/api/2.2/jobs/runs/get',
-	};
+	const url = requestUrl`https://example.databricks.com/api/2.2/jobs/runs/get`;
+	const request: DatabricksRequestOptions = { method: 'GET' };
 	let httpRequestWithAuthentication: Mock;
 	let context: IExecuteFunctions;
 
@@ -177,7 +196,7 @@ describe('databricksApiRequest rate limiting', () => {
 			.mockRejectedValueOnce(apiError(429, { 'retry-after': '2' }))
 			.mockResolvedValueOnce({ run_id: 1 });
 
-		await expect(databricksApiRequest(context, 'databricksApi', request)).resolves.toEqual({
+		await expect(databricksApiRequest(context, 'databricksApi', url, request)).resolves.toEqual({
 			run_id: 1,
 		});
 
@@ -194,7 +213,7 @@ describe('databricksApiRequest rate limiting', () => {
 			.mockRejectedValueOnce(apiError(429, headers))
 			.mockResolvedValueOnce({});
 
-		await databricksApiRequest(context, 'databricksApi', request);
+		await databricksApiRequest(context, 'databricksApi', url, request);
 
 		expect(sleepDurations()).toEqual([1000]);
 	});
@@ -204,7 +223,7 @@ describe('databricksApiRequest rate limiting', () => {
 			.mockRejectedValueOnce(apiError(429, { 'retry-after': '120' }))
 			.mockResolvedValueOnce({});
 
-		await databricksApiRequest(context, 'databricksApi', request);
+		await databricksApiRequest(context, 'databricksApi', url, request);
 
 		expect(sleepDurations()).toEqual([30000]);
 	});
@@ -213,7 +232,7 @@ describe('databricksApiRequest rate limiting', () => {
 		const error = apiError(429, { 'retry-after': '1' });
 		httpRequestWithAuthentication.mockRejectedValue(error);
 
-		await expect(databricksApiRequest(context, 'databricksApi', request)).rejects.toBe(error);
+		await expect(databricksApiRequest(context, 'databricksApi', url, request)).rejects.toBe(error);
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(4);
 		expect(sleepDurations()).toEqual([1000, 1000, 1000]);
@@ -223,7 +242,7 @@ describe('databricksApiRequest rate limiting', () => {
 		const error = apiError(503);
 		httpRequestWithAuthentication.mockRejectedValue(error);
 
-		await expect(databricksApiRequest(context, 'databricksApi', request)).rejects.toBe(error);
+		await expect(databricksApiRequest(context, 'databricksApi', url, request)).rejects.toBe(error);
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 		expect(sleep).not.toHaveBeenCalled();
@@ -240,7 +259,7 @@ describe('databricksApiRequest rate limiting', () => {
 			.mockRejectedValueOnce(apiError(429, { 'retry-after': '1' }))
 			.mockResolvedValueOnce({});
 
-		await databricksApiRequest(context, 'databricksApi', request);
+		await databricksApiRequest(context, 'databricksApi', url, request);
 
 		expect(sleep).toHaveBeenCalledWith(1000, signal);
 	});
@@ -255,7 +274,7 @@ describe('databricksApiRequest rate limiting', () => {
 			.mockResolvedValueOnce({ jobs: [] });
 
 		await expect(
-			databricksApiRequest(loadOptionsContext, 'databricksApi', request),
+			databricksApiRequest(loadOptionsContext, 'databricksApi', url, request),
 		).resolves.toEqual({ jobs: [] });
 
 		expect(sleep).toHaveBeenCalledWith(1000, undefined);
@@ -285,7 +304,7 @@ describe('fetchDatabricksPage', () => {
 				context,
 				'databricksOAuth2Api',
 				'https://example.databricks.com',
-				'/api/2.2/jobs/get',
+				requestPath`/api/2.2/jobs/get`,
 				qs,
 				pageToken,
 			),
@@ -293,7 +312,7 @@ describe('fetchDatabricksPage', () => {
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledWith('databricksOAuth2Api', {
 			method: 'GET',
-			url: 'https://example.databricks.com/api/2.2/jobs/get',
+			url: requestUrl`https://example.databricks.com/api/2.2/jobs/get`,
 			qs: { job_id: 42, include_trigger_state: true, ...tokenQs },
 			headers: { Accept: 'application/json', 'User-Agent': 'n8n_DatabricksNode' },
 			json: true,
@@ -350,5 +369,35 @@ describe('readIdParameter', () => {
 
 		expect(thrown).toBeInstanceOf(NodeOperationError);
 		expect(thrown).toMatchObject({ message, description, context: { itemIndex: 3 } });
+	});
+});
+
+describe('withGenieDeepLink', () => {
+	const HOST = 'https://adb-1234567890.1.azuredatabricks.net';
+
+	it.each([
+		['1234567890', '?o=1234567890'],
+		[undefined, ''],
+		['abc', ''],
+		['123/x', ''],
+	])('appends ?o= only for a numeric workspace id header (%s)', (orgId, query) => {
+		const headers = orgId === undefined ? {} : { 'x-databricks-org-id': orgId };
+
+		const result = withGenieDeepLink({ body: { a: 1 }, headers }, HOST, 'space123', 'conv-456');
+
+		expect(result.a).toBe(1);
+		expect(result.deep_link).toBe(`${HOST}/genie/rooms/space123/chats/conv-456${query}`);
+	});
+
+	it('links to the space when there is no conversation id', () => {
+		const result = withGenieDeepLink({ body: {}, headers: {} }, HOST, 'space123');
+
+		expect(result.deep_link).toBe(`${HOST}/genie/rooms/space123`);
+	});
+
+	it('URL-encodes the space and conversation ids', () => {
+		const result = withGenieDeepLink({ body: {}, headers: {} }, HOST, 'a b', 'c/d');
+
+		expect(result.deep_link).toBe(`${HOST}/genie/rooms/a%20b/chats/c%2Fd`);
 	});
 });

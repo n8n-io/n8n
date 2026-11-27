@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
@@ -9,6 +10,15 @@ import { execute } from '../../../../v2/actions/image/analyze.operation';
 
 vi.mock('../../../../helpers/binary-data');
 vi.mock('../../../../transport');
+
+const { accumulateTokenUsageMock } = vi.hoisted(() => ({
+	accumulateTokenUsageMock: vi.fn(),
+}));
+
+vi.mock('n8n-workflow', async (importOriginal) => ({
+	...(await importOriginal<typeof import('n8n-workflow')>()),
+	accumulateTokenUsage: accumulateTokenUsageMock,
+}));
 
 describe('Image Analyze Operation', () => {
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
@@ -110,7 +120,7 @@ describe('Image Analyze Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o',
 					input: [
@@ -175,7 +185,7 @@ describe('Image Analyze Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o',
 					input: [
@@ -235,7 +245,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					input: [
 						{
@@ -289,7 +299,7 @@ describe('Image Analyze Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o-mini',
 					input: [
@@ -368,7 +378,7 @@ describe('Image Analyze Operation', () => {
 				mockBinaryFile.fileContent,
 			);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o',
 					input: [
@@ -450,7 +460,7 @@ describe('Image Analyze Operation', () => {
 			expect(getBinaryDataFileSpy).toHaveBeenNthCalledWith(1, mockExecuteFunctions, 0, 'image1');
 			expect(getBinaryDataFileSpy).toHaveBeenNthCalledWith(2, mockExecuteFunctions, 0, 'image2');
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o',
 					input: [
@@ -569,7 +579,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					model: 'gpt-4o',
 				}),
@@ -629,7 +639,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					max_output_tokens: 300,
 				}),
@@ -665,7 +675,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					input: [
 						{
@@ -712,7 +722,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					input: [
 						{
@@ -845,7 +855,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o-mini',
 					input: [
@@ -901,7 +911,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					max_output_tokens: 300, // Default value
 					input: [
@@ -917,6 +927,65 @@ describe('Image Analyze Operation', () => {
 					],
 				}),
 			});
+		});
+	});
+
+	describe('token usage reporting', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params = {
+					modelId: 'gpt-4o',
+					text: "What's in this image?",
+					inputType: 'url',
+					imageUrls: 'https://example.com/image1.jpg',
+					simplify: true,
+					options: {},
+				};
+				return params[paramName as keyof typeof params];
+			});
+		});
+
+		const baseResponse = {
+			id: 'response-123',
+			status: 'completed',
+			output: [
+				{
+					type: 'message',
+					role: 'assistant',
+					content: [{ type: 'output_text', text: 'A mountain lake.' }],
+				},
+			],
+		};
+
+		it('should report token usage when the API returns a usage object', async () => {
+			apiRequestSpy.mockResolvedValue({
+				...baseResponse,
+				usage: { input_tokens: 1120, output_tokens: 96, total_tokens: 1216 },
+			} as ChatResponse);
+
+			await execute.call(mockExecuteFunctions, 0);
+
+			expect(accumulateTokenUsageMock).toHaveBeenCalledTimes(1);
+			expect(accumulateTokenUsageMock).toHaveBeenCalledWith(mockExecuteFunctions, 1120, 96);
+		});
+
+		it('should not report token usage when the API omits it', async () => {
+			apiRequestSpy.mockResolvedValue(baseResponse as ChatResponse);
+
+			await execute.call(mockExecuteFunctions, 0);
+
+			expect(accumulateTokenUsageMock).not.toHaveBeenCalled();
+		});
+
+		it('should not report token usage when a proxy returns usage without the counts', async () => {
+			apiRequestSpy.mockResolvedValue({
+				...baseResponse,
+				usage: { total_tokens: 1216 },
+			} as unknown as ChatResponse);
+
+			await execute.call(mockExecuteFunctions, 0);
+
+			expect(accumulateTokenUsageMock).not.toHaveBeenCalled();
 		});
 	});
 });

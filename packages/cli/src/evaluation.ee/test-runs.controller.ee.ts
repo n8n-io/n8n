@@ -8,7 +8,6 @@ import type { TestRun, User } from '@n8n/db';
 import { Body, Delete, Get, Post, RestController } from '@n8n/decorators';
 import { type Scope } from '@n8n/permissions';
 import express from 'express';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { resolveConfigMetricScales, runMetricScales } from './metric-scales';
 
@@ -106,6 +105,7 @@ export class TestRunsController {
 		});
 	}
 
+	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/:workflowId/test-runs', { middlewares: listQueryMiddleware })
 	async getMany(req: TestRunsRequest.GetMany) {
 		const { workflowId } = req.params;
@@ -123,20 +123,25 @@ export class TestRunsController {
 	async getOne(req: TestRunsRequest.GetOne) {
 		const { id, workflowId } = req.params;
 
-		try {
-			await this.getTestRun(id, workflowId, req.user); // FIXME: do not fetch test run twice
-			const summary = await this.testRunRepository.getTestRunSummaryById(id);
-			const [withScales] = await this.attachMetricScales([summary], workflowId);
-			return withScales;
-		} catch (error) {
-			if (error instanceof UnexpectedError) throw new NotFoundError(error.message);
-			throw error;
-		}
+		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
+
+		// The summary loads only each case's id and status. Case inputs and outputs
+		// hold run data, which sits behind `execution:read` (see `getTestCases`).
+		const summary = await this.testRunRepository.getTestRunSummaryByWorkflowId(id, workflowId);
+		if (!summary) throw new NotFoundError('Test run not found');
+
+		const [withScales] = await this.attachMetricScales([summary], workflowId);
+		return withScales;
 	}
 
 	@Get('/:workflowId/test-runs/:id/test-cases')
 	async getTestCases(req: TestRunsRequest.GetCases) {
-		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		// Case inputs and outputs come from the case executions' run data. A custom
+		// project role can hold `workflow:read` without `execution:read`.
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user, [
+			'workflow:read',
+			'execution:read',
+		]);
 
 		return await this.testCaseExecutionRepository.find({
 			where: { testRun: { id: req.params.id } },

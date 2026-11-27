@@ -3,18 +3,23 @@ import { DateTime, Duration, Interval } from 'luxon';
 import * as Helpers from './helpers';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ExpressionError } from '../src/errors/expression.error';
+import { UnexpectedError, UserError } from '../src/errors';
+import { createMergeAppendProxy } from './fixtures/merge-append-proxy';
+import { createPairedItemPagination } from './fixtures/paired-item-pagination';
 import {
 	NodeConnectionTypes,
 	type NodeConnectionType,
 	type IDataObject,
 	type IExecuteData,
 	type INode,
+	type INodeParameters,
 	type INodeExecutionData,
 	type IPairedItemData,
 	type IPinData,
 	type IRun,
 	type IWorkflowBase,
 	type IWorkflowDataProxyAdditionalKeys,
+	type IWorkflowDataProxyData,
 	type WorkflowExecuteMode,
 	type WorkflowSettingsBinaryMode,
 	type INodeType,
@@ -804,6 +809,44 @@ describe('WorkflowDataProxy', () => {
 		});
 	});
 
+	describe('Paired items through a long pagination loop', () => {
+		test.each([1, 2])('resolves 5000 pages with %i rows per page', (rows) => {
+			const { workflow, run } = createPairedItemPagination(5000, rows);
+			const proxy = getProxyFromFixture(workflow, run, 'Process');
+
+			expect(proxy.$('Trigger').item.json.timestamp).toEqual('2024-01-01T08:00:00.000Z');
+		});
+
+		test.each([1, 2])('rejects a cycle with %i parent links', (parents) => {
+			const { workflow, run } = createPairedItemPagination(1, parents);
+			run.data.resultData.runData.Fetch[0].source = [
+				{ previousNode: 'Has More', previousNodeOutput: 1 },
+			];
+			const proxy = getProxyFromFixture(workflow, run, 'Process');
+
+			const resolve = () => proxy.$('Trigger').item;
+			expect(resolve).toThrow(UnexpectedError);
+			expect(resolve).toThrow('Paired item ancestry contains a cycle');
+		});
+
+		test.each([true, false])(
+			'resolves a valid branch next to a cycle (cycle first: %s)',
+			(cycleFirst) => {
+				const { workflow, run } = createPairedItemPagination(1);
+				const runData = run.data.resultData.runData;
+				runData.Fetch[0].source = [{ previousNode: 'Has More', previousNodeOutput: 1 }];
+				const cycle = { item: 0 };
+				const valid = { item: 0, sourceOverwrite: { previousNode: 'Trigger' } };
+				runData['Has More'][0].data!.main[1]![0].pairedItem = cycleFirst
+					? [cycle, valid]
+					: [valid, cycle];
+				const proxy = getProxyFromFixture(workflow, run, 'Process');
+
+				expect(proxy.$('Trigger').item.json.timestamp).toBe('2024-01-01T08:00:00.000Z');
+			},
+		);
+	});
+
 	describe('Partial data', () => {
 		const fixture = loadFixture('partial_data');
 
@@ -1287,6 +1330,84 @@ describe('WorkflowDataProxy', () => {
 			expect(noRunDataProxy.$rawParameter.options).toEqual({
 				waitForSubWorkflow: '={{ true }}',
 			});
+		});
+	});
+
+	describe('$parameter with description-only keys', () => {
+		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+			$credentials: { apiKey: 'credential-api-key' },
+			$vars: { region: 'eu' },
+		};
+
+		const read = async (
+			parameters: INodeParameters,
+			select: (proxy: IWorkflowDataProxyData) => unknown,
+		) => {
+			const node: INode = {
+				id: 'uuid-1',
+				name: 'Set',
+				type: 'test.set',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters,
+			};
+			const workflow = new Workflow({
+				id: '123',
+				name: 'test workflow',
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes: Helpers.NodeTypes(),
+			});
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				createEmptyRunExecutionData(),
+				0,
+				0,
+				node.name,
+				[],
+				{},
+				'manual',
+				additionalKeys,
+			);
+			const proxy = dataProxy.getDataProxy({ throwOnMissingExecutionData: false });
+
+			await workflow.expression.acquireIsolate();
+			try {
+				return select(proxy);
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
+		};
+
+		test('keeps the keys on the outer expression scope', async () => {
+			expect(await read({}, (proxy) => proxy.$credentials)).toEqual({
+				apiKey: 'credential-api-key',
+			});
+		});
+
+		test('resolves a parameter expression without the description-only keys', async () => {
+			expect(
+				await read({ value1: '={{ typeof $credentials }}' }, (proxy) => proxy.$parameter.value1),
+			).toBe('undefined');
+			expect(
+				await read({ value1: '={{ $credentials.apiKey }}' }, (proxy) => proxy.$parameter.value1),
+			).toBeUndefined();
+		});
+
+		test('keeps the other additional keys for a parameter expression', async () => {
+			expect(
+				await read({ value2: '={{ $vars.region }}' }, (proxy) => proxy.$parameter.value2),
+			).toBe('eu');
+		});
+
+		test('applies the same scope to $node[...].parameter', async () => {
+			expect(
+				await read(
+					{ value1: '={{ typeof $credentials }}' },
+					(proxy) => proxy.$node.Set.parameter.value1,
+				),
+			).toBe('undefined');
 		});
 	});
 
@@ -2414,7 +2535,7 @@ describe('WorkflowDataProxy → pairedItem traversal with sourceOverwrite routes
 
 	const makeRun = (
 		startItems: INodeExecutionData[],
-		midRuns: ReturnType<typeof midRun>[],
+		midRuns: Array<ReturnType<typeof midRun>>,
 		joinPairing: IPairedItemData[] = defaultJoinPairing,
 	): IRun => {
 		const start = {
@@ -2503,6 +2624,24 @@ describe('WorkflowDataProxy → pairedItem traversal with sourceOverwrite routes
 			"Paired item data for item from node 'Mid' is unavailable",
 		);
 	});
+
+	test.each([true, false])(
+		'returns the first branch error (missing pairing first: %s)',
+		(missingFirst) => {
+			const missing = { item: 0, sourceOverwrite: { previousNode: 'Mid', previousNodeRun: 0 } };
+			const outOfBounds = { item: 0, sourceOverwrite: { previousNode: 'Mid', previousNodeRun: 1 } };
+			const run = makeRun(
+				[{ json: {} }],
+				[midRun([[{ json: {} }]]), ...midRunsPairedTo([1])],
+				missingFirst ? [missing, outOfBounds] : [outOfBounds, missing],
+			);
+			const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
+
+			expect(() => proxy.$('Start').item).toThrow(
+				`Paired item data for item from node '${missingFirst ? 'Mid' : 'Start'}' is unavailable`,
+			);
+		},
+	);
 
 	test('treats the same item index on different outputs of one run as distinct states', () => {
 		const startItems = [
@@ -2622,4 +2761,51 @@ describe('WorkflowDataProxy → pairedItem traversal through a diamond', () => {
 
 		expect(() => proxy.$('Start').item).toThrowError('Multiple matches');
 	});
+});
+
+describe('WorkflowDataProxy → pairedItem with no path to the referenced node', () => {
+	test('resolves a node on the same branch', () => {
+		const { proxy } = createMergeAppendProxy(0);
+
+		expect(proxy.$('Left').item.json).toEqual({ value: 'left' });
+	});
+
+	test('throws an error that is not an expression error for a node on the other branch', () => {
+		const { proxy } = createMergeAppendProxy(0);
+
+		expect(() => proxy.$('Right').item).toThrow(UserError);
+		expect(() => proxy.$('Right').item).not.toThrow(ExpressionError);
+	});
+
+	test.each([
+		{ itemIndex: 0, otherBranch: 'Right' },
+		{ itemIndex: 1, otherBranch: 'Left' },
+	])(
+		'resolves an expression for $otherBranch to no value during an execution',
+		async ({ itemIndex, otherBranch }) => {
+			const { workflow, runExecutionData, executeData, endInput } =
+				createMergeAppendProxy(itemIndex);
+
+			await workflow.expression.acquireIsolate();
+			try {
+				const result = workflow.expression.getParameterValue(
+					`={{ $('${otherBranch}').item.json.value }}`,
+					runExecutionData,
+					0,
+					itemIndex,
+					'End',
+					endInput,
+					'manual',
+					{},
+					executeData,
+				);
+
+				// The engines swallow the error and return undefined. The Set node then
+				// stores the value as null.
+				expect(result).toBeUndefined();
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
+		},
+	);
 });

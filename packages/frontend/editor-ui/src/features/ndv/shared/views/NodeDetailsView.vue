@@ -128,6 +128,8 @@ const activeNodeType = computed(() => {
 	return null;
 });
 
+const isDeprecatedNode = computed(() => activeNodeType.value?.deprecated === true);
+
 const { docsUrl } = useNodeDocsUrl({ nodeType: activeNodeType });
 
 const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
@@ -672,8 +674,9 @@ watch(
 						output_first_connector_runs: maxOutputRun.value,
 						selected_view_inputs: isTriggerNode.value
 							? 'trigger'
-							: ndvStore.value.inputPanelDisplayMode,
-						selected_view_outputs: ndvStore.value.outputPanelDisplayMode,
+							: (ndvStore.value.input.shownDisplayMode ?? ndvStore.value.inputPanelDisplayMode),
+						selected_view_outputs:
+							ndvStore.value.output.shownDisplayMode ?? ndvStore.value.outputPanelDisplayMode,
 						input_connectors: parentNodes.value.length,
 						output_connectors: outgoingConnections?.main?.length,
 						input_displayed_run_index: inputRun.value,
@@ -782,6 +785,7 @@ onBeforeUnmount(() => {
 			>
 				<NDVHeader
 					:class="$style.header"
+					:read-only="readOnly || isDeprecatedNode"
 					:node-name="activeNode.name"
 					:node-type-name="
 						activeNodeType?.defaults.name ?? activeNodeType?.displayName ?? activeNode.name

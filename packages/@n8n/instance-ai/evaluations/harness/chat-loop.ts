@@ -6,16 +6,17 @@
 // memory jobs (via thread status polling), auto-approves any confirmation
 // confirmation requests, and surfaces the captured events.
 //
-// Used by `harness/build-workflow.ts` (workflow eval) and the computer-use eval
+// Used by `harness/build-workflow.ts` (workflow eval)
 // harness. Both consume the same primitives so any fix here lands in both
 // flows automatically.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiBuildMode, InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
 import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { waitForAssistantAgentActivity } from './assistant-agents';
 import type { EvalLogger } from './logger';
 import { MIN_TURN_BUDGET_MS, RunTimeoutError } from './timeouts';
 import type { N8nClient } from '../clients/n8n-client';
@@ -65,6 +66,13 @@ export async function startSseConnection(
 	events: CapturedEvent[],
 	signal: AbortSignal,
 ): Promise<void> {
+	// The Agents runtime has no event log. Its wait loop rebuilds the events from history.
+	if (client.assistantAgents()) {
+		if (signal.aborted) return;
+		return await new Promise((resolve) => {
+			signal.addEventListener('abort', () => resolve(), { once: true });
+		});
+	}
 	const url = client.getEventsUrl(threadId);
 	const cookie = client.cookie;
 
@@ -123,6 +131,30 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 	// pass one; per-call allocation would reset attempt counts every poll.
 	config.confirmationRetries ??= new Map<string, number>();
 
+	const agents = config.client.assistantAgents();
+	if (agents) {
+		// No hidden follow-up turns and no background tasks on the Agents runtime, and no route
+		// that reports memory tasks: the quiet polls give the observer its time.
+		await waitForAssistantAgentActivity({
+			client: agents,
+			threadId: config.threadId,
+			events: config.events,
+			approvedRequests: config.approvedRequests,
+			sentAt: config.turnStartedAt ?? config.startTime,
+			confirmationStrategy: config.confirmationStrategy ?? buildAutoApprovePayload,
+			confirmationRetries: config.confirmationRetries,
+			maxConfirmationRetries: MAX_CONFIRMATION_RETRIES,
+			proxyResponses: config.proxyResponses,
+			// No inactivity bound: these events come from the stored history, which can
+			// stay the same for minutes while a long tool call runs. The turn and
+			// conversation budgets still stop a turn that hangs.
+			timeoutBreach: () => elapsedBudgetBreach(config),
+			onTimeout: async (breach) => await cancelAndThrow(config, breach),
+			log: (message) => config.logger.verbose(message),
+		});
+		return;
+	}
+
 	let runFinishCount = 0;
 
 	while (true) {
@@ -146,9 +178,11 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 		if (newRunStarts <= currentRunFinishes) {
 			// The waits above return when the budget they are bounded by is spent,
 			// they do not throw. Checked here, or a turn that overran during them
-			// goes on to a follow-up, or is graded as a turn that finished.
+			// goes on to a follow-up, or is graded as a turn that finished. The
+			// cancel reaches the background tasks the wait gave up on, or they
+			// would keep editing the build while it is graded.
 			const breach = elapsedBudgetBreach(config);
-			if (breach) throw new RunTimeoutError(breach);
+			if (breach) await cancelAndThrow(config, breach);
 			break;
 		}
 
@@ -203,7 +237,10 @@ export function timeoutBreach(config: WaitConfig, now = Date.now()): BuildTimeou
  * inactivity bound is not in here: it reads the last event, and the post-run
  * waits emit none, so it belongs to a run in flight only.
  */
-export function elapsedBudgetBreach(config: WaitConfig, now = Date.now()): BuildTimeout | undefined {
+export function elapsedBudgetBreach(
+	config: WaitConfig,
+	now = Date.now(),
+): BuildTimeout | undefined {
 	const turn = Math.max(1, countEvents(config.events, USER_TURN_EVENT));
 	const conversationElapsed = now - config.startTime;
 	if (conversationElapsed > config.timeoutMs) {
@@ -220,6 +257,11 @@ export function elapsedBudgetBreach(config: WaitConfig, now = Date.now()): Build
 async function cancelOnTimeout(config: WaitConfig): Promise<void> {
 	const breach = timeoutBreach(config);
 	if (!breach) return;
+	await cancelAndThrow(config, breach);
+}
+
+/** Cancel the thread (its run in flight and its background tasks), then throw. */
+async function cancelAndThrow(config: WaitConfig, breach: BuildTimeout): Promise<never> {
 	await config.client.cancelRun(config.threadId).catch(() => {});
 	throw new RunTimeoutError(breach);
 }
@@ -369,7 +411,6 @@ export interface MultiTurnConfig extends WaitConfig {
 	beforeUserExecution?: (deadline: number) => Promise<void>;
 	allowUserExecution?: boolean;
 	/** Repeat the eval override on each message to bypass the backend assignment. */
-	buildMode?: InstanceAiBuildMode;
 	promptVersion?: string;
 	observerThresholdTokens?: number;
 }
@@ -434,7 +475,6 @@ export async function runMultiTurnConversation(
 				config.threadId,
 				decision.message,
 				undefined,
-				config.buildMode,
 				config.promptVersion,
 				undefined,
 				// Re-sent per message: the backend clears an omitted override.

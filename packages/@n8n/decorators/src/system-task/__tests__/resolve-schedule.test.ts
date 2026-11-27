@@ -1,21 +1,51 @@
 import {
 	intervalFromMilliseconds,
 	intervalFromSeconds,
-	resolveSystemTaskSchedule,
+	resolveSystemTask,
 	type SystemTask,
-	type SystemTaskSchedule,
 } from '../system-task';
-import type { SystemTaskPlacement } from '../system-task-placement';
+import type { SystemTaskTarget, SystemTaskSchedule } from '../types';
+
+const resolveSystemTaskSchedule = (task: SystemTask) => resolveSystemTask(task).schedule;
 
 const taskWith = (
 	schedule: SystemTaskSchedule,
-	placement: SystemTaskPlacement = { scope: 'cluster', durable: false },
+	target: SystemTaskTarget = { scope: 'cluster', leaderTimer: {} },
 ): SystemTask => ({
 	name: 'test-task',
 	schedule,
-	effects: 'idempotent',
-	placement,
+	target,
 	run: async () => {},
+});
+
+it.each([-1, 0.5, Number.NaN, Infinity, 2 ** 31])(
+	'rejects an invalid initial delay of %s',
+	(delay) => {
+		expect(() =>
+			resolveSystemTask({
+				...taskWith({ kind: 'interval', intervalSeconds: 60 }),
+				initialDelaySeconds: delay,
+			}),
+		).toThrow('A system task declares an out-of-range option');
+	},
+);
+
+it.each([0, 17])('keeps the interval with an initial delay of %s', (delay) => {
+	expect(
+		resolveSystemTask({
+			...taskWith({ kind: 'interval', intervalSeconds: 60 }),
+			initialDelaySeconds: delay,
+		}).schedule,
+	).toEqual({ kind: 'interval', intervalSeconds: 60 });
+});
+
+it('rejects an initial delay on a cron schedule', () => {
+	expect(() =>
+		resolveSystemTask({
+			...taskWith({ kind: 'cron', cronExpression: '0 * * * *', timezone: 'UTC' }),
+			initialDelaySeconds: 17,
+		}),
+	).toThrow('Only interval system tasks can declare an initial delay');
 });
 
 it.each([
@@ -48,9 +78,12 @@ it.each([
 	expect(schedule).toEqual({ kind: 'interval', intervalSeconds: expected });
 });
 
-it('should round a sub-second interval of a durable task to one second', () => {
+it('should round a sub-second interval of a scheduler task to one second', () => {
 	const schedule = resolveSystemTaskSchedule(
-		taskWith({ kind: 'interval', intervalSeconds: 0.5 }, { scope: 'cluster', durable: true }),
+		taskWith(
+			{ kind: 'interval', intervalSeconds: 0.5 },
+			{ scope: 'cluster', scheduler: { retryOnFailure: true } },
+		),
 	);
 
 	expect(schedule).toEqual({ kind: 'interval', intervalSeconds: 1 });

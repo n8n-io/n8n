@@ -1,5 +1,19 @@
 import { z } from 'zod';
 
+/** The `kind` values n8n emits today. The schema stays open to others. */
+export const POLICY_VIOLATION_KIND = {
+	nodeTypeUnavailable: 'node-type-unavailable',
+	credentialTypeUnavailable: 'credential-type-unavailable',
+	nodeTypeDeprecated: 'node-type-deprecated',
+	executionLimit: 'execution-limit',
+} as const;
+
+/** The `subjectType` values n8n emits today. The schema stays open to others. */
+export const POLICY_VIOLATION_SUBJECT_TYPE = {
+	nodeType: 'nodeType',
+	credentialType: 'credentialType',
+} as const;
+
 /**
  * One reason something was blocked by a policy check.
  *
@@ -29,6 +43,24 @@ export const policyViolationSchema = z.object({
 
 	/** The rule that decided, if a rule did rather than a fallback default. */
 	matchedRuleId: z.string().optional(),
+
+	/**
+	 * The project whose policy was evaluated, also when `scope` is `'instance'`. For a
+	 * sub-workflow this is the sub-workflow's project, not the caller's.
+	 */
+	projectId: z.string().optional(),
+
+	/** The project can lift this block with its own allow rule. Absent means it cannot. */
+	optInAvailable: z.boolean().optional(),
+
+	/** The maximum that was reached, for a violation about a count. */
+	limit: z.number().optional(),
+
+	/** The count when the check ran. It can be above `limit`, because counts arrive late. */
+	usage: z.number().optional(),
+
+	/** ISO 8601 time when the count starts again from zero. */
+	resetsAt: z.string().optional(),
 });
 
 export type PolicyViolation = z.infer<typeof policyViolationSchema>;

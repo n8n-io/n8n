@@ -2,7 +2,7 @@ import type { Project, User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
-import type { FolderFinderService } from '@/services/folder-finder.service';
+import type { FolderFinderService } from '@n8n/backend-services';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -13,6 +13,7 @@ import {
 	PackageEntityNotFoundError,
 } from '../../package-export.errors';
 import type { WorkflowExporter } from '../../workflow/workflow.exporter';
+import { ProjectShellExporter } from '../project-shell.exporter';
 import { ProjectExporter } from '../project.exporter';
 import { ProjectSerializer } from '../project.serializer';
 
@@ -76,7 +77,7 @@ function makeExporter({
 
 	const exporter = new ProjectExporter(
 		projectService,
-		new ProjectSerializer(),
+		new ProjectShellExporter(new ProjectSerializer()),
 		folderFinder,
 		workflowFinder,
 		folderExporter,
@@ -103,8 +104,8 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			versionPolicy: 'latest',
+			includeArchived: false,
 		});
 
 		expect(projectService.findProjectsByIdsForUser).toHaveBeenCalledWith(
@@ -126,8 +127,8 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer: new CapturingWriter(),
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
-			includeArchivedWorkflows: true,
+			versionPolicy: 'latest',
+			includeArchived: true,
 		});
 
 		expect(workflowFinder.findRootWorkflowIdsInProject).toHaveBeenCalledWith(project.id, {
@@ -146,8 +147,8 @@ describe('ProjectExporter', () => {
 				projectIds: [project.id],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
-				includeArchivedWorkflows: false,
+				versionPolicy: 'latest',
+				includeArchived: false,
 			}),
 		).rejects.toThrow('1 project(s) not found or not accessible. Export aborted.');
 	});
@@ -163,8 +164,8 @@ describe('ProjectExporter', () => {
 				projectIds: ['missing'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
-				includeArchivedWorkflows: false,
+				versionPolicy: 'latest',
+				includeArchived: false,
 			}),
 		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
 	});
@@ -180,8 +181,8 @@ describe('ProjectExporter', () => {
 				projectIds: ['denied-1'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
-				includeArchivedWorkflows: false,
+				versionPolicy: 'latest',
+				includeArchived: false,
 			}),
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
@@ -196,8 +197,8 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			versionPolicy: 'latest',
+			includeArchived: false,
 		});
 
 		expect(entries).toEqual([
@@ -237,8 +238,8 @@ describe('ProjectExporter', () => {
 			projectIds: [newerProject.id, olderProject.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			versionPolicy: 'latest',
+			includeArchived: false,
 		});
 
 		expect(entries).toEqual([
@@ -274,12 +275,24 @@ describe('ProjectExporter', () => {
 			folderExporter.export.mockResolvedValue({
 				entries: [{ id: 'f1', name: 'F1', target: 'projects/billing/folders/f1' }],
 				workflowEntries: [
-					{ id: 'w-in-f1', name: 'In F1', target: 'projects/billing/folders/f1/workflows/x' },
+					{
+						id: 'w-in-f1',
+						name: 'In F1',
+						target: 'projects/billing/folders/f1/workflows/x',
+						isArchived: false,
+					},
 				],
 				requirements: emptyRequirements,
 			});
 			workflowExporter.export.mockResolvedValue({
-				entries: [{ id: 'w-root', name: 'Root', target: 'projects/billing/workflows/root' }],
+				entries: [
+					{
+						id: 'w-root',
+						name: 'Root',
+						target: 'projects/billing/workflows/root',
+						isArchived: false,
+					},
+				],
 				requirements: emptyRequirements,
 			});
 
@@ -289,8 +302,8 @@ describe('ProjectExporter', () => {
 				workflowIds: ['w-root', 'w-in-f1'],
 				writer: new CapturingWriter(),
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
-				includeArchivedWorkflows: false,
+				versionPolicy: 'latest',
+				includeArchived: false,
 			});
 
 			const selected = new Set(['w-root', 'w-in-f1']);
@@ -311,7 +324,9 @@ describe('ProjectExporter', () => {
 			});
 			workflowFinder.findAllWorkflowIdsForUser.mockResolvedValue(['w1']);
 			workflowExporter.export.mockResolvedValue({
-				entries: [{ id: 'w1', name: 'W1', target: 'projects/billing/workflows/w1' }],
+				entries: [
+					{ id: 'w1', name: 'W1', target: 'projects/billing/workflows/w1', isArchived: false },
+				],
 				requirements: emptyRequirements,
 			});
 
@@ -322,8 +337,8 @@ describe('ProjectExporter', () => {
 					workflowIds: ['w1', 'w-elsewhere'],
 					writer: new CapturingWriter(),
 					includeTags: true,
-					workflowVersionPolicy: 'latest',
-					includeArchivedWorkflows: false,
+					versionPolicy: 'latest',
+					includeArchived: false,
 				}),
 			).rejects.toMatchObject({
 				constructor: PackageEntityNotFoundError,
@@ -345,7 +360,12 @@ describe('ProjectExporter', () => {
 			workflowFinder.findAllWorkflowIdsForUser.mockResolvedValue(['w-published', 'w-unpublished']);
 			workflowExporter.export.mockResolvedValue({
 				entries: [
-					{ id: 'w-published', name: 'Published', target: 'projects/billing/workflows/pub' },
+					{
+						id: 'w-published',
+						name: 'Published',
+						target: 'projects/billing/workflows/pub',
+						isArchived: false,
+					},
 				],
 				requirements: emptyRequirements,
 			});
@@ -356,41 +376,44 @@ describe('ProjectExporter', () => {
 				workflowIds: ['w-published', 'w-unpublished'],
 				writer: new CapturingWriter(),
 				includeTags: true,
-				workflowVersionPolicy: 'ignore-unpublished',
-				includeArchivedWorkflows: false,
+				versionPolicy: 'ignore-unpublished',
+				includeArchived: false,
 			});
 
 			expect(result.workflowEntries.map((e) => e.id)).toEqual(['w-published']);
 		});
 
-		it('writes the project shell only for an empty selection', async () => {
-			const project = makeProject();
-			const { exporter, workflowFinder, workflowExporter } = makeExporter({
-				projects: [project],
-			});
-			workflowFinder.findRootWorkflowIdsInProject.mockResolvedValue(['w1']);
-			workflowExporter.export.mockResolvedValue({ entries: [], requirements: emptyRequirements });
-			const writer = new CapturingWriter();
+		it.each([{ workflowIds: [] }, { folderIds: [] }])(
+			'writes the project shell only for an empty selection: %j',
+			async (selection) => {
+				const project = makeProject();
+				const { exporter, workflowFinder, workflowExporter } = makeExporter({
+					projects: [project],
+				});
+				workflowFinder.findRootWorkflowIdsInProject.mockResolvedValue(['w1']);
+				workflowExporter.export.mockResolvedValue({ entries: [], requirements: emptyRequirements });
+				const writer = new CapturingWriter();
 
-			const result = await exporter.export({
-				user,
-				projectIds: [project.id],
-				workflowIds: [],
-				writer,
-				includeTags: true,
-				workflowVersionPolicy: 'latest',
-				includeArchivedWorkflows: false,
-			});
+				const result = await exporter.export({
+					user,
+					projectIds: [project.id],
+					...selection,
+					writer,
+					includeTags: true,
+					versionPolicy: 'latest',
+					includeArchived: false,
+				});
 
-			expect(workflowExporter.export).not.toHaveBeenCalled();
-			expect(result.entries).toEqual([
-				{ id: project.id, name: 'billing', target: 'projects/billing-projectbilling01' },
-			]);
-			expect(result.workflowEntries).toEqual([]);
-			expect(writer.files.map((f) => f.path)).toEqual([
-				'projects/billing-projectbilling01/project.json',
-			]);
-		});
+				expect(workflowExporter.export).not.toHaveBeenCalled();
+				expect(result.entries).toEqual([
+					{ id: project.id, name: 'billing', target: 'projects/billing-projectbilling01' },
+				]);
+				expect(result.workflowEntries).toEqual([]);
+				expect(writer.files.map((f) => f.path)).toEqual([
+					'projects/billing-projectbilling01/project.json',
+				]);
+			},
+		);
 	});
 
 	it('exports a personal project', async () => {
@@ -403,8 +426,8 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			versionPolicy: 'latest',
+			includeArchived: false,
 		});
 
 		expect(entries).toEqual([

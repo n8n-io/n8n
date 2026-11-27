@@ -30,6 +30,7 @@ function makeClient(): N8nClient & { cancelRun: ReturnType<typeof vi.fn> } {
 		cancelRun: vi.fn().mockResolvedValue(undefined),
 		sendMessage: vi.fn().mockResolvedValue(undefined),
 		getThreadStatus: vi.fn().mockResolvedValue({ backgroundTasks: [], memoryTasks: [] }),
+		assistantAgents: () => undefined,
 	} as unknown as N8nClient & { cancelRun: ReturnType<typeof vi.fn> };
 }
 
@@ -133,9 +134,10 @@ describe('waitForAllActivity under a budget', () => {
 		expect(cfg.client.cancelRun).toHaveBeenCalled();
 	});
 
-	it('ends the turn as a timeout when its budget runs out during the background wait', async () => {
+	it('ends the turn as a timeout and cancels the thread when its budget runs out during the background wait', async () => {
 		// The background wait is bounded by the budget left, so it returns rather
 		// than throws; without a check after it the turn would read as finished.
+		// The cancel is what stops the sub-agent the wait gave up on.
 		const now = Date.now();
 		const cfg = config({ startTime: now - 60_000, turnStartedAt: now - 900_000 + 300 });
 		cfg.events.push(event('run-finish', now), event('agent-spawned', now));
@@ -144,8 +146,47 @@ describe('waitForAllActivity under a budget', () => {
 			memoryTasks: [],
 		} as never);
 
-		await expect(waitForAllActivity(cfg)).rejects.toMatchObject({ timeout: { kind: 'turn', turn: 1 } });
-		expect(cfg.client.cancelRun).not.toHaveBeenCalled();
+		await expect(waitForAllActivity(cfg)).rejects.toMatchObject({
+			timeout: { kind: 'turn', turn: 1 },
+		});
+		expect(cfg.client.cancelRun).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('applies no inactivity bound on the Agents runtime, where events come from stored history', async () => {
+		const now = Date.now();
+		// The only reply is older than the inactivity bound, as after a long tool call.
+		const repliedAt = new Date(now - 299_000).toISOString();
+		const agents = {
+			getHistory: vi.fn(async () => ({
+				messages: [
+					{ id: 'u-1', role: 'user', executionId: 'exec-1', createdAt: repliedAt, content: [] },
+					{
+						id: 'exec-1:assistant',
+						role: 'assistant',
+						executionId: 'exec-1',
+						executionStatus: 'success',
+						createdAt: repliedAt,
+						content: [{ type: 'text', text: 'Done.' }],
+					},
+				],
+				openSuspensions: [],
+				activeExecutionId: null,
+			})),
+			resume: vi.fn(),
+			getUsage: vi.fn(),
+		};
+		const client = { ...makeClient(), assistantAgents: () => agents } as unknown as N8nClient & {
+			cancelRun: ReturnType<typeof vi.fn>;
+		};
+		const cfg = config({
+			client,
+			events: [userTurn(now - 300_000)],
+			startTime: now - 300_000,
+			turnStartedAt: now - 300_000,
+		});
+
+		await expect(waitForAllActivity(cfg)).resolves.toBeUndefined();
+		expect(client.cancelRun).not.toHaveBeenCalled();
 	});
 
 	it('returns normally when the run finishes inside every budget', async () => {

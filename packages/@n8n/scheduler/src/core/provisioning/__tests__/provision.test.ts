@@ -156,6 +156,7 @@ describe('provision seeding first occurrences', () => {
 		nextRunAt: new Date(NOW.getTime() + 10_000),
 		lastFiredAt: null,
 		maxAttempts: 1,
+		timeoutSeconds: 300,
 		concurrencyLimit: null,
 		misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 		misfireGraceSeconds: 60,

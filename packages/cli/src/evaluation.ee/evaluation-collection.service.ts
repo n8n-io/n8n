@@ -21,11 +21,10 @@ import {
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
-import { OperationalError, type IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError, OperationalError } from '@n8n/errors';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -91,6 +90,7 @@ export class EvaluationCollectionService {
 		const config = await this.evalConfigRepo.findByIdAndWorkflowId(
 			input.evaluationConfigId,
 			workflowId,
+			{},
 		);
 		if (!config) {
 			throw new NotFoundError('EvaluationConfig not found for this workflow');
@@ -250,6 +250,7 @@ export class EvaluationCollectionService {
 			const config = await this.evalConfigRepo.findByIdAndWorkflowId(
 				collection.evaluationConfigId,
 				workflowId,
+				{},
 			);
 			if (!config) {
 				throw new BadRequestError(
@@ -496,7 +497,11 @@ export class EvaluationCollectionService {
 		workflowId: string,
 		evaluationConfigId: string,
 	): Promise<EvalVersionsResponse> {
-		const config = await this.evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId);
+		const config = await this.evalConfigRepo.findByIdAndWorkflowId(
+			evaluationConfigId,
+			workflowId,
+			{},
+		);
 		if (!config) {
 			throw new NotFoundError('EvaluationConfig not found for this workflow');
 		}
@@ -517,13 +522,10 @@ export class EvaluationCollectionService {
 		const lastRuns =
 			history.length === 0
 				? []
-				: await this.testRunRepo.find({
-						where: {
-							evaluationConfigId,
-							workflowVersionId: In(history.map((h) => h.versionId)),
-						},
-						order: { createdAt: 'DESC' },
-					});
+				: await this.testRunRepo.findByConfigAndVersions(
+						evaluationConfigId,
+						history.map((h) => h.versionId),
+					);
 		// Surface only the latest *completed* run per version (the wizard offers it
 		// for reuse), so a version whose last run failed shows "no run yet" instead.
 		const latestRunByVersion = new Map<string, TestRun>();

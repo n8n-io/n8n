@@ -112,13 +112,38 @@ describe('destroy()', () => {
 });
 
 describe('start()', () => {
+	it.each(['none', 'public'] as const)('keeps egress %s across restarts', async (egress) => {
+		const sandbox = new N8nSandboxServiceSandbox({ ...makeDefaultOptions(), egress });
+
+		await sandbox.start();
+		await sandbox.stop();
+		await sandbox.start();
+
+		expect(mockCreateSandbox).toHaveBeenNthCalledWith(1, { egress });
+		expect(mockCreateSandbox).toHaveBeenNthCalledWith(2, { id: 'sb-123', egress });
+	});
+
+	it('propagates an egress conflict without retrying with public access', async () => {
+		mockCreateSandbox.mockRejectedValue(new SandboxServiceError('egress conflict', 409));
+		const sandbox = new N8nSandboxServiceSandbox({
+			...makeDefaultOptions(),
+			id: '11111111-1111-4111-8111-111111111111',
+			egress: 'none',
+		});
+
+		await expect(sandbox.start()).rejects.toThrow('egress conflict');
+
+		expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
+		expect(mockDeleteSandbox).not.toHaveBeenCalled();
+	});
+
 	describe('fresh creation (no existing ID)', () => {
 		it('creates a new sandbox with a service-generated id', async () => {
 			const sandbox = new N8nSandboxServiceSandbox(makeDefaultOptions());
 			await sandbox.start();
 
 			expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
-			expect(mockCreateSandbox).toHaveBeenCalledWith({});
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ egress: 'public' });
 			expect(sandbox.id).toBe('sb-123');
 		});
 
@@ -126,7 +151,7 @@ describe('start()', () => {
 			const sandbox = new N8nSandboxServiceSandbox({ ...makeDefaultOptions(), ephemeral: true });
 			await sandbox.start();
 
-			expect(mockCreateSandbox).toHaveBeenCalledWith({ ephemeral: true });
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ ephemeral: true, egress: 'public' });
 		});
 
 		it('times out stalled creation and removes a sandbox created after the timeout', async () => {
@@ -160,7 +185,7 @@ describe('start()', () => {
 
 			await sandbox.start();
 
-			expect(mockCreateSandbox).toHaveBeenCalledWith({ id });
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ id, egress: 'public' });
 			expect(mockGetSandbox).not.toHaveBeenCalled();
 			expect(sandbox.id).toBe(id);
 		});
@@ -176,7 +201,7 @@ describe('start()', () => {
 			});
 			await sandbox.start();
 
-			expect(mockCreateSandbox).toHaveBeenCalledWith({ id, ephemeral: true });
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ id, ephemeral: true, egress: 'public' });
 		});
 
 		it('does not delete a deterministic sandbox when creation times out', async () => {
@@ -208,7 +233,7 @@ describe('start()', () => {
 			await sandbox.stop();
 			await sandbox.start();
 
-			expect(mockCreateSandbox).toHaveBeenLastCalledWith({ id: 'sb-123' });
+			expect(mockCreateSandbox).toHaveBeenLastCalledWith({ id: 'sb-123', egress: 'public' });
 			expect(sandbox.id).toBe('sb-123');
 		});
 
@@ -321,5 +346,105 @@ describe('getInfo()', () => {
 			expect.objectContaining({ workingDirectory: '/home/user/workspace' }),
 		);
 		expect(info.provider).toBe('n8n-sandbox');
+	});
+});
+
+describe('recovery when the remote sandbox is gone', () => {
+	const id = '44444444-4444-4444-8444-444444444444';
+	const notFound = () => new SandboxServiceError('sandbox not found', 404);
+
+	async function startedSandbox() {
+		mockCreateSandbox.mockResolvedValue(makeSandboxRecord({ id }));
+		const sandbox = new N8nSandboxServiceSandbox({ ...makeDefaultOptions(), id });
+		await sandbox.ensureRunning();
+		mockCreateSandbox.mockClear();
+		return sandbox;
+	}
+
+	it('recreates the sandbox under the same id and retries the command once', async () => {
+		const sandbox = await startedSandbox();
+		mockExec
+			.mockRejectedValueOnce(notFound())
+			.mockResolvedValueOnce(makeExecResult({ stdout: 'ok' }));
+		mockGetSandbox.mockRejectedValueOnce(notFound());
+
+		const result = await sandbox.executeCommand('echo', ['ok']);
+
+		expect(result.stdout).toBe('ok');
+		expect(mockGetSandbox).toHaveBeenCalledWith(id);
+		expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
+		expect(mockCreateSandbox).toHaveBeenCalledWith({ id, egress: 'public' });
+		expect(mockExec).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not recreate on a 404 while the sandbox still exists', async () => {
+		const sandbox = await startedSandbox();
+		const error = notFound();
+		mockExec.mockRejectedValueOnce(error);
+
+		await expect(sandbox.executeCommand('cat', ['missing'])).rejects.toBe(error);
+
+		expect(mockGetSandbox).toHaveBeenCalledWith(id);
+		expect(mockCreateSandbox).not.toHaveBeenCalled();
+	});
+
+	it('does not probe or recreate on errors other than 404', async () => {
+		const sandbox = await startedSandbox();
+		const error = new SandboxServiceError('server error', 500);
+		mockExec.mockRejectedValueOnce(error);
+
+		await expect(sandbox.executeCommand('ls')).rejects.toBe(error);
+
+		expect(mockGetSandbox).not.toHaveBeenCalled();
+		expect(mockCreateSandbox).not.toHaveBeenCalled();
+	});
+
+	it('retries only once', async () => {
+		const sandbox = await startedSandbox();
+		mockExec.mockRejectedValue(notFound());
+		mockGetSandbox.mockRejectedValue(notFound());
+
+		await expect(sandbox.executeCommand('ls')).rejects.toThrow('sandbox not found');
+
+		expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
+		expect(mockExec).toHaveBeenCalledTimes(2);
+	});
+
+	it('shares one recreate between concurrent failed operations', async () => {
+		const sandbox = await startedSandbox();
+		mockExec
+			.mockRejectedValueOnce(notFound())
+			.mockRejectedValueOnce(notFound())
+			.mockResolvedValue(makeExecResult());
+		mockGetSandbox.mockRejectedValue(notFound());
+
+		await Promise.all([sandbox.executeCommand('a'), sandbox.executeCommand('b')]);
+
+		expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the original error when the probe does not answer in time', async () => {
+		mockCreateSandbox.mockResolvedValue(makeSandboxRecord({ id }));
+		const sandbox = new N8nSandboxServiceSandbox({ ...makeDefaultOptions(), id, timeout: 10 });
+		await sandbox.ensureRunning();
+		mockCreateSandbox.mockClear();
+		const error = notFound();
+		mockExec.mockRejectedValueOnce(error);
+		mockGetSandbox.mockReturnValueOnce(new Promise(() => {}));
+
+		await expect(sandbox.executeCommand('ls')).rejects.toBe(error);
+
+		expect(mockCreateSandbox).not.toHaveBeenCalled();
+	});
+
+	it('limits the probe to 10 seconds when the command timeout is longer', async () => {
+		const sandbox = await startedSandbox();
+		const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+		mockExec.mockRejectedValueOnce(notFound());
+
+		await expect(sandbox.executeCommand('ls')).rejects.toThrow('sandbox not found');
+
+		expect(timeoutSpy).toHaveBeenCalledWith(10_000);
+		timeoutSpy.mockRestore();
 	});
 });

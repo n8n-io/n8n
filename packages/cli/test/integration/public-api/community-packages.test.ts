@@ -6,15 +6,18 @@ vi.mock('@/modules/community-packages/npm-utils', async () => ({
 	verifyIntegrity: vi.fn(),
 }));
 
-import type { CommunityNodeType } from '@n8n/api-types';
+import type { CommunityNodeType, PackagePolicyRestrictions } from '@n8n/api-types';
+import { InstalledTypeRestrictionsProxy } from '@n8n/backend-services';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { OWNER_API_KEY_SCOPES } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { executeNpmCommand } from '@/modules/community-packages/npm-utils';
 
@@ -34,6 +37,7 @@ const communityPackagesService = mockInstance(CommunityPackagesService);
 const communityNodeTypesService = mockInstance(CommunityNodeTypesService);
 const mockedExecuteNpmCommand = vi.mocked(executeNpmCommand);
 mockInstance(LoadNodesAndCredentials);
+const installedTypeRestrictions = mockInstance(InstalledTypeRestrictionsProxy);
 
 const mockedVettedPackage = mock<CommunityNodeType>({
 	checksum: 'test-checksum',
@@ -52,6 +56,7 @@ const parsedNpmPackageName = {
 };
 
 let owner: User;
+const communityPackagesConfig = Container.get(CommunityPackagesConfig);
 
 describe('Community packages (Public API)', () => {
 	beforeAll(async () => {
@@ -60,6 +65,7 @@ describe('Community packages (Public API)', () => {
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
+		communityPackagesConfig.unverifiedEnabled = true;
 		communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 		communityNodeTypesService.findVetted.mockResolvedValue(mockedVettedPackage);
 		await testDb.truncate(['User']);
@@ -248,13 +254,37 @@ describe('Community packages (Public API)', () => {
 				createdAt: pkg.createdAt.toISOString(),
 				updatedAt: pkg.updatedAt.toISOString(),
 			});
-			// No version requested, so install() pins the latest vetted version:
-			// the same catalog lookup provides both it and the checksum.
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
 				parsedNpmPackageName.packageName,
-				mockedVettedPackage.npmVersion,
-				mockedVettedPackage.checksum,
+				undefined,
+				undefined,
+				{ rejectCredentialTypeConflicts: true },
 			);
+		});
+
+		it('should return the policy restrictions for the installed node types', async () => {
+			const packageName = mockPackageName();
+			const node = mockNode(packageName);
+			const pkg = mockPackage({ packageName, installedNodes: [node] });
+			const policyRestrictions: PackagePolicyRestrictions = {
+				nodeTypes: [{ type: node.type, blockedOn: 'projects', optInAvailable: false }],
+			};
+			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
+			communityPackagesService.installPackage.mockResolvedValue(pkg);
+			installedTypeRestrictions.describeRestrictions.mockResolvedValue(policyRestrictions);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/community-packages')
+				.send({ name: mockPackageName() });
+
+			expect(response.status).toBe(200);
+			expect(response.body.policyRestrictions).toStrictEqual(policyRestrictions);
+			expect(installedTypeRestrictions.describeRestrictions).toHaveBeenCalledWith({
+				nodeTypes: [node.type],
+			});
 		});
 
 		it('should return 200 when the body contains an unknown field', async () => {
@@ -272,12 +302,14 @@ describe('Community packages (Public API)', () => {
 			expect(response.status).toBe(200);
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
 				parsedNpmPackageName.packageName,
-				mockedVettedPackage.npmVersion,
-				mockedVettedPackage.checksum,
+				undefined,
+				undefined,
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
-		it('should install with verification disabled when verify is false', async () => {
+		it('should install the latest vetted version when unverified packages are disabled', async () => {
+			communityPackagesConfig.unverifiedEnabled = false;
 			const pkg = mockPackage();
 			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
@@ -287,18 +319,19 @@ describe('Community packages (Public API)', () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/community-packages')
-				.send({ name: mockPackageName(), verify: false });
+				.send({ name: mockPackageName() });
 
 			expect(response.status).toBe(200);
-			expect(communityNodeTypesService.findVetted).not.toHaveBeenCalled();
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
 				parsedNpmPackageName.packageName,
-				undefined,
-				undefined,
+				mockedVettedPackage.npmVersion,
+				mockedVettedPackage.checksum,
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
-		it('should return 400 when package is not vetted', async () => {
+		it('should return 400 when unverified packages are disabled and the package is not vetted', async () => {
+			communityPackagesConfig.unverifiedEnabled = false;
 			communityNodeTypesService.findVetted.mockResolvedValue(undefined);
 			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
@@ -344,18 +377,33 @@ describe('Community packages (Public API)', () => {
 			expect(communityPackagesService.updatePackage).not.toHaveBeenCalled();
 		});
 
-		it('should return 400 when update options are invalid', async () => {
+		it('should update without a checksum and ignore a verify field when unverified packages are enabled', async () => {
+			const pkg = mockPackage();
+			communityPackagesService.findInstalledPackage.mockResolvedValue(pkg);
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				packageName: pkg.packageName,
+				rawString: pkg.packageName,
+			});
+			communityPackagesService.updatePackage.mockResolvedValue(pkg);
+
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.patch(`/community-packages/${encodeURIComponent(mockPackageName())}`)
-				.send({ verify: 'false' });
+				.patch(`/community-packages/${encodeURIComponent(pkg.packageName)}`)
+				.send({ version: COMMUNITY_PACKAGE_VERSION.UPDATED, verify: true });
 
-			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('verify');
-			expect(communityPackagesService.updatePackage).not.toHaveBeenCalled();
+			expect(response.status).toBe(200);
+			expect(communityNodeTypesService.findVetted).not.toHaveBeenCalled();
+			expect(communityPackagesService.updatePackage).toHaveBeenCalledWith(
+				pkg.packageName,
+				pkg,
+				COMMUNITY_PACKAGE_VERSION.UPDATED,
+				undefined,
+				{ rejectCredentialTypeConflicts: true },
+			);
 		});
 
-		it('should return 200 when package is updated successfully', async () => {
+		it('should update with the vetted checksum when unverified packages are disabled', async () => {
+			communityPackagesConfig.unverifiedEnabled = false;
 			const packageName = mockPackageName();
 			const pkg = mockPackage({ packageName });
 			const updatedNode = mockNode(packageName);
@@ -400,12 +448,17 @@ describe('Community packages (Public API)', () => {
 				pkg,
 				COMMUNITY_PACKAGE_VERSION.UPDATED,
 				mockedVettedPackage.checksum,
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
 		it('should return 404 when package is not installed', async () => {
 			const name = mockPackageName();
 			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				packageName: name,
+				rawString: name,
+			});
 
 			const response = await testServer
 				.publicApiAgentFor(owner)

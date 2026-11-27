@@ -9,6 +9,11 @@ export const AI_PREFERENCES_DEFAULT_PAGE_SIZE = 50;
 /** One page of ids at most, so the filter never asks for more rows than a page returns. */
 export const AI_PREFERENCES_MAX_IDS_FILTER = AI_PREFERENCES_MAX_PAGE_SIZE;
 const UUID_LENGTH = 36;
+const AI_PREFERENCES_MAX_SEARCH_LENGTH = 200;
+
+export const AI_PREFERENCES_SORT_OPTIONS = ['updatedAt:asc', 'updatedAt:desc'] as const;
+
+export type AiPreferenceSortOption = (typeof AI_PREFERENCES_SORT_OPTIONS)[number];
 
 export class AiPreferenceListQueryDto extends Z.class({
 	skip: paginationSchema.skip,
@@ -44,4 +49,16 @@ export class AiPreferenceListQueryDto extends Z.class({
 				.max(AI_PREFERENCES_MAX_IDS_FILTER)
 				.optional(),
 		),
+	sortBy: z
+		.enum(AI_PREFERENCES_SORT_OPTIONS, {
+			message: `sortBy must be one of: ${AI_PREFERENCES_SORT_OPTIONS.join(', ')}`,
+		})
+		.optional(),
+	/** Case-insensitive substring match on the preference text. A blank term matches every row. */
+	search: z
+		.string()
+		.trim()
+		.max(AI_PREFERENCES_MAX_SEARCH_LENGTH)
+		.optional()
+		.transform((value) => (value === '' ? undefined : value)),
 }) {}

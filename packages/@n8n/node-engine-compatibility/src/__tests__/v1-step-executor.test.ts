@@ -1,5 +1,16 @@
-import type { StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
-import { UnrecognizedNodeTypeError } from 'n8n-core';
+import type {
+	JsonValue,
+	StepExecutionResult,
+	StepInputSources,
+	StepSlots,
+	WorkflowGraph,
+} from '@n8n/engine';
+import { mintApprovalCallback, stepErrorDetails } from '@n8n/engine';
+import {
+	parseHitlCallbackReference,
+	prepareUrlForSigning,
+	UnrecognizedNodeTypeError,
+} from 'n8n-core';
 import type {
 	IConnections,
 	IDataObject,
@@ -7,11 +18,14 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import {
+	CHAT_NODE_TYPE,
 	Expression,
 	ExpressionError,
+	NodeOperationError,
 	WAIT_FOR_SUB_EXECUTION,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -22,10 +36,23 @@ import {
 	UnsupportedStepTypeError,
 	VmExpressionEngineRequiredError,
 } from '../errors';
+import { EXECUTE_WORKFLOW_TYPE } from '../constants';
+import type { SubWorkflowResolver, V1StepExecutorDeps } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
+
+/** Items as a node sees and passes them on: each linked to its position in the input. */
+function linked(slots: StepSlots): StepSlots {
+	return slots.map((items) =>
+		Array.isArray(items)
+			? items.map((item, index) => ({ ...(item as object), pairedItem: { item: index } }))
+			: items,
+	);
+}
 import { V1WorkflowConverter } from '../v1-workflow-converter';
+import { realNodeTypes, splitOutNode } from './acceptance-fixtures';
 import {
 	items,
+	noSubWorkflows,
 	stepRequest,
 	testAdditionalDataFactory,
 	testNodeTypes,
@@ -53,9 +80,27 @@ const graphWith = (type: string, parameters = {}): WorkflowGraph =>
 
 /** The outputs of a result, for a test that feeds one step's output into the next. */
 function outputsOf(result: StepExecutionResult): StepSlots {
-	if (result.wait) throw new Error('the step declared a wait, but the test expects outputs');
+	if (result.wait || result.subExecution) {
+		throw new Error('the step declared a wait, but the test expects outputs');
+	}
 	return result.outputs;
 }
+
+/** What the response channel returns once it has carried a response. */
+const sent = () => ({ ok: true as const, result: undefined });
+
+/** An emitter that builds each chunk, so a test can read what the node streamed. */
+const recordingEmitter = () => {
+	const chunks: JsonValue[] = [];
+	const respond = {
+		send: vi.fn(sent),
+		chunk: vi.fn((build: () => JsonValue) => {
+			chunks.push(build());
+			return sent();
+		}),
+	};
+	return { chunks, respond };
+};
 
 describe('V1StepExecutor', () => {
 	it('rejects legacy expression engine', async () => {
@@ -80,10 +125,40 @@ describe('V1StepExecutor', () => {
 		}
 	});
 
+	it('signs the resume URLs with the token the host mints for the execution', async () => {
+		const graph = graphWith('test.echoParam', {
+			message: '={{ $execution.resumeUrl }} {{ $execution.resumeFormUrl }}',
+		});
+		const resumeToken = vi.fn(() => 'minted');
+		const executor = new V1StepExecutor({
+			resolveSubWorkflow: noSubWorkflows,
+			nodeTypes: testNodeTypes,
+			resumeToken,
+			additionalDataFactory: testAdditionalDataFactory,
+			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+		});
+		const request = stepRequest(graph, 'n', items({}));
+		const { executionId } = request.context;
+
+		const result = await executor.execute(request);
+
+		expect(resumeToken).toHaveBeenCalledExactlyOnceWith({ executionId });
+		expect(result.outputs).toEqual([
+			[
+				{
+					json: {
+						message: `http://localhost:5678/webhook-waiting/${executionId}?signature=minted http://localhost:5678/form-waiting/${executionId}?signature=minted`,
+					},
+				},
+			],
+		]);
+	});
+
 	it('builds the additional data from the execution context of the step', async () => {
 		const graph = graphWith('test.echoParam', { message: 'hi' });
 		const additionalDataFactory = vi.fn(testAdditionalDataFactory);
 		const executor = new V1StepExecutor({
+			resolveSubWorkflow: noSubWorkflows,
 			nodeTypes: testNodeTypes,
 			additionalDataFactory,
 			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
@@ -120,6 +195,53 @@ describe('V1StepExecutor', () => {
 		const graph = graphWith('test.echoParam', { message: 'solo' });
 		const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', []));
 		expect(result.outputs).toEqual([[{ json: { message: 'solo' } }]]);
+	});
+
+	it('keeps an empty first input empty when another input has items', async () => {
+		// ┌────────┐  ┌───────────┐  ┌───────────┐ i0 ┌───────┐
+		// │ Manual ├─►│ SplitOut1 ├┬►│ SplitOut2 ├───►│       │
+		// └────────┘  └───────────┘│ └───────────┘    │ Merge │
+		//                          └─────────────────►│       │
+		//                                          i1 └───────┘
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+					splitOutNode('s1', 'SplitOut1', 'list'),
+					splitOutNode('s2', 'SplitOut2', 'n'),
+					{
+						id: 'm',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3,
+						parameters: {},
+					},
+				],
+				{
+					Manual: { main: [[{ node: 'SplitOut1', type: 'main', index: 0 }]] },
+					SplitOut1: {
+						main: [
+							[
+								{ node: 'SplitOut2', type: 'main', index: 0 },
+								{ node: 'Merge', type: 'main', index: 1 },
+							],
+						],
+					},
+					SplitOut2: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				},
+			),
+		);
+		const executor = new V1StepExecutor({
+			resolveSubWorkflow: noSubWorkflows,
+			nodeTypes: realNodeTypes,
+			additionalDataFactory: testAdditionalDataFactory,
+			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+		});
+
+		// SplitOut2 made no items, so the engine marks its edge into Merge dead.
+		const result = await executor.execute(stepRequest(graph, 'm', [null, ...items({ list: 0 })]));
+
+		expect(result.outputs).toEqual([[expect.objectContaining({ json: { list: 0 } })]]);
 	});
 
 	it('rejects non-v1-node steps', async () => {
@@ -160,8 +282,77 @@ describe('V1StepExecutor', () => {
 
 	it('propagates node errors per the IStepExecutor failure contract', async () => {
 		const graph = graphWith('test.alwaysFails');
-		const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', []));
+		const request = stepRequest(graph, 'n', []);
+		request.context.responseExpectation = { kind: 'stream' };
+		const { chunks, respond } = recordingEmitter();
+		request.respond = respond;
+		const execution = testStepExecutor(graph).execute(request);
 		await expect(execution).rejects.toThrow('boom from node');
+		// Only a description goes to the caller. A plain error has none, so the
+		// caller gets a generic text instead of its message.
+		expect(chunks).toContainEqual({
+			type: 'error',
+			content: 'Node execution failed',
+			metadata: {
+				nodeId: 'n',
+				nodeName: 'Subject',
+				runIndex: 0,
+				itemIndex: 0,
+				timestamp: expect.any(Number),
+			},
+		});
+	});
+
+	it('hands the structured part of a node error to the engine', async () => {
+		const graph = graphWith('test.failsWithDescription');
+		const request = stepRequest(graph, 'n', []);
+
+		const error: unknown = await testStepExecutor(graph)
+			.execute(request)
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect(stepErrorDetails(error as Error)).toMatchObject({
+			description: 'The service rejected the request',
+		});
+	});
+
+	it("streams the node error's description but not its message", async () => {
+		const graph = graphWith('test.failsWithDescription');
+		const request = stepRequest(graph, 'n', []);
+		request.context.responseExpectation = { kind: 'stream' };
+		const { chunks, respond } = recordingEmitter();
+		request.respond = respond;
+
+		await expect(testStepExecutor(graph).execute(request)).rejects.toThrow('key=secret');
+
+		expect(chunks).toEqual([
+			expect.objectContaining({ type: 'error', content: 'The service rejected the request' }),
+		]);
+		expect(JSON.stringify(chunks)).not.toContain('secret');
+	});
+
+	it('keeps the node error when its error chunk cannot be sent', async () => {
+		const graph = graphWith('test.alwaysFails');
+		const request = stepRequest(graph, 'n', []);
+		request.context.responseExpectation = { kind: 'stream' };
+		request.respond = {
+			send: vi.fn(sent),
+			chunk: vi.fn(() => ({ ok: false as const, error: new Error('Chunk failed') })),
+		};
+
+		await expect(testStepExecutor(graph).execute(request)).rejects.toThrow('boom from node');
+		expect(request.respond.chunk).toHaveBeenCalledOnce();
+	});
+
+	it('does not publish an error chunk for a non-streaming run', async () => {
+		const graph = graphWith('test.alwaysFails');
+		const request = stepRequest(graph, 'n', []);
+		request.respond = { send: vi.fn(sent), chunk: vi.fn(sent) };
+
+		await expect(testStepExecutor(graph).execute(request)).rejects.toThrow('boom from node');
+
+		expect(request.respond.chunk).not.toHaveBeenCalled();
 	});
 
 	it('invokes new-style Node subclasses with the context as argument', async () => {
@@ -180,11 +371,15 @@ describe('V1StepExecutor', () => {
 		);
 		(workflow.nodes[1] as { continueOnFail?: boolean }).continueOnFail = true;
 		const graph = converter.convert(workflow);
+		const request = stepRequest(graph, 'n', items({ keep: 'me' }));
+		request.context.responseExpectation = { kind: 'stream' };
+		const { chunks, respond } = recordingEmitter();
+		request.respond = respond;
 
-		const result = await testStepExecutor(graph).execute(
-			stepRequest(graph, 'n', items({ keep: 'me' })),
-		);
-		expect(result.outputs).toEqual([[{ json: { keep: 'me' } }]]);
+		const result = await testStepExecutor(graph).execute(request);
+		expect(result.outputs).toEqual([[{ json: { keep: 'me' }, pairedItem: { item: 0 } }]]);
+		expect(chunks).toContainEqual(expect.objectContaining({ type: 'error' }));
+		expect(JSON.stringify(chunks)).not.toContain('boom from node');
 	});
 
 	it('propagates cleanup errors when the node succeeded', async () => {
@@ -242,7 +437,10 @@ describe('V1StepExecutor', () => {
 		);
 
 		const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', items({ a: 1 })));
-		expect(result.outputs).toEqual([[{ json: { a: 1 } }], [{ json: { a: 1, second: true } }]]);
+		expect(result.outputs).toEqual([
+			[{ json: { a: 1 }, pairedItem: { item: 0 } }],
+			[{ json: { a: 1, second: true } }],
+		]);
 	});
 
 	it('rejects batch steps until the engine iterates loops natively', async () => {
@@ -307,6 +505,156 @@ describe('V1StepExecutor', () => {
 			expect(result.outputs).toEqual([[{ json: { message: 'A' } }]]);
 		});
 
+		describe('a slot fed by two edges', () => {
+			// Manual fans out to A and B, which both feed N's only input.
+			const convergingWorkflow = (nType: string, nParameters: IDataObject = {}) =>
+				converter.convert(
+					v1Workflow(
+						[
+							{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+							{ id: 'a', name: 'A', type: 'test.echoParam' },
+							{ id: 'b', name: 'B', type: 'test.echoParam' },
+							{ id: 'n', name: 'N', type: nType, parameters: nParameters },
+						],
+						{
+							Manual: {
+								main: [
+									[
+										{ node: 'A', type: 'main', index: 0 },
+										{ node: 'B', type: 'main', index: 0 },
+									],
+								],
+							},
+							A: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+							B: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+						},
+					),
+				);
+			// A's item links to the trigger's first item, B's to its second.
+			const outputsByNodeId: Record<string, StepSlots> = {
+				t: items({ seed: 1 }, { seed: 2 }),
+				a: [[{ json: { message: 'from-A' }, pairedItem: { item: 0 } }]],
+				b: [[{ json: { message: 'from-B' }, pairedItem: { item: 1 } }]],
+			};
+			const inputs: StepSlots = [
+				[{ json: { message: 'from-A' } }, { json: { message: 'from-B' } }],
+			];
+			const inputSources: StepInputSources = [
+				[
+					{ nodeId: 'a', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 },
+					{ nodeId: 'b', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 },
+				],
+			];
+
+			it('resolves $(...).item through the edge that fed each item', async () => {
+				const graph = convergingWorkflow('test.echoParam', {
+					message: "={{ $('Manual').item.json.seed }}",
+				});
+
+				const result = await testStepExecutor(graph, outputsByNodeId).execute(
+					stepRequest(graph, 'n', inputs, inputSources),
+				);
+
+				expect(result.outputs).toEqual([[{ json: { message: 1 } }, { json: { message: 2 } }]]);
+			});
+
+			it('resolves $(...).item through a later edge when the first edge is dead', async () => {
+				const graph = convergingWorkflow('test.echoParam', {
+					message: "={{ $('Manual').item.json.seed }}",
+				});
+				const { a: _deadEdge, ...onlyB } = outputsByNodeId;
+
+				const result = await testStepExecutor(graph, onlyB).execute(
+					stepRequest(graph, 'n', [[{ json: { message: 'from-B' } }]], [[inputSources[0][1]]]),
+				);
+
+				expect(result.outputs).toEqual([[{ json: { message: 2 } }]]);
+			});
+
+			describe('$prevNode', () => {
+				// B's connections come first, but A comes first in node order.
+				const edgesListedBFirst = converter.convert(
+					v1Workflow(
+						[
+							{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+							{ id: 'a', name: 'A', type: 'test.echoParam' },
+							{ id: 'b', name: 'B', type: 'test.echoParam' },
+							{
+								id: 'n',
+								name: 'N',
+								type: 'test.echoParam',
+								parameters: { message: '={{ $prevNode.name }}' },
+							},
+						],
+						{
+							Manual: {
+								main: [
+									[
+										{ node: 'B', type: 'main', index: 0 },
+										{ node: 'A', type: 'main', index: 0 },
+									],
+								],
+							},
+							B: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+							A: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+						},
+					),
+				);
+
+				it('names the first source in node order, not in edge order', async () => {
+					const result = await testStepExecutor(edgesListedBFirst, outputsByNodeId).execute(
+						stepRequest(edgesListedBFirst, 'n', inputs, inputSources),
+					);
+
+					expect(result.outputs).toEqual([
+						[{ json: { message: 'A' } }, { json: { message: 'A' } }],
+					]);
+				});
+
+				it('names the first live source when the first edge is dead', async () => {
+					const { a: _deadEdge, ...onlyB } = outputsByNodeId;
+
+					const result = await testStepExecutor(edgesListedBFirst, onlyB).execute(
+						stepRequest(
+							edgesListedBFirst,
+							'n',
+							[[{ json: { message: 'from-B' } }]],
+							[[inputSources[0][1]]],
+						),
+					);
+
+					expect(result.outputs).toEqual([[{ json: { message: 'B' } }]]);
+				});
+			});
+
+			it('links output items from every edge to their own source', async () => {
+				const graph = convergingWorkflow('test.linksToInput');
+
+				const result = await testStepExecutor(graph, outputsByNodeId).execute(
+					stepRequest(graph, 'n', inputs, inputSources),
+				);
+
+				expect(result.outputs).toEqual([
+					[
+						{
+							json: { message: 'from-A' },
+							pairedItem: {
+								item: 0,
+								sourceOverwrite: { previousNode: 'A', previousNodeOutput: 0, previousNodeRun: 0 },
+							},
+						},
+						{
+							json: { message: 'from-B' },
+							pairedItem: {
+								item: 0,
+								sourceOverwrite: { previousNode: 'B', previousNodeOutput: 0, previousNodeRun: 0 },
+							},
+						},
+					],
+				]);
+			});
+		});
+
 		it('rejects a reference to an unexecuted node', async () => {
 			const graph = expressionWorkflow({ message: "={{ $('A').first().json.message }}" });
 			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'b', items({})));
@@ -352,12 +700,12 @@ describe('V1StepExecutor', () => {
 		// The flag defaults to true, as it does in core. The deadline emits the
 		// node's input, which is what v1 passes through on a timed resume.
 		it.each([
-			['omitted', true],
-			['true', true],
-			['false', false],
+			['omitted', { resumeBinding: 'execution' }],
+			['true', { resumeBinding: 'execution' }],
+			['false', {}],
 		])(
 			'declares a deadline wait with acceptsResumeRequest %s',
-			async (acceptsResumeRequest, declared) => {
+			async (acceptsResumeRequest, binding) => {
 				const graph = graphWith('test.waitsUntil', {
 					waitTill: '2026-10-01T12:00:00.000Z',
 					acceptsResumeRequest,
@@ -366,8 +714,8 @@ describe('V1StepExecutor', () => {
 				expect(result).toEqual({
 					wait: {
 						resumeAt: '2026-10-01T12:00:00.000Z',
-						outputsAtDeadline: input,
-						acceptsResumeRequest: declared,
+						outputsAtDeadline: linked(input),
+						...binding,
 					},
 				});
 			},
@@ -382,35 +730,13 @@ describe('V1StepExecutor', () => {
 			);
 		});
 
-		// Core's `executeWorkflow` asks to wait when the child went to waiting.
-		it('fails the step when a sub-workflow it ran is itself waiting', async () => {
-			const graph = graphWith('test.runsSubWorkflow');
-			const executor = new V1StepExecutor({
-				nodeTypes: testNodeTypes,
-				additionalDataFactory: async (context) => ({
-					...(await testAdditionalDataFactory(context)),
-					executeWorkflow: vi.fn().mockResolvedValue({
-						executionId: 'child-1',
-						data: [[]],
-						waitTill: new Date('2099-01-01T00:00:00.000Z'),
-					}),
-				}),
-				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
-			});
-
-			const execution = executor.execute(stepRequest(graph, 'n', input));
-
-			await expect(execution).rejects.toThrow(
-				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.',
-			);
-		});
-
 		// The v1 hook sets the status in the host's `ActiveExecutions`. A data-plane
 		// run is not registered there, so the call throws.
 		it('does not call the host execution status hook', async () => {
 			const graph = graphWith('test.waitsUntil', { waitTill: '2026-10-01T12:00:00.000Z' });
 			const setExecutionStatus = vi.fn();
 			const executor = new V1StepExecutor({
+				resolveSubWorkflow: noSubWorkflows,
 				nodeTypes: testNodeTypes,
 				additionalDataFactory: async (context) => ({
 					...(await testAdditionalDataFactory(context)),
@@ -437,30 +763,193 @@ describe('V1StepExecutor', () => {
 			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
 			const after = Date.now();
 
-			expect(result.wait).toMatchObject({ outputsAtDeadline: input, acceptsResumeRequest: false });
+			expect(result.wait).toMatchObject({ outputsAtDeadline: input });
+			expect(result.wait).not.toHaveProperty('resumeBinding');
 			const resumeAt = Date.parse(result.wait!.resumeAt!);
 			expect(resumeAt).toBeGreaterThanOrEqual(before + 2000);
 			expect(resumeAt).toBeLessThanOrEqual(after + 2000);
 		});
 
-		// Nothing can deliver a resume request yet and sub-workflow steps do not
-		// exist, so completing the step would report a wait that never happened.
-		it.each([
-			[
-				'WAIT_INDEFINITELY',
-				WAIT_INDEFINITELY,
-				'Node "Subject" waits with no time limit, and engine v2 cannot end that wait yet. Set a time limit on the node.',
-			],
-			[
-				'WAIT_FOR_SUB_EXECUTION',
-				WAIT_FOR_SUB_EXECUTION,
-				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.',
-			],
-		])('fails the step for the %s sentinel', async (_, sentinel, message) => {
-			const graph = graphWith('test.waitsUntil', { waitTill: sentinel.toISOString() });
-			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
-			await expect(execution).rejects.toThrow(message);
+		it('declares a wait with no deadline', async () => {
+			const graph = graphWith('test.waitsUntil', { waitTill: WAIT_INDEFINITELY.toISOString() });
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			expect(result).toEqual({ wait: { resumeBinding: 'execution' } });
 		});
+
+		it('fails the step when a wait with no deadline refuses resume requests', async () => {
+			const graph = graphWith('test.waitsUntil', {
+				waitTill: WAIT_INDEFINITELY.toISOString(),
+				acceptsResumeRequest: 'false',
+			});
+			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" waits with no time limit and does not accept a resume request, so nothing can end the wait',
+			);
+			await expect(execution).rejects.toBeInstanceOf(UserError);
+		});
+
+		it('runs a send-and-wait step', async () => {
+			const graph = graphWith('test.echoParam', { operation: 'sendAndWait' });
+			const echo = testNodeTypes.getByNameAndVersion('test.echoParam');
+			const execute = vi.spyOn(echo, 'execute');
+
+			await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+
+			expect(execute).toHaveBeenCalledOnce();
+		});
+
+		it('fails a Chat node step before the node sends its message', async () => {
+			const graph = graphWith(CHAT_NODE_TYPE, { operation: 'send' });
+			const echo = testNodeTypes.getByNameAndVersion('test.echoParam');
+			const execute = vi.spyOn(echo, 'execute');
+			const executor = new V1StepExecutor({
+				resolveSubWorkflow: noSubWorkflows,
+				nodeTypes: { ...testNodeTypes, getByNameAndVersion: () => echo },
+				additionalDataFactory: testAdditionalDataFactory,
+				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+			});
+
+			const execution = executor.execute(stepRequest(graph, 'n', input));
+
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" sends a message and waits, and engine v2 cannot end that wait yet.',
+			);
+			expect(execute).not.toHaveBeenCalled();
+		});
+
+		it('fails the step for the WAIT_FOR_SUB_EXECUTION sentinel', async () => {
+			const graph = graphWith('test.waitsUntil', {
+				waitTill: WAIT_FOR_SUB_EXECUTION.toISOString(),
+			});
+			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.',
+			);
+		});
+	});
+
+	describe('a node that asks for a reply', () => {
+		const input = items({});
+
+		// A step id that differs from the node id, so a URL that names the step shows it.
+		const replyStep = (graph: WorkflowGraph, nodeId = 'n') => {
+			const request = stepRequest(graph, nodeId, input);
+			return { ...request, context: { ...request.context, stepId: 'step-1' } };
+		};
+
+		const replyExecutor = (
+			graph: WorkflowGraph,
+			minters: Pick<V1StepExecutorDeps, 'stepBoundResumeToken' | 'approvalCallback'>,
+		) =>
+			new V1StepExecutor({
+				nodeTypes: testNodeTypes,
+				additionalDataFactory: testAdditionalDataFactory,
+				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+				resolveSubWorkflow: noSubWorkflows,
+				...minters,
+			});
+
+		it('builds a reply link that names the step and carries the token the host mints', async () => {
+			const graph = graphWith('test.asksForReply', { reply: 'link' });
+			const stepBoundResumeToken = vi.fn(() => 'minted');
+
+			const result = await replyExecutor(graph, { stepBoundResumeToken }).execute(replyStep(graph));
+
+			expect(stepBoundResumeToken).toHaveBeenCalledExactlyOnceWith({
+				stepId: 'step-1',
+				binding: '/webhook-waiting/step-1/n?approved=true',
+			});
+			expect(result.outputs).toEqual([
+				[
+					{
+						json: {
+							reference:
+								'http://localhost:5678/webhook-waiting/step-1/n?approved=true&signature=minted',
+						},
+					},
+				],
+			]);
+		});
+
+		// The engine compares the binding with the path and query of the request literally.
+		it('binds the token to the path and query of the URL it returns', async () => {
+			const graph = converter.convert(
+				v1Workflow(
+					[
+						{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+						{
+							id: 'a b/c',
+							name: 'Subject',
+							type: 'test.asksForReply',
+							parameters: { reply: 'encodedLink' },
+						},
+					],
+					manualTriggerTo('Subject'),
+				),
+			);
+			const stepBoundResumeToken = vi.fn(() => 'minted');
+
+			const result = await replyExecutor(graph, { stepBoundResumeToken }).execute(
+				replyStep(graph, 'a b/c'),
+			);
+
+			const [[item]] = outputsOf(result) as unknown as Array<
+				Array<{ json: { reference: string } }>
+			>;
+			const url = new URL(item.json.reference);
+			expect(url.pathname).toBe('/webhook-waiting/step-1/a%20b%2Fc');
+			expect(url.searchParams.get('note')).toBe('a b&c');
+			expect(url.searchParams.getAll('signature')).toEqual(['minted']);
+			expect(stepBoundResumeToken).toHaveBeenCalledExactlyOnceWith({
+				stepId: 'step-1',
+				binding: prepareUrlForSigning(url),
+			});
+		});
+
+		it('builds the button references with the callbacks the host mints for the step', async () => {
+			const graph = graphWith('test.asksForReply', { reply: 'button' });
+			const approvalCallback = vi.fn(({ decision }: { decision: string }) => `minted-${decision}`);
+
+			const result = await replyExecutor(graph, { approvalCallback }).execute(replyStep(graph));
+
+			expect(approvalCallback.mock.calls).toEqual([
+				[{ stepId: 'step-1', decision: 'a' }],
+				[{ stepId: 'step-1', decision: 'd' }],
+			]);
+			expect(result.outputs).toEqual([[{ json: { reference: ['minted-a', 'minted-d'] } }]]);
+		});
+
+		it.each([
+			['link', 'no deadline', WAIT_INDEFINITELY.toISOString()],
+			['link', 'a deadline', '2026-10-01T12:00:00.000Z'],
+			['bareLink', 'no deadline', WAIT_INDEFINITELY.toISOString()],
+			['button', 'no deadline', WAIT_INDEFINITELY.toISOString()],
+			['button', 'a deadline', '2026-10-01T12:00:00.000Z'],
+		])('declares a step-bound wait after it builds a %s, with %s', async (reply, _, waitTill) => {
+			const graph = graphWith('test.asksForReply', { reply, waitTill });
+			const executor = replyExecutor(graph, {
+				stepBoundResumeToken: () => 'minted',
+				approvalCallback: () => 'minted',
+			});
+
+			const result = await executor.execute(replyStep(graph));
+
+			expect(result.wait).toMatchObject({ resumeBinding: 'step' });
+		});
+
+		it.each(['link', 'button'])(
+			'fails the step when the host mints nothing for a %s',
+			async (reply) => {
+				const graph = graphWith('test.asksForReply', { reply });
+
+				const execution = replyExecutor(graph, {}).execute(replyStep(graph));
+
+				await expect(execution).rejects.toThrow(
+					'Node "Subject" needs a signed resume URL or approval callback, but engine v2 has no resume secret to sign it',
+				);
+				await expect(execution).rejects.toBeInstanceOf(UserError);
+			},
+		);
 	});
 
 	it('honors onError=continueRegularOutput as passthrough', async () => {
@@ -477,7 +966,199 @@ describe('V1StepExecutor', () => {
 		const result = await testStepExecutor(graph).execute(
 			stepRequest(graph, 'n', items({ keep: 'me' })),
 		);
-		expect(result.outputs).toEqual([[{ json: { keep: 'me' } }]]);
+		expect(result.outputs).toEqual([[{ json: { keep: 'me' }, pairedItem: { item: 0 } }]]);
+	});
+});
+
+describe('sub-workflows', () => {
+	const subWorkflowGraph: WorkflowGraph = {
+		nodes: [
+			{ id: 'ct', name: 'When Executed by Another Workflow', type: 'trigger' },
+			{ id: 'x', name: 'X', type: 'v1-node' },
+		],
+		edges: [{ from: 'ct', to: 'x', outputIndex: 0, inputIndex: 0 }],
+	};
+	const resolved = {
+		workflowId: 'sub-workflow',
+		graph: subWorkflowGraph,
+		workflow: { id: 'sub-workflow', name: 'Sub-workflow' },
+		triggerOutputs: [[{ json: { a: 1 } }]],
+	};
+	const input = items({ a: 1 }, { a: 2 });
+	const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+	/**
+	 * Runs `fixture` as the Execute Sub-workflow node: the graph names the real
+	 * node type, which is the one the shim serves, and the type lookup answers
+	 * with the fixture's behaviour.
+	 */
+	function executorWith(
+		fixture: string,
+		{
+			parameters = {},
+			resolveSubWorkflow = vi.fn().mockResolvedValue(resolved),
+		}: { parameters?: Record<string, unknown>; resolveSubWorkflow?: SubWorkflowResolver } = {},
+	) {
+		const graph = graphWith(EXECUTE_WORKFLOW_TYPE, parameters);
+		const executor = new V1StepExecutor({
+			nodeTypes: {
+				...testNodeTypes,
+				getByNameAndVersion: (type, version) =>
+					testNodeTypes.getByNameAndVersion(
+						type === EXECUTE_WORKFLOW_TYPE ? fixture : type,
+						version,
+					),
+			},
+			additionalDataFactory: testAdditionalDataFactory,
+			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+			resolveSubWorkflow,
+		});
+		return { graph, executor, resolveSubWorkflow };
+	}
+
+	it('turns an awaited executeWorkflow call into a sub-execution, resolved through the host', async () => {
+		const { graph, executor, resolveSubWorkflow } = executorWith('test.runsSubWorkflow');
+
+		const result = await executor.execute(stepRequest(graph, 'n', input));
+
+		expect(result.subExecution).toMatchObject(resolved);
+		expect(result.subExecution?.executionId).toMatch(UUID_V7);
+		expect(resolveSubWorkflow).toHaveBeenCalledExactlyOnceWith({
+			workflowId: 'sub-workflow',
+			// The same id the sub-execution then runs under.
+			executionId: result.subExecution?.executionId,
+			parent: {
+				executionId: 'exec-1',
+				workflowId: 'wf-1',
+				mode: 'manual',
+				node: { id: 'n', name: 'Subject', type: EXECUTE_WORKFLOW_TYPE, typeVersion: 1 },
+			},
+			context: { userId: undefined, projectId: undefined },
+			items: [
+				{ json: { a: 1 }, pairedItem: { item: 0 } },
+				{ json: { a: 2 }, pairedItem: { item: 1 } },
+			],
+		});
+	});
+
+	it('starts a fire-and-forget call as a detached sub-execution and keeps the node outputs', async () => {
+		const { graph, executor } = executorWith('test.firesSubWorkflow');
+
+		const result = await executor.execute(stepRequest(graph, 'n', input));
+
+		expect(result.subExecution).toMatchObject({ ...resolved, awaited: false });
+		expect(result.outputs).toBeUndefined();
+		// The node reports the sub-execution id, as it does on v1, with no data.
+		expect(result.subExecution?.awaited === false && result.subExecution.outputs).toEqual([
+			[{ json: { subExecutionId: result.subExecution?.executionId, data: [null] } }],
+		]);
+	});
+
+	it('answers executeWorkflow from the sub-execution result on a sub-execution resume, asking the host for nothing', async () => {
+		const { graph, executor, resolveSubWorkflow } = executorWith('test.echoesSubWorkflow');
+		const resume = {
+			kind: 'subExecution' as const,
+			executionId: 'sub-1',
+			status: 'completed' as const,
+			result: [
+				{ nodeId: 'x', iteration: 0, outputs: [[{ json: { from: 'x' } }]] },
+				{
+					nodeId: 'y',
+					iteration: 0,
+					outputs: [[{ json: { from: 'y' } }], [{ json: { second: true } }]],
+				},
+			],
+		};
+
+		const result = await executor.execute({ ...stepRequest(graph, 'n', input), resume });
+
+		// Terminal outputs concatenate per slot, in the order the sub-execution reported them.
+		expect(result.outputs).toEqual([
+			[{ json: { from: 'x' } }, { json: { from: 'y' } }],
+			[{ json: { second: true } }],
+		]);
+		expect(resolveSubWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('keeps only the last pass of each terminal node when the caller asks for the last run only', async () => {
+		const { graph, executor } = executorWith('test.echoesSubWorkflow', {
+			parameters: { returnLastRunOnly: true },
+		});
+		const resume = {
+			kind: 'subExecution' as const,
+			executionId: 'sub-1',
+			status: 'completed' as const,
+			result: [
+				{ nodeId: 'x', iteration: 0, outputs: [[{ json: { pass: 0 } }]] },
+				{ nodeId: 'x', iteration: 1, outputs: [[{ json: { pass: 1 } }]] },
+			],
+		};
+
+		const result = await executor.execute({ ...stepRequest(graph, 'n', input), resume });
+
+		expect(result.outputs).toEqual([[{ json: { pass: 1 } }]]);
+	});
+
+	it('fails the node with the sub-execution error on a failed sub-execution resume', async () => {
+		const { graph, executor } = executorWith('test.echoesSubWorkflow');
+		const resume = {
+			kind: 'subExecution' as const,
+			executionId: 'sub-1',
+			status: 'failed' as const,
+			error: { name: 'TypeError', message: 'sub-execution boom' },
+		};
+
+		const execution = executor.execute({ ...stepRequest(graph, 'n', input), resume });
+
+		await expect(execution).rejects.toThrow('sub-execution boom');
+	});
+
+	it('refuses an inline sub-workflow and asks the host for nothing', async () => {
+		const { graph, executor, resolveSubWorkflow } = executorWith('test.runsInlineSubWorkflow');
+
+		await expect(executor.execute(stepRequest(graph, 'n', input))).rejects.toThrow(
+			'Engine v2 runs sub-workflows from the database only',
+		);
+		expect(resolveSubWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('refuses a second call in one run, so "once for each item" fails before any sub-execution starts', async () => {
+		const { graph, executor, resolveSubWorkflow } = executorWith('test.runsSubWorkflowPerItem');
+
+		await expect(executor.execute(stepRequest(graph, 'n', input))).rejects.toThrow(
+			'Engine v2 runs one sub-workflow for each run of a node',
+		);
+		expect(resolveSubWorkflow).toHaveBeenCalledTimes(1);
+	});
+
+	it('refuses the call from any node but the Execute Sub-workflow node, asking the host for nothing', async () => {
+		const graph = graphWith('test.runsSubWorkflow');
+		const resolveSubWorkflow = vi.fn().mockResolvedValue(resolved);
+		const executor = new V1StepExecutor({
+			nodeTypes: testNodeTypes,
+			additionalDataFactory: testAdditionalDataFactory,
+			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+			resolveSubWorkflow,
+		});
+
+		await expect(executor.execute(stepRequest(graph, 'n', input))).rejects.toThrow(
+			'from the Execute Sub-workflow node only',
+		);
+		expect(resolveSubWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('starts no sub-execution for a run the node failed, even with continueOnFail', async () => {
+		const { graph, executor, resolveSubWorkflow } = executorWith('test.callsSubWorkflowThenFails');
+		const subject = graph.nodes.find((node) => node.id === 'n');
+		expect(subject).toBeDefined();
+		(subject!.config as { continueOnFail?: boolean }).continueOnFail = true;
+
+		const result = await executor.execute(stepRequest(graph, 'n', input));
+
+		// The node's own outcome stands: its input passes through, and no sub-execution is owed.
+		expect(result.subExecution).toBeUndefined();
+		expect(result.outputs).toEqual(linked(input));
+		expect(resolveSubWorkflow).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -496,6 +1177,7 @@ describe('the v1 execution mode a node sees', () => {
 		} as unknown as INodeType;
 
 		const executor = new V1StepExecutor({
+			resolveSubWorkflow: noSubWorkflows,
 			nodeTypes: { ...testNodeTypes, getByNameAndVersion: () => reportsMode },
 			additionalDataFactory: async (): Promise<IWorkflowExecuteAdditionalData> =>
 				await testAdditionalDataFactory({
@@ -519,5 +1201,16 @@ describe('the v1 execution mode a node sees', () => {
 	// `isStreaming()` accepts only a few v1 modes, so a webhook run could not stream.
 	it.each(['webhook', 'trigger', 'manual'])('is the host mode %s', async (hostMode) => {
 		await expect(modeSeenBy(hostMode)).resolves.toBe(hostMode);
+	});
+});
+
+describe('approval callback layout', () => {
+	it('is parsed by core as the engine mints it', () => {
+		// The two packages cannot import each other, so each holds the layout.
+		const stepId = '01926a4e-7f5c-7000-8000-000000000001';
+
+		const parsed = parseHitlCallbackReference(mintApprovalCallback('secret', stepId, 'd'));
+
+		expect(parsed).toMatchObject({ kind: 'step', stepId, decision: 'd' });
 	});
 });

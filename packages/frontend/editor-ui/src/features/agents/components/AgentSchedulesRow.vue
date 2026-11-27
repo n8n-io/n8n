@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, onMounted, ref, toRef, watch } from 'vue';
-import { useUIStore } from '@/app/stores/ui.store';
-import { getAgentTasks } from '../composables/useAgentApi';
-import { AGENT_TASK_MODAL_KEY } from '../constants';
+import { useAgentTasks, type AgentTaskRow } from '../composables/useAgentTasks';
 import { describeSchedule, getNextScheduleOccurrence } from '../utils/scheduleBuilder';
 import AgentChipButton from './AgentChipButton.vue';
+import AgentItemContextMenu from './AgentItemContextMenu.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -23,8 +21,12 @@ const props = withDefaults(
 		agentUnsaved?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
 		validationIssues?: AgentConfigValidationIssue[];
+		previewDisabledReason?: string;
+		/** Hides the add buttons, for when the parent supplies its own. */
+		hideAdd?: boolean;
 	}>(),
 	{
+		hideAdd: false,
 		taskRefs: () => [],
 		disabled: false,
 		isRunnable: false,
@@ -40,103 +42,26 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const rootStore = useRootStore();
-const uiStore = useUIStore();
 
-const taskBodies = ref<AgentTaskDto[]>([]);
-const taskErrorMessage = ref('');
-
-type TaskRow = AgentTaskDto & {
-	enabled: boolean;
-	invalid: boolean;
-	invalidReasons: string[];
-};
-
-const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
-	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
-	invalid_value: 'agents.builder.validation.issue.task.invalidValue' as BaseTextKey,
-	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
-	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
-	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
-	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
-	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
-};
-
-const taskIssueMessages = computed(() => {
-	const messages = new Map<string, string[]>();
-	for (const issue of props.validationIssues) {
-		if (issue.capability.kind !== 'task' || !issue.capability.id) continue;
-		const message = i18n.baseText(ISSUE_KEYS[issue.code], {
-			interpolate: { id: issue.capability.id },
-		});
-		messages.set(issue.capability.id, [
-			...new Set([...(messages.get(issue.capability.id) ?? []), message]),
-		]);
-	}
-	return messages;
-});
-
-const taskRows = computed<TaskRow[]>(() => {
-	const refsById = new Map(props.taskRefs.map((taskRef) => [taskRef.id, taskRef]));
-	return taskBodies.value.map((body) => {
-		const taskRef = refsById.get(body.id);
-		const invalidReasons = taskIssueMessages.value.get(body.id) ?? [];
-		return {
-			...body,
-			enabled: taskRef?.enabled ?? true,
-			invalid: invalidReasons.length > 0,
-			invalidReasons,
-		};
+const { taskRows, taskErrorMessage, removingTaskId, toggleTask, removeTask, openTaskModal } =
+	useAgentTasks({
+		projectId: () => props.projectId,
+		agentId: () => props.agentId,
+		taskRefs: () => props.taskRefs,
+		validationIssues: () => props.validationIssues,
+		disabled: () => props.disabled,
+		isPublished: () => props.isPublished,
+		isRunnable: () => props.isRunnable,
+		reloadKey: () => props.reloadKey,
+		agentUnsaved: () => props.agentUnsaved,
+		previewDisabledReason: () => props.previewDisabledReason,
+		getEnsureAgentPersisted: () => props.ensureAgentPersisted,
+		onToggle: (payload) => emit('toggle-task', payload),
+		onChanged: () => emit('tasks-changed'),
+		onPreview: (instructions) => emit('preview-task', instructions),
 	});
-});
 
-async function reloadTasks() {
-	taskErrorMessage.value = '';
-	if (props.agentUnsaved) {
-		taskBodies.value = [];
-		return;
-	}
-
-	try {
-		taskBodies.value = await getAgentTasks(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-		);
-	} catch (error) {
-		taskErrorMessage.value =
-			error instanceof Error && error.message
-				? error.message
-				: i18n.baseText('agents.builder.tasks.loadError');
-	}
-}
-
-function openTaskModal(task: TaskRow | null) {
-	uiStore.openModalWithData({
-		name: AGENT_TASK_MODAL_KEY,
-		data: {
-			projectId: props.projectId,
-			agentId: props.agentId,
-			ensureAgentPersisted: props.ensureAgentPersisted,
-			task,
-			isPublished: props.isPublished,
-			isRunnable: props.isRunnable,
-			validationIssues: props.validationIssues,
-			taskState: task
-				? {
-						enabled: task.enabled,
-					}
-				: undefined,
-			onToggle: (payload: { id: string; enabled: boolean }) => emit('toggle-task', payload),
-			onPreview: (instructions: string) => emit('preview-task', instructions),
-			onSaved: () => {
-				void reloadTasks();
-				emit('tasks-changed');
-			},
-		},
-	});
-}
-
-function taskScheduleTooltip(task: TaskRow): string {
+function taskScheduleTooltip(task: AgentTaskRow): string {
 	const timezone = task.timezone ?? rootStore.timezone;
 	const description = getNextScheduleOccurrence(task.cronExpression, timezone)
 		? describeSchedule(task.cronExpression)
@@ -149,43 +74,47 @@ function taskScheduleTooltip(task: TaskRow): string {
 	return description;
 }
 
-onMounted(reloadTasks);
+/** Opens the modal to create a new schedule. */
+function openAddSchedule() {
+	openTaskModal(null);
+}
 
-watch(
-	[
-		toRef(props, 'reloadKey'),
-		toRef(props, 'projectId'),
-		toRef(props, 'agentId'),
-		toRef(props, 'agentUnsaved'),
-	],
-	reloadTasks,
-);
+defineExpose({ openAddSchedule });
 </script>
 
 <template>
-	<div :class="$style.scheduleRow" :inert="props.disabled || undefined">
+	<div v-if="!props.hideAdd || taskRows.length > 0 || taskErrorMessage" :class="$style.scheduleRow">
 		<N8nText v-if="taskRows.length > 0" bold :class="$style.rowLabel">
 			{{ i18n.baseText('agents.builder.tasks.title') }}
 		</N8nText>
 
 		<div :class="$style.chips">
 			<div v-for="(task, taskIndex) in taskRows" :key="task.id" :class="$style.chipGroup">
-				<N8nTooltip :content="taskScheduleTooltip(task)" placement="top" as-child>
-					<AgentChipButton
-						icon="clipboard-list"
-						:invalid="task.invalid"
-						:invalid-reasons="task.invalidReasons"
-						:disabled="props.disabled"
-						:class="$style.scheduleChip"
-						data-testid="agent-capabilities-task-row"
-						@click="openTaskModal(task)"
-					>
-						{{ task.name }}
-					</AgentChipButton>
-				</N8nTooltip>
+				<AgentItemContextMenu
+					:disabled="props.disabled || removingTaskId !== null"
+					:enabled="task.enabled"
+					@update:enabled="toggleTask(task, $event)"
+					@remove="removeTask(task)"
+				>
+					<N8nTooltip :content="taskScheduleTooltip(task)" placement="top" as-child>
+						<AgentChipButton
+							icon="clipboard-list"
+							:deactivated="!task.enabled"
+							:invalid="task.invalid"
+							:invalid-reasons="task.invalidReasons"
+							:disabled="props.disabled || removingTaskId === task.id"
+							:class="$style.scheduleChip"
+							data-testid="agent-capabilities-task-row"
+							@click="openTaskModal(task)"
+						>
+							{{ task.name }}
+						</AgentChipButton>
+					</N8nTooltip>
+				</AgentItemContextMenu>
 
 				<N8nTooltip
-					v-if="taskIndex === taskRows.length - 1"
+					v-if="!props.hideAdd && taskIndex === taskRows.length - 1"
+					as-child
 					:content="i18n.baseText('agents.builder.tasks.add')"
 					placement="top"
 				>
@@ -194,6 +123,8 @@ watch(
 						size="medium"
 						icon-only
 						:disabled="props.disabled"
+						focusable-when-disabled
+						:aria-label="i18n.baseText('agents.builder.tasks.add')"
 						data-testid="agent-capabilities-add-task"
 						@click="openTaskModal(null)"
 					>
@@ -205,7 +136,7 @@ watch(
 			</div>
 
 			<N8nButton
-				v-if="taskRows.length === 0"
+				v-if="!props.hideAdd && taskRows.length === 0"
 				:class="$style.addButtonEmpty"
 				variant="ghost"
 				size="medium"
@@ -213,6 +144,9 @@ watch(
 				data-testid="agent-capabilities-add-task"
 				@click="openTaskModal(null)"
 			>
+				<template #icon>
+					<N8nIcon icon="plus" :size="16" />
+				</template>
 				{{ i18n.baseText('agents.builder.tasks.add') }}
 			</N8nButton>
 
@@ -231,6 +165,7 @@ watch(
 }
 
 .rowLabel {
+	opacity: var(--agent-row-label-opacity, 1);
 	--n8n--row-label-width: max(7%, calc(var(--spacing--3xl) + var(--spacing--sm)));
 	flex: 0 0 var(--n8n--row-label-width);
 	line-height: var(--line-height--sm);

@@ -9,9 +9,7 @@ import { lazyImport } from '@n8n/utils/lazy-import';
 import z from 'zod';
 
 import { writeAssistantPreference } from '@/services/ai-preference-write';
-import type { AiPreferenceService } from '@/services/ai-preference.service';
-import type { UrlService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { AiPreferenceService, UrlService, TelemetryProxy } from '@n8n/backend-services';
 
 import {
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
@@ -121,7 +119,7 @@ function supportsFormElicitation(capabilities: unknown): boolean {
 export const createSaveUserPreferenceTool = (
 	user: User,
 	aiPreferenceService: AiPreferenceService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	urlService: UrlService,
 	logger: Logger,
 ): ToolDefinition<typeof inputSchema, ToolHandlerResult> => ({
@@ -209,6 +207,7 @@ export const createSaveUserPreferenceTool = (
 					// The same event the chat card fires on Undo: a late refusal of a write the
 					// user first let stand.
 					telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+						user_id: user.id,
 						count: 1,
 						source: 'rejected',
 						scope_types: ['user'],
@@ -216,6 +215,7 @@ export const createSaveUserPreferenceTool = (
 						seconds_since_saved: secondsSinceSaved(removed),
 					});
 					telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+						user_id: user.id,
 						surface: 'mcp',
 						outcome: 'rejected',
 						scope_type: 'user',
@@ -245,6 +245,7 @@ export const createSaveUserPreferenceTool = (
 				if (!parsed.success) {
 					const message = `The edited text is longer than ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters.`;
 					telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+						user_id: user.id,
 						surface: 'mcp',
 						reason: 'too_long',
 						scope_type: 'user',
@@ -273,12 +274,14 @@ export const createSaveUserPreferenceTool = (
 							})
 						: await aiPreferenceService.updateContent(user, id, parsed.data);
 					telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+						user_id: user.id,
 						surface: 'mcp',
 						outcome: 'accepted_after_edit',
 						scope_type: movedScope ?? 'user',
 						text_length: updated.content.length,
 					});
 					telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+						user_id: user.id,
 						scope_type: movedScope ?? 'user',
 						text_length: updated.content.length,
 						scope_changed: movedScope !== undefined,
@@ -288,6 +291,7 @@ export const createSaveUserPreferenceTool = (
 						// The write offered `user`. This is the only place an MCP user can take a
 						// preference off that default without a second tool call.
 						telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED, {
+							user_id: user.id,
 							surface: 'mcp',
 							offered_scope: 'user',
 							accepted_scope: movedScope,

@@ -1,14 +1,19 @@
-import type { AgentMessage, StreamChunk } from '@n8n/agents';
-import type {
-	AgentPersistedMessageContentPart,
-	AgentSseEvent,
-	AgentSseMessage,
-	ToolSuspendedPayload,
+import { PromptCacheParamsError, type AgentMessage, type StreamChunk } from '@n8n/agents';
+import {
+	AGENT_CHAT_ERROR_CODES,
+	type AgentPersistedMessageContentPart,
+	type AgentSseEvent,
+	type AgentSseMessage,
+	type AgentTokenUsage,
+	type ToolSuspendedPayload,
 } from '@n8n/api-types';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { Response } from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
+import { AgentFormattedTurnError } from './agent-formatted-turn.error';
+import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
+import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import type { AgentExecutionStreamChunk } from './types/agent-steering';
 
 export type FlushableResponse = Response & { flush?: () => void };
@@ -69,6 +74,25 @@ export function initSseStream(res: FlushableResponse) {
 	};
 
 	return { send, onChunk, abortSignal: abortController.signal, close };
+}
+
+/** The stable client `errorCode` of a known error class, if it has one. */
+export function chatErrorCode(error: unknown): string | undefined {
+	if (error instanceof AgentTurnAlreadyRunningError)
+		return AGENT_CHAT_ERROR_CODES.turnAlreadyRunning;
+	if (error instanceof AgentN8nChatUnavailableError) return AGENT_CHAT_ERROR_CODES.agentUnavailable;
+	if (error instanceof AgentFormattedTurnError) return error.errorCode;
+	return undefined;
+}
+
+/** Build the `error` SSE event for a caught error, mapping known error classes to a stable `errorCode`. */
+export function toChatErrorEvent(error: unknown, fallbackMessage: string): AgentSseEvent {
+	const errorCode = chatErrorCode(error);
+	return {
+		type: 'error',
+		message: scrubSecretsInText(error instanceof Error ? error.message : fallbackMessage),
+		...(errorCode && { errorCode }),
+	};
 }
 
 function toAgentSseMessage(message: AgentMessage): AgentSseMessage | undefined {
@@ -134,7 +158,7 @@ function emitTextLikeChunk(
 /** Map tool chunks to SSE events. */
 function emitToolChunk(
 	chunk: Extract<
-		StreamChunk,
+		AgentExecutionStreamChunk,
 		{
 			type:
 				| 'tool-input-start'
@@ -195,6 +219,7 @@ function emitToolChunk(
 				output: toolResultOutputForSse(chunk.output, chunk.isError),
 				...(chunk.isError !== undefined && { isError: chunk.isError }),
 				...(toolResultChunk.canceled !== undefined && { canceled: toolResultChunk.canceled }),
+				...(toolResultChunk.simulation && { simulation: toolResultChunk.simulation }),
 			});
 			break;
 		}
@@ -228,6 +253,9 @@ export function emitChunkEvents(
 		case 'finish-step':
 			send({ type: 'finish-step' });
 			return;
+		case 'usage':
+			send({ type: 'usage', usage: toSseUsage(chunk.usage) });
+			return;
 		case 'text-start':
 		case 'text-delta':
 		case 'text-end':
@@ -260,6 +288,14 @@ export function emitChunkEvents(
 			});
 			return;
 		}
+		case 'finish':
+			send({
+				type: 'finish',
+				finishReason: chunk.finishReason,
+				...(chunk.usage && { usage: toSseUsage(chunk.usage) }),
+				...(chunk.guardrail !== undefined && { guardrail: { code: chunk.guardrail.code } }),
+			});
+			return;
 		case 'error': {
 			const errMsg = stringifyError(chunk.error);
 			send({ type: 'error', message: errMsg });
@@ -278,6 +314,15 @@ export function emitChunkEvents(
 		default:
 			return;
 	}
+}
+
+function toSseUsage(usage: AgentTokenUsage): AgentTokenUsage {
+	return {
+		promptTokens: usage.promptTokens,
+		completionTokens: usage.completionTokens,
+		totalTokens: usage.totalTokens,
+		...(usage.cost !== undefined && { cost: usage.cost }),
+	};
 }
 
 /** Find an ai-sdk `responseBody` on the error or its `cause` chain (the API error can arrive wrapped). */
@@ -306,6 +351,8 @@ function apiCallErrorMessage(error: unknown): string | undefined {
 
 function stringifyError(error: unknown): string {
 	try {
+		// Its provider body sits on `cause`. Show the readable message instead.
+		if (error instanceof PromptCacheParamsError) return error.message;
 		const gatewayMessage = apiCallErrorMessage(error);
 		if (gatewayMessage) return gatewayMessage;
 		if (error instanceof Error) {

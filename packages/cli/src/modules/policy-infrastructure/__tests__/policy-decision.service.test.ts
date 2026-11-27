@@ -3,6 +3,8 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import {
 	type CredentialDecryptContext,
 	type CredentialSaveContext,
+	type CredentialTransferContext,
+	type ExecutionAdmissionContext,
 	type PolicyCheckClass,
 	type PolicyCheckMetadata,
 	type PolicyCheckResult,
@@ -13,12 +15,11 @@ import {
 	workflowContentSubject,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { classifyHttpError } from '@/errors/http-error-classifier';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
-import { serializeInternalRestError } from '@/errors/http-error-serializers';
+import { classifyRestError, serializeInternalRestError } from '@n8n/backend-services';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
@@ -97,6 +98,11 @@ const credentialUpdateContext: CredentialSaveContext = {
 	credential: { id: 'payload-cred', type: 'slackApi' },
 	storedCredential: { id: 'cred-1', type: 'slackApi' },
 	projectId: 'proj-1',
+};
+
+const credentialTransferContext: CredentialTransferContext = {
+	credential: { id: 'cred-1', type: 'slackApi' },
+	targetProjectId: 'proj-2',
 };
 
 const decryptContext: CredentialDecryptContext = {
@@ -187,6 +193,10 @@ class OtherPointsCheck implements RegisteredPolicyCheck {
 	async onCredentialSave(): Promise<PolicyCheckResult> {
 		return { violations: [slackBlocked] };
 	}
+
+	async onCredentialTransfer(): Promise<PolicyCheckResult> {
+		return { violations: [slackBlocked] };
+	}
 }
 
 /** Only implements `onWorkflowStart`, so it must not be called at other points. */
@@ -195,6 +205,41 @@ class StartOnlyCheck implements RegisteredPolicyCheck {
 	readonly id = 'start-only';
 
 	onWorkflowStart = vi.fn(async (): Promise<PolicyCheckResult> => ({ violations: [] }));
+}
+
+const admissionContext: ExecutionAdmissionContext = {
+	artifact: { kind: 'workflow', id: 'wf-1', name: 'Billing sync' },
+	projectId: 'proj-1',
+	mode: 'webhook',
+	source: null,
+	engine: 'v1',
+};
+
+@Service()
+class AdmissionCheck implements RegisteredPolicyCheck {
+	readonly id = 'admission';
+
+	async onExecutionAdmission(): Promise<PolicyCheckResult> {
+		return { violations: [slackBlocked] };
+	}
+}
+
+@Service()
+class BrokenAdmissionCheck implements RegisteredPolicyCheck {
+	readonly id = 'broken-admission';
+
+	async onExecutionAdmission(): Promise<PolicyCheckResult> {
+		throw new Error('the policy snapshot is unreadable');
+	}
+}
+
+@Service()
+class HangingAdmissionCheck implements RegisteredPolicyCheck {
+	readonly id = 'hanging-admission';
+
+	async onExecutionAdmission(): Promise<PolicyCheckResult> {
+		return await new Promise(() => {});
+	}
 }
 
 const serviceWith = (...classes: PolicyCheckClass[]) => {
@@ -430,6 +475,29 @@ describe('PolicyDecisionService', () => {
 			expect(JSON.stringify(audit.mock.calls[0][1])).not.toContain('wf-claimed');
 		});
 
+		it('names an agent as an agent, not as a workflow', async () => {
+			const { service, audit } = auditedServiceWith(SlackCheck);
+			const agent = {
+				id: 'agent-1',
+				name: 'Support agent',
+				nodes: [],
+				artifactKind: 'agent' as const,
+			};
+
+			await service.enforce(
+				'workflowSave',
+				{ workflow: agent, storedWorkflow: agent, projectId: 'proj-1' },
+				asAlice,
+			);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				agentId: 'agent-1',
+				agentName: 'Support agent',
+				projectId: 'proj-1',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
+		});
+
 		it('records the project a transfer moves into', async () => {
 			const { service, audit } = auditedServiceWith(OtherPointsCheck);
 
@@ -461,6 +529,19 @@ describe('PolicyDecisionService', () => {
 				credentialType: 'slackApi',
 			});
 			expect(JSON.stringify(audit.mock.calls[0][1])).not.toContain('payload-cred');
+		});
+
+		it('records the project a credential transfer moves into', async () => {
+			const { service, audit } = auditedServiceWith(OtherPointsCheck);
+
+			await service.enforce('credentialTransfer', credentialTransferContext, unattended);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				credentialId: 'cred-1',
+				credentialType: 'slackApi',
+				projectId: 'proj-2',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
 		});
 
 		it('records the credential and the node asking for it', async () => {
@@ -654,6 +735,130 @@ describe('PolicyDecisionService', () => {
 		});
 	});
 
+	describe('executionAdmission', () => {
+		it('returns the violation a check raises', async () => {
+			const decision = await serviceWith(AdmissionCheck).enforce(
+				'executionAdmission',
+				admissionContext,
+				unattended,
+			);
+
+			expect(decision.violations).toEqual([slackBlocked]);
+		});
+
+		it('allows when no checks are registered', async () => {
+			const service = serviceWith();
+
+			expect(await service.enforce('executionAdmission', admissionContext, unattended)).toEqual({
+				violations: [],
+			});
+			expect(service.hasChecksFor('executionAdmission')).toBe(false);
+		});
+
+		it('blocks with a 503 when a check throws, without its message', async () => {
+			const error = await serviceWith(BrokenAdmissionCheck)
+				.enforce('executionAdmission', admissionContext, unattended)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(PolicyCheckFailedError);
+			expect((error as PolicyCheckFailedError).httpStatusCode).toBe(503);
+			expect((error as PolicyCheckFailedError).message).not.toContain('snapshot');
+		});
+
+		it('treats a check that overruns the 250 ms deadline as a failure', async () => {
+			vi.useFakeTimers();
+
+			try {
+				let settled = false;
+				const pending = serviceWith(HangingAdmissionCheck)
+					.enforce('executionAdmission', admissionContext, unattended)
+					.catch((e: unknown) => e)
+					.finally(() => {
+						settled = true;
+					});
+
+				await vi.advanceTimersByTimeAsync(249);
+				expect(settled).toBe(false);
+
+				await vi.advanceTimersByTimeAsync(1);
+				expect(await pending).toBeInstanceOf(PolicyCheckFailedError);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('keeps the check error and writes no audit line or event on evaluate', async () => {
+			const { service, audit, emit } = auditedServiceWith(BrokenAdmissionCheck);
+
+			const decision = await service.evaluate('executionAdmission', admissionContext);
+
+			expect(decision.checkErrors?.[0].checkId).toBe('broken-admission');
+			expect(audit).not.toHaveBeenCalled();
+			expect(emit).not.toHaveBeenCalled();
+		});
+
+		it('writes no audit line or event when no check is registered', async () => {
+			const { service, audit, emit } = auditedServiceWith();
+
+			await service.enforce('executionAdmission', admissionContext, unattended);
+
+			expect(audit).not.toHaveBeenCalled();
+			expect(emit).not.toHaveBeenCalled();
+		});
+
+		it('names a workflow admission by id and name, with no agent fields', async () => {
+			const { service, audit } = auditedServiceWith(AdmissionCheck);
+
+			await service.enforce('executionAdmission', admissionContext, unattended);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				workflowId: 'wf-1',
+				workflowName: 'Billing sync',
+				projectId: 'proj-1',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('agentId');
+		});
+
+		it('names an agent admission as an agent, with no workflow fields', async () => {
+			const { service, audit } = auditedServiceWith(AdmissionCheck);
+			const agentContext: ExecutionAdmissionContext = {
+				...admissionContext,
+				artifact: { kind: 'agent', id: 'agent-1', name: 'Support agent' },
+				mode: 'agent',
+			};
+
+			await service.enforce('executionAdmission', agentContext, unattended);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				agentId: 'agent-1',
+				agentName: 'Support agent',
+				projectId: 'proj-1',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
+		});
+
+		it('records a system actor by reason, with no execution id when none is given', async () => {
+			const { service, emit } = auditedServiceWith(AdmissionCheck);
+
+			await service.enforce('executionAdmission', admissionContext, unattended);
+
+			expect(emit).toHaveBeenCalledWith(
+				'policy-decision-blocked',
+				expect.objectContaining({ actorType: 'system', systemReason: 'execution' }),
+			);
+			expect(emit.mock.calls[0][1]).not.toHaveProperty('executionId');
+		});
+
+		it('records the execution id of a system actor when one is given', async () => {
+			const { service, emit } = auditedServiceWith(AdmissionCheck);
+			const actor: PolicyActor = { kind: 'system', reason: 'execution', executionId: 'exec-1' };
+
+			await service.enforce('executionAdmission', admissionContext, actor);
+
+			expect(emit.mock.calls[0][1]).toHaveProperty('executionId', 'exec-1');
+		});
+	});
+
 	describe('through the enforcement proxy', () => {
 		it('turns violations into a PolicyViolationError', async () => {
 			const proxy = new PolicyEnforcementService();
@@ -705,7 +910,7 @@ describe('PolicyDecisionService', () => {
 			const error = await proxy
 				.enforceWorkflowSave(saveContext, unattended)
 				.catch((e: unknown) => e);
-			const { status, body } = serializeInternalRestError(classifyHttpError(error as Error));
+			const { status, body } = serializeInternalRestError(classifyRestError(error as Error));
 
 			expect(status).toBe(503);
 			expect(JSON.stringify(body)).not.toContain('policy store');

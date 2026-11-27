@@ -1,7 +1,9 @@
 import type { ByteStore } from '@n8n/blob-storage';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { createReadStream } from 'node:fs';
 import type { Readable } from 'node:stream';
+import pLimit from 'p-limit';
 import { v4 as uuid } from 'uuid';
 
 import type { ErrorReporter } from '@/errors';
@@ -10,8 +12,12 @@ import type { BinaryData } from './types';
 import { FileLocation, TEMP_EXECUTION_ID } from './utils';
 import { FileNotFoundError } from '../errors/file-not-found.error';
 
+/** Execution directories deleted at once, so a large batch cannot remove every tree together. */
+const PREFIX_DELETE_CONCURRENCY = 5;
+
 /** Captures `workflowId` (group 1) and `executionId` (group 2) from an execution fileId. */
-const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\/binary_data\//;
+const EXECUTION_PATH_MATCHER =
+	/^workflows\/([^/\\]+)\/executions\/([^/\\]+)\/binary_data\/([^/\\]+)$/;
 
 /**
  * Workflow and execution encoded in a path-format fileId, or null for
@@ -22,7 +28,10 @@ export function parseExecutionFileId(
 	fileId: string,
 ): { workflowId: string; executionId: string } | null {
 	const match = fileId.match(EXECUTION_PATH_MATCHER);
-	return match ? { workflowId: match[1], executionId: match[2] } : null;
+	if (!match || match[1] === '.' || match[1] === '..' || match[2] === '.' || match[2] === '..') {
+		return null;
+	}
+	return { workflowId: match[1], executionId: match[2] };
 }
 
 /**
@@ -57,7 +66,11 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 	}
 
 	getPath(fileId: string) {
-		return this.byteStore.getAbsolutePath?.(fileId) ?? fileId;
+		if (!this.byteStore.getAbsolutePath) {
+			throw new UnexpectedError('Binary data storage does not provide filesystem paths.');
+		}
+
+		return this.byteStore.getAbsolutePath(fileId);
 	}
 
 	async getAsBuffer(fileId: string) {
@@ -195,20 +208,29 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 		const prefixes = [
 			...new Set(locations.map((location) => `${this.toRelativePath(location)}/binary_data`)),
 		];
+		const limit = pLimit(PREFIX_DELETE_CONCURRENCY);
 		const results = await Promise.allSettled(
-			prefixes.map(async (prefix) => await deletePrefix(prefix)),
+			prefixes.map(async (prefix) => await limit(async () => await deletePrefix(prefix))),
 		);
 
-		// Report an unremovable dir instead of throwing: callers delete in batches, and
-		// a throw would abandon every later batch.
+		// Report each failure, then throw once every prefix was tried, so the caller keeps
+		// the execution row and a later run retries.
+		const failures: Error[] = [];
 		results.forEach((result, index) => {
 			if (result.status === 'rejected') {
 				const reason: unknown = result.reason;
-				this.errorReporter.warn(reason instanceof Error ? reason : new Error(String(reason)), {
-					extra: { prefix: prefixes[index] },
-				});
+				const error = reason instanceof Error ? reason : new Error(String(reason));
+				this.errorReporter.warn(error, { extra: { prefix: prefixes[index] } });
+				failures.push(error);
 			}
 		});
+
+		if (failures.length > 0) {
+			throw new AggregateError(
+				failures,
+				`Failed to delete ${failures.length} of ${prefixes.length} binary data directories`,
+			);
+		}
 	}
 
 	private metadataKey(fileId: string) {

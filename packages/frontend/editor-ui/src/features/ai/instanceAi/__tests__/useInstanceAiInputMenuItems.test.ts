@@ -1,46 +1,39 @@
-import { flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, type Ref } from 'vue';
+import type { SkillListItem, SkillListResponse } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	type InputMenuItem,
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
-import {
-	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
-	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
-} from '../constants';
+import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
+import type { OpenResourceContext } from '../openResourceContext';
+import type { ArtifactTab } from '../useCanvasPreview';
 
 const {
 	browserUseTelemetry,
-	contextStore,
 	ensureBrowserConnected,
-	computerUseTelemetry,
 	featureFlags,
+	getSkills,
 	ignorePendingConnectResult,
-	instanceAiStore,
 	mcpStore,
 	mcpTelemetry,
+	openResource,
+	projectsStore,
+	resourceSearch,
+	rootStore,
 	router,
 	settingsStore,
 	uiStore,
+	usersStore,
 } = vi.hoisted(() => ({
 	browserUseTelemetry: { trackModalOpened: vi.fn() },
-	contextStore: {
-		fetchPreferencesByIds:
-			vi.fn<(ids: string[]) => Promise<Array<{ id: string; content: string }>>>(),
-	},
 	ensureBrowserConnected: vi.fn(),
-	computerUseTelemetry: { trackModalOpened: vi.fn() },
-	featureFlags: { computerUse: true, preferences: true },
+	featureFlags: { skills: false },
+	getSkills: vi.fn<typeof import('@/features/settings/context/skills.api').getSkills>(),
 	ignorePendingConnectResult: vi.fn(),
-	instanceAiStore: {
-		runtimes: new Map<string, { appliedPreferences: unknown }>(),
-		getRuntime(threadId: string) {
-			return this.runtimes.get(threadId);
-		},
-	},
-	router: { push: vi.fn() },
 	mcpStore: {
 		connections: [] as Array<Record<string, unknown>>,
 		fetchConnectionsLazy: vi.fn(),
@@ -50,18 +43,31 @@ const {
 		trackToolsListOpened: vi.fn(),
 		trackSettingsOpened: vi.fn(),
 	},
+	openResource: { current: null as OpenResourceContext | null },
+	// The refs are set when the mocked module loads, as vi.hoisted runs before the imports.
+	resourceSearch: {} as {
+		results: Ref<ArtifactTab[]>;
+		isLoading: Ref<boolean>;
+		search: ReturnType<typeof vi.fn>;
+	},
+	projectsStore: {
+		personalProject: null as { id: string } | null,
+		myProjects: [] as Array<{
+			id: string;
+			type: 'personal' | 'team';
+			scopes: Array<'projectSkill:create'>;
+		}>,
+	},
+	rootStore: { restApiContext: { baseUrl: '/rest', pushRef: '' } },
+	router: {
+		push: vi.fn(),
+		resolve: vi.fn(() => ({ href: '/settings/context/preferences' })),
+	},
 	settingsStore: {
 		fetch: vi.fn(),
 		isMcpAvailable: true,
-		isLocalGatewayDisabled: false,
-		isComputerUseAvailable: true,
 		isBrowserUseAvailable: true,
-		isGatewayConnected: false,
-		computerUseConnectionStatus: 'none',
 		browserUseConnectionStatus: 'none',
-		gatewayHostIdentifier: null as string | null,
-		persistLocalGatewayPreference: vi.fn(),
-		disconnectComputerUse: vi.fn(),
 		disconnectBrowserUse: vi.fn(),
 	},
 	uiStore: {
@@ -69,6 +75,7 @@ const {
 		openModal: vi.fn(),
 		openModalWithData: vi.fn(),
 	},
+	usersStore: { currentUser: { globalScopes: [] as Array<'skill:create'> } },
 }));
 
 vi.mock('@n8n/i18n', () => ({
@@ -79,34 +86,31 @@ vi.mock('vue-router', () => ({
 	useRouter: () => router,
 }));
 
-vi.mock('@/features/settings/context/context.store', () => ({
-	useContextStore: () => contextStore,
-}));
-
-vi.mock('@/features/settings/context/context.utils', () => ({
-	isContextPreferencesEnabled: () => featureFlags.preferences,
-}));
-
-vi.mock('../instanceAi.store', () => ({
-	useInstanceAiStore: () => instanceAiStore,
-}));
-
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => uiStore,
 }));
 
-vi.mock('../composables/useBrowserUseConnection', () => ({
-	useBrowserUseConnection: () => ({ ensureConnected: ensureBrowserConnected }),
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => rootStore,
 }));
 
-vi.mock('@/experiments/instanceAiComputerUse', () => ({
-	useInstanceAiComputerUseExperiment: () => ({
-		isFeatureEnabled: {
-			get value() {
-				return featureFlags.computerUse;
-			},
-		},
-	}),
+vi.mock('@/features/settings/context/context.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/settings/context/context.utils')>()),
+	isContextSkillsEnabled: () => featureFlags.skills,
+}));
+
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => projectsStore,
+}));
+
+vi.mock('@n8n/stores/users.store', () => ({
+	useUsersStore: () => usersStore,
+}));
+
+vi.mock('@/features/settings/context/skills.api', () => ({ getSkills }));
+
+vi.mock('../composables/useBrowserUseConnection', () => ({
+	useBrowserUseConnection: () => ({ ensureConnected: ensureBrowserConnected }),
 }));
 
 vi.mock('../instanceAiSettings.store', () => ({
@@ -129,9 +133,17 @@ vi.mock('../instanceAiBrowserUse.telemetry', () => ({
 	useInstanceAiBrowserUseTelemetry: () => browserUseTelemetry,
 }));
 
-vi.mock('../instanceAiComputerUse.telemetry', () => ({
-	useInstanceAiComputerUseTelemetry: () => computerUseTelemetry,
+vi.mock('../openResourceContext', () => ({
+	injectOpenResource: () => openResource.current,
 }));
+
+vi.mock('../composables/useProjectResourceSearch', async () => {
+	const { ref: vueRef } = await import('vue');
+	resourceSearch.results = vueRef([]);
+	resourceSearch.isLoading = vueRef(false);
+	resourceSearch.search = vi.fn();
+	return { useProjectResourceSearch: () => resourceSearch };
+});
 
 function findItem(items: InputMenuItem[], id: string): InputMenuItem | undefined {
 	for (const item of items) {
@@ -153,6 +165,18 @@ function makeMcpConnection(id: string, status: 'connected' | 'connecting' | 'dis
 	};
 }
 
+function makeSkill(id: string, name: string, overrides: Partial<SkillListItem> = {}) {
+	return mock<SkillListItem>({
+		id,
+		name,
+		description: 'Skill description',
+		scope: 'instance',
+		projectId: null,
+		availableToAssistant: true,
+		...overrides,
+	});
+}
+
 const mcpStatusCases: Array<{
 	statuses: Array<'connected' | 'connecting' | 'disconnected'>;
 	expectedStatus: 'connected' | 'connecting' | 'disconnected' | undefined;
@@ -166,32 +190,29 @@ const mcpStatusCases: Array<{
 describe('useInstanceAiInputMenuItems', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		featureFlags.computerUse = true;
-		featureFlags.preferences = false;
-		instanceAiStore.runtimes.clear();
-		contextStore.fetchPreferencesByIds.mockResolvedValue([]);
+		featureFlags.skills = false;
+		projectsStore.personalProject = null;
+		projectsStore.myProjects = [];
+		usersStore.currentUser.globalScopes = ['skill:create'];
+		getSkills.mockResolvedValue({ data: [], count: 0 });
 		mcpStore.connections = [];
 		settingsStore.isMcpAvailable = true;
-		settingsStore.isLocalGatewayDisabled = false;
-		settingsStore.isComputerUseAvailable = true;
 		settingsStore.isBrowserUseAvailable = true;
-		settingsStore.isGatewayConnected = false;
-		settingsStore.computerUseConnectionStatus = 'none';
 		settingsStore.browserUseConnectionStatus = 'none';
-		settingsStore.gatewayHostIdentifier = null;
+		openResource.current = null;
+		resourceSearch.results.value = [];
+		resourceSearch.isLoading.value = false;
 	});
 
 	it('omits connection groups that instance settings report as unavailable', () => {
 		settingsStore.isMcpAvailable = false;
-		settingsStore.isComputerUseAvailable = false;
 		settingsStore.isBrowserUseAvailable = false;
 
 		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
 
-		expect(menuItems.value.map(({ id }) => id)).toEqual(['attach-files']);
+		expect(menuItems.value.map(({ id }) => id)).toEqual(['attach-files', 'preferences']);
 		expect(mcpStore.fetchConnectionsLazy).not.toHaveBeenCalled();
 	});
-
 	it('fetches MCP connections when MCP becomes available', async () => {
 		const isMcpAvailable = ref(false);
 		const originalDescriptor = Object.getOwnPropertyDescriptor(settingsStore, 'isMcpAvailable');
@@ -233,69 +254,33 @@ describe('useInstanceAiInputMenuItems', () => {
 		},
 	);
 
-	it.each([
-		{
-			id: 'computer',
-			setDisconnected: () => {
-				settingsStore.computerUseConnectionStatus = 'disconnected';
-				settingsStore.gatewayHostIdentifier = 'Work computer';
-			},
-			modal: INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
-			title: 'Work computer',
-		},
-		{
-			id: 'browser',
-			setDisconnected: () => {
-				settingsStore.browserUseConnectionStatus = 'disconnected';
-			},
-			// Browser Use reconnects through the shared flow, which opens a modal only when
-			// the extension actually needs the user.
-			modal: null,
-			title: 'instanceAi.inputMenu.browser.connectedTitle',
-		},
-	])(
-		'shows a Reconnect menu when $id disconnects unexpectedly',
-		async ({ id, setDisconnected, modal, title }) => {
-			setDisconnected();
-			const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(vi.fn());
-
-			const item = findItem(menuItems.value, id);
-			expect(item?.data?.status).toBe('disconnected');
-			expect(item?.data?.action).toBeUndefined();
-			expect(findItem(menuItems.value, `${id}-status`)?.label).toBe(title);
-			expect(disconnectedConnectionCount.value).toBe(1);
-
-			await findItem(menuItems.value, `${id}-reconnect`)?.data?.action?.();
-			if (modal) {
-				expect(uiStore.openModal).toHaveBeenCalledWith(modal);
-			} else {
-				expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
-				expect(uiStore.openModal).not.toHaveBeenCalled();
-			}
-		},
-	);
-
-	it('keeps user-disconnected services as direct Connect actions', () => {
+	it('shows a Reconnect menu when Browser Use disconnects unexpectedly', async () => {
+		settingsStore.browserUseConnectionStatus = 'disconnected';
 		const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(vi.fn());
 
-		for (const id of ['computer', 'browser']) {
-			const item = findItem(menuItems.value, id);
-			expect(item?.data?.status).toBe('none');
-			expect(item?.children).toBeUndefined();
-			expect(item?.data?.action).toBeTypeOf('function');
-		}
-		expect(disconnectedConnectionCount.value).toBe(0);
+		const item = findItem(menuItems.value, 'browser');
+		expect(item?.data?.status).toBe('disconnected');
+		expect(item?.data?.action).toBeUndefined();
+		expect(findItem(menuItems.value, 'browser-status')?.label).toBe(
+			'instanceAi.inputMenu.browser.connectedTitle',
+		);
+		expect(disconnectedConnectionCount.value).toBe(1);
+
+		// Browser Use reconnects through the shared flow, which opens a modal only when
+		// the extension actually needs the user.
+		await findItem(menuItems.value, 'browser-reconnect')?.data?.action?.();
+		expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
+		expect(uiStore.openModal).not.toHaveBeenCalled();
 	});
 
-	it('does not offer direct Browser Use disconnect when browser access comes from Computer Use', () => {
-		settingsStore.isGatewayConnected = true;
+	it('keeps a user-disconnected service as a direct Connect action', () => {
+		const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(vi.fn());
 
-		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
-
-		expect(findItem(menuItems.value, 'browser-disconnect')).toBeUndefined();
-		expect(findItem(menuItems.value, 'browser')?.label).toBe(
-			'instanceAi.inputMenu.browser.connect',
-		);
+		const item = findItem(menuItems.value, 'browser');
+		expect(item?.data?.status).toBe('none');
+		expect(item?.children).toBeUndefined();
+		expect(item?.data?.action).toBeTypeOf('function');
+		expect(disconnectedConnectionCount.value).toBe(0);
 	});
 
 	it('disconnects Browser Use when the direct extension is connected', async () => {
@@ -307,27 +292,16 @@ describe('useInstanceAiInputMenuItems', () => {
 		expect(settingsStore.disconnectBrowserUse).toHaveBeenCalledOnce();
 	});
 
-	it('shows Computer Use as connecting while daemon pairing is in progress', () => {
-		settingsStore.computerUseConnectionStatus = 'connecting';
-
-		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
-
-		expect(findItem(menuItems.value, 'computer')?.data?.status).toBe('connecting');
-	});
-
 	it('delegates attachment and connection actions to their owners', async () => {
 		const attachFiles = vi.fn();
-		settingsStore.isLocalGatewayDisabled = true;
-		settingsStore.isGatewayConnected = true;
-		settingsStore.computerUseConnectionStatus = 'connected';
+		settingsStore.browserUseConnectionStatus = 'connected';
 		mcpStore.connections = [makeMcpConnection('1', 'connected')];
 		const { menuItems } = useInstanceAiInputMenuItems(attachFiles);
 
 		await findItem(menuItems.value, 'attach-files')?.data?.action?.();
 		await findItem(menuItems.value, 'mcp-1-setup')?.data?.action?.();
 		await findItem(menuItems.value, 'mcp-1-disconnect')?.data?.action?.();
-		await findItem(menuItems.value, 'computer-disconnect')?.data?.action?.();
-		await findItem(menuItems.value, 'browser')?.data?.action?.();
+		await findItem(menuItems.value, 'browser-disconnect')?.data?.action?.();
 
 		expect(attachFiles).toHaveBeenCalledOnce();
 		expect(mcpTelemetry.trackSettingsOpened).toHaveBeenCalledWith('server-1', 'input_menu');
@@ -340,158 +314,313 @@ describe('useInstanceAiInputMenuItems', () => {
 		expect(ignorePendingConnectResult.mock.invocationCallOrder[0]).toBeLessThan(
 			mcpStore.disconnect.mock.invocationCallOrder[0] ?? 0,
 		);
-		expect(settingsStore.disconnectComputerUse).toHaveBeenCalledOnce();
-		expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
+		expect(settingsStore.disconnectBrowserUse).toHaveBeenCalledOnce();
 	});
 
-	describe('applied preferences', () => {
-		function setApplied(threadId: string, preferences: unknown[] | null) {
-			instanceAiStore.runtimes.set(threadId, {
-				appliedPreferences:
-					preferences === null ? null : { preferences, renderedLength: 10, injectedThisTurn: true },
-			});
+	describe('the preferences item', () => {
+		it('is a plain item, with no nested list of applied preferences', () => {
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			const item = findItem(menuItems.value, 'preferences');
+
+			expect(item?.label).toBe('instanceAi.inputMenu.preferences.label');
+			expect(item?.children).toBeUndefined();
+			expect(item?.divided).toBe(true);
+		});
+
+		it('opens the Context preferences settings page in a new tab', async () => {
+			const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			await findItem(menuItems.value, 'preferences')?.data?.action?.();
+
+			expect(router.resolve).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
+			expect(openSpy).toHaveBeenCalledWith('/settings/context/preferences', '_blank');
+			expect(router.push).not.toHaveBeenCalled();
+			openSpy.mockRestore();
+		});
+	});
+
+	describe('the open-resource submenu', () => {
+		const workflow: ArtifactTab = {
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'Morning report',
+			icon: 'workflow',
+			projectId: 'project-1',
+		};
+
+		function provideContext(overrides: Partial<OpenResourceContext> = {}) {
+			const context: OpenResourceContext = {
+				projectId: () => 'project-1',
+				isAvailable: () => true,
+				excludedTabs: () => [],
+				open: vi.fn(),
+				...overrides,
+			};
+			openResource.current = context;
+			return context;
 		}
 
-		it('hides the section while the flag is off', () => {
-			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
+		it('is not shown in a composer that has no preview to open resources in', () => {
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
 
-			expect(findItem(menuItems.value, 'preferences')).toBeUndefined();
+			expect(findItem(menuItems.value, 'open-resource')).toBeUndefined();
 		});
 
-		it('shows the empty state, not a hidden item, before a turn reported anything', () => {
-			featureFlags.preferences = true;
+		it('is not shown until the thread view can open a resource', () => {
+			provideContext({ isAvailable: () => false });
 
-			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => undefined);
-			const section = findItem(menuItems.value, 'preferences');
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
 
-			expect(section?.children?.map(({ id }) => id)).toEqual([
-				'preferences-empty',
-				'preferences-manage',
-			]);
-			expect(findItem(menuItems.value, 'preferences-empty')?.disabled).toBe(true);
-			expect(contextStore.fetchPreferencesByIds).not.toHaveBeenCalled();
+			expect(findItem(menuItems.value, 'open-resource')).toBeUndefined();
 		});
 
-		it('shows the empty state for a turn that reported an empty payload', () => {
-			featureFlags.preferences = true;
-			setApplied('thread-1', []);
+		it('sits in one group with Preferences, and opens the picked resource', async () => {
+			const context = provideContext();
+			resourceSearch.results.value = [workflow];
 
-			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			const ids = menuItems.value.map(({ id }) => id);
+			const item = findItem(menuItems.value, 'open-resource');
 
-			expect(findItem(menuItems.value, 'preferences-empty')).toBeDefined();
+			expect(ids.slice(-2)).toEqual(['open-resource', 'preferences']);
+			expect(item).toMatchObject({
+				label: 'instanceAi.inputMenu.openResource.label',
+				divided: true,
+				searchable: true,
+				loading: false,
+			});
+			expect(findItem(menuItems.value, 'preferences')?.divided).toBe(false);
+			expect(item?.children?.map(({ label }) => label)).toEqual(['Morning report']);
+
+			await item?.children?.[0]?.data?.action?.();
+			expect(context.open).toHaveBeenCalledWith(workflow);
 		});
 
-		it('lists exactly what the payload names, in payload order, grouped by scope', async () => {
-			featureFlags.preferences = true;
-			setApplied('thread-1', [
-				{ id: 'inst-1', scope: 'instance' },
-				{ id: 'user-1', scope: 'user' },
-				{ id: 'user-2', scope: 'user' },
-				{ id: 'proj-1', scope: 'project', projectId: 'p-1', projectName: 'Marketing' },
+		it('shows loading while the first results load, then an empty state', () => {
+			provideContext();
+			resourceSearch.isLoading.value = true;
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			expect(findItem(menuItems.value, 'open-resource')?.loading).toBe(true);
+
+			resourceSearch.isLoading.value = false;
+			const item = findItem(menuItems.value, 'open-resource');
+			expect(item?.loading).toBe(false);
+			expect(item?.children).toEqual([
+				expect.objectContaining({
+					label: 'instanceAi.previewTabBar.noResources',
+					disabled: true,
+				}),
 			]);
-			// The lookup answers in a different order and without the row that was removed.
-			contextStore.fetchPreferencesByIds.mockResolvedValue([
-				{ id: 'user-2', content: 'Prefer Postgres' },
-				{ id: 'inst-1', content: 'Name nodes clearly' },
-				{ id: 'proj-1', content: 'Post to #marketing' },
+		});
+
+		it('loads the resources when the submenu opens, and searches them with a debounce', async () => {
+			vi.useFakeTimers();
+			try {
+				provideContext();
+				const { handleSubMenuToggle, handleSearch } = useInstanceAiInputMenuItems(vi.fn());
+
+				handleSubMenuToggle('skills', true);
+				handleSubMenuToggle('open-resource', false);
+				expect(resourceSearch.search).not.toHaveBeenCalled();
+
+				handleSubMenuToggle('open-resource', true);
+				expect(resourceSearch.search).toHaveBeenCalledExactlyOnceWith();
+
+				handleSearch('mor', 'skills');
+				handleSearch('mor', 'open-resource');
+				handleSearch('morn', 'open-resource');
+				await vi.runAllTimersAsync();
+
+				expect(resourceSearch.search).toHaveBeenCalledTimes(2);
+				expect(resourceSearch.search).toHaveBeenLastCalledWith('morn');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	describe('the skills submenu', () => {
+		beforeEach(() => {
+			featureFlags.skills = true;
+		});
+
+		it('omits skills and does not fetch them when skills are off', async () => {
+			featureFlags.skills = false;
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
+
+			await refreshSkills();
+
+			expect(findItem(menuItems.value, 'skills')).toBeUndefined();
+			expect(getSkills).not.toHaveBeenCalled();
+		});
+
+		it('groups enabled session-project and instance skills by name and follows project changes', async () => {
+			const projectId = ref<string | undefined>('project-1');
+			const data = [
+				makeSkill('iz', 'Zebra'),
+				makeSkill('pz', 'Zulu', { scope: 'project', projectId: 'project-1' }),
+				makeSkill('ia', 'Alpha'),
+				makeSkill('pa', 'Bravo', { scope: 'project', projectId: 'project-1' }),
+				makeSkill('personal', 'Personal', { scope: 'project', projectId: 'personal-1' }),
+				makeSkill('other', 'Other', { scope: 'project', projectId: 'other-project' }),
+				makeSkill('disabled', 'Disabled', { availableToAssistant: false }),
+				makeSkill('disabled-project', 'Disabled project', {
+					scope: 'project',
+					projectId: 'project-1',
+					availableToAssistant: false,
+				}),
+				makeSkill('unnamed', ' '),
+				makeSkill('undescribed', 'No description', { description: ' ' }),
+			];
+			getSkills.mockResolvedValue({ data, count: data.length });
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn(), projectId);
+			await refreshSkills();
+
+			expect(getSkills).toHaveBeenCalledWith(rootStore.restApiContext);
+			expect(findItem(menuItems.value, 'skills')?.children?.map(({ label }) => label)).toEqual([
+				'settings.context.skills.scope.project',
+				'Bravo',
+				'Zulu',
+				'settings.context.skills.scope.instance',
+				'Alpha',
+				'Zebra',
+				'instanceAi.inputMenu.skills.manage',
+				'instanceAi.inputMenu.skills.create',
 			]);
 
-			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
-			await flushPromises();
+			projectId.value = 'personal-1';
+			expect(findItem(menuItems.value, 'skill-personal')).toBeDefined();
+			expect(findItem(menuItems.value, 'skill-pa')).toBeUndefined();
 
-			expect(contextStore.fetchPreferencesByIds).toHaveBeenCalledWith([
-				'inst-1',
-				'user-1',
-				'user-2',
-				'proj-1',
-			]);
-			const children = findItem(menuItems.value, 'preferences')?.children ?? [];
-			expect(children.map(({ id, label, header }) => ({ id, label, header }))).toEqual([
+			projectId.value = undefined;
+			expect(findItem(menuItems.value, 'skills-project')).toBeUndefined();
+			expect(findItem(menuItems.value, 'skill-personal')).toBeUndefined();
+			expect(findItem(menuItems.value, 'skill-ia')).toBeDefined();
+		});
+
+		it.each([
+			{ scope: 'none', canCreate: false },
+			{ scope: 'instance', canCreate: true },
+			{ scope: 'personal', canCreate: true },
+			{ scope: 'team', canCreate: true },
+		])('checks skill-create permission for the $scope scope', async ({ scope, canCreate }) => {
+			usersStore.currentUser.globalScopes = scope === 'instance' ? ['skill:create'] : [];
+			projectsStore.personalProject = { id: 'personal-1' };
+			projectsStore.myProjects = [
 				{
-					id: 'preferences-group-instance',
-					label: 'settings.context.preferences.scope.instance',
-					header: true,
-				},
-				{ id: 'preference-inst-1', label: 'Name nodes clearly', header: undefined },
-				{
-					id: 'preferences-group-user',
-					label: 'instanceAi.inputMenu.preferences.scope.user',
-					header: true,
+					id: 'personal-1',
+					type: 'personal',
+					scopes: scope === 'personal' ? ['projectSkill:create'] : [],
 				},
 				{
-					id: 'preference-user-1',
-					label: 'instanceAi.inputMenu.preferences.removed',
-					header: undefined,
+					id: 'team-1',
+					type: 'team',
+					scopes: scope === 'team' ? ['projectSkill:create'] : [],
 				},
-				{ id: 'preference-user-2', label: 'Prefer Postgres', header: undefined },
-				{ id: 'preferences-group-project-p-1', label: 'Marketing', header: true },
-				{ id: 'preference-proj-1', label: 'Post to #marketing', header: undefined },
-				{
-					id: 'preferences-manage',
-					label: 'instanceAi.inputMenu.preferences.manage',
-					header: undefined,
-				},
-			]);
-			expect(findItem(menuItems.value, 'preference-user-1')?.data?.preference).toBe('removed');
-			expect(findItem(menuItems.value, 'preference-user-2')?.data?.preference).toBe('applied');
-		});
-
-		it('keeps the list when the text lookup fails, and does not call the rows removed', async () => {
-			featureFlags.preferences = true;
-			setApplied('thread-1', [{ id: 'user-1', scope: 'user' }]);
-			contextStore.fetchPreferencesByIds.mockRejectedValue(new Error('offline'));
-
-			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
-			await flushPromises();
-
-			const item = findItem(menuItems.value, 'preference-user-1');
-			expect(item?.label).toBe('instanceAi.inputMenu.preferences.unavailable');
-			expect(item?.data?.preference).toBe('unavailable');
-			expect(findItem(menuItems.value, 'preferences')?.loading).toBe(false);
-		});
-
-		it('keeps texts it already resolved when a later lookup fails', async () => {
-			featureFlags.preferences = true;
-			setApplied('thread-1', [{ id: 'user-1', scope: 'user' }]);
-			contextStore.fetchPreferencesByIds.mockResolvedValue([{ id: 'user-1', content: 'known' }]);
-
-			const { menuItems, refreshAppliedPreferences } = useInstanceAiInputMenuItems(
+			];
+			getSkills.mockResolvedValue({ data: [makeSkill('s1', 'Skill')], count: 1 });
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(
 				vi.fn(),
-				() => 'thread-1',
+				'read-only-project',
 			);
-			await flushPromises();
+			await refreshSkills();
 
-			contextStore.fetchPreferencesByIds.mockRejectedValue(new Error('offline'));
-			await refreshAppliedPreferences();
-
-			expect(findItem(menuItems.value, 'preference-user-1')?.label).toBe('known');
+			expect(Boolean(findItem(menuItems.value, 'create-skill'))).toBe(canCreate);
+			expect(findItem(menuItems.value, 'manage-skills')?.data?.action).toBeTypeOf('function');
+			expect(findItem(menuItems.value, 'skill-s1')?.data?.action).toBeTypeOf('function');
 		});
 
-		it('re-reads the texts on demand, so an edit in settings shows up', async () => {
-			featureFlags.preferences = true;
-			setApplied('thread-1', [{ id: 'user-1', scope: 'user' }]);
-			contextStore.fetchPreferencesByIds.mockResolvedValue([{ id: 'user-1', content: 'old' }]);
+		it.each([
+			{ id: 'skill-s1', query: { skillId: 's1' }, href: '/settings/context/skills?skillId=s1' },
+			{ id: 'manage-skills', query: {}, href: '/settings/context/skills' },
+			{
+				id: 'create-skill',
+				query: { create: 'true' },
+				href: '/settings/context/skills?create=true',
+			},
+		])('opens $id in a new tab with the matching settings state', async ({ id, query, href }) => {
+			const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+			getSkills.mockResolvedValue({ data: [makeSkill('s1', 'Skill')], count: 1 });
+			router.resolve.mockReturnValueOnce({ href });
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
+			await refreshSkills();
+			await findItem(menuItems.value, id)?.data?.action?.();
 
-			const { menuItems, refreshAppliedPreferences } = useInstanceAiInputMenuItems(
-				vi.fn(),
-				() => 'thread-1',
+			expect(router.resolve).toHaveBeenCalledWith({ name: 'SettingsContextSkills', query });
+			expect(openSpy).toHaveBeenCalledWith(href, '_blank', 'noopener');
+			expect(router.push).not.toHaveBeenCalled();
+			openSpy.mockRestore();
+		});
+
+		it('shows loading before an empty result and refreshes the list on the next open', async () => {
+			const pending = createDeferredPromise<SkillListResponse>();
+			getSkills.mockReturnValueOnce(pending.promise);
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
+			const load = refreshSkills();
+
+			expect(findItem(menuItems.value, 'skills-status')).toMatchObject({
+				label: 'instanceAi.inputMenu.skills.loading',
+				disabled: true,
+			});
+			pending.resolve({ data: [], count: 0 });
+			await load;
+			expect(findItem(menuItems.value, 'skills-status')?.label).toBe(
+				'instanceAi.inputMenu.skills.empty',
 			);
-			await flushPromises();
-			expect(findItem(menuItems.value, 'preference-user-1')?.label).toBe('old');
+			expect(findItem(menuItems.value, 'manage-skills')?.data?.action).toBeTypeOf('function');
+			expect(findItem(menuItems.value, 'create-skill')?.data?.action).toBeTypeOf('function');
 
-			contextStore.fetchPreferencesByIds.mockResolvedValue([{ id: 'user-1', content: 'new' }]);
-			await refreshAppliedPreferences();
-
-			expect(findItem(menuItems.value, 'preference-user-1')?.label).toBe('new');
+			getSkills.mockResolvedValueOnce({ data: [makeSkill('s1', 'Added skill')], count: 1 });
+			await refreshSkills();
+			expect(getSkills).toHaveBeenCalledTimes(2);
+			expect(findItem(menuItems.value, 'skill-s1')?.label).toBe('Added skill');
+			expect(findItem(menuItems.value, 'skills-status')).toBeUndefined();
 		});
 
-		it('links to the Context settings page', async () => {
-			featureFlags.preferences = true;
+		it('shows failed reads separately from empty reads, clears old skills, and retries', async () => {
+			getSkills.mockResolvedValueOnce({ data: [makeSkill('s1', 'Skill')], count: 1 });
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
+			await refreshSkills();
 
-			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
-			await findItem(menuItems.value, 'preferences-manage')?.data?.action?.();
+			getSkills.mockRejectedValueOnce(new Error('offline'));
+			await refreshSkills();
+			expect(findItem(menuItems.value, 'skills-status')).toMatchObject({
+				label: 'instanceAi.inputMenu.skills.loadError',
+				disabled: true,
+			});
+			expect(findItem(menuItems.value, 'skill-s1')).toBeUndefined();
+			expect(findItem(menuItems.value, 'manage-skills')).toBeDefined();
+			expect(findItem(menuItems.value, 'create-skill')).toBeDefined();
 
-			expect(router.push).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
+			await refreshSkills();
+			expect(findItem(menuItems.value, 'skills-status')?.label).toBe(
+				'instanceAi.inputMenu.skills.empty',
+			);
 		});
+
+		it.each(['success', 'failure'])(
+			'keeps the latest list when an older request finishes with %s',
+			async (result) => {
+				const pending = createDeferredPromise<SkillListResponse>();
+				getSkills.mockReturnValueOnce(pending.promise);
+				const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
+				const earlier = refreshSkills();
+
+				getSkills.mockResolvedValueOnce({ data: [makeSkill('new', 'New skill')], count: 1 });
+				await refreshSkills();
+				if (result === 'success') {
+					pending.resolve({ data: [makeSkill('old', 'Old skill')], count: 1 });
+				} else {
+					pending.reject(new Error('offline'));
+				}
+				await earlier;
+
+				expect(findItem(menuItems.value, 'skill-new')?.label).toBe('New skill');
+				expect(findItem(menuItems.value, 'skill-old')).toBeUndefined();
+				expect(findItem(menuItems.value, 'skills-status')).toBeUndefined();
+			},
+		);
 	});
 });

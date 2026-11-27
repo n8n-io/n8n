@@ -1,31 +1,48 @@
+import type { SerializedCredentialData } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ForbiddenError } from '@n8n/errors';
 import { Credentials } from 'n8n-core';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import isEqual from 'lodash/isEqual';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 
+import { CredentialTypes } from '@/credential-types';
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
+
+import {
+	findDisplayControllers,
+	isConfirmedControllerValue,
+	resolveCredentialProperties,
+} from './credential-display-controllers';
 import { selectCredentialDataForExport } from './credential-export-policy';
 import { CredentialSerializer } from './credential.serializer';
-import type { WorkflowCredentialRequirement } from './credential.types';
+import type { CredentialRequirement } from './credential.types';
 import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import type { CredentialExportPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+import { addRequirementUsage, type RequirementUsage } from '../requirement-source';
 
-interface CredentialGroup {
-	// Name+type to use if the DB lookup fails — sourced from the workflow snapshot.
-	fallback: WorkflowCredentialRequirement;
-	usedByWorkflows: string[];
+interface CredentialGroup extends RequirementUsage {
+	// Keep authored metadata when the credential is not accessible.
+	fallback: CredentialRequirement;
 }
 
 export interface CredentialExportRequest {
 	user: User;
-	requirements: WorkflowCredentialRequirement[];
+	requirements: CredentialRequirement[];
 	writer: PackageWriter;
 	credentialExportPolicy: CredentialExportPolicy;
 	/** Target directory of each exported project (`projects/<slug>-<id>`), keyed by project id. */
 	projectTargetsById?: Map<string, string>;
+	/**
+	 * Credentials to write although no workflow of the package requires them. They get a file and a
+	 * manifest entry but no requirement row. An id that a requirement already covers is skipped.
+	 */
+	additionalCredentialIds?: string[];
 }
 
 export interface CredentialExportResult {
@@ -38,13 +55,16 @@ export class CredentialExporter {
 	constructor(
 		private readonly credentialsFinder: CredentialsFinderService,
 		private readonly credentialSerializer: CredentialSerializer,
+		private readonly credentialTypes: CredentialTypes,
+		private readonly credentialDescriptions: CredentialDescriptionsService,
 	) {}
 
 	async export(request: CredentialExportRequest): Promise<CredentialExportResult> {
 		const entries: ManifestEntry[] = [];
 		const requirements: PackageCredentialRequirement[] = [];
+		const includeDescription = await this.credentialDescriptions.isEnabled();
 
-		for (const [credentialId, { fallback, usedByWorkflows }] of this.groupByCredentialId(
+		for (const [credentialId, { fallback, usedBy }] of this.groupByCredentialId(
 			request.requirements,
 		)) {
 			const credential = await this.credentialsFinder.findCredentialForUser(
@@ -53,7 +73,7 @@ export class CredentialExporter {
 				['credential:read'],
 			);
 
-			// Use the workflow data if we can't fetch the full credential
+			// Use authored metadata if the credential is not accessible.
 			const { id, name, type } = credential ?? {
 				id: credentialId,
 				name: fallback.credentialName,
@@ -61,60 +81,115 @@ export class CredentialExporter {
 			};
 
 			if (credential) {
-				const data = await selectCredentialDataForExport(
-					request.credentialExportPolicy,
-					async () =>
-						await new Credentials(
-							{ id: credential.id, name: credential.name },
-							credential.type,
-							credential.data,
-						).getData(),
-				);
-				entries.push(
-					await writeManifestEntry(
-						request.writer,
-						'credentials',
-						projectScopedDirectory(
-							'credentials',
-							this.ownerProjectId(credential),
-							request.projectTargetsById,
-						),
-						{ id, name },
-						this.credentialSerializer.serialize(credential, { data }),
-					),
-				);
+				entries.push(await this.writeCredential(credential, request, includeDescription));
 			}
 
-			requirements.push({ id, name, type, usedByWorkflows });
+			requirements.push({
+				id,
+				name,
+				type,
+				usedBy,
+			});
+		}
+
+		const required = new Set(requirements.map(({ id }) => id));
+		for (const credentialId of new Set(request.additionalCredentialIds)) {
+			if (required.has(credentialId)) continue;
+			const credential = await this.credentialsFinder.findCredentialForUser(
+				credentialId,
+				request.user,
+				['credential:read'],
+			);
+			// A selected credential must not drop out of the package without a trace. A missing credential
+			// looks the same as an unreadable one, so the response does not reveal that it exists.
+			if (!credential) {
+				throw new ForbiddenError(`You cannot read the credential "${credentialId}"`);
+			}
+			entries.push(await this.writeCredential(credential, request, includeDescription));
 		}
 
 		return { entries, requirements };
 	}
 
+	private async writeCredential(
+		credential: CredentialsEntity,
+		request: CredentialExportRequest,
+		includeDescription: boolean,
+	): Promise<ManifestEntry> {
+		let decryptedData: ICredentialDataDecryptedObject | undefined;
+		const expressionData = await selectCredentialDataForExport(
+			request.credentialExportPolicy,
+			async () => {
+				decryptedData = await new Credentials(
+					{ id: credential.id, name: credential.name },
+					credential.type,
+					credential.data,
+				).getData();
+				return decryptedData;
+			},
+		);
+		const data = this.withDisplayControllers(credential.type, expressionData, decryptedData);
+		return await writeManifestEntry(
+			request.writer,
+			'credentials',
+			projectScopedDirectory(
+				'credentials',
+				this.ownerProjectId(credential),
+				request.projectTargetsById,
+			),
+			{ id: credential.id, name: credential.name },
+			this.credentialSerializer.serialize(credential, {
+				data,
+				includeDescription,
+				...(data !== undefined ? { dataIsComplete: isEqual(data, decryptedData) } : {}),
+			}),
+		);
+	}
+
 	/**
-	 * A credential has no owner column: its owner is the project on the
-	 * `credential:owner` sharing. Undefined for a global credential.
+	 * An imported expression in a hidden field is lost when the destination shows another field set.
+	 * Add the plain values that decide which fields show, so the destination shows the same ones.
+	 * A secret never qualifies, and an unknown credential type adds nothing.
 	 */
+	private withDisplayControllers(
+		type: string,
+		expressionData: SerializedCredentialData | undefined,
+		decryptedData: ICredentialDataDecryptedObject | undefined,
+	): SerializedCredentialData | undefined {
+		if (expressionData === undefined || decryptedData === undefined) return expressionData;
+
+		const properties = resolveCredentialProperties(this.credentialTypes, type);
+		if (properties === undefined) return expressionData;
+
+		const exported: SerializedCredentialData = { ...expressionData };
+		for (const name of findDisplayControllers(properties, Object.keys(expressionData))) {
+			const value = decryptedData[name];
+			if (name in exported || !isConfirmedControllerValue(properties, name, value)) continue;
+			exported[name] = value;
+		}
+		return exported;
+	}
+
+	/** A credential has no owner column: its owner is the project on the `credential:owner` sharing. */
 	private ownerProjectId(credential: CredentialsEntity): string | undefined {
 		return credential.shared?.find((sharing) => sharing.role === 'credential:owner')?.projectId;
 	}
 
-	private groupByCredentialId(
-		requirements: WorkflowCredentialRequirement[],
-	): Map<string, CredentialGroup> {
+	private groupByCredentialId(requirements: CredentialRequirement[]): Map<string, CredentialGroup> {
 		const grouped = new Map<string, CredentialGroup>();
 		for (const requirement of requirements) {
-			const existing = grouped.get(requirement.credentialId);
-			if (existing) {
-				if (!existing.usedByWorkflows.includes(requirement.workflowId)) {
-					existing.usedByWorkflows.push(requirement.workflowId);
-				}
-			} else {
-				grouped.set(requirement.credentialId, {
-					fallback: requirement,
-					usedByWorkflows: [requirement.workflowId],
-				});
+			const group = grouped.get(requirement.credentialId) ?? {
+				fallback: { ...requirement },
+				usedBy: [],
+			};
+			// Workflow consumers require both fields, even when an Agent was seen first.
+			if ('workflowId' in requirement && !('workflowId' in group.fallback)) {
+				group.fallback = { ...requirement };
 			}
+			group.fallback.credentialName ??= requirement.credentialName;
+			group.fallback.credentialType ??= requirement.credentialType;
+			addRequirementUsage(group, requirement);
+			grouped.set(requirement.credentialId, group);
 		}
 		return grouped;
 	}

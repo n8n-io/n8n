@@ -1,9 +1,12 @@
+import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
+
 import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { SerializedVariable } from '../../spec/serialized/variable.schema';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 import {
 	deriveParentFolderId,
 	foldersInScope,
 	placeByLayout,
+	placeCredentialData,
 	workflowsInScope,
 } from '../package-layout';
 
@@ -57,6 +60,42 @@ describe('package-layout', () => {
 		});
 	});
 
+	describe('credential data placement', () => {
+		const requirement: PackageCredentialRequirement = {
+			id: 'cred-1',
+			name: 'GitHub',
+			type: 'githubApi',
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+		};
+		const bundled = (data?: SerializedCredential['data']) =>
+			new Map<string, SerializedCredential>([
+				['cred-1', { id: 'cred-1', name: 'GitHub', type: 'githubApi', ...(data ? { data } : {}) }],
+			]);
+
+		it('attaches bundled data by id', () => {
+			const placed = placeCredentialData({
+				requirements: [requirement],
+				bundledCredentials: bundled({ token: '={{ $secrets.gh }}' }),
+			});
+
+			expect(placed).toEqual([{ ...requirement, packageData: { token: '={{ $secrets.gh }}' } }]);
+		});
+
+		it('leaves the requirement bare when the bundle carries no data or no file', () => {
+			const noData = placeCredentialData({
+				requirements: [requirement],
+				bundledCredentials: bundled(),
+			});
+			const noFile = placeCredentialData({
+				requirements: [requirement],
+				bundledCredentials: new Map(),
+			});
+
+			expect(noData).toEqual([requirement]);
+			expect(noFile).toEqual([requirement]);
+		});
+	});
+
 	describe('variable placement', () => {
 		const named = (name: string, target: string): ManifestEntry => ({ id: name, name, target });
 		const placedIn = (
@@ -65,7 +104,7 @@ describe('package-layout', () => {
 			bundledVariables?: Map<string, SerializedVariable>,
 		) =>
 			placeByLayout({
-				requirements: [{ name: 'API_URL', usedByWorkflows: ['wf-1'] }],
+				requirements: [{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: 'wf-1' }] }],
 				manifestVariables,
 				scopePrefix,
 				bundledVariables,

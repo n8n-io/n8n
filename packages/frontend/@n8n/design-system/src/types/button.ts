@@ -3,18 +3,15 @@ import { type ClassValue } from 'clsx';
 import { type IconSize } from './icon';
 import { type IconName } from '../components/N8nIcon/icons';
 
-const BUTTON_VARIANT = ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'] as const;
+const BUTTON_VARIANT = ['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'] as const;
 export type ButtonVariant = (typeof BUTTON_VARIANT)[number];
-
-/** @deprecated Use 'ghost' or 'subtle' instead */
-export type LegacyButtonVariant = 'highlight' | 'highlight-fill';
 
 const BUTTON_SIZE = ['mini', 'xmini', 'small', 'medium', 'large', 'xlarge', 'xsmall'] as const;
 export type ButtonSize = (typeof BUTTON_SIZE)[number];
 
 export interface ButtonProps {
 	/** Determines the visual style of the button */
-	variant?: ButtonVariant | LegacyButtonVariant;
+	variant?: ButtonVariant;
 	/** Determines the size of the button */
 	size?: ButtonSize;
 	/** If passed, the button will be rendered as a link */
@@ -25,10 +22,18 @@ export interface ButtonProps {
 	iconOnly?: boolean;
 	/** If true, the button will be disabled */
 	disabled?: boolean;
+	/**
+	 * Keep a disabled button focusable for an explanation.
+	 * Use N8nTooltip as-child and visible help text linked with aria-describedby.
+	 * Does not apply to links or loading buttons.
+	 */
+	focusableWhenDisabled?: boolean;
 	/** Additional classes to apply to the button (accepts string, object, or array) */
 	class?: ClassValue;
 	/** @deprecated Use slot instead */
 	icon?: IconName;
+	/** Icon to draw when no icon set has `icon` */
+	fallbackIcon?: IconName;
 	iconSize?: IconSize;
 	/** @deprecated Use slot instead */
 	label?: string;

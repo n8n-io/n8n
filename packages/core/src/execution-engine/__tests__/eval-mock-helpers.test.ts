@@ -8,7 +8,9 @@ import {
 	callEvalMockHandler,
 	isSecretCredentialProperty,
 	normalizeLegacyRequest,
+	resolveEvalMockRequestUrl,
 	serializeMockToHttpResponse,
+	withEvalEgressProxy,
 } from '../eval-mock-helpers';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from '../index';
 
@@ -636,6 +638,98 @@ describe('eval-mock-helpers', () => {
 	});
 
 	// -----------------------------------------------------------------------
+	// resolveEvalMockRequestUrl
+	// -----------------------------------------------------------------------
+	describe('resolveEvalMockRequestUrl', () => {
+		it('should build a path-style S3 URL from service, path and query', () => {
+			const result = resolveEvalMockRequestUrl(
+				{
+					method: 'GET',
+					url: '',
+					qs: {
+						service: 's3',
+						path: '/my-bucket/',
+						query: { 'list-type': 2 },
+						_region: 'eu-west-1',
+					},
+				},
+				'aws',
+			);
+
+			expect(result.url).toBe('https://s3.eu-west-1.amazonaws.com/my-bucket/?list-type=2');
+			expect(result.qs).toBeUndefined();
+		});
+
+		it('should take the region from the request when qs has none', () => {
+			const result = resolveEvalMockRequestUrl(
+				{
+					method: 'POST',
+					url: '',
+					qs: { service: 'lambda', path: '/2015-03-31/functions/fn/invocations' },
+					region: 'ap-southeast-2',
+				} as IHttpRequestOptions,
+				'awsAssumeRole',
+			);
+
+			expect(result.url).toBe(
+				'https://lambda.ap-southeast-2.amazonaws.com/2015-03-31/functions/fn/invocations',
+			);
+		});
+
+		it('should use the China domain for cn- regions', () => {
+			const result = resolveEvalMockRequestUrl(
+				{ method: 'GET', url: '', qs: { service: 'sqs', path: '/', _region: 'cn-north-1' } },
+				'aws',
+			);
+
+			expect(result.url).toBe('https://sqs.cn-north-1.amazonaws.com.cn/');
+		});
+
+		it('should not mutate the original request', () => {
+			const original: IHttpRequestOptions = {
+				method: 'GET',
+				url: '',
+				qs: { service: 'my-bucket.s3', path: '', query: { location: '' } },
+			};
+
+			resolveEvalMockRequestUrl(original, 'aws');
+
+			expect(original.url).toBe('');
+			expect(original.qs).toEqual({ service: 'my-bucket.s3', path: '', query: { location: '' } });
+		});
+
+		it('should return a request that already has a URL unchanged', () => {
+			const request: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://custom.example.com/bucket',
+				qs: { service: 's3' },
+			};
+
+			expect(resolveEvalMockRequestUrl(request, 'aws')).toBe(request);
+		});
+
+		it('should return the request unchanged when the service makes an invalid URL', () => {
+			const request: IHttpRequestOptions = {
+				method: 'GET',
+				url: '',
+				qs: { service: 'my bucket.s3', path: '/', _region: 'eu-west-1' },
+			};
+
+			expect(resolveEvalMockRequestUrl(request, 'aws')).toBe(request);
+		});
+
+		it('should return the request unchanged when the region makes an invalid URL', () => {
+			const request: IHttpRequestOptions = {
+				method: 'GET',
+				url: '',
+				qs: { service: 's3', path: '/my-bucket/', _region: 'EU (Ireland)' },
+			};
+
+			expect(resolveEvalMockRequestUrl(request, 'aws')).toBe(request);
+		});
+	});
+
+	// -----------------------------------------------------------------------
 	// callEvalMockHandler
 	// -----------------------------------------------------------------------
 	describe('callEvalMockHandler', () => {
@@ -853,6 +947,38 @@ describe('eval-mock-helpers', () => {
 				const err = error as Error & { isAxiosError: boolean };
 				expect(err.isAxiosError).toBe(true);
 			}
+		});
+	});
+});
+
+describe('withEvalEgressProxy', () => {
+	it('sets the run egress proxy on the request', () => {
+		const request = withEvalEgressProxy<IHttpRequestOptions>(
+			{ url: 'https://api.example.test/x' },
+			{ evalEgressProxy: 'http://127.0.0.1:4567' },
+		);
+
+		expect(request.proxy).toEqual({ host: '127.0.0.1', port: 4567, protocol: 'http' });
+	});
+
+	it('leaves a request untouched outside a simulated-services run', () => {
+		const request: IHttpRequestOptions = { url: 'https://api.example.test/x' };
+
+		expect(withEvalEgressProxy(request, {})).toBe(request);
+		expect(request).not.toHaveProperty('proxy');
+	});
+
+	it("uses the protocol's default port, and keeps the proxy's credentials", () => {
+		const request = withEvalEgressProxy<IHttpRequestOptions>(
+			{ url: 'https://api.example.test/x' },
+			{ evalEgressProxy: 'http://run%401:s%3Acret@proxy.internal' },
+		);
+
+		expect(request.proxy).toEqual({
+			host: 'proxy.internal',
+			port: 80,
+			protocol: 'http',
+			auth: { username: 'run@1', password: 's:cret' },
 		});
 	});
 });

@@ -1,0 +1,159 @@
+/**
+ * Filters CHANGED_FILES to a single package and detects config-file bailouts.
+ * Output is a shell sentinel (SKIP / RUN_FULL / file list). The actual
+ * import-graph walk is the runner's job (vitest related).
+ */
+
+import { existsSync } from 'node:fs';
+import { isAbsolute, relative, resolve } from 'node:path';
+
+import { matchesGlobalTrigger, matchesSinkPackage } from './global-triggers.js';
+import { LOCKFILE } from './read-lockfile-impact.js';
+import { toPosix } from './path-utils.js';
+
+// Bailout patterns are centralised here (vs the original DEVP-194 spec's
+// per-package `n8nTestChanged.inPackageBailouts` field) because the n8n
+// workspace shares the same vitest config helpers + setup file layout via
+// @n8n/vitest-config. If a package ever needs a custom bailout that doesn't
+// fit these patterns, switch to per-package config rather than expanding
+// these any further.
+const COMMON_BAILOUT = [
+	/^package\.json$/,
+	/^tsconfig(\..+)?\.json$/,
+	/^\.swcrc$/,
+	/^babel\.config\.[cm]?[jt]s$/,
+];
+// Frontend packages use vite.config.* for the vitest config too (vitest reads
+// vite.config). Setup files live at src/__tests__/setup.ts per the shared
+// @n8n/vitest-config convention.
+// Backend packages keep setup and globalSetup files in test/ (e.g. cli's
+// test/global-setup.ts, test/setup-sqlite-template.ts). No test imports a
+// globalSetup file, so `vitest related` would select zero tests for it.
+const VITEST_BAILOUT = [
+	...COMMON_BAILOUT,
+	/^vite\.config\.[cm]?[jt]s$/,
+	/^vitest\.config\.[cm]?[jt]s$/,
+	/(?:^|\/)vitest\.setup\.[cm]?[jt]s$/,
+	/(?:^|\/)__tests__\/setup\.[cm]?[jt]s$/,
+	/^test\/(?:global-?setup|setup)(?:-[\w-]+)?\.[cm]?[jt]s$/i,
+	/(?:^|\/)vitest[.-][^/]*setup[^/]*\.[cm]?[jt]s$/,
+];
+
+export interface ComputeScopeOptions {
+	packageDir: string;
+	rootDir: string;
+	/** `null` = no signal → RUN_FULL (local dev with unset env). */
+	changedFiles: string[] | null;
+	/** This package's name (from its package.json). Needed to check membership
+	 *  in `affectedPackages`. */
+	packageName?: string;
+	/** Packages affected by the change — the owner of each changed file plus its
+	 *  transitive dependents (from `affectedPackages()`). When this package has
+	 *  no in-package changes but appears here, an upstream workspace dependency
+	 *  changed and we must run the full suite (a scoped `vitest related` run
+	 *  can't see the cross-package change). `null`/undefined = no signal. */
+	affectedPackages?: string[] | null;
+	/** Packages affected by the changed files in sink packages (`@n8n/db`,
+	 *  `workflow`, `core`, `vitest-config`): those packages and their transitive
+	 *  dependents. `null`/undefined = no signal → a sink change runs full. */
+	sinkAffectedPackages?: string[] | null;
+	/** Packages whose resolved dependencies changed in pnpm-lock.yaml (from
+	 *  `janitor lockfile-impact`). `null`/undefined = no signal → a lockfile
+	 *  change runs full everywhere. */
+	lockfileImpactedPackages?: string[] | null;
+}
+
+export type ScopeResult =
+	| { kind: 'skip'; reason: string }
+	| { kind: 'full'; reason: string; trigger?: string }
+	| { kind: 'scoped'; files: string[] };
+
+export function computeScope(options: ComputeScopeOptions): ScopeResult {
+	if (options.changedFiles === null) {
+		return { kind: 'full', reason: 'No CHANGED_FILES signal (local dev)' };
+	}
+
+	// Workspace-wide triggers (lockfile, root manifest) force RUN_FULL regardless
+	// of which package we are scoping. The dep-graph in affected-packages lists
+	// the package as affected, but the in-package filter below would otherwise
+	// SKIP it because the trigger file lives outside the package — a silent
+	// false green.
+	// With a lockfile impact signal, a lockfile change forces RUN_FULL only in
+	// the packages whose resolved dependencies changed. `vitest related` cannot
+	// see a dependency change, so those packages run full even with their own
+	// changes to scope. Without a package name, the impact list cannot be
+	// matched, so the lockfile stays a global trigger.
+	const lockfileImpact = options.packageName ? options.lockfileImpactedPackages : null;
+	const globalTrigger = options.changedFiles.find(
+		(file) => matchesGlobalTrigger(file) && !(file === LOCKFILE && lockfileImpact),
+	);
+	if (globalTrigger) {
+		return { kind: 'full', reason: 'Global trigger changed', trigger: globalTrigger };
+	}
+	if (
+		lockfileImpact &&
+		options.packageName &&
+		options.changedFiles.includes(LOCKFILE) &&
+		lockfileImpact.includes(options.packageName)
+	) {
+		return { kind: 'full', reason: 'Lockfile changed its dependencies', trigger: LOCKFILE };
+	}
+
+	// A sink package change (@n8n/db, workflow, core, vitest-config) forces
+	// RUN_FULL in that package and its dependents, even when they have their
+	// own changes to scope. Other packages cannot load the changed code.
+	const sinkTrigger = options.changedFiles.find(matchesSinkPackage);
+	if (sinkTrigger) {
+		const dependsOnSink =
+			!options.packageName ||
+			!options.sinkAffectedPackages ||
+			options.sinkAffectedPackages.includes(options.packageName);
+		if (dependsOnSink) {
+			return { kind: 'full', reason: 'Sink package changed', trigger: sinkTrigger };
+		}
+	}
+
+	const absolute = isAbsolute(options.packageDir)
+		? options.packageDir
+		: resolve(options.rootDir, options.packageDir);
+	if (!existsSync(absolute)) throw new Error(`Package directory not found: ${absolute}`);
+	const pkgPrefix = toPosix(relative(options.rootDir, absolute));
+	const pkgPrefixSlash = `${pkgPrefix}/`;
+
+	const inPackage = options.changedFiles.filter(
+		(f) => f === pkgPrefix || f.startsWith(pkgPrefixSlash),
+	);
+	if (inPackage.length === 0) {
+		// No files changed inside this package, but the dep-graph flags it as
+		// affected → an upstream workspace dependency changed. `vitest related`
+		// on this package's own test files can't see that, so run the full suite.
+		if (options.packageName && options.affectedPackages?.includes(options.packageName)) {
+			return {
+				kind: 'full',
+				reason: 'Affected by an upstream workspace change (no in-package changes)',
+			};
+		}
+		return { kind: 'skip', reason: 'No changed files in package' };
+	}
+
+	const bailout = VITEST_BAILOUT;
+	for (const file of inPackage) {
+		const relInPkg = file.slice(pkgPrefixSlash.length);
+		if (bailout.some((p) => p.test(relInPkg))) {
+			return { kind: 'full', reason: 'Config or package-level file changed', trigger: file };
+		}
+	}
+
+	return { kind: 'scoped', files: inPackage };
+}
+
+export function formatScope(result: ScopeResult): string {
+	switch (result.kind) {
+		case 'skip':
+			return 'SKIP';
+		case 'full':
+			return 'RUN_FULL';
+		case 'scoped':
+			return result.files.join(' ');
+	}
+}

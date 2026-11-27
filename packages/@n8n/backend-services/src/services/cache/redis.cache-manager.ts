@@ -1,11 +1,12 @@
 /**
- * Based on https://github.com/node-cache-manager/node-cache-manager-ioredis-yet
+ * Based on https://github.com/jaredwray/cache-manager-stores/tree/main/packages/cache-manager-ioredis-yet
  */
 
 import type { Cache, Store, Config } from 'cache-manager';
 import Redis from 'ioredis';
 import type { Cluster, ClusterNode, ClusterOptions, RedisOptions } from 'ioredis';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 export class NoCacheableError implements Error {
 	name = 'NoCacheableError';

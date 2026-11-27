@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { BINARY_IN_JSON_PROPERTY, createRunExecutionData } from 'n8n-workflow';
 
-import { sumBinaryDataBytes } from '../sum-binary-data-bytes';
+import { hasExternalBinaryData, sumBinaryDataBytes } from '../sum-binary-data-bytes';
 
 const binary = (over: Partial<IBinaryData>): IBinaryData =>
 	({ data: '', mimeType: 'application/octet-stream', ...over }) as IBinaryData;
@@ -156,5 +156,25 @@ describe('sumBinaryDataBytes', () => {
 			},
 		});
 		expect(sumBinaryDataBytes(data)).toBe(100);
+	});
+});
+
+describe('hasExternalBinaryData', () => {
+	it('detects an offloaded binary reference in native execution data', () => {
+		expect(hasExternalBinaryData(runDataWith([{ file: binary({ id: 'filesystem:1' }) }]))).toBe(
+			true,
+		);
+	});
+
+	it('allows self-contained inline binary data', () => {
+		expect(hasExternalBinaryData(runDataWith([{ file: binary({ data: 'aGVsbG8=' }) }]))).toBe(
+			false,
+		);
+	});
+
+	it('detects an offloaded binary reference in pin data', () => {
+		const data = runDataWith([]);
+		data.resultData.pinData = { Node: [itemWith({ file: binary({ id: 'filesystem:2' }) })] };
+		expect(hasExternalBinaryData(data)).toBe(true);
 	});
 });

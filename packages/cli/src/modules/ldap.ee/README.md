@@ -84,9 +84,12 @@ curl -X PUT http://localhost:5678/api/v1/settings/ldap \
     "synchronizationInterval": 60,
     "searchPageSize": 0,
     "searchTimeout": 60,
-    "enforceEmailUniqueness": true
+    "enforceEmailUniqueness": true,
+    "linkExistingAccountsByEmail": true
   }'
 ```
+
+`linkExistingAccountsByEmail` controls whether an unlinked LDAP user is linked to an existing n8n account with the same email; set it to `false` to make login and sync skip these matches. Existing LDAP links remain active.
 
 Use `127.0.0.1`, not `localhost`, for `connectionUrl`: on Docker Desktop for Mac, `localhost` can resolve to `::1` first and the container only forwards the port over IPv4, so it fails to connect.
 

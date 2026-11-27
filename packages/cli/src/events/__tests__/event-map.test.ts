@@ -1,6 +1,12 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import type { McpDiscoveryEventMap } from '@/modules/mcp-discovery/events';
+// EOF Experiment cleanup
+import type { ExecutionLedgerMetricsEventMap } from '@n8n/backend-module-execution-ledger';
+import type { ExecutionLimitsMetricsEventMap } from '@n8n/backend-module-execution-limits';
 import { EventService, type EventMap } from '@n8n/backend-services';
 import { expectTypeOf } from 'vitest';
 
+import type { AgentMetricsEventMap } from '../maps/agent-metrics.event-map';
 import type { AiEventMap } from '../maps/ai.event-map';
 import type { ExecutionDataEventMap } from '../maps/execution-data.event-map';
 import type { InstanceAiEventMap } from '../maps/instance-ai.event-map';
@@ -13,15 +19,20 @@ import type { WorkflowPublicationMetricsEventMap } from '../maps/workflow-public
 
 describe('CLI event map', () => {
 	it('registers all existing event payloads on the shared service', () => {
-		type CliEventMap = RelayEventMap &
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only McpDiscoveryEventMap from the intersection; keep CliEventMap.
+		type CliEventMap = McpDiscoveryEventMap &
+			RelayEventMap &
 			QueueMetricsEventMap &
 			AiEventMap &
 			ExecutionDataEventMap &
 			InstanceAiEventMap &
+			AgentMetricsEventMap &
 			McpPostSaveMetricsEventMap &
 			WorkflowPublicationMetricsEventMap &
 			PollTriggerMetricsEventMap &
-			SystemTaskMetricsEventMap;
+			SystemTaskMetricsEventMap &
+			ExecutionLedgerMetricsEventMap &
+			ExecutionLimitsMetricsEventMap;
 
 		expectTypeOf<EventMap>().toMatchTypeOf<CliEventMap>();
 		expectTypeOf<CliEventMap>().toMatchTypeOf<EventMap>();

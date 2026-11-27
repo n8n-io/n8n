@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -11,14 +12,18 @@ import { BadRequestError, InternalServerError } from '@n8n/errors';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { containerPlacement, isUnder, pinPath, staleWorkflowTargets } from './branch-placement';
-import type { BranchLayout, Placement } from './branch-placement';
+import { containerMoves, isUnder, projectHolding, staleWorkflowTargets } from './branch-placement';
+import type { BranchLayout, ContainerMove } from './branch-placement';
 import { writeImportManifest } from './import-manifest-bridge';
+import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
 	workflowIds: z.array(z.string().min(1)),
 	deletedWorkflowIds: z.array(z.string().min(1)),
+	folderIds: z.array(z.string().min(1)),
+	/** Credentials of the project to write although no selected workflow uses them. */
+	credentialIds: z.array(z.string().min(1)).optional(),
 });
 
 export type SelectivePushOptions = z.infer<typeof selectivePushOptionsSchema>;
@@ -27,6 +32,8 @@ const ENTITY_FILES = {
 	'project.json': 'projects',
 	'folder.json': 'folders',
 	'workflow.json': 'workflows',
+	'agent.json': 'agents',
+	'skill.json': 'skills',
 } as const satisfies Record<string, keyof BranchLayout>;
 
 /** Dependency collections whose directory a rename relocates (name-derived slug). */
@@ -61,7 +68,7 @@ export type ScannedBranch = {
 /**
  * Applies a selective export to the exported working copy of a branch. It reads
  * the branch, runs the guards, then overlays. The caller resolves the
- * connection, runs the exporter and commits.
+ * environment, runs the exporter and commits.
  *
  */
 @Service()
@@ -79,10 +86,6 @@ export class WorkingCopyUpdater {
 			throw new BadRequestError(`Invalid selection: ${parsed.error.issues[0].message}`);
 		}
 
-		if (selection.workflowIds.length === 0 && selection.deletedWorkflowIds.length === 0) {
-			throw new BadRequestError('At least one workflow must be selected or deleted');
-		}
-
 		const addSet = new Set(selection.workflowIds);
 		if (addSet.size !== selection.workflowIds.length) {
 			throw new BadRequestError('workflowIds contains duplicates');
@@ -90,6 +93,13 @@ export class WorkingCopyUpdater {
 		const deleteSet = new Set(selection.deletedWorkflowIds);
 		if (deleteSet.size !== selection.deletedWorkflowIds.length) {
 			throw new BadRequestError('deletedWorkflowIds contains duplicates');
+		}
+		if (new Set(selection.folderIds).size !== selection.folderIds.length) {
+			throw new BadRequestError('folderIds contains duplicates');
+		}
+		const credentialIds = selection.credentialIds ?? [];
+		if (new Set(credentialIds).size !== credentialIds.length) {
+			throw new BadRequestError('credentialIds contains duplicates');
 		}
 
 		const overlap = selection.deletedWorkflowIds.filter((id) => addSet.has(id));
@@ -99,14 +109,20 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * The exporter must write exactly the selected workflows. Extra or missing
-	 * ids mean the overlay would change the branch in a way the caller did not
-	 * ask for, so stop before any file work.
+	 * The exporter must write exactly the selected workflows, and every selected
+	 * folder. Extra or missing ids mean the overlay would change the branch in a
+	 * way the caller did not ask for, so stop before any file work.
 	 */
 	assertStagingMatchesSelection(staging: PackageManifest, selection: SelectivePushOptions): void {
 		const stagedIds = new Set((staging.workflows ?? []).map((workflow) => workflow.id));
 		const selectedIds = new Set(selection.workflowIds);
-		const missing = selection.workflowIds.filter((id) => !stagedIds.has(id));
+		const stagedFolderIds = new Set((staging.folders ?? []).map((folder) => folder.id));
+		const stagedCredentialIds = new Set((staging.credentials ?? []).map(({ id }) => id));
+		const missing = [
+			...selection.workflowIds.filter((id) => !stagedIds.has(id)),
+			...selection.folderIds.filter((id) => !stagedFolderIds.has(id)),
+			...(selection.credentialIds ?? []).filter((id) => !stagedCredentialIds.has(id)),
+		];
 		const extra = [...stagedIds].filter((id) => !selectedIds.has(id));
 		if (missing.length === 0 && extra.length === 0) return;
 
@@ -130,7 +146,13 @@ export class WorkingCopyUpdater {
 		const rootInfo = await fs.stat(resolvedBase).catch(() => null);
 		if (!rootInfo?.isDirectory()) return { state: {}, dependencies: [] };
 
-		const collected: Required<BranchLayout> = { projects: [], folders: [], workflows: [] };
+		const collected: Required<BranchLayout> = {
+			projects: [],
+			folders: [],
+			workflows: [],
+			agents: [],
+			skills: [],
+		};
 		const dependencies: DependencyRef[] = [];
 
 		const walk = async (absDir: string): Promise<void> => {
@@ -153,7 +175,18 @@ export class WorkingCopyUpdater {
 
 				const kind = ENTITY_FILES[entry.name as keyof typeof ENTITY_FILES];
 				if (kind !== undefined) {
-					collected[kind].push(await this.readEntityFile(fullPath, target, relativeFile));
+					const { entry, isArchived } = await this.readEntityFile(
+						fullPath,
+						target,
+						relativeFile,
+						kind,
+					);
+					// Only a workflow entry carries the flag; the other kinds list id, name and target.
+					if (kind === 'workflows') {
+						collected.workflows.push({ ...entry, isArchived });
+						continue;
+					}
+					collected[kind].push(entry);
 					continue;
 				}
 
@@ -172,6 +205,8 @@ export class WorkingCopyUpdater {
 			...(collected.projects.length > 0 ? { projects: collected.projects } : {}),
 			...(collected.folders.length > 0 ? { folders: collected.folders } : {}),
 			...(collected.workflows.length > 0 ? { workflows: collected.workflows } : {}),
+			...(collected.agents.length > 0 ? { agents: collected.agents } : {}),
+			...(collected.skills.length > 0 ? { skills: collected.skills } : {}),
 		};
 		return { state, dependencies };
 	}
@@ -185,6 +220,8 @@ export class WorkingCopyUpdater {
 			['projects', state.projects],
 			['folders', state.folders],
 			['workflows', state.workflows],
+			['agents', state.agents],
+			['skills', state.skills],
 		] as const) {
 			const seen = new Map<string, string>();
 			for (const entry of entries ?? []) {
@@ -222,7 +259,8 @@ export class WorkingCopyUpdater {
 		file: string,
 		target: string,
 		relativeFile: string,
-	): Promise<ManifestEntry> {
+		kind: keyof BranchLayout,
+	): Promise<{ entry: ManifestEntry; isArchived: boolean }> {
 		let raw: string;
 		try {
 			raw = await fs.readFile(file, 'utf-8');
@@ -239,17 +277,17 @@ export class WorkingCopyUpdater {
 				`"${relativeFile}" on the branch is not valid JSON. Remove it and retry.`,
 			);
 		}
-		if (
-			typeof parsed !== 'object' ||
-			parsed === null ||
-			typeof (parsed as { id?: unknown }).id !== 'string' ||
-			typeof (parsed as { name?: unknown }).name !== 'string'
-		) {
+
+		const nameSource = isRecord(parsed) && kind === 'skills' ? parsed.skill : parsed;
+		const name = isRecord(nameSource) ? nameSource.name : undefined;
+
+		if (!isRecord(parsed) || typeof parsed.id !== 'string' || typeof name !== 'string') {
 			throw new BadRequestError(
 				`"${relativeFile}" on the branch is missing an id or a name. Remove it and retry.`,
 			);
 		}
-		return { id: (parsed as { id: string }).id, name: (parsed as { name: string }).name, target };
+
+		return { entry: { id: parsed.id, name, target }, isArchived: parsed.isArchived === true };
 	}
 
 	async assertSelectionFitsBranch(
@@ -310,8 +348,33 @@ export class WorkingCopyUpdater {
 			(w) => selected.has(w.id) && (!projectTarget || !isUnder(w.target, projectTarget)),
 		);
 		if (moved.length > 0) {
+			throw new PromotionsWorkflowsMovedCrossProjectError(
+				moved.map(({ id, target }) => {
+					const project = projectHolding(branch.projects, target);
+					return { id, detail: project && `in project "${project.name}" on the branch` };
+				}),
+			);
+		}
+	}
+
+	/**
+	 * A container the branch holds under another project moved between projects.
+	 * Moving it would carry that project's workflows along, so a selective push
+	 * refuses it. A project's own directory may move (a rename).
+	 */
+	private assertNoCrossProjectContainerMoves(
+		branch: BranchLayout,
+		projectId: string,
+		moves: readonly ContainerMove[],
+	): void {
+		const projectTarget = branch.projects?.find((p) => p.id === projectId)?.target;
+		const foreign = moves.find(
+			({ from }) =>
+				projectTarget === undefined || !(from === projectTarget || isUnder(from, projectTarget)),
+		);
+		if (foreign) {
 			throw new BadRequestError(
-				`These workflows moved to another project: ${moved.map((w) => w.id).join(', ')}. A selective push cannot move them. Push all projects instead.`,
+				`"${foreign.from}" belongs to another project on the branch. Promotion can't move it between projects. Move it back on this instance, then promote again.`,
 			);
 		}
 	}
@@ -346,10 +409,11 @@ export class WorkingCopyUpdater {
 		try {
 			const { state: existing, dependencies } = branch;
 
-			const placement = containerPlacement(existing, staging);
 			const otherProjectTargets = (existing.projects ?? [])
 				.filter((p) => p.id !== selection.projectId)
 				.map((p) => p.target);
+			const moves = containerMoves(existing, staging);
+			this.assertNoCrossProjectContainerMoves(existing, selection.projectId, moves);
 			const remaining: BranchLayout = {
 				...existing,
 				workflows: (existing.workflows ?? []).filter(
@@ -390,19 +454,21 @@ export class WorkingCopyUpdater {
 				otherProjectTargets,
 			);
 			for (const { collection, target } of renamedInScope) {
-				const dir = await this.resolveDependencyDir(workFolder, target);
+				const dir = await this.resolveLeafTarget(workFolder, target, 'Dependency');
 				await fs.rm(path.join(dir, DEPENDENCY_FILE_BY_COLLECTION[collection]), { force: true });
 				if ((await fs.readdir(dir)).length === 0) await fs.rmdir(dir);
 			}
-			for (const target of outOfScopeInStaging) {
-				placement.keptFiles.add(target);
-			}
-			await this.overlayDirectory(stagingFolder, workFolder, placement);
+
+			// After the cleanups above, which address branch paths.
+			await this.relocateBranchContainers(workFolder, moves);
+
+			await this.overlayDirectory(stagingFolder, workFolder, outOfScopeInStaging);
 			await writeImportManifest({
 				exportFolder: workFolder,
 				staging,
 				sourceId: this.instanceSettings.instanceId,
 				selectedWorkflowIds: selection.workflowIds,
+				containerMoves: moves,
 			});
 
 			const backupPath = path.join(tempBase, `.${path.basename(exportFolder)}-bak-${randomUUID()}`);
@@ -465,22 +531,14 @@ export class WorkingCopyUpdater {
 		remaining: BranchLayout,
 		staging: PackageManifest,
 	): Promise<string> {
-		const segments = target.split(/[\\/]/).filter(Boolean);
-		if (segments.length === 0 || segments.includes('.') || segments.includes('..')) {
-			throw new BadRequestError(
-				`Manifest target "${target}" is not a managed leaf directory. Remove it and retry.`,
-			);
-		}
-
-		const resolved = await this.resolveContained(exportFolder, target);
-		if (resolved === path.resolve(exportFolder)) {
-			throw new BadRequestError(
-				`Manifest target "${target}" is not a managed leaf directory. Remove it and retry.`,
-			);
-		}
+		const resolved = await this.resolveLeafTarget(exportFolder, target, 'Manifest');
 
 		const writtenIds = new Set((staging.workflows ?? []).map((entry) => entry.id));
-		for (const entry of remaining.workflows ?? []) {
+		for (const entry of [
+			...(remaining.workflows ?? []),
+			...(remaining.agents ?? []),
+			...(remaining.skills ?? []),
+		]) {
 			if (isUnder(entry.target, target)) {
 				throw new BadRequestError(
 					`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
@@ -525,7 +583,7 @@ export class WorkingCopyUpdater {
 		otherProjectTargets: string[],
 	): {
 		renamedInScope: Array<{ collection: DependencyCollection; target: string }>;
-		outOfScopeInStaging: string[];
+		outOfScopeInStaging: Set<string>;
 	} {
 		const stagingTargets = new Map<string, string>();
 		for (const collection of DEPENDENCY_COLLECTIONS) {
@@ -535,11 +593,7 @@ export class WorkingCopyUpdater {
 		}
 
 		const renamedInScope: Array<{ collection: DependencyCollection; target: string }> = [];
-		const outOfScopeInStaging: string[] = [];
-
-		if (stagingTargets.size === 0) {
-			return { renamedInScope, outOfScopeInStaging };
-		}
+		const outOfScopeInStaging = new Set<string>();
 
 		for (const dependency of dependencies) {
 			const newTarget = stagingTargets.get(`${dependency.collection}:${dependency.id}`);
@@ -547,7 +601,7 @@ export class WorkingCopyUpdater {
 
 			const underOtherProject = otherProjectTargets.some((pt) => isUnder(dependency.target, pt));
 			if (underOtherProject) {
-				outOfScopeInStaging.push(newTarget);
+				outOfScopeInStaging.add(newTarget);
 			} else {
 				renamedInScope.push({ collection: dependency.collection, target: dependency.target });
 			}
@@ -574,34 +628,78 @@ export class WorkingCopyUpdater {
 		return undefined;
 	}
 
-	/**
-	 * Resolve a dependency directory to remove a file from, rejecting a non-leaf
-	 * target, an escape, or a symlinked path (via `resolveContained`).
-	 */
-	private async resolveDependencyDir(exportFolder: string, target: string): Promise<string> {
-		const segments = target.split(/[\\/]/).filter(Boolean);
-		if (segments.length === 0 || segments.includes('.') || segments.includes('..')) {
-			throw new BadRequestError(
-				`Dependency target "${target}" is not a managed leaf directory. Remove it and retry.`,
+	/** Resolve a target that will be removed or moved. Rejects the export root itself. */
+	private async resolveLeafTarget(
+		exportFolder: string,
+		target: string,
+		label: 'Manifest' | 'Dependency' | 'Container',
+	): Promise<string> {
+		const reject = () =>
+			new BadRequestError(
+				`${label} target "${target}" is not a managed leaf directory. Remove it and retry.`,
 			);
-		}
+		const segments = target.split(/[\\/]/).filter(Boolean);
+		if (segments.length === 0 || segments.includes('.') || segments.includes('..')) throw reject();
 
 		const resolved = await this.resolveContained(exportFolder, target);
-		if (resolved === path.resolve(exportFolder)) {
-			throw new BadRequestError(
-				`Dependency target "${target}" is not a managed leaf directory. Remove it and retry.`,
-			);
-		}
-
+		if (resolved === path.resolve(exportFolder)) throw reject();
 		return resolved;
 	}
 
 	/**
-	 * Copy the staging export into `dest`, each file where `placement` puts it.
-	 * A file the branch keeps is skipped, so a rename on the instance leaves the
-	 * `project.json` or `folder.json` the branch holds alone.
+	 * Move each renamed container directory to its export path, so unselected
+	 * workflows inside it ride along. All sources are parked in a holding
+	 * directory before any is placed, so a swap (A<->B) never clobbers a source.
+	 * Park deepest `from` first; place shallowest `to` first.
 	 */
-	private async overlayDirectory(src: string, dest: string, placement: Placement): Promise<void> {
+	private async relocateBranchContainers(
+		workFolder: string,
+		moves: readonly ContainerMove[],
+	): Promise<void> {
+		if (moves.length === 0) return;
+
+		// A root entity file scans as target `.`, which would park the whole copy.
+		const sources = await Promise.all(
+			moves.map(async ({ from }) => await this.resolveLeafTarget(workFolder, from, 'Container')),
+		);
+		const destinations = await Promise.all(
+			moves.map(async ({ to }) => await this.resolveLeafTarget(workFolder, to, 'Container')),
+		);
+
+		const stash = await fs.mkdtemp(path.join(path.dirname(workFolder), '.relocate-'));
+		try {
+			const parked: Array<{ holding: string; dest: string; move: ContainerMove }> = [];
+			for (const [index, move] of moves.entries()) {
+				const holding = path.join(stash, String(index));
+				await fs.rename(sources[index], holding);
+				parked.push({ holding, dest: destinations[index], move });
+			}
+
+			parked.sort((a, b) => a.move.to.length - b.move.to.length);
+			for (const { holding, dest, move } of parked) {
+				// After parking, so a case-only rename does not collide with its own source.
+				if (await fs.lstat(dest).catch(() => null)) {
+					throw new BadRequestError(
+						`The branch path "${move.to}" is already in use. Remove it and retry.`,
+					);
+				}
+				await fs.mkdir(path.dirname(dest), { recursive: true });
+				await fs.rename(holding, dest);
+			}
+		} finally {
+			await fs.rm(stash, { recursive: true, force: true });
+		}
+	}
+
+	/**
+	 * Copy the staging export into `dest`. Skips `keptFiles`: out-of-scope
+	 * dependencies the branch owns elsewhere.
+	 */
+	private async overlayDirectory(
+		src: string,
+		dest: string,
+		keptFiles: ReadonlySet<string>,
+	): Promise<void> {
 		const verified = new Set<string>();
 		const walk = async (dir: string): Promise<void> => {
 			const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -610,13 +708,9 @@ export class WorkingCopyUpdater {
 
 				const fullPath = path.join(dir, entry.name);
 				const relative = path.relative(src, fullPath).split(path.sep).join('/');
-				if (relative === MANIFEST_FILE || placement.keptFiles.has(relative)) continue;
+				if (relative === MANIFEST_FILE || keptFiles.has(relative)) continue;
 
-				const destPath = await this.resolveContained(
-					dest,
-					pinPath(relative, placement.pins),
-					verified,
-				);
+				const destPath = await this.resolveContained(dest, relative, verified);
 				if (entry.isDirectory()) {
 					await fs.mkdir(destPath, { recursive: true });
 					await walk(fullPath);

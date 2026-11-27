@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import type {
 	InstanceAiAgentActivity,
 	InstanceAiAgentNode,
@@ -73,6 +74,17 @@ export function isActiveBuilderAgent(node: InstanceAiAgentNode): boolean {
 }
 
 /**
+ * True while an assistant message streams but has no output yet.
+ * The message then shows only the typing dots, the same as Agents.
+ */
+export function isAwaitingFirstOutput(message: InstanceAiMessage): boolean {
+	if (message.role !== 'assistant' || !message.isStreaming || message.content) return false;
+	const tree = message.agentTree;
+	if (!tree) return true;
+	return !tree.statusMessage && tree.timeline.length === 0;
+}
+
+/**
  * True when the message would produce visible output in the message list.
  *
  * Assistant messages whose only renderable content has been extracted to the
@@ -82,12 +94,10 @@ export function isActiveBuilderAgent(node: InstanceAiAgentNode): boolean {
 export function messageHasVisibleContent(message: InstanceAiMessage): boolean {
 	if (message.role === 'user') return true;
 	if (message.content) return true;
+	if (isAwaitingFirstOutput(message)) return true;
 
 	const tree = message.agentTree;
-	if (!tree) {
-		// No tree — only the blinking cursor would render, during streaming.
-		return message.isStreaming;
-	}
+	if (!tree) return false;
 
 	if (tree.reasoning) return true;
 	if (tree.statusMessage) return true;
@@ -126,7 +136,7 @@ export function messageHasVisibleContent(message: InstanceAiMessage): boolean {
 		if (e.type === 'tool-call') {
 			const toolCall = toolCallsById[e.toolCallId];
 			return !(
-				toolCall?.toolName === 'build-agent' &&
+				toolCall?.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
 				e.responseId !== undefined &&
 				activeBuilderChildResponseIds.has(e.responseId)
 			);

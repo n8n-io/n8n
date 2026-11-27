@@ -30,7 +30,8 @@ vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
 	}),
 }));
 
-vi.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
+vi.mock('@modelcontextprotocol/sdk/client/sse.js', async (importOriginal) => ({
+	...(await importOriginal()),
 	SSEClientTransport: vi.fn(function (url: URL, options: unknown) {
 		sseCtor(url, options);
 		return { type: 'sse', url, options };
@@ -44,7 +45,8 @@ vi.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
 	}),
 }));
 
-vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
+vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', async (importOriginal) => ({
+	...(await importOriginal()),
 	StreamableHTTPClientTransport: vi.fn(function (url: URL, options: unknown) {
 		streamableHttpCtor(url, options);
 		return { type: 'streamableHttp', url, options };
@@ -64,7 +66,8 @@ describe('McpConnection — custom fetch forwarding', () => {
 		sseCtor.mockClear();
 		streamableHttpCtor.mockClear();
 		stdioCtor.mockClear();
-		clientConnect.mockClear();
+		clientConnect.mockReset().mockResolvedValue(undefined);
+		clientClose.mockReset().mockResolvedValue(undefined);
 		clientListTools.mockClear();
 	});
 
@@ -82,6 +85,55 @@ describe('McpConnection — custom fetch forwarding', () => {
 		expect(streamableHttpCtor).toHaveBeenCalledTimes(1);
 		const [, options] = streamableHttpCtor.mock.calls[0] as [URL, { fetch?: typeof fetch }];
 		expect(options.fetch).toBe(customFetch);
+	});
+
+	it('uses Streamable HTTP for an unconfigured URL', async () => {
+		const conn = new McpConnection({ name: 'default', url: 'https://example.test/mcp' });
+		await conn.connect();
+		expect(streamableHttpCtor).toHaveBeenCalledTimes(1);
+		expect(sseCtor).not.toHaveBeenCalled();
+	});
+
+	it('retries a legacy SSE endpoint when Streamable HTTP is unsupported', async () => {
+		const { StreamableHTTPError } = await import(
+			'@modelcontextprotocol/sdk/client/streamableHttp.js'
+		);
+		clientConnect.mockRejectedValueOnce(new StreamableHTTPError(404, 'Not found'));
+		const conn = new McpConnection({ name: 'legacy', url: 'https://example.test/sse' });
+		await conn.connect();
+		expect(streamableHttpCtor).toHaveBeenCalledTimes(1);
+		expect(sseCtor).toHaveBeenCalledTimes(1);
+		expect(clientClose).toHaveBeenCalled();
+	});
+
+	it('shares the connection timeout with the SSE retry', async () => {
+		const { StreamableHTTPError } = await import(
+			'@modelcontextprotocol/sdk/client/streamableHttp.js'
+		);
+		vi.useFakeTimers();
+		try {
+			clientConnect
+				.mockImplementationOnce(async () => {
+					await new Promise((resolve) => setTimeout(resolve, 90));
+					throw new StreamableHTTPError(404, 'Not found');
+				})
+				.mockImplementationOnce(async () => await new Promise<void>(() => {}));
+			const conn = new McpConnection({
+				name: 'legacy',
+				url: 'https://example.test/sse',
+				connectionTimeoutMs: 100,
+			});
+
+			const connecting = conn.connect();
+			await vi.advanceTimersByTimeAsync(90);
+			expect(sseCtor).toHaveBeenCalledTimes(1);
+			const timedOut = expect(connecting).rejects.toThrow('connection timed out after 100ms');
+			await vi.advanceTimersByTimeAsync(10);
+			await timedOut;
+			expect(clientConnect).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('forwards `fetch` to SSEClientTransport and to its eventSourceInit when provided', async () => {
@@ -104,7 +156,7 @@ describe('McpConnection — custom fetch forwarding', () => {
 		expect(options.eventSourceInit?.fetch).toBe(customFetch);
 	});
 
-	it('omits `fetch` and `eventSourceInit` when no custom fetch is provided', async () => {
+	it('uses a redirect-aware fetch for SSE when no custom fetch is provided', async () => {
 		const conn = new McpConnection({
 			name: 's3',
 			url: 'https://example.test/mcp',
@@ -118,8 +170,8 @@ describe('McpConnection — custom fetch forwarding', () => {
 			URL,
 			{ fetch?: typeof fetch; eventSourceInit?: { fetch?: typeof fetch } },
 		];
-		expect(options.fetch).toBeUndefined();
-		expect(options.eventSourceInit).toBeUndefined();
+		expect(options.fetch).toEqual(expect.any(Function));
+		expect(options.eventSourceInit?.fetch).toBe(options.fetch);
 	});
 });
 
@@ -414,6 +466,25 @@ describe('McpConnection — tool filtering', () => {
 		expect(tools[1]?.suspendSchema).toBeUndefined();
 	});
 
+	it('routes only the tools that need approval through the host wrapper', async () => {
+		const wrapApproval = vi.fn((tool) => ({ ...tool, description: 'External review' }));
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			requireApproval: ['subtract'],
+			wrapApproval,
+		});
+		await conn.connect();
+		const tools = await conn.listTools();
+		expect(wrapApproval).toHaveBeenCalledOnce();
+		expect(wrapApproval).toHaveBeenCalledWith(expect.objectContaining({ name: 's1_subtract' }));
+		expect(tools.map((tool) => tool.name)).toEqual(['s1_echo', 's1_add', 's1_subtract']);
+		expect(tools[0].description).not.toBe('External review');
+		expect(tools[1].description).not.toBe('External review');
+		expect(tools[2].description).toBe('External review');
+	});
+
 	it('keeps model-facing names unique when tool names normalize identically', async () => {
 		const onToolCallSettled = vi.fn();
 		const rawTools = [
@@ -561,5 +632,201 @@ describe('McpConnection — reconnect after disconnect', () => {
 		await conn.connect();
 		await conn.disconnect();
 		expect(clientClose).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('McpConnection — approval declaration', () => {
+	it('declares approval when tool configuration is resolved after discovery', () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			configureTools: () => ({ requireApproval: [] }),
+		});
+
+		expect(conn.declaresApproval()).toBe(true);
+	});
+
+	it('does not declare approval for non-interrupting tool configuration', () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			configureTools: () => ({ toolFilter: { mode: 'exclude', tools: ['x'] } }),
+			configureToolsNonInterrupting: true,
+		});
+
+		expect(conn.declaresApproval()).toBe(false);
+	});
+
+	it('ignores the non-interrupting flag when there is no tool configuration', () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			configureToolsNonInterrupting: true,
+		});
+
+		expect(conn.declaresApproval()).toBe(false);
+	});
+
+	it('still declares approval for a static requireApproval with non-interrupting tool configuration', () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			configureTools: () => ({}),
+			configureToolsNonInterrupting: true,
+			requireApproval: ['delete'],
+		});
+
+		expect(conn.declaresApproval()).toBe(true);
+	});
+});
+
+describe('McpClient HTTP error status', () => {
+	beforeEach(() => {
+		clientConnect.mockReset().mockResolvedValue(undefined);
+		clientListTools.mockReset().mockResolvedValue({ tools: [] });
+		clientClose.mockReset().mockResolvedValue(undefined);
+	});
+
+	it.each(['connect', 'listTools'] as const)(
+		'preserves HTTP status in warnings and verification after %s fails',
+		async (phase) => {
+			const { StreamableHTTPError } = await import(
+				'@modelcontextprotocol/sdk/client/streamableHttp.js'
+			);
+			const error = new StreamableHTTPError(503, 'Unavailable');
+			const originalMessage = error.message;
+			(phase === 'connect' ? clientConnect : clientListTools).mockRejectedValue(error);
+			const client = new McpClient([
+				{ name: 'unavailable', url: 'https://example.test/mcp', transport: 'streamableHttp' },
+			]);
+			try {
+				expect(await client.listTools()).toEqual([]);
+				expect(client.getConnectionFailures()).toEqual([
+					{ server: 'unavailable', error: `HTTP 503: ${originalMessage}` },
+				]);
+				expect(await client.verify()).toEqual({
+					ok: false,
+					errors: [{ server: 'unavailable', error: `HTTP 503: ${originalMessage}` }],
+				});
+				expect(error.message).toBe(originalMessage);
+				expect(error.code).toBe(503);
+			} finally {
+				await client.close();
+			}
+		},
+	);
+
+	it.each(['streamable', 'sse'] as const)(
+		'verifies a wrapped %s error without exposing its cause text',
+		async (transport) => {
+			const [{ StreamableHTTPError }, { SseError }] = await Promise.all([
+				import('@modelcontextprotocol/sdk/client/streamableHttp.js'),
+				import('@modelcontextprotocol/sdk/client/sse.js'),
+			]);
+			const cause =
+				transport === 'streamable'
+					? new StreamableHTTPError(503, 'Private diagnostic body')
+					: new SseError(429, 'Private diagnostic body', new Event('error'));
+			const error = new Error('Connection failed', { cause });
+			clientConnect.mockRejectedValue(error);
+			const client = new McpClient([
+				{ name: 'wrapped', url: 'https://example.test/mcp', transport: 'streamableHttp' },
+			]);
+			try {
+				expect(await client.verify()).toEqual({
+					ok: false,
+					errors: [{ server: 'wrapped', error: `HTTP ${cause.code}: Connection failed` }],
+				});
+				expect(error.message).toBe('Connection failed');
+				expect(error.cause).toBe(cause);
+				expect(cause.message).toContain('Private diagnostic body');
+			} finally {
+				await client.close();
+			}
+		},
+	);
+
+	it('uses the root HTTP status before the cause status during verification', async () => {
+		const { StreamableHTTPError } = await import(
+			'@modelcontextprotocol/sdk/client/streamableHttp.js'
+		);
+		const error = new StreamableHTTPError(503, 'Unavailable');
+		error.cause = new StreamableHTTPError(429, 'Private diagnostic body');
+		clientConnect.mockRejectedValue(error);
+		const client = new McpClient([
+			{ name: 'unavailable', url: 'https://example.test/mcp', transport: 'streamableHttp' },
+		]);
+		try {
+			expect(await client.verify()).toEqual({
+				ok: false,
+				errors: [{ server: 'unavailable', error: `HTTP 503: ${error.message}` }],
+			});
+		} finally {
+			await client.close();
+		}
+	});
+
+	it.each(['ordinary', 'lookalike', 'nested', 'network'] as const)(
+		'does not include an HTTP status or cause text for a %s cause during verification',
+		async (kind) => {
+			const { StreamableHTTPError } = await import(
+				'@modelcontextprotocol/sdk/client/streamableHttp.js'
+			);
+			const causes = {
+				ordinary: new Error('Private diagnostic body'),
+				lookalike: Object.assign(new Error('Private diagnostic body'), { code: 429 }),
+				nested: new Error('Private diagnostic body', {
+					cause: new StreamableHTTPError(503, 'Unavailable'),
+				}),
+				network: new StreamableHTTPError(-1, 'Private diagnostic body'),
+			};
+			clientConnect.mockRejectedValue(new Error('Connection failed', { cause: causes[kind] }));
+			const client = new McpClient([
+				{ name: 'wrapped', url: 'https://example.test/mcp', transport: 'streamableHttp' },
+			]);
+			try {
+				expect(await client.verify()).toEqual({
+					ok: false,
+					errors: [{ server: 'wrapped', error: 'Connection failed' }],
+				});
+			} finally {
+				await client.close();
+			}
+		},
+	);
+
+	it('preserves a string rejection in warnings and verification', async () => {
+		clientConnect.mockRejectedValue('Connection failed');
+		const client = new McpClient([
+			{ name: 'unavailable', url: 'https://example.test/mcp', transport: 'streamableHttp' },
+		]);
+		const failures = [{ server: 'unavailable', error: 'Connection failed' }];
+		try {
+			expect(await client.listTools()).toEqual([]);
+			expect(client.getConnectionFailures()).toEqual(failures);
+			expect(await client.verify()).toEqual({ ok: false, errors: failures });
+		} finally {
+			await client.close();
+		}
+	});
+
+	it('retains SSE status in a nested connection error', async () => {
+		const { SseError } = await import('@modelcontextprotocol/sdk/client/sse.js');
+		clientConnect.mockRejectedValue(
+			new Error('Connection failed', {
+				cause: new SseError(429, 'Unavailable', new Event('error')),
+			}),
+		);
+		const client = new McpClient([
+			{ name: 'limited', url: 'https://example.test/sse', transport: 'sse' },
+		]);
+		try {
+			await client.listTools();
+			expect(client.getConnectionFailures()).toEqual([
+				{ server: 'limited', error: 'Connection failed. HTTP 429: SSE error: Unavailable' },
+			]);
+		} finally {
+			await client.close();
+		}
 	});
 });

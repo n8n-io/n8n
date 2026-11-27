@@ -6,6 +6,7 @@ import set from 'lodash/set';
 import {
 	deepCopy,
 	getCredentialAllowedDomains,
+	getMcpAuthHeaders,
 	type ICredentialDataDecryptedObject,
 	type IDataObject,
 	type INode,
@@ -13,7 +14,7 @@ import {
 	type IOAuth2Options,
 	type IRequestOptions,
 } from 'n8n-workflow';
-import { Stream, type Readable } from 'stream';
+import { Readable, Stream } from 'stream';
 import type { SecureContextOptions } from 'tls';
 
 import type { HttpSslAuthCredentials } from './interfaces';
@@ -29,20 +30,47 @@ export type IAuthDataSanitizeKeys = {
 };
 
 export const replaceNullValues = (item: INodeExecutionData) => {
-	if (item.json === null) {
+	if (item.json === null || item.json === undefined) {
 		item.json = {};
 	}
 	return item;
 };
 
+export function removeRequestOptions(error: unknown) {
+	if (typeof error !== 'object' || error === null) return;
+
+	Reflect.deleteProperty(error, 'options');
+
+	const cause = Reflect.get(error, 'cause');
+	if (typeof cause === 'object' && cause !== null) {
+		Reflect.deleteProperty(cause, 'options');
+	}
+}
+
 export const REDACTED = '**hidden**';
 
-const STREAM_REPLACEMENT = 'Binary data got replaced with this text. Original was a stream.';
+export const STREAM_REPLACEMENT = 'Binary data got replaced with this text. Original was a stream.';
 
 function isObject(obj: unknown): obj is IDataObject {
 	return isPlainObject(obj);
 }
 
+/**
+ * Checks for a stream by its shape, not its class. An `instanceof` check misses a
+ * stream from another realm or from a different stream implementation.
+ */
+export function isStream(value: unknown): boolean {
+	if (value instanceof Stream) {
+		return true;
+	}
+
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'pipe' in value &&
+		typeof value.pipe === 'function'
+	);
+}
 /**
  * Swaps an upload out of a value headed for the browser. A stream has to go
  * before `deepCopy` runs: once the request is in flight its pipe chain is
@@ -78,7 +106,9 @@ function replaceUploads(value: IDataObject[string]): IDataObject[string] {
 }
 
 function redactString(str: string, secrets: string[]): string {
-	return secrets.reduce((safe, secret) => safe.split(secret).join(REDACTED), str);
+	return [...secrets]
+		.sort((a, b) => b.length - a.length)
+		.reduce((safe, secret) => safe.split(secret).join(REDACTED), str);
 }
 
 function redact<T = unknown>(obj: T, secrets: string[]): T {
@@ -152,9 +182,10 @@ export function sanitizeUiMessage(
 }
 
 export function getSecrets(credentials: ICredentialDataDecryptedObject): string[] {
-	const secrets = Object.values(credentials).filter(
-		(value): value is string => typeof value === 'string' && value.length > 0,
-	);
+	const secrets = [
+		...Object.values(credentials),
+		...Object.values(getMcpAuthHeaders('multipleHeadersAuth', credentials)),
+	].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
 	const oauthAccessToken = get(credentials, 'oauthTokenData.access_token');
 	if (typeof oauthAccessToken === 'string' && !secrets.includes(oauthAccessToken)) {
@@ -281,6 +312,7 @@ export const prepareRequestBody = async (
 		}, Promise.resolve({}));
 	} else if (bodyType === 'multipart-form-data' && version >= 4.2) {
 		const formData = new FormData();
+		const streams: Readable[] = [];
 
 		for (const parameter of parameters) {
 			if (parameter.parameterType === 'formBinaryData') {
@@ -288,12 +320,15 @@ export const prepareRequestBody = async (
 				const key = Object.keys(entry)[0];
 				const data = entry[key] as { value: Buffer | Readable; options: FormData.AppendOptions };
 				formData.append(key, data.value, data.options);
+				if (data.value instanceof Readable) streams.push(data.value);
 				continue;
 			}
 
 			formData.append(parameter.name, parameter.value);
 		}
 
+		// `FormData.destroy()` drops the appended streams without destroying them.
+		formData.once('close', () => streams.forEach((stream) => stream.destroy()));
 		return formData;
 	} else {
 		return await reduceAsync(parameters, defaultReducer);

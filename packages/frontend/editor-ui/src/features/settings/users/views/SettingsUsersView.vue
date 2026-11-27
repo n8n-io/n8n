@@ -25,6 +25,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
@@ -80,6 +81,21 @@ const isExpressionMappingEnabled = computed(
 
 const isSSOEnabled = computed(() => !!ssoStore.isSamlLoginEnabled || !!ssoStore.isOidcLoginEnabled);
 
+// The same conditions as the invite button and the delete action.
+usePrefetchModals([INVITE_USER_MODAL_KEY], {
+	enabled: () =>
+		!showUMSetupWarning.value &&
+		!isSSOEnabled.value &&
+		usersStore.usersLimitNotReached &&
+		// With the provisioning license, wait for its config: it can hide the invite button.
+		(!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Provisioning] ||
+			userRoleProvisioningStore.provisioningConfig !== undefined) &&
+		!isInstanceRoleProvisioningEnabled.value,
+});
+usePrefetchModals([DELETE_USER_MODAL_KEY], {
+	enabled: () => hasPermission(['rbac'], { rbac: { scope: 'user:delete' } }),
+});
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
 
@@ -92,7 +108,9 @@ onMounted(async () => {
 		void rolesStore.fetchRoles();
 	}
 
-	await userRoleProvisioningStore.getProvisioningConfig();
+	if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Provisioning]) {
+		await userRoleProvisioningStore.getProvisioningConfig();
+	}
 });
 
 const usersListActions = computed((): Array<UserAction<IUser>> => {
@@ -503,21 +521,20 @@ const onSearch = (value: string) => {
 					<N8nIcon icon="search" />
 				</template>
 			</N8nInput>
-			<N8nTooltip :disabled="!isSSOEnabled">
+			<N8nTooltip as-child :disabled="!isSSOEnabled">
 				<template #content>
 					<span> {{ i18n.baseText('settings.users.invite.tooltip') }} </span>
 				</template>
-				<div>
-					<N8nButton
-						:disabled="
-							isSSOEnabled || !usersStore.usersLimitNotReached || isInstanceRoleProvisioningEnabled
-						"
-						:label="i18n.baseText('settings.users.invite')"
-						size="large"
-						data-test-id="settings-users-invite-button"
-						@click="onInvite"
-					/>
-				</div>
+				<N8nButton
+					:disabled="
+						isSSOEnabled || !usersStore.usersLimitNotReached || isInstanceRoleProvisioningEnabled
+					"
+					:label="i18n.baseText('settings.users.invite')"
+					:focusable-when-disabled="isSSOEnabled"
+					size="large"
+					data-test-id="settings-users-invite-button"
+					@click="onInvite"
+				/>
 			</N8nTooltip>
 		</div>
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.

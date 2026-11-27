@@ -9,13 +9,11 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
-import { CANVAS_NODE_CONTEXT_FLAG } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { getEmptyGroupAnchor, NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
-import { computed, type ComputedRef } from 'vue';
+import { computed, type ComputedRef, type Ref } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { usePinnedData } from '@/app/composables/usePinnedData';
@@ -27,6 +25,7 @@ import { injectContextMenuGroupView } from './contextMenuGroupView';
 export type ContextMenuAction =
 	| 'open'
 	| 'copy'
+	| 'paste'
 	| 'toggle_activation'
 	| 'duplicate'
 	| 'execute'
@@ -85,6 +84,7 @@ export function useContextMenuItems(
 	targetNodeIds: ComputedRef<string[]>,
 	targetGroupId?: ComputedRef<string | undefined>,
 	targetReadOnly?: ComputedRef<boolean>,
+	clipboardHasPasteData?: Ref<boolean | undefined>,
 ): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -92,7 +92,6 @@ export function useContextMenuItems(
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 	const focusedNodesStore = useFocusedNodesStore();
-	const posthog = usePostHog();
 	const { resolveGroupableNodeIds, isSubworkflowConversionDisabled } = useSelectionValidation();
 	const groupView = injectContextMenuGroupView();
 	const i18n = useI18n();
@@ -157,7 +156,7 @@ export function useContextMenuItems(
 		if (isRestricted(node)) return false;
 
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		if (!nodeType) return false;
+		if (!nodeType || nodeTypesStore.isNodeDeprecated(node)) return false;
 		if (NOT_DUPLICATABLE_NODE_TYPES.includes(nodeType.name)) return false;
 
 		return canAddNodeOfType(nodeType);
@@ -329,7 +328,7 @@ export function useContextMenuItems(
 						divided: true,
 						label: i18n.baseText('contextMenu.extract', i18nOptions),
 						shortcut: { altKey: true, keys: ['X'] },
-						disabled: isReadOnly.value,
+						disabled: isReadOnly.value || nodes.some(nodeTypesStore.isNodeDeprecated),
 					},
 				];
 
@@ -361,10 +360,7 @@ export function useContextMenuItems(
 		].filter(Boolean) as Item[];
 
 		const addToChatAction: Item | null =
-			!onlyStickies &&
-			nodes.length >= 1 &&
-			posthog.isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG) &&
-			instanceAi.value
+			!onlyStickies && nodes.length >= 1 && instanceAi.value
 				? {
 						id: 'add_nodes_to_chat',
 						icon: 'sparkles',
@@ -475,6 +471,13 @@ export function useContextMenuItems(
 								disabled: isReadOnly.value,
 							},
 						]),
+				{
+					id: 'paste',
+					label: i18n.baseText('contextMenu.paste'),
+					shortcut: { metaKey: true, keys: ['V'] },
+					// Unknown clipboard content keeps paste enabled; the click explains a failure
+					disabled: isReadOnly.value || clipboardHasPasteData?.value === false,
+				},
 				...layoutActions,
 				...groupViewActions,
 				// Join the group-view section
@@ -489,7 +492,10 @@ export function useContextMenuItems(
 						? i18n.baseText('contextMenu.activate', i18nOptions)
 						: i18n.baseText('contextMenu.deactivate', i18nOptions),
 					shortcut: { keys: ['D'] },
-					disabled: isReadOnly.value,
+					disabled:
+						isReadOnly.value ||
+						nodes.some(nodeTypesStore.isNodeDeprecated) ||
+						nodes.some(isRestricted),
 				},
 				!onlyStickies && {
 					id: 'toggle_pin',
@@ -581,7 +587,11 @@ export function useContextMenuItems(
 							{
 								id: 'execute',
 								label: i18n.baseText('contextMenu.test'),
-								disabled: isReadOnly.value || isRestricted(nodes[0]) || !isExecutable(nodes[0]),
+								disabled:
+									isReadOnly.value ||
+									isRestricted(nodes[0]) ||
+									!isExecutable(nodes[0]) ||
+									nodeTypesStore.isNodeDeprecated(nodes[0]),
 							},
 							...copyWebhookActions,
 							{
@@ -589,7 +599,7 @@ export function useContextMenuItems(
 								id: 'rename',
 								label: i18n.baseText('contextMenu.rename'),
 								shortcut: { keys: ['Space'] },
-								disabled: isReadOnly.value,
+								disabled: isReadOnly.value || nodeTypesStore.isNodeDeprecated(nodes[0]),
 							},
 							{
 								id: 'replace',

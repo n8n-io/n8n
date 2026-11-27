@@ -1,3 +1,4 @@
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type {
 	LanguageModel,
 	LanguageModelCallOptions,
@@ -10,9 +11,9 @@ import type {
 } from 'ai';
 
 import type { FinishReason, SerializableAgentState, TokenUsage } from '../index';
+import type { GuardrailStop } from '../sdk/guardrail';
 import type { ExecutionOptions, RunOptions } from '../sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../sdk/message';
-import type { JSONObject } from '../utils/json';
 import type { AgentMessageList } from '../../runtime/model/message-list';
 import type { ToolCallBatchResult, ToolCallInput, ToolCallSuspension } from './tool-execution';
 
@@ -62,18 +63,22 @@ export interface ModelCallContext {
 	hasTools: boolean;
 	aiTools: ToolSet;
 	reasoning?: LanguageModelCallOptions['reasoning'];
-	providerOptions?: Record<string, JSONObject>;
+	providerOptions?: ProviderOptions;
 	outputSpec?: ReturnType<typeof Output.object>;
 	maxOutputTokens?: number;
 	onInputRejected?: (error: unknown) => Promise<void>;
+	/** Called when the model begins to stream a tool call's input. Must not throw. */
+	onToolInputStart?: (toolName: string) => void;
 	aiSdkOptions: {
 		telemetry?: TelemetryOptions;
+		toolChoice?: 'none';
 		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 	};
 }
 
 /** Data needed to emit a terminal suspension result. */
 export interface SuspendEmission {
+	finishReason?: 'paused';
 	suspendRunId: string;
 	list: AgentMessageList;
 	usage: TokenUsage | undefined;
@@ -87,6 +92,7 @@ export interface CompleteEmission {
 	finishReason: FinishReason;
 	usage: TokenUsage | undefined;
 	structuredOutput: unknown;
+	guardrail?: GuardrailStop;
 }
 
 /**
@@ -99,7 +105,6 @@ export interface RunServices {
 	readonly modelId: string;
 	applyCost(usage: TokenUsage | undefined): TokenUsage | undefined;
 	saveToMemory(list: AgentMessageList, options: RunCallOptions): Promise<void>;
-	maybeGenerateTitle(list: AgentMessageList, options: RunCallOptions): Promise<void>;
 	flushTelemetry(options: RunCallOptions): Promise<void>;
 	cleanupRun(): Promise<void>;
 	updateState(patch: Partial<SerializableAgentState>): void;
@@ -116,6 +121,8 @@ export interface RunOutputSink<TResult> {
 	/** Wait until the host has recorded preceding output before it commits input. */
 	inputBoundary?(signal: AbortSignal): Promise<void>;
 	emitInput?(message: AgentDbMessage): Promise<void>;
+	/** Emit runtime-generated context without treating it as user input. */
+	emitMessage?(message: AgentMessage): Promise<void>;
 	/** Run one LLM turn. Streaming implementations also emit text/tool chunks here. */
 	callModel(ctx: ModelCallContext): Promise<ModelTurnResult>;
 	/**
@@ -123,7 +130,7 @@ export interface RunOutputSink<TResult> {
 	 * implementations keep it so an aborted run can still emit a terminal
 	 * finish chunk carrying the tokens consumed before the stop.
 	 */
-	reportUsage(usage: TokenUsage | undefined): void;
+	reportUsage(usage: TokenUsage | undefined): void | Promise<void>;
 	/**
 	 * Signal that the just-returned turn's messages have been folded into the list.
 	 * Streaming implementations drop the retained streamed text here so a later abort

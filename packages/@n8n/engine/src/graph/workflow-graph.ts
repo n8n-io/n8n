@@ -54,6 +54,23 @@ export interface GraphEdge {
 }
 
 export interface WorkflowGraph {
+	/**
+	 * The order decides how the items of several edges into one input slot
+	 * concatenate: see `compareByConcatenationOrder`.
+	 */
 	nodes: GraphNode[];
 	edges: GraphEdge[];
+}
+
+/**
+ * The graph as stored with an execution: as sent, plus what the engine records
+ * on it at start. A caller cannot set that part; the request type has none.
+ */
+export interface StoredWorkflowGraph extends WorkflowGraph {
+	/**
+	 * Ids of the nodes whose outputs the caller supplied, so the engine records
+	 * each as completed with them instead of running it. The outputs live in
+	 * their own table.
+	 */
+	seeded: string[];
 }

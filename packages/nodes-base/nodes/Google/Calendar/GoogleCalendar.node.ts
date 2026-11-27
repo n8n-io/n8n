@@ -10,7 +10,7 @@ import type {
 	JsonObject,
 	NodeExecutionHint,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { calendarFields, calendarOperations } from './CalendarDescription';
@@ -20,13 +20,14 @@ import {
 	addNextOccurrence,
 	addTimezoneToDate,
 	dateObjectToISO,
-	encodeURIComponentOnce,
 	eventExtendYearIntoFuture,
 	getCalendars,
 	getTimezones,
+	toPathValue,
 	googleApiRequest,
 	googleApiRequestAllItems,
 	googleApiRequestWithRetries,
+	parseAttendees,
 	type RecurrentEvent,
 } from './GenericFunctions';
 import { sortItemKeysByPriorityList } from '../../../utils/utilities';
@@ -37,7 +38,7 @@ export class GoogleCalendar implements INodeType {
 		name: 'googleCalendar',
 		icon: 'file:googleCalendar.svg',
 		group: ['input'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Calendar API',
 		schemaPath: 'Google/Calendar',
@@ -110,11 +111,11 @@ export class GoogleCalendar implements INodeType {
 					hangoutsMeet: 'Google Meet',
 				};
 				const {
-					conferenceProperties: { allowedConferenceSolutionTypes },
+					conferenceProperties: { allowedConferenceSolutionTypes = [] } = {},
 				} = await googleApiRequest.call(
 					this,
 					'GET',
-					`/calendar/v3/users/me/calendarList/${calendar}`,
+					requestPath`/calendar/v3/users/me/calendarList/${toPathValue(this.getNode().typeVersion, calendar)}`,
 				);
 				for (const solution of allowedConferenceSolutionTypes) {
 					returnData.push({
@@ -128,7 +129,11 @@ export class GoogleCalendar implements INodeType {
 			// select them easily
 			async getColors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { event } = await googleApiRequest.call(this, 'GET', '/calendar/v3/colors');
+				const { event } = await googleApiRequest.call(
+					this,
+					'GET',
+					requestPath`/calendar/v3/colors`,
+				);
 				for (const key of Object.keys(event as IDataObject)) {
 					const colorName = `Background: ${event[key].background} - Foreground: ${event[key].foreground}`;
 					const colorId = key;
@@ -186,7 +191,7 @@ export class GoogleCalendar implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							'/calendar/v3/freeBusy',
+							requestPath`/calendar/v3/freeBusy`,
 							body,
 							{},
 						);
@@ -213,7 +218,8 @@ export class GoogleCalendar implements INodeType {
 				if (resource === 'event') {
 					//https://developers.google.com/calendar/v3/reference/events/insert
 					if (operation === 'create') {
-						const calendarId = encodeURIComponentOnce(
+						const calendarId = toPathValue(
+							nodeVersion,
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
 						const start = dateObjectToISO(this.getNodeParameter('start', i));
@@ -241,16 +247,7 @@ export class GoogleCalendar implements INodeType {
 							},
 						};
 						if (additionalFields.attendees) {
-							body.attendees = [];
-							(additionalFields.attendees as string[]).forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
-									attendee
-										.split(',')
-										.map((a) => a.trim())
-										.map((email) => ({ email })),
-								);
-							});
+							body.attendees = parseAttendees.call(this, additionalFields.attendees, i);
 						}
 						if (additionalFields.color) {
 							body.colorId = additionalFields.color as string;
@@ -356,14 +353,15 @@ export class GoogleCalendar implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/calendar/v3/calendars/${calendarId}/events`,
+							requestPath`/calendar/v3/calendars/${calendarId}/events`,
 							body,
 							qs,
 						);
 					}
 					//https://developers.google.com/calendar/v3/reference/events/delete
 					if (operation === 'delete') {
-						const calendarId = encodeURIComponentOnce(
+						const calendarId = toPathValue(
+							nodeVersion,
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
 						const eventId = this.getNodeParameter('eventId', i) as string;
@@ -374,14 +372,15 @@ export class GoogleCalendar implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'DELETE',
-							`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
+							requestPath`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
 							{},
 						);
 						responseData = { success: true };
 					}
 					//https://developers.google.com/calendar/v3/reference/events/get
 					if (operation === 'get') {
-						const calendarId = encodeURIComponentOnce(
+						const calendarId = toPathValue(
+							nodeVersion,
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
 						const eventId = this.getNodeParameter('eventId', i) as string;
@@ -398,7 +397,7 @@ export class GoogleCalendar implements INodeType {
 						responseData = (await googleApiRequest.call(
 							this,
 							'GET',
-							`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
+							requestPath`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
 							{},
 							qs,
 						)) as IDataObject;
@@ -410,7 +409,7 @@ export class GoogleCalendar implements INodeType {
 										(await googleApiRequest.call(
 											this,
 											'GET',
-											`/calendar/v3/calendars/${calendarId}/events/${responseData.id}/instances`,
+											requestPath`/calendar/v3/calendars/${calendarId}/events/${responseData.id}/instances`,
 											{},
 											{
 												timeMin: new Date().toISOString(),
@@ -427,7 +426,8 @@ export class GoogleCalendar implements INodeType {
 					//https://developers.google.com/calendar/v3/reference/events/list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const calendarId = encodeURIComponentOnce(
+						const calendarId = toPathValue(
+							nodeVersion,
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
 						const options = this.getNodeParameter('options', i);
@@ -495,7 +495,7 @@ export class GoogleCalendar implements INodeType {
 								this,
 								'items',
 								'GET',
-								`/calendar/v3/calendars/${calendarId}/events`,
+								requestPath`/calendar/v3/calendars/${calendarId}/events`,
 								{},
 								qs,
 							);
@@ -504,7 +504,7 @@ export class GoogleCalendar implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/calendar/v3/calendars/${calendarId}/events`,
+								requestPath`/calendar/v3/calendars/${calendarId}/events`,
 								{},
 								qs,
 							);
@@ -522,7 +522,7 @@ export class GoogleCalendar implements INodeType {
 												(await googleApiRequestWithRetries({
 													context: this,
 													method: 'GET',
-													resource: `/calendar/v3/calendars/${calendarId}/events/${event.id}/instances`,
+													resource: requestPath`/calendar/v3/calendars/${calendarId}/events/${event.id}/instances`,
 													qs: {
 														timeMin: new Date().toISOString(),
 														maxResults: 1,
@@ -586,7 +586,8 @@ export class GoogleCalendar implements INodeType {
 					}
 					//https://developers.google.com/calendar/v3/reference/events/patch
 					if (operation === 'update') {
-						const calendarId = encodeURIComponentOnce(
+						const calendarId = toPathValue(
+							nodeVersion,
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
 						let eventId = this.getNodeParameter('eventId', i) as string;
@@ -597,7 +598,7 @@ export class GoogleCalendar implements INodeType {
 								const instance = (await googleApiRequest.call(
 									this,
 									'GET',
-									`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
+									requestPath`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
 									{},
 									qs,
 								)) as IDataObject;
@@ -642,16 +643,7 @@ export class GoogleCalendar implements INodeType {
 						}
 						// nodeVersion < 1.2
 						if (updateFields.attendees) {
-							body.attendees = [];
-							(updateFields.attendees as string[]).forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
-									attendee
-										.split(',')
-										.map((a) => a.trim())
-										.map((email) => ({ email })),
-								);
-							});
+							body.attendees = parseAttendees.call(this, updateFields.attendees, i);
 						}
 						// nodeVersion >= 1.2
 						if (updateFields.attendeesUi) {
@@ -663,26 +655,19 @@ export class GoogleCalendar implements INodeType {
 									};
 								}
 							).values;
+							const parsedAttendees = parseAttendees.call(this, attendees, i);
 							body.attendees = [];
 							if (mode === 'add') {
 								const event = await googleApiRequest.call(
 									this,
 									'GET',
-									`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
+									requestPath`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
 								);
 								((event?.attendees as IDataObject[]) || []).forEach((attendee) => {
 									body.attendees?.push(attendee);
 								});
 							}
-							attendees.forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
-									attendee
-										.split(',')
-										.map((a) => a.trim())
-										.map((email) => ({ email })),
-								);
-							});
+							body.attendees.push(...parsedAttendees);
 						}
 						if (updateFields.color) {
 							body.colorId = updateFields.color as string;
@@ -776,7 +761,7 @@ export class GoogleCalendar implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'PATCH',
-							`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
+							requestPath`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
 							body,
 							qs,
 						);

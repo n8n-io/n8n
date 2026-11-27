@@ -2,7 +2,14 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import type { AgentJsonVectorStoreConfig, AgentVectorStoreProvider } from '@n8n/api-types';
 import { VECTOR_STORE_NAME_REGEX, VECTOR_STORE_USE_WHEN_MAX_LENGTH } from '@n8n/api-types';
-import { N8nButton, N8nFormInput, N8nIcon, N8nInputLabel, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialogDescription,
+	N8nFormInput,
+	N8nIcon,
+	N8nInputLabel,
+	N8nText,
+} from '@n8n/design-system';
 import type { Rule, RuleGroup } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -13,6 +20,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useCredentialTypesLoad } from '@/features/credentials/composables/useCredentialTypesLoad';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getProviderCredentialTypes } from '../model-providers';
 import { testAgentVectorStore } from '../composables/useAgentApi';
@@ -57,6 +65,7 @@ const uiStore = useUIStore();
 const { showMessage, showError } = useToast();
 const rootStore = useRootStore();
 const credentialsStore = useCredentialsStore();
+const credentialTypes = useCredentialTypesLoad();
 const projectsStore = useProjectsStore();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
@@ -237,9 +246,14 @@ function onEmbeddingModelUpdate(model: string) {
 async function loadCredentials() {
 	credentialsLoading.value = true;
 	try {
-		const allCredentials = await credentialsStore.fetchUsableCredentials({
-			projectId: props.data.projectId,
-		});
+		const [allCredentials] = await Promise.all([
+			credentialsStore.fetchUsableCredentials({
+				projectId: props.data.projectId,
+				forAgent: true,
+			}),
+			// The type labels below need the credential types. A failure only removes the labels.
+			credentialTypes.whenSettled(),
+		]);
 		const types = new Set<string>();
 		for (const definition of Object.values(AGENT_VECTOR_STORE_PROVIDER_DEFINITIONS)) {
 			types.add(definition.credentialType);
@@ -440,10 +454,10 @@ onMounted(() => {
 		@update:title="onNameInput"
 		@back="goBack"
 	>
-		<div v-show="!selectedProvider" :class="$style.content">
-			<N8nText size="small" color="text-light">
+		<div v-show="!selectedProvider">
+			<N8nDialogDescription v-if="!selectedProvider">
 				{{ i18n.baseText('agents.builder.vectorStores.modal.description') }}
-			</N8nText>
+			</N8nDialogDescription>
 
 			<div :class="$style.rows">
 				<div
@@ -469,7 +483,7 @@ onMounted(() => {
 					</div>
 					<div :class="$style.actions">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							data-testid="agent-vector-stores-modal-connect"
 							@click="selectProvider(provider)"
@@ -636,7 +650,6 @@ onMounted(() => {
 .rows {
 	display: flex;
 	flex-direction: column;
-	padding-right: var(--spacing--lg);
 }
 
 .row {

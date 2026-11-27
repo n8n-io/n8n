@@ -1,0 +1,20 @@
+{
+	"properties": {
+		"content": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"text": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		}
+	},
+	"type": "object"
+}

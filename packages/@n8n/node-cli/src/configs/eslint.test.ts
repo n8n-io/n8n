@@ -17,10 +17,7 @@ async function lintFile(filePath: string, eslintConfig: typeof config) {
 	const eslint = new ESLint({
 		cwd: path.dirname(filePath),
 		overrideConfigFile: true,
-		// `tseslint.config()` returns the typescript-eslint `ConfigArray`, which
-		// is structurally a `Linter.Config[]` but nominally a different type due
-		// to duplicated `Parser` definitions across packages.
-		overrideConfig: eslintConfig as unknown as ESLint.Options['overrideConfig'],
+		overrideConfig: eslintConfig,
 	});
 	const [result] = await eslint.lintFiles([filePath]);
 	return result;
@@ -91,5 +88,34 @@ describe('@n8n/node-cli eslint config', () => {
 				'@n8n/community-nodes/valid-node-categories',
 			]);
 		});
+
+		tmpdirTest(
+			`${name} requires Root Nodes in the codex of an AI main node`,
+			async ({ tmpdir }) => {
+				const nodePath = path.join(tmpdir, 'Example.node.ts');
+				await fs.writeFile(
+					nodePath,
+					`import { NodeConnectionTypes } from 'n8n-workflow';
+export class Example {
+	description = { inputs: [], outputs: [NodeConnectionTypes.Main] };
+}
+`,
+				);
+				const codexPath = path.join(tmpdir, 'Example.node.json');
+				await fs.writeFile(
+					codexPath,
+					'{ "categories": ["AI"], "subcategories": { "AI": ["Tools"] } }',
+				);
+
+				const result = await lintFile(nodePath, eslintConfig);
+
+				expect(result.messages).toContainEqual(
+					expect.objectContaining({
+						ruleId: '@n8n/community-nodes/valid-node-categories',
+						messageId: 'missingAiRootNodes',
+					}),
+				);
+			},
+		);
 	}
 });

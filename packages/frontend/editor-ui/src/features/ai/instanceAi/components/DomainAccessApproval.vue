@@ -1,24 +1,25 @@
 <script lang="ts" setup>
-import { N8nText } from '@n8n/design-system';
+import { N8nApprovalCard, type ApprovalOption } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { InstanceAiApprovalAskReason, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { computed, ref } from 'vue';
-import { useThread } from '../instanceAi.store';
-import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
-import ConfirmationPreview from './ConfirmationPreview.vue';
+
+import ApprovalAskReason from '@/features/ai/shared/components/ApprovalAskReason.vue';
 
 type DomainAction = 'allow_once' | 'allow_domain' | 'allow_all';
 
 interface DomainProps {
-	requestId: string;
 	severity?: string;
+	/** Why the "Approve for me" mode showed the card. */
+	askReason?: InstanceAiApprovalAskReason;
 	url: string;
 	host: string;
 	query?: never;
 }
 
 interface WebSearchProps {
-	requestId: string;
 	severity?: string;
+	askReason?: InstanceAiApprovalAskReason;
 	query: string;
 	url?: never;
 	host?: never;
@@ -26,8 +27,12 @@ interface WebSearchProps {
 
 const props = defineProps<DomainProps | WebSearchProps>();
 
+const emit = defineEmits<{
+	/** The user's decision, as the Assistant confirm body. The parent sends it. */
+	decide: [body: InstanceAiConfirmRequest];
+}>();
+
 const i18n = useI18n();
-const thread = useThread();
 const resolved = ref(false);
 
 const isWebSearch = computed(() => props.query !== undefined);
@@ -83,13 +88,11 @@ const options = computed<ApprovalOption[]>(() => {
 
 function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
 	resolved.value = true;
-	thread.resolveConfirmation(props.requestId, approved ? 'approved' : 'denied');
-	void thread.confirmAction(
-		props.requestId,
+	const body: InstanceAiConfirmRequest =
 		approved && domainAccessAction
 			? { kind: 'domainAccessApprove', domainAccessAction }
-			: { kind: 'domainAccessDeny' },
-	);
+			: { kind: 'domainAccessDeny' };
+	emit('decide', body);
 }
 
 function onSelect(key: string) {
@@ -104,23 +107,16 @@ function onSelect(key: string) {
 </script>
 
 <template>
-	<div v-if="!resolved">
-		<div :class="$style.body">
-			<N8nText tag="div" size="medium" bold>
-				{{ promptText }}
-			</N8nText>
-			<ConfirmationPreview>{{ previewText }}</ConfirmationPreview>
-		</div>
-
-		<ApprovalOptionList :options="options" @select="onSelect" />
-	</div>
+	<N8nApprovalCard
+		v-if="!resolved"
+		:title="promptText"
+		title-size="medium"
+		:description="previewText"
+		:options="options"
+		@select="onSelect"
+	>
+		<template v-if="askReason" #description>
+			<ApprovalAskReason :description="previewText" :reason="askReason" />
+		</template>
+	</N8nApprovalCard>
 </template>
-
-<style lang="scss" module>
-.body {
-	padding: var(--spacing--sm) var(--spacing--sm) 0;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-</style>

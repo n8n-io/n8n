@@ -3,8 +3,11 @@ import get from 'lodash/get';
 import { BinaryDataService } from 'n8n-core';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type { INodeExecutionData, ITaskData, WebhookResponseData } from 'n8n-workflow';
-import { BINARY_ENCODING, OperationalError } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import type { Readable } from 'node:stream';
+
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 
 /** Response that is not a stream */
 type StaticResponse = {
@@ -35,6 +38,7 @@ export async function extractWebhookLastNodeResponse(
 		responsePropertyName: string | undefined;
 		responseContentType: string | undefined;
 		responseBinaryPropertyName: string | number | boolean | unknown[] | undefined;
+		binaryDataAccess?: { workflowId: string; grantedIds?: string[] };
 	},
 ): Promise<Result<StaticResponse | StreamResponse, OperationalError>> {
 	if (responseDataType === 'firstEntryJson') {
@@ -51,6 +55,7 @@ export async function extractWebhookLastNodeResponse(
 			lastNodeTaskData,
 			checkAllMainOutputs,
 			options.responseBinaryPropertyName,
+			options.binaryDataAccess,
 		);
 	}
 
@@ -118,6 +123,7 @@ async function extractFirstEntryBinaryFromTaskData(
 	lastNodeTaskData: ITaskData,
 	checkAllMainOutputs: boolean = false,
 	responseBinaryPropertyName: string | number | boolean | unknown[] | undefined,
+	binaryDataAccess?: { workflowId: string; grantedIds?: string[] },
 ): Promise<Result<StaticResponse | StreamResponse, OperationalError>> {
 	const mainOutputs = lastNodeTaskData.data?.main;
 	let lastNodeFirstJsonItem: INodeExecutionData | undefined;
@@ -163,6 +169,11 @@ async function extractFirstEntryBinaryFromTaskData(
 	// In binary data's case, the mime type takes precedence over any manually
 	// set content type header
 	if (binaryData.id) {
+		await Container.get(BinaryDataAccessService).assertIsAllowed(
+			binaryData.id,
+			binaryDataAccess?.workflowId,
+			binaryDataAccess?.grantedIds,
+		);
 		const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
 		return createResultOk({
 			type: 'stream',
