@@ -55,8 +55,6 @@
  *      SYNC_TARGET_BRANCH (optional — override 3.x to rehearse against a scratch branch).
  * Requires Node 18+ (global fetch), git 2.38+ (`merge-tree --write-tree`), `gh` on PATH,
  * and `pnpm` on PATH (lockfile conflict resolution).
- *
- * See .github/DEVELOPING_V3.md for the full v3 development model.
  */
 
 import { execFileSync } from 'node:child_process';
