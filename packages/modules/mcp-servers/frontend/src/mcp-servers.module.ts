@@ -61,10 +61,21 @@ export const McpServersModule = defineFrontendModule({
 		},
 		{
 			name: MCP_SERVER_CONNECTIONS_VIEW,
-			path: 'mcp-servers/:serverId/connections',
+			path: 'mcp-servers/:serverId/access',
 			component: McpServerView,
 			meta: { projectRoute: true, middleware: ['authenticated', 'custom'] },
 			beforeEnter: guardProjectRoute('canRead'),
+		},
+		{
+			// Old links from before the tab rename go to `/access`.
+			path: 'mcp-servers/:serverId/connections',
+			meta: { projectRoute: true },
+			redirect: (to) => ({
+				name: MCP_SERVER_CONNECTIONS_VIEW,
+				params: to.params,
+				query: to.query,
+				hash: to.hash,
+			}),
 		},
 		{
 			// No middleware: anyone with the link opens the page. The backend answers 404 when the

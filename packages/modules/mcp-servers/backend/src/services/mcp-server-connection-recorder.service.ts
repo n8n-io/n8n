@@ -2,8 +2,8 @@ import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 
 import type { McpServer } from '../database/entities/mcp-server.entity';
-import { OAuthClientNamePort } from '../tools/oauth-client-name-port';
-import { McpServerConnectionRepository } from './mcp-server-connection.repository';
+import { McpServerConnectionRepository } from '../database/repositories/mcp-server-connection.repository';
+import { OAuthClientNamePort } from '../ports/oauth-client-name.port';
 
 /** The last use changes at most one time in this period, to limit the database writes. */
 const LAST_USE_INTERVAL_MS = 60_000;

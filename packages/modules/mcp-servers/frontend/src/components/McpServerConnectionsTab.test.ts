@@ -62,8 +62,12 @@ function block(person: typeof TOM): McpServerBlockResponse {
 
 const renderComponent = createComponentRenderer(McpServerConnectionsTab);
 
-function render(connections: McpServerConnectionsResponse | null, loading = false) {
-	return renderComponent({ props: { server, connections, loading } });
+function render(
+	connections: McpServerConnectionsResponse | null,
+	loading = false,
+	canShare = true,
+) {
+	return renderComponent({ props: { server, connections, loading, canShare } });
 }
 
 const rowOf = (name: string) =>
@@ -134,13 +138,30 @@ describe('McpServerConnectionsTab', () => {
 		expect(emitted('changed')).toHaveLength(1);
 	});
 
-	it('shows the empty state with "Copy URL" and no banner when no one connected', async () => {
+	it('shows the empty state with "Share" and no "Copy server URL" when no one connected', async () => {
 		render({ connections: [], blocks: [] });
 
 		expect(screen.getByText('No one has connected yet')).toBeInTheDocument();
-		expect(screen.queryByText('Share')).not.toBeInTheDocument();
-		await userEvent.click(screen.getByTestId('mcp-server-connections-copy-url'));
-		expect(copy).toHaveBeenCalledWith(expect.stringMatching(/\/mcp-servers\/support-desk$/));
+		expect(screen.queryByText('Copy server URL')).not.toBeInTheDocument();
+		const share = screen.getByTestId('mcp-server-connections-share');
+		expect(share).toHaveTextContent('Share');
+		await userEvent.click(share);
+		expect(copy).toHaveBeenCalledWith(expect.stringMatching(/\/mcp-share\/support-desk$/));
+	});
+
+	it('turns off "Share" in the empty state while the server has no tool and explains why accessibly', async () => {
+		render({ connections: [], blocks: [] }, false, false);
+
+		const share = screen.getByTestId('mcp-server-connections-share');
+		expect(share).toHaveAttribute('aria-disabled', 'true');
+		expect(share).toHaveAccessibleDescription('Add a tool first');
+		expect(screen.getByTestId('mcp-server-connections-share-reason')).toHaveTextContent(
+			'Add a tool first',
+		);
+		share.focus();
+		expect(share).toHaveFocus();
+		await userEvent.click(share);
+		expect(copy).not.toHaveBeenCalled();
 	});
 
 	it('blocks a person after the confirmation', async () => {

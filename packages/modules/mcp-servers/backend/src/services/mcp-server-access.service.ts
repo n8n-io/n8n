@@ -11,13 +11,14 @@ import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError, UnexpectedError } from '@n8n/errors';
 
 import type { McpServerBlock } from '../database/entities/mcp-server-block.entity';
-import type { McpServerActor } from '../mcp-server-events';
 import type { McpServer } from '../database/entities/mcp-server.entity';
+import { McpServerBlockRepository } from '../database/repositories/mcp-server-block.repository';
+import { McpServerConnectionRepository } from '../database/repositories/mcp-server-connection.repository';
 import { McpServerRepository } from '../database/repositories/mcp-server.repository';
-import { McpServerProtectedResource } from '../runtime/mcp-server-protected-resource';
-import { McpServerBlockRepository } from './mcp-server-block.repository';
-import { McpServerConnectionRepository } from './mcp-server-connection.repository';
-import { RefreshTokenPort } from './refresh-token-port';
+import { McpServerNotFoundError } from '../errors/mcp-server-not-found.error';
+import { RefreshTokenPort } from '../ports/refresh-token.port';
+import type { McpServerActor } from '../utils/mcp-server-events';
+import { McpServerProtectedResource } from './mcp-server-protected-resource.service';
 
 // An id that is not a UUID cannot exist, and Postgres refuses it in a uuid column.
 const isServerId = (id: string) => mcpServerSchema.shape.id.safeParse(id).success;
@@ -156,7 +157,7 @@ export class McpServerAccessService {
 		const server = isServerId(serverId)
 			? await this.servers.findInProject(projectId, serverId)
 			: null;
-		if (!server) throw new NotFoundError('MCP server not found');
+		if (!server) throw new McpServerNotFoundError();
 		return server;
 	}
 

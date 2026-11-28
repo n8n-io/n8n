@@ -1,3 +1,4 @@
+import { SPLIT_IN_BATCHES_NODE_TYPE } from '@/app/constants';
 import {
 	AddConnectionCommand,
 	AddNodeCommand,
@@ -17,7 +18,8 @@ import {
 	CanvasNodeDirtiness,
 	type CanvasNodeDirtinessType,
 } from '@/features/workflows/canvas/canvas.types';
-import type { INodeConnections, NodeConnectionType } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
+import type { INodeConnections, NodeConnectionType, NodeInputConnections } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
@@ -83,39 +85,144 @@ function shouldCommandMarkDirty(
 	return false;
 }
 
-/**
- * If given node is part of a loop, returns the set of nodes that forms the loop, otherwise returns undefined.
- */
-function findLoop(
-	nodeName: string,
-	visited: string[],
-	getIncomingConnections: (nodeName: string) => INodeConnections,
-): string[] | undefined {
-	const index = visited.indexOf(nodeName);
-
-	if (index >= 0) {
-		return visited.slice(index);
+function getSplitInBatchesDoneOutputIndex(node: INodeUi | undefined): number | undefined {
+	if (node?.type !== SPLIT_IN_BATCHES_NODE_TYPE) {
+		return undefined;
 	}
 
-	const newVisited = [...visited, nodeName];
+	// Only v3+ exposes `done` at output 0. v1 has one output. For v2, `done` is at
+	// output 1, so `findStartNodes` in core checks output 0, finds it empty on the
+	// final run, and re-runs the loop.
+	return node.typeVersion >= 3 ? 0 : undefined;
+}
 
-	for (const [type, typeConnections] of Object.entries(getIncomingConnections(nodeName))) {
-		if ((type as NodeConnectionType) !== NodeConnectionTypes.Main) {
-			continue;
+function getMainOutputGroups(connections: INodeConnections): NodeInputConnections {
+	return connections[NodeConnectionTypes.Main] ?? [];
+}
+
+function getMainOutgoingTargets(connections: INodeConnections): string[] {
+	const targets: string[] = [];
+
+	for (const group of getMainOutputGroups(connections)) {
+		for (const { node } of group ?? []) {
+			targets.push(node);
+		}
+	}
+
+	return targets;
+}
+
+/**
+ * Returns every strongly connected component that contains a Main cycle (Tarjan's algorithm).
+ */
+function findCyclicStronglyConnectedComponents(
+	nodeNames: string[],
+	getOutgoingConnections: (nodeName: string) => INodeConnections,
+): Array<Set<string>> {
+	let nextIndex = 0;
+	const indexByNode = new Map<string, number>();
+	const onStack = new Set<string>();
+	const stack: string[] = [];
+	const cyclicComponents: Array<Set<string>> = [];
+
+	function strongConnect(nodeName: string): number {
+		const index = nextIndex++;
+		let lowLink = index;
+		indexByNode.set(nodeName, index);
+		const stackIndex = stack.length;
+		stack.push(nodeName);
+		onStack.add(nodeName);
+
+		let hasSelfLoop = false;
+
+		for (const next of getMainOutgoingTargets(getOutgoingConnections(nodeName))) {
+			if (next === nodeName) {
+				hasSelfLoop = true;
+			}
+
+			const nextIndexValue = indexByNode.get(next);
+			if (nextIndexValue === undefined) {
+				lowLink = Math.min(lowLink, strongConnect(next));
+			} else if (onStack.has(next)) {
+				lowLink = Math.min(lowLink, nextIndexValue);
+			}
 		}
 
-		for (const connections of typeConnections) {
-			for (const { node } of connections ?? []) {
-				const loop = findLoop(node, newVisited, getIncomingConnections);
+		if (lowLink === index) {
+			const component = new Set<string>();
+			for (const member of stack.splice(stackIndex)) {
+				onStack.delete(member);
+				component.add(member);
+			}
 
-				if (loop) {
-					return loop;
+			if (component.size > 1 || hasSelfLoop) {
+				cyclicComponents.push(component);
+			}
+		}
+
+		return lowLink;
+	}
+
+	for (const nodeName of nodeNames) {
+		if (!indexByNode.has(nodeName)) {
+			strongConnect(nodeName);
+		}
+	}
+
+	return cyclicComponents;
+}
+
+/**
+ * Returns every node that executes inside `component` or on a branch that leaves
+ * `component` through anything other than an exiting SplitInBatches `done` output.
+ *
+ * Dead-end branches inside a loop body run once per iteration, so editing them must
+ * still mark the loop entry node dirty. Only branches reached exclusively through a
+ * completed SplitInBatches `done` output stay outside the loop scope.
+ */
+function getLoopScope(
+	component: Set<string>,
+	nodesByName: Map<string, INodeUi>,
+	getOutgoingConnections: (nodeName: string) => INodeConnections,
+): Set<string> {
+	const scope = new Set<string>(component);
+	const stack: string[] = [];
+
+	for (const nodeName of component) {
+		const mainOutputs = getMainOutputGroups(getOutgoingConnections(nodeName));
+		const doneOutputIndex = getSplitInBatchesDoneOutputIndex(nodesByName.get(nodeName));
+
+		for (let outputIndex = 0; outputIndex < mainOutputs.length; outputIndex++) {
+			const group = mainOutputs[outputIndex];
+			if (!group) {
+				continue;
+			}
+
+			// Ignore a SplitInBatches `done` output only when none of its targets feed back
+			// into the same cycle (an inner loop's `done` output continues the outer loop).
+			if (outputIndex === doneOutputIndex && group.every(({ node }) => !component.has(node))) {
+				continue;
+			}
+
+			for (const { node } of group) {
+				if (!scope.has(node)) {
+					scope.add(node);
+					stack.push(node);
 				}
 			}
 		}
 	}
 
-	return undefined;
+	for (let current = stack.pop(); current !== undefined; current = stack.pop()) {
+		for (const next of getMainOutgoingTargets(getOutgoingConnections(current))) {
+			if (!scope.has(next)) {
+				scope.add(next);
+				stack.push(next);
+			}
+		}
+	}
+
+	return scope;
 }
 
 /**
@@ -213,46 +320,95 @@ export function useNodeDirtiness(workflowDocumentId: MaybeRefOrGetter<WorkflowDo
 	 * Depth of node is defined as the minimum distance (number of connections) from the trigger node
 	 */
 	const depthByName = computed(() => {
-		const depth: Record<string, number> = {};
+		const depth = new Map<string, number>();
+		let frontier: string[] = [];
 
-		function setDepthRecursively(nodeName: string, current: number, visited: Set<string>) {
-			if (visited.has(nodeName)) {
-				return;
+		for (const node of workflowDocumentStore.value.allNodes) {
+			if (Object.keys(getIncomingConnections(node.name)).length === 0 && !depth.has(node.name)) {
+				depth.set(node.name, 0);
+				frontier.push(node.name);
 			}
+		}
 
-			const myVisited = new Set<string>(visited);
+		for (let current = 1; frontier.length > 0; current++) {
+			const next: string[] = [];
 
-			myVisited.add(nodeName);
-
-			for (const [type, typeConnections] of Object.entries(getOutgoingConnections(nodeName))) {
-				if ((type as NodeConnectionType) !== NodeConnectionTypes.Main) {
-					continue;
-				}
-
-				for (const connections of typeConnections) {
-					for (const { node } of connections ?? []) {
-						if (!depth[node] || depth[node] > current) {
-							depth[node] = current;
-						}
-
-						setDepthRecursively(node, current + 1, myVisited);
+			for (const nodeName of frontier) {
+				for (const node of getMainOutgoingTargets(getOutgoingConnections(nodeName))) {
+					if (!depth.has(node)) {
+						depth.set(node, current);
+						next.push(node);
 					}
 				}
 			}
-		}
 
-		for (const startNode of workflowDocumentStore.value.allNodes) {
-			const hasIncomingNode = Object.keys(getIncomingConnections(startNode.name)).length > 0;
-
-			if (hasIncomingNode) {
-				continue;
-			}
-
-			depth[startNode.name] = 0;
-			setDepthRecursively(startNode.name, 1, new Set());
+			frontier = next;
 		}
 
 		return depth;
+	});
+
+	const loopEntryNodesByNodeName = computed(() => {
+		const allNodes = workflowDocumentStore.value.allNodes;
+		const cyclicComponents = findCyclicStronglyConnectedComponents(
+			allNodes.map((node) => node.name),
+			getOutgoingConnections,
+		);
+
+		if (cyclicComponents.length === 0) {
+			return new Map<string, string[]>();
+		}
+
+		const nodesByName = new Map(allNodes.map((node) => [node.name, node]));
+		const depth = depthByName.value;
+		const loopScopes: Array<{ entryNodeName: string; nodes: Set<string> }> = [];
+
+		for (const component of cyclicComponents) {
+			let entryNodeName: string | undefined;
+			let minDepth = Number.MAX_SAFE_INTEGER;
+
+			for (const member of component) {
+				const memberDepth = depth.get(member);
+				if (memberDepth && memberDepth < minDepth) {
+					minDepth = memberDepth;
+					entryNodeName = member;
+				}
+			}
+
+			if (!entryNodeName) {
+				continue;
+			}
+
+			loopScopes.push({
+				entryNodeName,
+				nodes: getLoopScope(component, nodesByName, getOutgoingConnections),
+			});
+		}
+
+		const entriesByNode = new Map<string, string[]>();
+
+		for (const scope of loopScopes) {
+			// Skip loops whose entry node is inside an outer loop scope, since marking the outer
+			// loop entry already invalidates the nested loop.
+			const isCoveredByOuterLoop = loopScopes.some(
+				(other) => other !== scope && other.nodes.has(scope.entryNodeName),
+			);
+
+			if (isCoveredByOuterLoop) {
+				continue;
+			}
+
+			for (const nodeName of scope.nodes) {
+				const entries = entriesByNode.get(nodeName);
+				if (entries) {
+					entries.push(scope.entryNodeName);
+				} else {
+					entriesByNode.set(nodeName, [scope.entryNodeName]);
+				}
+			}
+		}
+
+		return entriesByNode;
 	});
 
 	const dirtinessByName = computed(() => {
@@ -262,19 +418,7 @@ export function useNodeDirtiness(workflowDocumentId: MaybeRefOrGetter<WorkflowDo
 		function setDirtiness(nodeName: string, value: CanvasNodeDirtinessType) {
 			dirtiness[nodeName] = dirtiness[nodeName] ?? value;
 
-			const loop = findLoop(nodeName, [], getIncomingConnections);
-
-			if (!loop) {
-				return;
-			}
-
-			const loopEntryNodeName = [...loop].sort(
-				(a, b) =>
-					(depthByName.value[a] ?? Number.MAX_SAFE_INTEGER) -
-					(depthByName.value[b] ?? Number.MAX_SAFE_INTEGER),
-			)?.[0];
-
-			if (loopEntryNodeName && depthByName.value[loopEntryNodeName]) {
+			for (const loopEntryNodeName of loopEntryNodesByNodeName.value.get(nodeName) ?? []) {
 				// If a node in a loop becomes dirty, the first node in the loop should also be dirty
 				dirtiness[loopEntryNodeName] =
 					dirtiness[loopEntryNodeName] ?? CanvasNodeDirtiness.UPSTREAM_DIRTY;

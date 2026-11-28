@@ -1,10 +1,10 @@
-import type { RefreshTokenPort } from '../access/refresh-token-port';
-import type { OAuthClientNamePort } from './oauth-client-name-port';
-import type { TextDraftPort } from './text-draft-port';
+import type { WorkflowToolInputSchema } from '../utils/workflow-tool-input-schema';
+
+export type { WorkflowToolInputSchema };
 
 /**
- * The CLI implements these ports and registers them when it loads the module.
- * They keep this package free of imports from `packages/cli`.
+ * The CLI implements this port and registers it when it loads the module.
+ * Ports keep this package free of imports from `packages/cli`.
  *
  * Every method acts as the server's project. The adapter checks that the
  * workflow belongs to `projectId`.
@@ -13,6 +13,7 @@ import type { TextDraftPort } from './text-draft-port';
 /**
  * Why a workflow cannot be a tool:
  * - `not_found`: the project does not own the workflow, or it is archived.
+ * - `moved`: the workflow exists and is not archived, but another project owns it now.
  * - `not_published`: the workflow has no published version.
  * - `no_supported_trigger`: it has no trigger "When Executed by Another Workflow".
  * - `incompatible_nodes`: the trigger reaches a node that cannot run as a tool.
@@ -20,18 +21,11 @@ import type { TextDraftPort } from './text-draft-port';
  */
 export type WorkflowToolRefusal =
 	| 'not_found'
+	| 'moved'
 	| 'not_published'
 	| 'no_supported_trigger'
 	| 'incompatible_nodes'
 	| 'not_callable';
-
-/** A JSON schema of the tool input. It always describes an object. */
-export interface WorkflowToolInputSchema {
-	type: 'object';
-	properties?: Record<string, unknown>;
-	required?: string[];
-	additionalProperties: boolean | Record<string, unknown>;
-}
 
 export type WorkflowToolCheck =
 	| { callable: true }
@@ -106,18 +100,4 @@ export abstract class WorkflowToolPort {
 		input: unknown,
 		options: WorkflowToolRunOptions,
 	): Promise<WorkflowToolRunResult>;
-}
-
-/**
- * The CLI registers this resolver when it loads the module. The module calls it
- * in `init()`, because the adapters need the database connection, which does not
- * exist yet at load time.
- */
-export abstract class McpServerToolAdapters {
-	abstract resolve(): {
-		workflows: WorkflowToolPort;
-		textDrafts: TextDraftPort;
-		clients: OAuthClientNamePort;
-		refreshTokens: RefreshTokenPort;
-	};
 }

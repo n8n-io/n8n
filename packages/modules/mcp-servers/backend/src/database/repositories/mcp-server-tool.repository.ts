@@ -6,10 +6,11 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { v7 as uuidv7 } from 'uuid';
 
+import { McpServerToolNameTakenError } from '../../errors/mcp-server-tool-name-taken.error';
 import { McpServerTool } from '../entities/mcp-server-tool.entity';
 
 class McpServerToolTable extends BaseRepository<McpServerTool> {
@@ -24,15 +25,21 @@ export type NewWorkflowTool = {
 	description: string;
 };
 
+export type McpServerToolFixtureRow = Partial<
+	Pick<
+		McpServerTool,
+		'id' | 'kind' | 'targetId' | 'description' | 'draftSource' | 'toolData' | 'position'
+	>
+> &
+	Pick<McpServerTool, 'serverId' | 'toolName'>;
+
 export type McpServerToolChanges = Partial<
 	Pick<McpServerTool, 'toolName' | 'description'> & { draftSource: McpServerToolDraftSource }
 >;
 
 /** The unique index on the server and the tool name refused the write. */
 function toNameConflict(error: unknown): unknown {
-	return isUniqueConstraintError(error)
-		? new ConflictError('The server already has a tool with this name.')
-		: error;
+	return isUniqueConstraintError(error) ? new McpServerToolNameTakenError() : error;
 }
 
 @Service()
@@ -124,5 +131,22 @@ export class McpServerToolRepository {
 	): Promise<boolean> {
 		const result = await this.table.managerFor(ctx).delete(McpServerTool, { id: toolId, serverId });
 		return (result.affected ?? 0) > 0;
+	}
+
+	/** Inserts a tool row with only the given columns, so database defaults apply. For test fixtures. */
+	async insertFixture(row: McpServerToolFixtureRow): Promise<McpServerTool> {
+		const id = row.id ?? uuidv7();
+		// `toolData` is a free-form JSON column, which QueryDeepPartialEntity cannot express.
+		await this.table.manager.insert(McpServerTool, {
+			kind: 'workflow',
+			...row,
+			id,
+		} as QueryDeepPartialEntity<McpServerTool>);
+		return await this.table.manager.findOneByOrFail(McpServerTool, { id });
+	}
+
+	/** Deletes every tool row. For test fixtures. */
+	async deleteAll(): Promise<void> {
+		await this.table.manager.delete(McpServerTool, {});
 	}
 }

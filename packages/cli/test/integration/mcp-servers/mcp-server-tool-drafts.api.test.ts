@@ -5,12 +5,11 @@ import {
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { clearMcpServerTables, createMcpServer } from '@n8n/backend-module-mcp-servers/testing';
 import { EventService, PostHogClient } from '@n8n/backend-services';
-import { McpServer } from '@n8n/backend-module-mcp-servers';
 import type { Project, User } from '@n8n/db';
 import { WorkflowPublishedVersionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { v7 as uuidv7 } from 'uuid';
 import type { MockInstance } from 'vitest';
@@ -66,15 +65,13 @@ function answer(value: object) {
 /** A server with one tool from the workflow "Campaign numbers", with the default text. */
 async function setup() {
 	const serverId = uuidv7();
-	await Container.get(DataSource)
-		.getRepository(McpServer)
-		.insert({
-			id: serverId,
-			projectId: project.id,
-			name: 'Marketing tools',
-			slug: `marketing-tools-${serverId.slice(-8)}`,
-			description: '',
-		});
+	await createMcpServer({
+		id: serverId,
+		projectId: project.id,
+		name: 'Marketing tools',
+		slug: `marketing-tools-${serverId.slice(-8)}`,
+		description: '',
+	});
 	const workflow = await createActiveWorkflow(
 		{
 			name: 'Campaign numbers',
@@ -104,7 +101,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['McpServerTool', 'McpServer', 'WorkflowEntity', 'SharedWorkflow']);
+	await clearMcpServerTables();
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
 	project = await createTeamProject('Marketing');
 	await linkUserToProject(editor, project, 'project:editor');
 	await linkUserToProject(viewer, project, 'project:viewer');

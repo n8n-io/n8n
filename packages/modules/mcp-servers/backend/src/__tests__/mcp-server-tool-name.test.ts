@@ -1,6 +1,6 @@
 import { mcpServerToolNameSchema } from '@n8n/api-types';
 
-import { toToolName, uniqueToolName } from '../tool-name';
+import { toToolName, uniqueToolName } from '../utils/mcp-server-tool-name';
 
 describe('toToolName', () => {
 	it.each([

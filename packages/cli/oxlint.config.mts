@@ -78,6 +78,13 @@ const skillsModuleEntry = {
 	message: 'Import the skills module from @/modules/skills, its public API.',
 };
 
+// Only tests import the fixtures of the custom MCP servers module. `clearMcpServerTables`
+// deletes every row of the module tables.
+const mcpServersTestingImport = {
+	name: '@n8n/backend-module-mcp-servers/testing',
+	message: 'Only test files may import @n8n/backend-module-mcp-servers/testing.',
+};
+
 // Tests outside the skills module may also use its fixtures.
 const skillsModuleEntryForTests = {
 	group: ['@/modules/skills/**', '!@/modules/skills/testing'],
@@ -184,6 +191,7 @@ export default defineConfig({
 					{
 						paths: [
 							POLICY_INTERNAL_RESTRICTION,
+							mcpServersTestingImport,
 							engineV2ModuleOnlyImport,
 							jsonwebtokenSigningRestriction,
 						],
@@ -203,6 +211,7 @@ export default defineConfig({
 					{
 						paths: [
 							POLICY_INTERNAL_RESTRICTION,
+							mcpServersTestingImport,
 							...instanceAiLazyRuntimeImports,
 							engineV2ModuleOnlyImport,
 							jsonwebtokenSigningRestriction,
@@ -232,6 +241,7 @@ export default defineConfig({
 					{
 						paths: [
 							POLICY_INTERNAL_RESTRICTION,
+							mcpServersTestingImport,
 							engineV2ModuleOnlyImport,
 							jsonwebtokenSigningRestriction,
 						],
@@ -249,7 +259,11 @@ export default defineConfig({
 				'no-restricted-imports': [
 					'error',
 					{
-						paths: [POLICY_INTERNAL_RESTRICTION, jsonwebtokenSigningRestriction],
+						paths: [
+							POLICY_INTERNAL_RESTRICTION,
+							mcpServersTestingImport,
+							jsonwebtokenSigningRestriction,
+						],
 						patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
 					},
 				],
@@ -268,7 +282,7 @@ export default defineConfig({
 				'no-restricted-imports': [
 					'error',
 					{
-						paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport],
+						paths: [POLICY_INTERNAL_RESTRICTION, mcpServersTestingImport, engineV2ModuleOnlyImport],
 						patterns: [skillsModuleEntry],
 					},
 				],
@@ -289,6 +303,7 @@ export default defineConfig({
 					{
 						paths: [
 							POLICY_INTERNAL_RESTRICTION,
+							mcpServersTestingImport,
 							engineV2ModuleOnlyImport,
 							jsonwebtokenVerifyOnlyRestriction,
 						],
@@ -423,6 +438,7 @@ export default defineConfig({
 						paths: [
 							// Keep the package restrictions: rule options replace earlier options.
 							POLICY_INTERNAL_RESTRICTION,
+							mcpServersTestingImport,
 							engineV2ModuleOnlyImport,
 							jsonwebtokenSigningRestriction,
 							{

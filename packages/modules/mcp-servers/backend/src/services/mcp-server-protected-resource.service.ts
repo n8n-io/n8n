@@ -15,10 +15,10 @@ import {
 } from '@n8n/inbound-auth';
 import type { Scope } from '@n8n/permissions';
 
-import { McpServerBlockRepository } from '../access/mcp-server-block.repository';
-import { CustomMcpServersFlagGate } from '../services/custom-mcp-servers-flag-gate';
 import type { McpServer } from '../database/entities/mcp-server.entity';
+import { McpServerBlockRepository } from '../database/repositories/mcp-server-block.repository';
 import { McpServerRepository } from '../database/repositories/mcp-server.repository';
+import { CustomMcpServersFlagGate } from './custom-mcp-servers-flag-gate';
 
 /** The path of the runtime endpoint, after the instance base URL. */
 export const MCP_SERVERS_PATH = '/mcp-servers';

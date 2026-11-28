@@ -1,11 +1,7 @@
 import { CUSTOM_MCP_SERVERS_FLAG, CUSTOM_MCP_SERVERS_FLAG_VARIANT } from '@n8n/api-types';
+import { clearMcpServerTables } from '@n8n/backend-module-mcp-servers/testing';
 import { EventService, PostHogClient } from '@n8n/backend-services';
-import {
-	createTeamProject,
-	getPersonalProject,
-	linkUserToProject,
-	testDb,
-} from '@n8n/backend-test-utils';
+import { createTeamProject, getPersonalProject, linkUserToProject } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AssignableProjectRole } from '@n8n/permissions';
@@ -68,7 +64,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['McpServerTool', 'McpServer']);
+	await clearMcpServerTables();
 	setFlag(true);
 	emit = vi.spyOn(Container.get(EventService), 'emit');
 });

@@ -1,4 +1,8 @@
-import { buildToolDraftPrompt, parseToolDraftAnswer, type ToolDraftSource } from '../tool-draft';
+import {
+	buildToolDraftPrompt,
+	parseToolDraftAnswer,
+	type ToolDraftSource,
+} from '../utils/mcp-server-tool-draft';
 
 const SOURCE: ToolDraftSource = {
 	workflowName: 'Campaign numbers',

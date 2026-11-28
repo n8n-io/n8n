@@ -60,6 +60,25 @@ describe('MCP server DTOs', () => {
 		expect(AddMcpServerToolsDto.safeParse({ workflowIds: [''] }).success).toBe(false);
 	});
 
+	it('accepts a server description of at most 2000 characters', () => {
+		expect(
+			CreateMcpServerDto.safeParse({
+				name: 'Sales tools',
+				slug: 'sales-tools',
+				description: 'a'.repeat(2000),
+			}).success,
+		).toBe(true);
+		expect(
+			CreateMcpServerDto.safeParse({
+				name: 'Sales tools',
+				slug: 'sales-tools',
+				description: 'a'.repeat(2001),
+			}).success,
+		).toBe(false);
+		expect(UpdateMcpServerDto.safeParse({ description: 'a'.repeat(2000) }).success).toBe(true);
+		expect(UpdateMcpServerDto.safeParse({ description: 'a'.repeat(2001) }).success).toBe(false);
+	});
+
 	it('accepts a tool description of at most 2000 characters', () => {
 		expect(UpdateMcpServerToolDto.safeParse({ description: 'a'.repeat(2000) }).success).toBe(true);
 		expect(UpdateMcpServerToolDto.safeParse({ description: 'a'.repeat(2001) }).success).toBe(false);

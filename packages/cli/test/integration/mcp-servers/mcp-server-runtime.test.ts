@@ -16,15 +16,21 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import {
-	McpServer,
-	McpServerBlock,
-	McpServerConnection,
 	McpServersConfig,
-	McpServerTool,
 	OAuthClientNamePort,
 	WorkflowToolPort,
 	type WorkflowToolRunResult,
 } from '@n8n/backend-module-mcp-servers';
+import {
+	clearMcpServerTables,
+	createMcpServer,
+	createMcpServerBlock,
+	createMcpServerTool,
+	findMcpServerConnection,
+	findMcpServerConnections,
+	softDeleteMcpServer,
+	updateMcpServerConnectionLastUsedAt,
+} from '@n8n/backend-module-mcp-servers/testing';
 import type { Project, User } from '@n8n/db';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { Container } from '@n8n/di';
@@ -110,30 +116,27 @@ async function connect(token: string, slug = serverSlug, scheme = 'Bearer') {
 }
 
 async function createServer(slug: string, description: string) {
-	await Container.get(DataSource).getRepository(McpServer).insert({
+	return await createMcpServer({
 		id: uuidv7(),
 		projectId: project.id,
 		name: 'Sales tools',
 		slug,
 		description,
 	});
-	return await Container.get(DataSource).getRepository(McpServer).findOneByOrFail({ slug });
 }
 
 async function addTool(serverId: string, toolName: string, targetId: string, position: number) {
-	await Container.get(DataSource)
-		.getRepository(McpServerTool)
-		.insert({
-			id: uuidv7(),
-			serverId,
-			kind: 'workflow',
-			targetId,
-			toolName,
-			description: `Description of ${toolName}`,
-			draftSource: 'defaults',
-			toolData: null,
-			position,
-		});
+	await createMcpServerTool({
+		id: uuidv7(),
+		serverId,
+		kind: 'workflow',
+		targetId,
+		toolName,
+		description: `Description of ${toolName}`,
+		draftSource: 'defaults',
+		toolData: null,
+		position,
+	});
 }
 
 /** The runtime reads the flag for the instance, and the builder API for the user. */
@@ -191,15 +194,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate([
-		'McpServerConnection',
-		'McpServerBlock',
-		'McpServerTool',
-		'McpServer',
-		'WorkflowEntity',
-		'SharedWorkflow',
-		'RefreshToken',
-	]);
+	await clearMcpServerTables();
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'RefreshToken']);
 	project = await createTeamProject('Sales');
 	await linkUserToProject(member, project, 'project:editor');
 	await linkUserToProject(viewer, project, 'project:viewer');
@@ -358,6 +354,24 @@ describe('Custom MCP server runtime with a real MCP client', () => {
 		await client.close();
 	});
 
+	it('reports a moved workflow when its tool is called', async () => {
+		const otherProject = await createTeamProject('Marketing');
+		const movedWorkflow = await createActiveWorkflow(
+			{ name: 'Moved summary', nodes: [TRIGGER], connections: {} },
+			otherProject,
+		);
+		await addTool(serverId, 'moved_tool', movedWorkflow.id, 2);
+		const client = await connect(await tokenFor(member, resourceUrl(serverSlug)));
+
+		const result = await client.callTool({ name: 'moved_tool', arguments: {} });
+
+		expect(result).toEqual({
+			isError: true,
+			content: [{ type: 'text', text: expect.stringContaining('moved to another project') }],
+		});
+		await client.close();
+	});
+
 	it('says that the server is busy when the cap of runs in flight is full', async () => {
 		const config = Container.get(McpServersConfig);
 		const cap = config.maxConcurrentRuns;
@@ -511,9 +525,7 @@ describe('Custom MCP server runtime access', () => {
 		expect((await post(serverSlug, token)).statusCode).toBe(404);
 
 		setFlag(true);
-		await Container.get(DataSource)
-			.getRepository(McpServer)
-			.update({ slug: serverSlug }, { deletedAt: new Date() });
+		await softDeleteMcpServer({ slug: serverSlug });
 		expect((await post(serverSlug, token)).statusCode).toBe(404);
 	});
 
@@ -528,15 +540,13 @@ describe('Custom MCP server runtime access', () => {
 });
 
 describe('Custom MCP server connections', () => {
-	const connections = () => Container.get(DataSource).getRepository(McpServerConnection);
-
 	it('writes a connection row with the client name on the first request and sends "connected"', async () => {
 		const emit = vi.spyOn(Container.get(EventService), 'emit');
 		const client = await connect(await tokenFor(member, resourceUrl(serverSlug)));
 		await client.listTools();
 		await client.close();
 
-		expect(await connections().find()).toEqual([
+		expect(await findMcpServerConnections()).toEqual([
 			expect.objectContaining({
 				serverId,
 				userId: member.id,
@@ -556,14 +566,16 @@ describe('Custom MCP server connections', () => {
 		const key = { serverId, userId: member.id, oauthClientId: CLIENT_ID };
 
 		const tenSecondsAgo = new Date(Date.now() - 10_000);
-		await connections().update(key, { lastUsedAt: tenSecondsAgo });
+		await updateMcpServerConnectionLastUsedAt(key, tenSecondsAgo);
 		await post(serverSlug, token).expect(200);
-		expect((await connections().findOneByOrFail(key)).lastUsedAt).toEqual(tenSecondsAgo);
+		expect((await findMcpServerConnection(key))?.lastUsedAt).toEqual(tenSecondsAgo);
 
 		const twoMinutesAgo = new Date(Date.now() - 120_000);
-		await connections().update(key, { lastUsedAt: twoMinutesAgo });
+		await updateMcpServerConnectionLastUsedAt(key, twoMinutesAgo);
 		await post(serverSlug, token).expect(200);
-		const { firstUsedAt, lastUsedAt } = await connections().findOneByOrFail(key);
+		const updated = await findMcpServerConnection(key);
+		if (!updated) throw new Error('Connection row not found');
+		const { firstUsedAt, lastUsedAt } = updated;
 		expect(lastUsedAt.getTime()).toBeGreaterThan(Date.now() - 10_000);
 		expect(firstUsedAt.getTime()).toBeLessThan(lastUsedAt.getTime() + 1);
 	});
@@ -578,13 +590,13 @@ describe('Custom MCP server connections', () => {
 		await expect(client.listTools()).resolves.toBeDefined();
 		await client.close();
 
-		expect(await connections().find()).toEqual([]);
+		expect(await findMcpServerConnections()).toEqual([]);
 	});
 
 	it('writes no connection row for a refused request', async () => {
 		await post(serverSlug, await tokenFor(outsider, resourceUrl(serverSlug))).expect(403);
 
-		expect(await connections().find()).toEqual([]);
+		expect(await findMcpServerConnections()).toEqual([]);
 	});
 });
 
@@ -620,9 +632,12 @@ describe('Custom MCP server block', () => {
 	});
 
 	it('gives the reason "blocked" on the consent page', async () => {
-		await Container.get(DataSource)
-			.getRepository(McpServerBlock)
-			.insert({ serverId, userId: viewer.id, blockedById: member.id, blockedAt: new Date() });
+		await createMcpServerBlock({
+			serverId,
+			userId: viewer.id,
+			blockedById: member.id,
+			blockedAt: new Date(),
+		});
 		const resource = await Container.get(ProtectedResourceRegistry).getByResourceUrl(
 			resourceUrl(serverSlug),
 		);

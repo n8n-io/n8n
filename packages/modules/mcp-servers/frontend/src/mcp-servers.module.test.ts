@@ -16,13 +16,18 @@ import { McpServersModule } from './mcp-servers.module';
 const stub = { render: () => null };
 
 const route = (name: string) => {
-	const found = McpServersModule.routes?.find((candidate) => candidate.name === name);
+	const found = McpServersModule.routes?.find(
+		(candidate) => 'name' in candidate && candidate.name === name,
+	);
 	if (!found) throw new Error(`No route ${name}`);
 	return { ...found, component: stub } as RouteRecordRaw;
 };
 
 const overviewTab = McpServersModule.projectTabs?.overview?.[0];
 const projectTab = McpServersModule.projectTabs?.project?.[0];
+
+const redirectRoutes: RouteRecordRaw[] =
+	McpServersModule.routes?.filter((candidate) => 'redirect' in candidate) ?? [];
 
 function createTestRouter() {
 	return createRouter({
@@ -36,6 +41,7 @@ function createTestRouter() {
 					route(PROJECT_MCP_SERVERS),
 					route(MCP_SERVER_VIEW),
 					route(MCP_SERVER_CONNECTIONS_VIEW),
+					...redirectRoutes,
 					{ path: 'workflows', name: VIEWS.PROJECTS_WORKFLOWS, component: stub },
 				],
 			},
@@ -149,7 +155,7 @@ describe('McpServersModule', () => {
 
 		it.each([
 			['/projects/project-1/mcp-servers/server-1', MCP_SERVER_VIEW],
-			['/projects/project-1/mcp-servers/server-1/connections', MCP_SERVER_CONNECTIONS_VIEW],
+			['/projects/project-1/mcp-servers/server-1/access', MCP_SERVER_CONNECTIONS_VIEW],
 		])('opens %s for a person who can read servers', async (path, name) => {
 			setUp({ scopes: ['mcpServer:read'] });
 			const router = createTestRouter();
@@ -157,6 +163,27 @@ describe('McpServersModule', () => {
 			await router.push(path);
 
 			expect(router.currentRoute.value.name).toBe(name);
+		});
+
+		it('redirects old /connections links to /access and keeps query and hash', async () => {
+			setUp({ scopes: ['mcpServer:read'] });
+			const router = createTestRouter();
+
+			await router.push('/projects/project-1/mcp-servers/server-1/connections?tab=1#top');
+
+			expect(router.currentRoute.value.name).toBe(MCP_SERVER_CONNECTIONS_VIEW);
+			expect(router.currentRoute.value.fullPath).toBe(
+				'/projects/project-1/mcp-servers/server-1/access?tab=1#top',
+			);
+		});
+
+		it('redirects old /connections links to workflows when the person cannot read servers', async () => {
+			setUp({ scopes: ['mcpServer:list'] });
+			const router = createTestRouter();
+
+			await router.push('/projects/project-1/mcp-servers/server-1/connections');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
 		});
 
 		it('redirects the server page to the workflows when the person cannot read servers', async () => {
