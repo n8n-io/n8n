@@ -60,6 +60,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.app](public.app.md) | 9 |  | BASE TABLE |
 | [public.app_artifact](public.app_artifact.md) | 8 |  | BASE TABLE |
 | [public.app_version](public.app_version.md) | 13 |  | BASE TABLE |
+| [public.assistant_usage_event](public.assistant_usage_event.md) | 12 |  | BASE TABLE |
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
 | [public.binary_data](public.binary_data.md) | 9 |  | BASE TABLE |
@@ -327,6 +328,8 @@ erDiagram
 "public.app_version" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
 "public.app_version" }o--o| "public.app_artifact" : "FOREIGN KEY (#quot;bundleArtifactId#quot;) REFERENCES app_artifact(id) ON DELETE SET NULL"
 "public.app_version" }o--|| "public.app_artifact" : "FOREIGN KEY (#quot;sourceArtifactId#quot;) REFERENCES app_artifact(id) ON DELETE RESTRICT"
+"public.assistant_usage_event" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.assistant_usage_event" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE SET NULL"
 "public.auth_identity" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id)"
 "public.chat_hub_agent_tools" }o--|| "public.chat_hub_agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES chat_hub_agents(id) ON DELETE CASCADE"
 "public.chat_hub_agent_tools" }o--|| "public.chat_hub_tools" : "FOREIGN KEY (#quot;toolId#quot;) REFERENCES chat_hub_tools(id) ON DELETE CASCADE"
@@ -1103,6 +1106,20 @@ erDiagram
   varchar_255_ label
   integer sourceArtifactId FK
   timestamp_3__with_time_zone updatedAt
+}
+"public.assistant_usage_event" {
+  integer cacheReadTokens
+  integer cacheWriteTokens
+  timestamp_3__with_time_zone createdAt
+  integer id
+  integer inputTokens
+  varchar_128_ model
+  integer outputTokens
+  varchar_36_ projectId FK
+  varchar_64_ resourceId
+  varchar_128_ threadId
+  varchar_32_ type
+  uuid userId FK
 }
 "public.auth_identity" {
   timestamp_3__with_time_zone createdAt

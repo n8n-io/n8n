@@ -201,6 +201,14 @@ export class InstanceAiModule implements ModuleInterface {
 			);
 			tasks.push(InstanceAiCheckpointPruningTask);
 		}
+
+		// Also without the Assistant agent, so records from when it ran still expire.
+		if (config.usageMaxAgeDays > 0) {
+			const { AssistantUsagePruningTask } = await import(
+				'./assistant-usage/assistant-usage-pruning.task.js'
+			);
+			tasks.push(AssistantUsagePruningTask);
+		}
 		return tasks;
 	}
 
@@ -281,6 +289,9 @@ export class InstanceAiModule implements ModuleInterface {
 		const { SelfHealingConfigurationReviewer } = await import(
 			'./self-healing/database/self-healing-configuration-reviewer.entity.js'
 		);
+		const { AssistantUsageEvent } = await import(
+			'./assistant-usage/database/assistant-usage-event.entity.js'
+		);
 
 		return [
 			InstanceAiThread,
@@ -302,6 +313,7 @@ export class InstanceAiModule implements ModuleInterface {
 			SelfHealingConfigurationReviewer,
 			SelfHealingConfigurationWorkflow,
 			SelfHealingConfiguration,
+			AssistantUsageEvent,
 		];
 	}
 

@@ -37,6 +37,7 @@ import { QUOTA_EXHAUSTED_USER_MESSAGE } from '../../user-facing-errors';
 import { AssistantAgentProvider, FILES_ONLY_MESSAGE } from '../assistant-agent.provider';
 import type { AssistantRunDebugService } from '../assistant-run-debug.service';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
+import type { AssistantUsageService } from '../../assistant-usage/assistant-usage.service';
 import type { AssistantTurnTrace, AssistantTurnTracer } from '../assistant-turn-trace';
 import type { AssistantClientRequest } from '../assistant-turn-options';
 import type {
@@ -109,6 +110,7 @@ function setup() {
 	const telemetry = mock<TelemetryProxy>();
 	const runDebug = mock<AssistantRunDebugService>();
 	runDebug.stepHooksForTurn.mockReturnValue(undefined);
+	const usageService = mock<AssistantUsageService>();
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -126,11 +128,13 @@ function setup() {
 		turnOverrides,
 		telemetry,
 		runDebug,
+		usageService,
 	);
 	return {
 		userRepository,
 		provider,
 		telemetry,
+		usageService,
 		turnOverrides,
 		runDebug,
 		sentry,
@@ -380,6 +384,57 @@ describe('AssistantAgentProvider', () => {
 				id: 'wf-1',
 				name: 'Digest',
 			});
+		});
+
+		it('records an artifact that the turn changes as Assistant usage', async () => {
+			const { provider, turnEnvironment, usageService } = setup();
+			await provider.prepareTurn(startTurn());
+
+			const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
+			const artifact = { type: 'workflow' as const, id: 'wf-1', created: true };
+			await runtime.onArtifactChanged?.(artifact);
+
+			expect(usageService.recordArtifact).toHaveBeenCalledWith({
+				userId: 'user-1',
+				threadId: 'thread-1',
+				projectId: 'project-1',
+				artifact,
+			});
+		});
+
+		it('records the message of a start turn as Assistant usage when the turn starts', async () => {
+			const { provider, usageService } = setup();
+
+			await provider.prepareTurn(startTurn());
+
+			expect(usageService.recordMessage).toHaveBeenCalledWith({
+				userId: 'user-1',
+				threadId: 'thread-1',
+				projectId: 'project-1',
+			});
+		});
+
+		it('records the tokens that the helper and judge calls report as Assistant usage', async () => {
+			const { provider, turnEnvironment, usageService } = setup();
+			await provider.prepareTurn(startTurn());
+
+			const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
+			const usage = [
+				{
+					type: 'llmTokens' as const,
+					model: 'anthropic/claude-haiku-4-5',
+					uncachedInput: 10,
+					cacheRead: 0,
+					cacheWrite: 0,
+					output: 2,
+				},
+			];
+			runtime.recordModelUsage?.(usage);
+
+			expect(usageService.recordTokens).toHaveBeenCalledWith(
+				{ userId: 'user-1', threadId: 'thread-1', projectId: 'project-1' },
+				usage,
+			);
 		});
 
 		it('logs and continues when the artifact tab cannot be stored', async () => {
@@ -984,6 +1039,30 @@ describe('AssistantAgentProvider', () => {
 			);
 		});
 
+		it('records the tokens of the turn as Assistant usage', async () => {
+			const { provider, usageService } = setup();
+
+			const handle = await provider.prepareTurn(startTurn());
+			handle.onChunk?.({
+				type: 'finish',
+				finishReason: 'stop',
+				model: 'anthropic/claude-sonnet',
+				usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
+			} as never);
+			await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+			expect(usageService.recordTokens).toHaveBeenCalledWith(
+				{ userId: 'user-1', threadId: 'thread-1', projectId: 'project-1' },
+				[
+					expect.objectContaining({
+						model: 'anthropic/claude-sonnet',
+						uncachedInput: 100,
+						output: 20,
+					}),
+				],
+			);
+		});
+
 		describe('"Builder asked for input" telemetry', () => {
 			function card(requestId: string, extra: Record<string, unknown> = {}) {
 				return { requestId, message: 'Delete the workflow?', severity: 'destructive', ...extra };
@@ -1030,6 +1109,33 @@ describe('AssistantAgentProvider', () => {
 			): SystemAgentResumeTurn['openSuspensions'][number] {
 				return { toolCallId, toolName: 'workflows', suspendPayload };
 			}
+
+			it('does not record a resumed turn as a new message', async () => {
+				const { provider, usageService } = setup();
+
+				const handle = await provider.prepareTurn(resumeTurn([]));
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+				expect(usageService.recordMessage).not.toHaveBeenCalled();
+			});
+
+			it('records the tokens of a resumed turn', async () => {
+				const { provider, usageService } = setup();
+
+				const handle = await provider.prepareTurn(resumeTurn([]));
+				handle.onChunk?.({
+					type: 'finish',
+					finishReason: 'stop',
+					model: 'anthropic/claude-sonnet',
+					usage: { promptTokens: 40, completionTokens: 4, totalTokens: 44 },
+				} as never);
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+				expect(usageService.recordTokens).toHaveBeenCalledWith(
+					expect.objectContaining({ threadId: 'thread-1' }),
+					[expect.objectContaining({ uncachedInput: 40, output: 4 })],
+				);
+			});
 
 			it('sends one event for each new Assistant card, with the request id as input id', async () => {
 				const { provider, telemetry } = setup();
@@ -1244,6 +1350,26 @@ describe('AssistantAgentProvider', () => {
 						'thread-1',
 						`run-1:${task}:report-1`,
 						expect.objectContaining({ model: 'anthropic/claude-haiku-4-5', usage }),
+					);
+				},
+			);
+
+			it.each(['title', 'episodic', 'observer', 'reflector'] as const)(
+				'records the tokens of the %s call as Assistant usage',
+				async (task) => {
+					const { provider, usageService } = setup();
+
+					const handle = await provider.prepareTurn(startTurn());
+					await handle.onSideCallUsage?.({
+						task,
+						model: 'anthropic/claude-haiku-4-5',
+						usage,
+						reportId: 'report-1',
+					});
+
+					expect(usageService.recordTokens).toHaveBeenCalledWith(
+						{ userId: 'user-1', threadId: 'thread-1', projectId: 'project-1' },
+						[expect.objectContaining({ model: 'anthropic/claude-haiku-4-5', output: 5 })],
 					);
 				},
 			);

@@ -13,6 +13,7 @@ import {
 	type ApprovalJudgeMessage,
 	type ApprovalJudgeResult,
 	type ApprovalReviewOutcome,
+	type BuilderUsageItem,
 	type InstanceAiApprovalReviewer,
 	type InstanceAiEventBus,
 	type InstanceAiTraceContext,
@@ -60,6 +61,8 @@ export interface ApprovalReviewerParams {
 	getTracing?: () => InstanceAiTraceContext | undefined;
 	/** Defaults to `APPROVAL_REVIEW_TIMEOUT_MS`. */
 	reviewTimeoutMs?: number;
+	/** Records the tokens of each judge call as Assistant usage. */
+	recordModelUsage?: (usage: BuilderUsageItem[]) => void;
 }
 
 /** What telemetry reports about one review that went to the judge. */
@@ -187,6 +190,7 @@ export class InstanceAiApprovalReviewerFactory {
 		if (!usage) return;
 		const items = tokenUsageToBuilderUsageItems(model, usage);
 		if (items.length === 0) return;
+		params.recordModelUsage?.(items);
 		const dedupeId = `${params.runId}:approval-judge:${approval.toolCallId ?? approval.toolName}`;
 		// Billing must not delay the action that the judge approved.
 		void this.creditService

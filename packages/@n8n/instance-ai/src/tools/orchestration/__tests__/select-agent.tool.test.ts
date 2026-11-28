@@ -109,6 +109,7 @@ describe('agent_builder_select_agent', () => {
 			id: 'agent-9',
 			projectId: 'project-1',
 			name: 'Support Triage',
+			created: true,
 		});
 		expect(trackTelemetry).toHaveBeenCalledWith(
 			'instance_ai_agent_build_route',

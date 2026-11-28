@@ -1108,8 +1108,8 @@ describe('change_data_tables tool', () => {
 
 			const reported = onArtifactChanged.mock.calls.map(([artifact]) => artifact);
 			expect(reported).toEqual([
-				{ type: 'data-table', id: 'dt-new', name: 'A', projectId: 'proj-1' },
-				{ type: 'data-table', id: 'dt-T', name: 'T', projectId: 'proj-1' },
+				{ type: 'data-table', id: 'dt-new', name: 'A', projectId: 'proj-1', created: true },
+				{ type: 'data-table', id: 'dt-T', name: 'T', projectId: 'proj-1', created: false },
 			]);
 		});
 

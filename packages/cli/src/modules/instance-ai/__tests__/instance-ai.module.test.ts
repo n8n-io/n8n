@@ -2,16 +2,17 @@ import { GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
+import { AssistantUsagePruningTask } from '../assistant-usage/assistant-usage-pruning.task';
 import { InstanceAiCheckpointPruningTask } from '../instance-ai-checkpoint-pruning.task';
 import { InstanceAiModule } from '../instance-ai.module';
 import { SelfHealingConfigurationSnapshotTask } from '../self-healing/self-healing-configuration-snapshot.task';
 import { SelfHealingReconciliationTask } from '../self-healing/self-healing-reconciliation.task';
 
 describe('InstanceAiModule', () => {
-	const usePruneInterval = (pruneInterval: number): void => {
+	const usePruneInterval = (pruneInterval: number, usageMaxAgeDays = 0): void => {
 		Container.set(
 			InstanceAiConfig,
-			mock<InstanceAiConfig>({ pruneInterval, workflowSuggestionsEnabled: false }),
+			mock<InstanceAiConfig>({ pruneInterval, usageMaxAgeDays, workflowSuggestionsEnabled: false }),
 		);
 	};
 
@@ -28,7 +29,11 @@ describe('InstanceAiModule', () => {
 		async (enabled) => {
 			Container.set(
 				InstanceAiConfig,
-				mock<InstanceAiConfig>({ pruneInterval: 0, workflowSuggestionsEnabled: true }),
+				mock<InstanceAiConfig>({
+					pruneInterval: 0,
+					usageMaxAgeDays: 0,
+					workflowSuggestionsEnabled: true,
+				}),
 			);
 			Container.set(GlobalConfig, mock<GlobalConfig>({ diagnostics: { enabled } }));
 
@@ -44,5 +49,15 @@ describe('InstanceAiModule', () => {
 		const tasks = await new InstanceAiModule().systemTasks();
 
 		expect(tasks).toEqual([SelfHealingReconciliationTask]);
+	});
+
+	it('schedules the pruning of Assistant usage records only with a retention period', async () => {
+		usePruneInterval(0, 30);
+		const withRetention = await new InstanceAiModule().systemTasks();
+		usePruneInterval(0, 0);
+		const keepForever = await new InstanceAiModule().systemTasks();
+
+		expect(withRetention).toEqual([SelfHealingReconciliationTask, AssistantUsagePruningTask]);
+		expect(keepForever).toEqual([SelfHealingReconciliationTask]);
 	});
 });
