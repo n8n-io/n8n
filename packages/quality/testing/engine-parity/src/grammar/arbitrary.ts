@@ -32,6 +32,7 @@ export function blockArb(rules: ParityRules): fc.Arbitrary<Block> {
 	const plain = allowedEntries(rules.nodes, 'plain');
 	if (plain.length === 0) throw new Error(`Rule set "${rules.name}" allows no plain nodes`);
 	const ifs = allowedEntries(rules.nodes, 'if');
+	const switches = allowedEntries(rules.nodes, 'switch');
 	const merges = allowedEntries(rules.nodes, 'merge');
 
 	const plainDraft = draftArb(plain, ctx);
@@ -56,6 +57,15 @@ export function blockArb(rules: ParityRules): fc.Arbitrary<Block> {
 					node: draftArb(ifs, ctx),
 					onTrue: optional,
 					onFalse: optional,
+				}),
+			);
+		}
+		if (has('switch') && switches.length > 0) {
+			options.push(
+				fc.record({
+					kind: fc.constant('switch' as const),
+					node: draftArb(switches, ctx),
+					cases: fc.array(optional, { maxLength: width + 1 }),
 				}),
 			);
 		}

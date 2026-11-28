@@ -1,8 +1,13 @@
+import { aggregateAll, aggregateFields } from './aggregate';
+import { filter } from './filter';
 import { ifCondition } from './if';
-import { mergeAppend } from './merge';
+import { limit } from './limit';
+import { mergeAppend, mergeCombineByFields, mergeCombineByPosition } from './merge';
 import { noOp } from './no-op';
 import { setManual, setRaw } from './set';
+import { sort } from './sort';
 import { splitOut } from './split-out';
+import { switchExpression, switchRules } from './switch';
 import { manualTrigger } from './triggers';
 import type { CatalogEntry, NodeRole } from './types';
 
@@ -13,8 +18,17 @@ const entries: CatalogEntry[] = [
 	setManual,
 	setRaw,
 	ifCondition,
+	switchRules,
+	switchExpression,
 	mergeAppend,
+	mergeCombineByPosition,
+	mergeCombineByFields,
 	splitOut,
+	filter,
+	aggregateFields,
+	aggregateAll,
+	sort,
+	limit,
 	noOp,
 	manualTrigger,
 ];
