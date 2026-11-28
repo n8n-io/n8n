@@ -91,12 +91,21 @@ export const resolveCondition = async ({
 	workflowDocumentId: WorkflowDocumentId;
 }): Promise<ConditionResult> => {
 	try {
+		const isSingleValue = Boolean(condition.operator.singleValue);
+		// Single-value operators hide rightValue in the UI, so omit it before resolution.
+		const conditionToResolve = isSingleValue
+			? {
+					id: condition.id,
+					leftValue: condition.leftValue,
+					operator: condition.operator,
+				}
+			: condition;
 		const resolved = (await resolveParameter(
-			condition as unknown as NodeParameterValue,
+			conditionToResolve as unknown as NodeParameterValue,
 			workflowDocumentId,
 		)) as FilterConditionValue;
 
-		if (resolved.leftValue === undefined || resolved.rightValue === undefined) {
+		if (resolved.leftValue === undefined || (!isSingleValue && resolved.rightValue === undefined)) {
 			return { status: 'resolve_error' };
 		}
 		try {

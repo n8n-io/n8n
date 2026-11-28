@@ -1,10 +1,14 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import get from 'lodash/get';
 import { mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	INode,
 	INodeTypeBaseDescription,
+	WorkflowTestData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { SwitchV3 } from '../SwitchV3.node';
 import type { Mocked } from 'vitest';
@@ -579,5 +583,171 @@ describe('SwitchV3 Node', () => {
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].json).toEqual({ status: 'unknown' });
 		});
+	});
+
+	describe('Single-value operator with hidden rightValue (NODE-5984)', () => {
+		const testHarness = new NodeTestHarness();
+
+		const createSingleValueWorkflowTest = ({
+			description,
+			rightValue,
+			extraNodes = [],
+		}: {
+			description: string;
+			rightValue: string;
+			extraNodes?: INode[];
+		}): WorkflowTestData => ({
+			description,
+			input: {
+				workflowData: {
+					nodes: [
+						{
+							parameters: {},
+							id: 'trigger-node',
+							name: 'When clicking "Execute workflow"',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							parameters: {
+								data: [{ value: 'hello' }, {}],
+							},
+							id: 'data-node',
+							name: 'TestData',
+							type: 'n8n-nodes-testing.testData',
+							typeVersion: 1,
+							position: [200, 0],
+						},
+						{
+							parameters: {
+								mode: 'rules',
+								rules: {
+									values: [
+										{
+											conditions: {
+												options: {
+													caseSensitive: true,
+													leftValue: '',
+													typeValidation: 'strict',
+													version: 3,
+												},
+												conditions: [
+													{
+														id: '277c454f-6cdb-4699-857b-3e676998c8a2',
+														leftValue: '={{ $json.value }}',
+														rightValue,
+														operator: {
+															type: 'string',
+															operation: 'exists',
+															singleValue: true,
+														},
+													},
+												],
+												combinator: 'and',
+											},
+											renameOutput: true,
+											outputKey: 'Exists',
+										},
+									],
+								},
+								options: {
+									fallbackOutput: 'extra',
+								},
+							},
+							id: 'switch-node',
+							name: 'Switch',
+							type: 'n8n-nodes-base.switch',
+							typeVersion: 3.3,
+							position: [400, 0],
+						},
+						{
+							parameters: {},
+							id: 'matched-node',
+							name: 'Matched',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [600, -100],
+						},
+						{
+							parameters: {},
+							id: 'fallback-node',
+							name: 'Fallback',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [600, 100],
+						},
+						...extraNodes,
+					],
+					connections: {
+						'When clicking "Execute workflow"': {
+							[NodeConnectionTypes.Main]: [
+								[{ node: 'TestData', type: NodeConnectionTypes.Main, index: 0 }],
+							],
+						},
+						TestData: {
+							[NodeConnectionTypes.Main]: [
+								[{ node: 'Switch', type: NodeConnectionTypes.Main, index: 0 }],
+							],
+						},
+						Switch: {
+							[NodeConnectionTypes.Main]: [
+								[{ node: 'Matched', type: NodeConnectionTypes.Main, index: 0 }],
+								[{ node: 'Fallback', type: NodeConnectionTypes.Main, index: 0 }],
+							],
+						},
+					},
+				},
+			},
+			output: {
+				nodeData: {
+					Matched: [[{ json: { value: 'hello' } }]],
+					Fallback: [[{ json: {} }]],
+				},
+			},
+		});
+
+		// Happy path control test to prove the workflow setup executes as expected
+		testHarness.setupTest(
+			createSingleValueWorkflowTest({
+				description: 'evaluates single-value exists operator when rightValue is empty',
+				rightValue: '',
+			}),
+		);
+
+		// NODE-5984: hidden rightValue referencing a deleted node should be ignored when singleValue is true
+		const deletedNodeTestData = createSingleValueWorkflowTest({
+			description:
+				'ignores hidden rightValue referencing a deleted node for single-value operator (NODE-5984)',
+			rightValue: "={{ $('x').item.json.x }}",
+		});
+		testHarness.setupTest(deletedNodeTestData, {
+			customAssertions: () => {
+				const switchNodeData = deletedNodeTestData.input.workflowData.nodes.find(
+					(n) => n.name === 'Switch',
+				);
+				expect(
+					get(switchNodeData?.parameters, 'rules.values[0].conditions.conditions[0].rightValue'),
+				).toBe("={{ $('x').item.json.x }}");
+			},
+		});
+
+		testHarness.setupTest(
+			createSingleValueWorkflowTest({
+				description:
+					'ignores hidden rightValue referencing an unexecuted node for single-value operator (NODE-5984)',
+				rightValue: "={{ $('Unexecuted').first().json.x }}",
+				extraNodes: [
+					{
+						parameters: {},
+						id: 'unexecuted-node',
+						name: 'Unexecuted',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 200],
+					},
+				],
+			}),
+		);
 	});
 });

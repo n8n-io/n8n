@@ -951,4 +951,152 @@ describe('NodeExecutionContext', () => {
 			}
 		});
 	});
+
+	describe('getNodeParameter with single-value filter conditions', () => {
+		it('omits hidden rightValue for type: filter parameters before expression resolution', () => {
+			const filterValue = {
+				options: {
+					caseSensitive: true,
+					leftValue: '',
+					typeValidation: 'strict' as const,
+					version: 3 as const,
+				},
+				conditions: [
+					{
+						id: 'cond-1',
+						leftValue: '={{ $json.value }}',
+						rightValue: "={{ $('DeletedNode').item.json.x }}",
+						operator: {
+							type: 'string' as const,
+							operation: 'exists',
+							singleValue: true,
+						},
+					},
+				],
+				combinator: 'and' as const,
+			};
+			const filterNode: INode = {
+				id: 'if-1',
+				name: 'If',
+				type: 'n8n-nodes-base.if',
+				typeVersion: 2.3,
+				position: [0, 0],
+				parameters: { conditions: filterValue },
+			};
+			const filterNodeType: INodeType = {
+				description: {
+					displayName: 'If',
+					name: 'if',
+					group: ['transform'],
+					version: 2.3,
+					description: 'If',
+					defaults: { name: 'If' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+					properties: [
+						{
+							displayName: 'Conditions',
+							name: 'conditions',
+							type: 'filter',
+							default: {},
+						},
+					],
+				},
+			};
+			nodeTypes.getByNameAndVersion.mockReturnValue(filterNodeType);
+			expression.getParameterValue.mockImplementation((value) => value);
+
+			const ctx = new TestContext(workflow, filterNode, additionalData, mode);
+			ctx.getNodeParameter('conditions');
+
+			expect(expression.getParameterValue).toHaveBeenCalledWith(
+				{
+					...filterValue,
+					conditions: [
+						{
+							id: 'cond-1',
+							leftValue: '={{ $json.value }}',
+							operator: {
+								type: 'string',
+								operation: 'exists',
+								singleValue: true,
+							},
+						},
+					],
+				},
+				null,
+				0,
+				0,
+				'If',
+				[],
+				mode,
+				expect.anything(),
+				undefined,
+				false,
+				{},
+				undefined,
+			);
+			expect(filterValue.conditions[0].rightValue).toBe("={{ $('DeletedNode').item.json.x }}");
+		});
+
+		it('does not omit rightValue for non-filter object parameters with matching keys', () => {
+			const customPayload = {
+				leftValue: '={{ $json.left }}',
+				rightValue: '={{ $json.right }}',
+				operator: {
+					type: 'string',
+					operation: 'exists',
+					singleValue: true,
+				},
+			};
+			const customNode: INode = {
+				id: 'custom-1',
+				name: 'Custom',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { payload: customPayload },
+			};
+			const customNodeType: INodeType = {
+				description: {
+					displayName: 'Custom',
+					name: 'custom',
+					group: ['transform'],
+					version: 1,
+					description: 'Custom',
+					defaults: { name: 'Custom' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					properties: [
+						{
+							displayName: 'Payload',
+							name: 'payload',
+							type: 'json',
+							default: '{}',
+						},
+					],
+				},
+			};
+			nodeTypes.getByNameAndVersion.mockReturnValue(customNodeType);
+			expression.getParameterValue.mockImplementation((value) => value);
+
+			const ctx = new TestContext(workflow, customNode, additionalData, mode);
+			ctx.getNodeParameter('payload');
+
+			expect(expression.getParameterValue).toHaveBeenCalledWith(
+				customPayload,
+				null,
+				0,
+				0,
+				'Custom',
+				[],
+				mode,
+				expect.anything(),
+				undefined,
+				false,
+				{},
+				undefined,
+			);
+		});
+	});
 });
