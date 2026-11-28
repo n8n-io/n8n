@@ -36,6 +36,7 @@ import { NodeClassDescriptionIconMissingRule } from './node-class-description-ic
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeRegistrationCompleteRule } from './node-registration-complete.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
+import { NonRequiredFieldsInCollectionRule } from './non-required-fields-in-collection.js';
 import { OpenEndedNodeFieldsRule } from './open-ended-node-fields.js';
 import { OperationNameRepeatsResourceRule } from './operation-name-repeats-resource.js';
 import { OperationStandardActionRule } from './operation-standard-action.js';
@@ -86,6 +87,7 @@ export const rules = {
 	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
 	'icon-contrast': IconContrastRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
+	'non-required-fields-in-collection': NonRequiredFieldsInCollectionRule,
 	'single-credential-per-node': SingleCredentialPerNodeRule,
 	'trigger-node-conventions': TriggerNodeConventionsRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,
