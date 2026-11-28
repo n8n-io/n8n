@@ -49,11 +49,17 @@ describe('ConcurrencyQueue', () => {
 		expect(sleepSpy).toHaveBeenCalledTimes(3);
 		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started' });
 
-		// If the fourth promise is removed, the fifth one is started in the next tick
+		// Removing a queued execution returns its reserved place but must not
+		// start another one while the running slot is still occupied.
 		queue.remove('4');
 		await vi.advanceTimersByTimeAsync(1);
+		expect(sleepSpy).toHaveBeenCalledTimes(3);
+		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started' });
+
+		// The next execution starts once the running one finishes.
+		await vi.advanceTimersByTimeAsync(500);
 		expect(sleepSpy).toHaveBeenCalledTimes(4);
-		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started', 5: 'started' });
+		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'finished', 5: 'started' });
 
 		// at T+5 seconds, all but the fourth promise should be resolved
 		await vi.advanceTimersByTimeAsync(4000);
