@@ -103,6 +103,43 @@ async function runnerSetup(): Promise<Pick<TopologyInput, 'runners'>> {
 	return { runners: { mode: 'external', via: choice, languages } };
 }
 
+/**
+ * The default ports, and the own ports of the first free slot above 0. Only
+ * the default ports when no slot above 0 is free.
+ */
+export function slotChoices(used: Map<number, string[]>): Array<Choice<number>> {
+	const sharing = used.get(0);
+	const choices: Array<Choice<number>> = [
+		{
+			value: 0,
+			label: 'Default ports (slot 0)',
+			hint: sharing
+				? `editor on port 5678, same as ${sharing.join(', ')}: they cannot run at the same time`
+				: 'editor on port 5678',
+		},
+	];
+	const slot = preferredSlot(used);
+	if (slot !== 0) {
+		choices.push({
+			value: slot,
+			label: `Own ports (slot ${slot})`,
+			hint: `runs next to other environments, editor on port ${5678 + 1000 * slot}`,
+		});
+	}
+	return choices;
+}
+
+/**
+ * The lowest free slot that is not slot 0, so the default ports stay free for
+ * other tools, for example `pnpm dev`. Slot 0 when no other slot is free.
+ */
+export function preferredSlot(used: Map<number, string[]>): number {
+	for (let slot = 1; slot <= MAX_SLOT; slot++) {
+		if (!used.has(slot)) return slot;
+	}
+	return 0;
+}
+
 function freeName(base: string): string {
 	if (!existsSync(envPaths(base).envYaml)) return base;
 	for (let i = 2; ; i++) {
@@ -209,25 +246,7 @@ export async function wizard(
 		options.license === undefined ? await licenseStep(topology.mains ?? 1) : options.license;
 	if (license) topology.license = license;
 	const used = slotsInUse();
-	const sharing = used.get(0);
-	if (sharing) {
-		const slot = Array.from({ length: MAX_SLOT + 1 }, (_, i) => i).find((s) => !used.has(s));
-		const choices: Array<Choice<number>> = [
-			{
-				value: 0,
-				label: 'Default ports (slot 0)',
-				hint: `same as ${sharing.join(', ')}: they cannot run at the same time`,
-			},
-		];
-		if (slot !== undefined) {
-			choices.push({
-				value: slot,
-				label: `Own ports (slot ${slot})`,
-				hint: `runs next to other environments, editor on port ${5678 + 1000 * slot}`,
-			});
-		}
-		topology.slot = await select('Ports', choices, slot ?? 0);
-	}
+	topology.slot = await select('Ports', slotChoices(used), preferredSlot(used));
 	const name =
 		givenName ??
 		(await ask('Environment name', {
