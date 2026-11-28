@@ -1142,7 +1142,7 @@ describe('SystemAgentExecutionService', () => {
 				} as AgentChatAttachment;
 				const passedOn = { ...binary, fileName: 'a.png' };
 
-				it('gives the file of the thread that a run passed on, without a copy', async () => {
+				it('gives the file of the thread that a run passed on, marked passedOn, without a copy', async () => {
 					const { turn, fileBridge, attachmentService, binaryDataAccess } =
 						await startTurnWithAttachment();
 					attachmentService.findSystemAgentThreadFileByBinary.mockResolvedValue(threadFile);
@@ -1153,6 +1153,7 @@ describe('SystemAgentExecutionService', () => {
 						fileName: 'a.png',
 						mimeType: 'image/png',
 						sizeBytes: 3,
+						passedOn: true,
 					});
 					expect(fileBridge.adoptBinary).not.toHaveBeenCalled();
 					expect(attachmentService.findSystemAgentThreadFileByBinary).toHaveBeenCalledWith(
@@ -1209,6 +1210,19 @@ describe('SystemAgentExecutionService', () => {
 					await expect(turn.storeWorkflowFile({ ...binary, fileName: 'a.png' })).resolves.toEqual({
 						fileName: 'a.png',
 						reason: 'you do not have access to this file',
+					});
+					expect(fileBridge.adoptBinary).not.toHaveBeenCalled();
+				});
+
+				it('skips the file with a reason instead of an error when a lookup fails, because the run already happened', async () => {
+					const { turn, fileBridge, attachmentService } = await startTurnWithAttachment();
+					attachmentService.findSystemAgentThreadFileByBinary.mockRejectedValue(
+						new Error('database down'),
+					);
+
+					await expect(turn.storeWorkflowFile(binary)).resolves.toEqual({
+						fileName: 'file',
+						reason: 'the file could not be stored',
 					});
 					expect(fileBridge.adoptBinary).not.toHaveBeenCalled();
 				});

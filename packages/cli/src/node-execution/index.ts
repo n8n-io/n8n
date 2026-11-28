@@ -19,6 +19,7 @@ export type {
 	ExecuteNodeOutputItem,
 	ExecuteNodeError,
 	ExecuteNodeResult,
+	ExecuteNodeStoredFiles,
 } from './execute-node.service';
 export {
 	ExecuteNodeService,

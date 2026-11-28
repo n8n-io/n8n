@@ -76,6 +76,12 @@ describe('buildAlwaysAllowKeys', () => {
 			expect(buildAlwaysAllowKeys('run_workflow', { workflowId: 'wf-1', files: {} })).toEqual([
 				'executions:run:wf-1',
 			]);
+			expect(
+				buildAlwaysAllowKeys('execute_node', {
+					type: 'n8n-nodes-base.set',
+					input: [{ json: {}, files: { data: 'file-1' } }],
+				}),
+			).toEqual([]);
 		});
 	});
 

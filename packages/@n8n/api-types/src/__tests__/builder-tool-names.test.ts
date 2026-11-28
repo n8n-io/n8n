@@ -29,6 +29,18 @@ describe('callCarriesInputFiles', () => {
 		).toBe(true);
 	});
 
+	it('is true for a node run whose input items name files, also for the former nodes tool', () => {
+		const input = [{ json: {} }, { json: {}, files: { data: 'file-1' } }];
+		expect(callCarriesInputFiles('execute_node', { input })).toBe(true);
+		expect(callCarriesInputFiles('workflow_builder_nodes', { action: 'execute', input })).toBe(
+			true,
+		);
+		expect(callCarriesInputFiles('execute_node', { input: [{ json: {}, files: {} }] })).toBe(false);
+		expect(callCarriesInputFiles('workflow_builder_nodes', { action: 'search', input })).toBe(
+			false,
+		);
+	});
+
 	it('is false for a run without files and for other tools', () => {
 		expect(callCarriesInputFiles('run_workflow', { workflowId: 'wf-1' })).toBe(false);
 		expect(callCarriesInputFiles('run_workflow', { files: {} })).toBe(false);

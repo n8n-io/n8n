@@ -880,6 +880,7 @@ export type {
 	InstanceAiSkippedFiles,
 	InstanceAiStoreWorkflowFile,
 	InstanceAiStoredFile,
+	InstanceAiStoredWorkflowFile,
 	InstanceAiStoredFileReader,
 	InstanceAiSkillService,
 	BrowserUseState,
