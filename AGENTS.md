@@ -256,45 +256,26 @@ baseline. A new business-logic import fails CI.
   `FindOptionsWhere`, …), put it behind a **use-case-named repository method**
   that takes plain parameters and returns domain-shaped values — not a generic
   `find(options)` passthrough.
-- **Transactions:** transaction orchestration belongs in the persistence layer.
-  Don't reach for `.manager` / `.manager.transaction(...)` or
-  `createQueryBuilder(...)` in business logic. Use the sanctioned primitive in
-  `@n8n/db`: inject the abstract `TransactionRunner` and wrap the unit of work in
-  `txRunner.run(ctx, async (ctx) => …)`. The callback receives an
-  `OperationContext` carrying the active transaction; thread that `ctx` into the
-  repository methods you call. `run` **requires** a context — pass an empty `{}`
-  at the operation entry point, and reuse the one you were handed everywhere
-  below it (a context that already carries a transaction is joined, not nested).
-  The `Transaction` handle is opaque and never exposes a driver type to
-  business logic. See `oauth-token.service.ts` for a worked service example
-  (its repositories predate the composition rule below; do not copy their shape).
-- **Repositories compose, they don't extend.** A repository is the boundary
-  that keeps TypeORM out of business logic. If it extended `BaseRepository`,
-  every service that injects it would also get `find`, `save`, `delete`,
-  `createQueryBuilder` and `.manager` for free, and TypeORM would leak through
-  inferred types that no lint rule can see. So a repository is a plain
-  `@Service()` class that holds a **file-private `BaseRepository` subclass (the
-  table)** as a private field and resolves the manager with
-  `this.table.managerFor(ctx)`. The table is never exported or registered with
-  DI. Every data access is a named use-case method on the repository that
-  calls the table internally; there is no generic `find`/`save`/`delete`
-  unless you write it for one operation. See
-  `packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts`
-  for a worked example. The existing `extends BaseRepository` / `extends
-  Repository` repositories are legacy. Do not copy them, and do not convert them
-  in unrelated PRs. This rule is not yet lint-enforced.
+- **Transactions:** business logic uses the `TransactionRunner` from `@n8n/db`
+  (`txRunner.run(ctx, async (ctx) => …)`), never `.manager`,
+  `createQueryBuilder(...)` or `managerFor(...)`. Pass `{}` only at the
+  operation entry point. Below it, pass the callback's `ctx` to each repository
+  method and each nested `run`, so that they join the active transaction. The
+  code-health rule
+  `transaction-boundary` enforces this. See `oauth-token.service.ts`.
+- **Repositories compose, they don't extend:** a repository is a `@Service()`
+  class that holds a file-private `BaseRepository` subclass (the table). The
+  code-health rule `repository-composition` enforces this. See
+  `packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts`.
 - **Anti-patterns reviewers reject** — they hide the dependency instead of
   removing it:
   - String-matching TypeORM errors, e.g. `error.name === 'QueryFailedError'`.
   - Relabeling the import from `@n8n/typeorm` to `@n8n/db` to silence the rule
     (`@n8n/db` re-exports several operators/types, but this relabels the
     dependency rather than removing it).
-  - Pushing `.manager` / `createQueryBuilder` / `repo.managerFor(ctx)` into
-    business logic to avoid an operator import — trades a visible leak for an
-    invisible one.
-  - A repository that `extends BaseRepository` / `extends Repository`, or that
-    exposes its table (public property, getter, or a `find(options)`
-    passthrough) — the inherited TypeORM surface must stay private to the table.
+  - A repository that exposes its table (public property, getter, or a
+    `find(options)` passthrough). The inherited TypeORM surface must stay
+    private to the table.
 - **Account kinds:** the `user` table holds people and service accounts. Before
   you load or type an account, read "Account kinds" in
   [packages/@n8n/db/AGENTS.md](packages/@n8n/db/AGENTS.md).
