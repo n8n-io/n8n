@@ -222,7 +222,7 @@ function onKeydown(event: KeyboardEvent) {
 			<slot />
 		</template>
 		<template v-else>
-			<div :class="$style.info">
+			<div :class="$style.info" data-slot="settings-row-info">
 				<div v-if="showVisualSlot" :class="$style.visual" data-test-id="settings-row-visual">
 					<slot name="visual" />
 				</div>
@@ -258,6 +258,7 @@ function onKeydown(event: KeyboardEvent) {
 			</div>
 			<div
 				v-if="slots.action"
+				data-slot="settings-row-action"
 				:class="[
 					$style.action,
 					{
@@ -358,14 +359,23 @@ $expand-easing: motion.$blur-motion-easing;
 	justify-content: space-between;
 	// Column-gap only: a row-gap would push the wrapped expand region away from the header.
 	column-gap: var(--spacing--2xs);
-	min-height: var(--height--4xl);
-	padding-inline: var(--spacing--sm);
+	min-height: var(--settings-row--min-height, var(--height--4xl));
+	padding-inline: var(--settings-row--padding-inline, var(--spacing--sm));
+	padding-inline-start: var(
+		--settings-row--padding-inline-start,
+		var(--settings-row--padding-inline, var(--spacing--sm))
+	);
+	padding-block: var(--settings-row--padding-block, 0);
 }
 
 .vertical {
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-	padding: 0 var(--spacing--sm) var(--spacing--sm);
+	padding: 0 var(--settings-row--padding-inline, var(--spacing--sm)) var(--spacing--sm);
+	padding-inline-start: var(
+		--settings-row--padding-inline-start,
+		var(--settings-row--padding-inline, var(--spacing--sm))
+	);
 }
 
 .custom {
@@ -394,7 +404,12 @@ $expand-easing: motion.$blur-motion-easing;
  * resting vertical centering.
  */
 .horizontal .info {
-	min-height: var(--height--4xl);
+	/* Match the row's content box so the header does not jump when a row expands.
+	   Padding lives on the row, so take it back out of this minimum. */
+	min-height: calc(
+		var(--settings-row--min-height, var(--height--4xl)) - 2 * var(--settings-row--padding-block, 0)
+	);
+	flex: var(--settings-row--info-flex, 1 0 0);
 }
 
 .visual {
@@ -414,7 +429,7 @@ $expand-easing: motion.$blur-motion-easing;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
-	padding-block: var(--spacing--xs);
+	padding-block: var(--settings-row--text-padding-block, var(--spacing--xs));
 	flex: 1 0 0;
 	min-width: 0;
 }
@@ -440,7 +455,7 @@ $expand-easing: motion.$blur-motion-easing;
 	flex: 0 0 auto;
 	display: flex;
 	align-items: center;
-	justify-content: flex-end;
+	justify-content: var(--settings-row--action-justify, flex-end);
 	min-width: 0;
 }
 
@@ -450,7 +465,7 @@ $expand-easing: motion.$blur-motion-easing;
  * content (flex: 0 0 auto) and the cap only clamps intrinsically-wide content.
  */
 .actionFill {
-	flex: 1 1 0;
+	flex: var(--settings-row--action-flex, 1 1 0);
 }
 
 .vertical .action {
@@ -484,8 +499,8 @@ $expand-easing: motion.$blur-motion-easing;
  */
 .expandRegion {
 	flex: 0 0 auto;
-	width: calc(100% + 2 * var(--spacing--sm));
-	margin-inline: calc(-1 * var(--spacing--sm));
+	width: calc(100% + 2 * var(--settings-row--padding-inline, var(--spacing--sm)));
+	margin-inline: calc(-1 * var(--settings-row--padding-inline, var(--spacing--sm)));
 	box-sizing: border-box;
 	display: grid;
 	grid-template-rows: 0fr;
