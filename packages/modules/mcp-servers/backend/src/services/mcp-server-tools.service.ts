@@ -3,6 +3,7 @@ import {
 	mcpServerSchema,
 	type McpServerToolBrokenReason,
 	type McpServerToolCandidate,
+	type McpServerToolDetailResponse,
 	type McpServerToolDraftSource,
 	type McpServerToolDraftField,
 	type McpServerToolDraftResponse,
@@ -155,6 +156,35 @@ export class McpServerToolsService {
 	): Promise<McpServerToolResponse> {
 		const tool = await this.findTool(projectId, serverId, toolId);
 		return toToolResponse(tool, await this.brokenReason(projectId, tool));
+	}
+
+	/**
+	 * One tool with its source name, trigger inputs, and output fields from the last successful
+	 * execution. Reads only the data that `user` can already see.
+	 */
+	async getToolDetail(
+		user: User,
+		projectId: string,
+		serverId: string,
+		toolId: string,
+	): Promise<McpServerToolDetailResponse> {
+		const tool = await this.findTool(projectId, serverId, toolId);
+		if (tool.kind === 'workflow' && tool.targetId) {
+			const [brokenReason, inspection] = await Promise.all([
+				this.brokenReason(projectId, tool),
+				this.workflows.inspect(projectId, tool.targetId, user),
+			]);
+			return {
+				...toToolResponse(tool, brokenReason),
+				...inspection,
+			};
+		}
+		return {
+			...toToolResponse(tool, null),
+			sourceName: null,
+			inputs: [],
+			outputs: null,
+		};
 	}
 
 	/** The names of these workflows of the project, with no check. Unknown IDs are left out. */
@@ -331,8 +361,9 @@ export class McpServerToolsService {
 
 	/**
 	 * Writes the tool name and the description with the n8n Assistant, in one model call. With
-	 * `field`, only that field changes. Without the Assistant, the tool keeps its text. A draft
-	 * that breaks the rules gives an error, and the tool keeps its text.
+	 * `field`, only that field changes. With `persist: false`, returns the drafted text without
+	 * saving it to the database so a modal can apply it only on Save. Without the Assistant, the
+	 * tool keeps its text. A draft that breaks the rules gives an error, and the tool keeps its text.
 	 */
 	async draftTool(
 		user: User,
@@ -341,6 +372,7 @@ export class McpServerToolsService {
 		toolId: string,
 		actor: McpServerActor,
 		field?: McpServerToolDraftField,
+		options?: { persist?: boolean },
 	): Promise<McpServerToolDraftResponse> {
 		const tool = await this.findTool(projectId, serverId, toolId);
 		const track = (status: McpServerToolDraftStatus) =>
@@ -406,9 +438,30 @@ export class McpServerToolsService {
 			track('invalid_answer');
 			throw new McpServerToolDraftUnavailableError(answer.error);
 		}
-		const updated = await this.saveDraft(tool, answer.draft);
+		const updated =
+			options?.persist === false
+				? await this.previewDraft(tool, answer.draft)
+				: await this.saveDraft(tool, answer.draft);
 		track('drafted');
 		return { status: 'drafted', tool: toToolResponse(updated, null) };
+	}
+
+	/** Builds the drafted tool response without persisting it, still avoiding sibling name collisions. */
+	private async previewDraft(tool: McpServerTool, draft: ToolDraft): Promise<McpServerTool> {
+		let toolName = tool.toolName;
+		if (draft.toolName !== undefined) {
+			const others = await this.tools.listByServer(tool.serverId);
+			const taken = new Set(
+				others.filter((other) => other.id !== tool.id).map((other) => other.toolName),
+			);
+			toolName = uniqueToolName(draft.toolName, taken);
+		}
+		return {
+			...tool,
+			toolName,
+			description: draft.description ?? tool.description,
+			draftSource: 'ai',
+		};
 	}
 
 	/** A drafted name that another tool of the server has gets `_2`, `_3`, and so on. */

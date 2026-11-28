@@ -1,10 +1,24 @@
-import type { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import type {
+	IExecutionResponse,
+	SharedWorkflowRepository,
+	User,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Project, WorkflowEntity } from '@n8n/db';
+import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { ExecutionService } from '@/executions/execution.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import type { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import type { CallableWorkflowRunner } from '@/workflows/callable/callable-workflow-runner.service';
+import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 
 import { WorkflowToolAdapter } from '../workflow-tool.adapter';
+
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn().mockResolvedValue(true),
+}));
 
 const PROJECT_ID = 'project-1';
 const WORKFLOW_ID = 'workflow-1';
@@ -13,11 +27,21 @@ function setup() {
 	const runner = mock<CallableWorkflowRunner>();
 	const sharedWorkflows = mock<SharedWorkflowRepository>();
 	const workflows = mock<WorkflowRepository>();
+	const workflowLoader = mock<CallableWorkflowLoader>();
+	const executionService = mock<ExecutionService>();
 	return {
 		runner,
 		sharedWorkflows,
 		workflows,
-		adapter: new WorkflowToolAdapter(runner, sharedWorkflows, workflows),
+		workflowLoader,
+		executionService,
+		adapter: new WorkflowToolAdapter(
+			runner,
+			sharedWorkflows,
+			workflows,
+			workflowLoader,
+			executionService,
+		),
 	};
 }
 
@@ -192,5 +216,283 @@ describe('WorkflowToolAdapter', () => {
 			{ email: 'a@b.c' },
 			{ waitMs: 5_000 },
 		);
+	});
+
+	describe('inspect', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const triggerNode: INode = {
+			id: 'trigger',
+			name: 'Start',
+			type: 'n8n-nodes-base.executeWorkflowTrigger',
+			typeVersion: 1.1,
+			position: [0, 0],
+			parameters: {
+				inputSource: 'workflowInputs',
+				workflowInputs: {
+					values: [
+						{ name: 'campaign_id', type: 'string' },
+						{ name: 'days', type: 'number' },
+					],
+				},
+			},
+		};
+
+		beforeEach(() => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+		});
+
+		function setupOwnedWorkflow(
+			deps: ReturnType<typeof setup>,
+			name = 'Get campaign numbers',
+			nodes: INode[] = [triggerNode],
+		) {
+			deps.sharedWorkflows.findOwnedWorkflowSummary.mockResolvedValue({
+				id: WORKFLOW_ID,
+				name,
+				isArchived: false,
+			});
+			deps.workflowLoader.loadWorkflow.mockResolvedValue(
+				Object.assign(new WorkflowEntity(), { id: WORKFLOW_ID, name, nodes }),
+			);
+		}
+
+		it('returns the workflow name, trigger inputs, and output fields of the last successful execution', async () => {
+			const deps = setup();
+			setupOwnedWorkflow(deps);
+			deps.executionService.getLastSuccessfulExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					dataTooLargeToDisplay: false,
+					data: {
+						resultData: {
+							lastNodeExecuted: 'Format',
+							runData: {
+								Start: [
+									{
+										startTime: 0,
+										executionTime: 1,
+										data: { main: [[{ json: { campaign_id: 'c1' } }]] },
+									},
+								],
+								Format: [
+									{
+										startTime: 1,
+										executionTime: 2,
+										data: {
+											main: [
+												[
+													{
+														json: {
+															campaign: 'Spring',
+															clicks: 120,
+															active: true,
+															tags: ['a'],
+															meta: { source: 'ads' },
+															nullable: null,
+															mixed: 'text',
+														},
+													},
+													{
+														json: {
+															campaign: 'Summer',
+															nullable: 42,
+															mixed: 99,
+															extra: 'later',
+														},
+													},
+													{
+														json: {
+															mixed: true,
+														},
+													},
+												],
+											],
+										},
+									},
+								],
+							},
+						},
+					},
+				}),
+			);
+
+			const result = await deps.adapter.inspect(PROJECT_ID, WORKFLOW_ID, user);
+
+			expect(result).toEqual({
+				sourceName: 'Get campaign numbers',
+				inputs: [
+					{ name: 'campaign_id', type: 'string' },
+					{ name: 'days', type: 'number' },
+				],
+				outputs: [
+					{ name: 'campaign', type: 'string' },
+					{ name: 'clicks', type: 'number' },
+					{ name: 'active', type: 'boolean' },
+					{ name: 'tags', type: 'array' },
+					{ name: 'meta', type: 'object' },
+					{ name: 'nullable', type: 'number' },
+					{ name: 'mixed', type: 'any' },
+					{ name: 'extra', type: 'string' },
+				],
+			});
+			expect(deps.executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				user,
+			);
+		});
+
+		it('falls back to the draft workflow for inputs when the workflow is not published', async () => {
+			const deps = setup();
+			setupOwnedWorkflow(deps);
+			deps.workflowLoader.loadWorkflow
+				.mockRejectedValueOnce(new CallableWorkflowUnavailableError('not_published', 'Unpublished'))
+				.mockResolvedValueOnce(
+					Object.assign(new WorkflowEntity(), {
+						id: WORKFLOW_ID,
+						name: 'Get campaign numbers',
+						nodes: [triggerNode],
+					}),
+				);
+			deps.executionService.getLastSuccessfulExecution.mockResolvedValue(undefined);
+
+			const result = await deps.adapter.inspect(PROJECT_ID, WORKFLOW_ID, user);
+
+			expect(result).toEqual({
+				sourceName: 'Get campaign numbers',
+				inputs: [
+					{ name: 'campaign_id', type: 'string' },
+					{ name: 'days', type: 'number' },
+				],
+				outputs: null,
+			});
+		});
+
+		it('returns null outputs when execution items are redacted, and widens field-redacted values to any', async () => {
+			const deps = setup();
+			setupOwnedWorkflow(deps);
+			deps.executionService.getLastSuccessfulExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					dataTooLargeToDisplay: false,
+					data: {
+						resultData: {
+							lastNodeExecuted: 'Format',
+							runData: {
+								Format: [
+									{
+										startTime: 1,
+										executionTime: 2,
+										data: {
+											main: [
+												[
+													{
+														json: {},
+														redaction: { redacted: true, reason: 'workflow_redaction_policy' },
+													},
+												],
+											],
+										},
+									},
+								],
+							},
+						},
+					},
+				}),
+			);
+
+			await expect(deps.adapter.inspect(PROJECT_ID, WORKFLOW_ID, user)).resolves.toMatchObject({
+				outputs: null,
+			});
+
+			deps.executionService.getLastSuccessfulExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					dataTooLargeToDisplay: false,
+					data: {
+						resultData: {
+							lastNodeExecuted: 'Format',
+							runData: {
+								Format: [
+									{
+										startTime: 1,
+										executionTime: 2,
+										data: {
+											main: [
+												[
+													{
+														json: {
+															secret: {
+																__redacted: true,
+																reason: 'node_defined_field',
+																canReveal: false,
+															},
+															count: 5,
+														},
+													},
+												],
+											],
+										},
+									},
+								],
+							},
+						},
+					},
+				}),
+			);
+
+			await expect(deps.adapter.inspect(PROJECT_ID, WORKFLOW_ID, user)).resolves.toMatchObject({
+				outputs: [
+					{ name: 'secret', type: 'any' },
+					{ name: 'count', type: 'number' },
+				],
+			});
+		});
+
+		it('returns empty details when the user lacks workflow:read scope', async () => {
+			const deps = setup();
+			setupOwnedWorkflow(deps);
+			vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+
+			const result = await deps.adapter.inspect(PROJECT_ID, WORKFLOW_ID, user);
+
+			expect(result).toEqual({ sourceName: null, inputs: [], outputs: null });
+			expect(deps.workflowLoader.loadWorkflow).not.toHaveBeenCalled();
+			expect(deps.executionService.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('returns empty details when the workflow moved to another project', async () => {
+			const deps = setup();
+			deps.sharedWorkflows.findOwnedWorkflowSummary.mockResolvedValue(null);
+
+			await expect(deps.adapter.inspect(PROJECT_ID, WORKFLOW_ID, user)).resolves.toEqual({
+				sourceName: null,
+				inputs: [],
+				outputs: null,
+			});
+			expect(deps.sharedWorkflows.findOwnedWorkflowSummary).toHaveBeenCalledWith(
+				PROJECT_ID,
+				WORKFLOW_ID,
+			);
+			expect(deps.workflowLoader.loadWorkflow).not.toHaveBeenCalled();
+			expect(deps.executionService.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('returns empty details when the workflow is archived in the same project', async () => {
+			const deps = setup();
+			deps.sharedWorkflows.findOwnedWorkflowSummary.mockResolvedValue({
+				id: WORKFLOW_ID,
+				name: 'Archived workflow',
+				isArchived: true,
+			});
+
+			await expect(deps.adapter.inspect(PROJECT_ID, WORKFLOW_ID, user)).resolves.toEqual({
+				sourceName: null,
+				inputs: [],
+				outputs: null,
+			});
+			expect(deps.sharedWorkflows.findOwnedWorkflowSummary).toHaveBeenCalledWith(
+				PROJECT_ID,
+				WORKFLOW_ID,
+			);
+			expect(deps.workflowLoader.loadWorkflow).not.toHaveBeenCalled();
+			expect(deps.executionService.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
 	});
 });

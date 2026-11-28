@@ -87,7 +87,12 @@ describe('MCP server DTOs', () => {
 	it('drafts both fields, or one field for a "Generate" button', () => {
 		expect(DraftMcpServerToolDto.parse({})).toEqual({});
 		expect(DraftMcpServerToolDto.parse({ field: 'description' })).toEqual({ field: 'description' });
+		expect(DraftMcpServerToolDto.parse({ field: 'toolName', persist: false })).toEqual({
+			field: 'toolName',
+			persist: false,
+		});
 		expect(DraftMcpServerToolDto.safeParse({ field: 'kind' }).success).toBe(false);
+		expect(DraftMcpServerToolDto.safeParse({ persist: 'no' }).success).toBe(false);
 	});
 
 	it('blocks a person by user id', () => {

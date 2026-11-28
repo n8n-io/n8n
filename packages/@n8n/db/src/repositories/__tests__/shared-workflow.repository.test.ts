@@ -688,6 +688,47 @@ describe('SharedWorkflowRepository', () => {
 		});
 	});
 
+	describe('findOwnedWorkflowSummary', () => {
+		it('scopes the owner lookup by projectId and workflowId and returns the workflow summary', async () => {
+			entityManager.findOne.mockResolvedValueOnce({
+				projectId: 'proj-1',
+				workflowId: 'wf-1',
+				role: 'workflow:owner',
+				workflow: { id: 'wf-1', name: 'Get campaign numbers', isArchived: false },
+			} as unknown as SharedWorkflow);
+
+			const result = await sharedWorkflowRepository.findOwnedWorkflowSummary('proj-1', 'wf-1');
+
+			expect(entityManager.findOne).toHaveBeenCalledWith(SharedWorkflow, {
+				where: {
+					projectId: 'proj-1',
+					workflowId: 'wf-1',
+					role: 'workflow:owner',
+				},
+				relations: { workflow: true },
+				select: {
+					projectId: true,
+					workflowId: true,
+					role: true,
+					workflow: { id: true, name: true, isArchived: true },
+				},
+			});
+			expect(result).toEqual({
+				id: 'wf-1',
+				name: 'Get campaign numbers',
+				isArchived: false,
+			});
+		});
+
+		it('returns null when the project does not own the workflow', async () => {
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			const result = await sharedWorkflowRepository.findOwnedWorkflowSummary('proj-1', 'wf-1');
+
+			expect(result).toBeNull();
+		});
+	});
+
 	describe('syncImportedWorkflowOwner', () => {
 		const ownerRow = { workflowId: 'wf-1', projectId: 'target', role: 'workflow:owner' };
 

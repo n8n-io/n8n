@@ -30,12 +30,15 @@ describe('McpServersController route access scopes', () => {
 });
 
 describe('McpServerToolsController route access scopes', () => {
-	// The picker is part of the editor, so its read route also needs `update`.
+	// Reading one tool needs `read`; the picker and every write route need `update`.
+	const READ_HANDLERS = new Set(['get']);
+
 	it.each(routesOf(McpServerToolsController))(
-		'$handlerName is gated by a project-scoped mcpServer:update check',
-		({ route }) => {
+		'$handlerName is gated by its expected project-scoped mcpServer:* check',
+		({ handlerName, route }) => {
 			expect(route.skipAuth).toBeFalsy();
-			expect(route.accessScope).toEqual({ scope: 'mcpServer:update', globalOnly: false });
+			const expectedScope = READ_HANDLERS.has(handlerName) ? 'mcpServer:read' : 'mcpServer:update';
+			expect(route.accessScope).toEqual({ scope: expectedScope, globalOnly: false });
 		},
 	);
 });

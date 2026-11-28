@@ -180,6 +180,34 @@ export const mcpServerToolSchema = z.object({
 });
 export type McpServerToolResponse = z.infer<typeof mcpServerToolSchema>;
 
+export const mcpServerToolFieldTypeSchema = z.enum([
+	'string',
+	'number',
+	'boolean',
+	'array',
+	'object',
+	'any',
+]);
+export type McpServerToolFieldType = z.infer<typeof mcpServerToolFieldTypeSchema>;
+
+export const mcpServerToolFieldSchema = z.object({
+	name: z.string(),
+	type: mcpServerToolFieldTypeSchema,
+});
+export type McpServerToolField = z.infer<typeof mcpServerToolFieldSchema>;
+
+/**
+ * Full details for one tool modal: the tool itself, the source name (for example the workflow
+ * name), its declared trigger inputs, and the output fields of its last successful execution.
+ * `outputs` is `null` when no readable successful execution exists.
+ */
+export const mcpServerToolDetailSchema = mcpServerToolSchema.extend({
+	sourceName: z.string().nullable(),
+	inputs: z.array(mcpServerToolFieldSchema),
+	outputs: z.array(mcpServerToolFieldSchema).nullable(),
+});
+export type McpServerToolDetailResponse = z.infer<typeof mcpServerToolDetailSchema>;
+
 export const mcpServerDetailSchema = mcpServerSchema.extend({
 	tools: z.array(mcpServerToolSchema),
 	/**
@@ -254,6 +282,7 @@ export const MCP_SERVER_ACTION_SCOPES = {
 	delete: 'mcpServer:delete',
 	// The workflow picker and every tool change are a change of the server.
 	toolCandidates: 'mcpServer:update',
+	readTool: 'mcpServer:read',
 	addTools: 'mcpServer:update',
 	updateTool: 'mcpServer:update',
 	draftTool: 'mcpServer:update',

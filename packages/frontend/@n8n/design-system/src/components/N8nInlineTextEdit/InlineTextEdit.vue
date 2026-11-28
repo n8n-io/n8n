@@ -1,7 +1,11 @@
 <script lang="ts" setup>
 import { useElementSize } from '@vueuse/core';
 import { EditableArea, EditableInput, EditablePreview, EditableRoot } from 'reka-ui';
-import { computed, ref, useTemplateRef, watchEffect } from 'vue';
+import { computed, ref, useAttrs, useTemplateRef, watchEffect } from 'vue';
+
+defineOptions({ inheritAttrs: false });
+
+const INPUT_ARIA_ATTRS = new Set(['aria-invalid', 'aria-describedby']);
 
 type Props = {
 	modelValue: string;
@@ -24,6 +28,12 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	'update:model-value': [value: string];
 }>();
+
+const attrs = useAttrs();
+const getRootAttrs = () =>
+	Object.fromEntries(Object.entries(attrs).filter(([key]) => !INPUT_ARIA_ATTRS.has(key)));
+const getInputAriaAttrs = () =>
+	Object.fromEntries(Object.entries(attrs).filter(([key]) => INPUT_ARIA_ATTRS.has(key)));
 
 const editableRoot = useTemplateRef('editableRoot');
 const measureSpan = useTemplateRef('measureSpan');
@@ -66,7 +76,8 @@ const computedContentStyles = {
 };
 
 function forceFocus() {
-	if (editableRoot.value && !props.readOnly && !props.disabled) {
+	const isReadOnly = attrs.readonly !== undefined ? attrs.readonly !== false : props.readOnly;
+	if (editableRoot.value && !isReadOnly && !props.disabled) {
 		editableRoot.value.edit();
 	}
 }
@@ -115,6 +126,7 @@ defineExpose({ forceFocus, forceCancel });
 		:readonly="readOnly"
 		select-on-focus
 		auto-resize
+		v-bind="getRootAttrs()"
 		@click="forceFocus"
 		@submit="onSubmit"
 		@update:model-value="onInput"
@@ -138,6 +150,7 @@ defineExpose({ forceFocus, forceCancel });
 			<!-- size=1 stops the input's default intrinsic width from inflating fit-content sizing -->
 			<EditableInput
 				ref="input"
+				v-bind="getInputAriaAttrs()"
 				:size="1"
 				:class="$style.inlineRenameInput"
 				data-test-id="inline-edit-input"

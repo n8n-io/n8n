@@ -8,6 +8,7 @@ import type {
 	McpServerSharePublic,
 	McpServerSlugAvailability,
 	McpServerToolCandidate,
+	McpServerToolDetailResponse,
 	McpServerToolDraftField,
 	McpServerToolDraftResponse,
 	McpServerToolResponse,
@@ -102,6 +103,19 @@ export async function addWorkflowTools(
 	});
 }
 
+export async function getToolDetail(
+	context: IRestApiContext,
+	projectId: string,
+	serverId: string,
+	toolId: string,
+): Promise<McpServerToolDetailResponse> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`${serverPath(projectId, serverId)}/tools/${toolId}`,
+	);
+}
+
 export async function updateTool(
 	context: IRestApiContext,
 	projectId: string,
@@ -133,12 +147,16 @@ export async function draftTool(
 	serverId: string,
 	toolId: string,
 	field?: McpServerToolDraftField,
+	options?: { persist?: boolean },
 ): Promise<McpServerToolDraftResponse> {
 	return await makeRestApiRequest(
 		context,
 		'POST',
 		`${serverPath(projectId, serverId)}/tools/${toolId}/draft`,
-		field ? { field } : {},
+		{
+			...(field ? { field } : {}),
+			...(options?.persist === false ? { persist: false } : {}),
+		},
 	);
 }
 
