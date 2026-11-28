@@ -1651,6 +1651,8 @@ defineExpose({ enterEditMode });
 				<N8nIconButton
 					variant="outline"
 					size="small"
+					icon-size="small"
+					icon-only
 					v-if="
 						!props.disableEdit &&
 						canPinData &&
