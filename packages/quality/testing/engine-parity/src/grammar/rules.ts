@@ -21,6 +21,8 @@ export interface ParityRules {
 	features: {
 		/** Split In Batches loops (the `loop` combinator). */
 		loops: boolean;
+		/** `onError: continueErrorOutput` (the `errorOutput` combinator). */
+		errorOutputs: boolean;
 	};
 	expressions: {
 		/** The part of node references that name a node that did not run. From 0 to 1. */
@@ -51,7 +53,7 @@ const base: Omit<ParityRules, 'name'> = {
 	nodes: ['set.manual', 'set.raw', 'if.condition', 'merge.append', 'splitOut', 'noOp'],
 	combinators: ['chain', 'branch', 'fanOut', 'merge'],
 	limits: { depth: 4, nodes: 12, width: 3, items: 5 },
-	features: { loops: false },
+	features: { loops: false, errorOutputs: false },
 	expressions: { ghostRate: 0.05 },
 	severity: { L3: 'warning', L4: 'warning' },
 };
@@ -71,6 +73,13 @@ export const ruleSets: Record<string, ParityRules> = {
 		nodes: [...base.nodes, 'splitInBatches'],
 		combinators: ['chain', 'branch', 'merge', 'loop'],
 		features: { ...base.features, loops: true },
+	},
+	errorOutputs: {
+		...base,
+		name: 'errorOutputs',
+		combinators: ['chain', 'branch', 'errorOutput'],
+		features: { ...base.features, errorOutputs: true },
+		expressions: { ghostRate: 0.3 },
 	},
 };
 

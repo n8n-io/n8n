@@ -18,7 +18,8 @@ function portsInRange({ ir }: ParityCase): boolean {
 		const from = nodes.get(edge.from);
 		const to = nodes.get(edge.to);
 		if (!from || !to) return false;
-		const outputs = outputCount(getEntry(from.catalogId), from.params);
+		const outputs =
+			outputCount(getEntry(from.catalogId), from.params) + (from.flags?.onError ? 1 : 0);
 		const inputs = getEntry(to.catalogId).inputs;
 		return edge.out >= 0 && edge.out < outputs && edge.in >= 0 && edge.in < inputs;
 	});
