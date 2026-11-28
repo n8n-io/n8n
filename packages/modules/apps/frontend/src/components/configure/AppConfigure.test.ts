@@ -28,6 +28,12 @@ const renderComponent = createComponentRenderer(AppConfigure, {
 				template:
 					'<button data-test-id="general" @click="$emit(\'updated\', { ...app, name: \'Renamed\' })">{{ app.name }}</button>',
 			},
+			AppConnectionsCard: {
+				props: ['app'],
+				emits: ['updated'],
+				template:
+					'<button data-test-id="connections" @click="$emit(\'updated\', { ...app, draftVersionId: \'v2\' })">{{ app.name }}</button>',
+			},
 		},
 	},
 });
@@ -37,6 +43,21 @@ describe('AppConfigure', () => {
 		const { getByTestId } = renderComponent();
 
 		expect(getByTestId('general')).toHaveTextContent('Expense tracker');
+	});
+
+	it('shows the connections card as a separate panel', () => {
+		const { getByTestId } = renderComponent();
+
+		expect(getByTestId('connections')).toHaveTextContent('Expense tracker');
+		expect(getByTestId('general')).not.toContainElement(getByTestId('connections'));
+	});
+
+	it('passes an update of the connections card on', async () => {
+		const { getByTestId, emitted } = renderComponent();
+
+		await userEvent.click(getByTestId('connections'));
+
+		expect(emitted('updated')).toEqual([[{ ...app, draftVersionId: 'v2' }]]);
 	});
 
 	it('passes an update of a card on', async () => {

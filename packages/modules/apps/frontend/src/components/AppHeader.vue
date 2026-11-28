@@ -8,6 +8,7 @@ import {
 	N8nDropdownMenu,
 	N8nIcon,
 	N8nSegmentControl,
+	N8nTooltip,
 	type DropdownMenuItemProps,
 	type IconOrEmoji,
 	type PathItem,
@@ -37,6 +38,8 @@ const props = defineProps<{
 	projectId: string;
 	app: AppResponse | null;
 	publishableVersion: AppVersionResponse | null;
+	/** How many connections have a warning. Configure shows a dot while it is above zero. */
+	attentionCount: number;
 }>();
 
 const emit = defineEmits<{
@@ -56,9 +59,25 @@ const latestAppsFetch = useLatestFetch();
 const project = ref<Project | null>(null);
 const projectApps = ref<AppResponse[]>([]);
 
+const attentionText = computed(() =>
+	props.attentionCount > 0
+		? i18n.baseText('apps.detail.tabs.configureAttention', {
+				adjustToNumber: props.attentionCount,
+				interpolate: { count: String(props.attentionCount) },
+			})
+		: undefined,
+);
+
 const tabOptions = computed(() => [
 	{ value: 'preview' as const, label: i18n.baseText('apps.detail.tabs.preview') },
-	{ value: 'configure' as const, label: i18n.baseText('apps.detail.tabs.configure') },
+	{
+		value: 'configure' as const,
+		// The label is also the accessible name, so it includes the warning.
+		label: attentionText.value
+			? `${i18n.baseText('apps.detail.tabs.configure')}, ${attentionText.value}`
+			: i18n.baseText('apps.detail.tabs.configure'),
+		data: { text: i18n.baseText('apps.detail.tabs.configure') },
+	},
 ]);
 
 const appsRoute = computed(() => ({ name: PROJECT_APPS, params: { projectId: props.projectId } }));
@@ -167,7 +186,21 @@ watch(
 			:options="tabOptions"
 			:class="$style.center"
 			data-test-id="app-header-tabs"
-		/>
+		>
+			<template #option="option">
+				<N8nTooltip
+					v-if="option.value === 'configure' && attentionText"
+					:content="attentionText"
+					placement="bottom"
+				>
+					<span :class="$style.tabLabel">
+						{{ option.data?.text }}
+						<span :class="$style.attentionDot" data-test-id="app-header-configure-attention" />
+					</span>
+				</N8nTooltip>
+				<template v-else>{{ option.data?.text ?? option.label }}</template>
+			</template>
+		</N8nSegmentControl>
 		<div :class="$style.right">
 			<AppSharePopover
 				v-if="app?.publishedUrl"
@@ -260,5 +293,20 @@ watch(
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.tabLabel {
+	position: relative;
+}
+
+/* An 8px warning dot at the top right of the Configure label. */
+.attentionDot {
+	position: absolute;
+	top: calc(-1 * var(--spacing--5xs));
+	right: calc(-1 * var(--spacing--2xs));
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: var(--radius--full);
+	background-color: var(--color--warning);
 }
 </style>

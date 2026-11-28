@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { defineComponent, h, ref } from 'vue';
 
-import { getApp, listAppVersions } from '../apps.api';
+import { getApp, getAppBindings, listAppVersions } from '../apps.api';
 import AppView from './AppView.vue';
 
 vi.mock('../apps.api');
@@ -43,11 +43,12 @@ const version = (id: string, buildStatus: AppBuildStatus): AppVersionResponse =>
 const globalOptions = {
 	stubs: {
 		AppHeader: {
-			props: ['projectId', 'app', 'tab', 'publishableVersion'],
+			props: ['projectId', 'app', 'tab', 'publishableVersion', 'attentionCount'],
 			emits: ['deleted', 'updated', 'update:tab', 'showVersions'],
 			template: `<div>
 					<button data-test-id="app-header" @click="$emit('deleted', app?.id)">{{ app?.name }}</button>
 					<span data-test-id="publishable-version">{{ publishableVersion?.id }}</span>
+					<span data-test-id="attention-count">{{ attentionCount }}</span>
 					<button data-test-id="publish" @click="$emit('updated', { ...app, name: 'Published app', publishedVersionId: 'v9' })" />
 					<button data-test-id="share" @click="$emit('updated', { ...app, visibility: 'public' })" />
 					<button data-test-id="configure" @click="$emit('update:tab', 'configure')" />
@@ -336,5 +337,45 @@ describe('AppView', () => {
 
 		await waitFor(() => expect(getByTestId('app-header')).toHaveTextContent('App app-2'));
 		expect(queryByTestId('app-versions-panel')).not.toBeInTheDocument();
+	});
+
+	it('counts the connections with a warning for the Configure tab', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		vi.mocked(getAppBindings).mockResolvedValue({
+			versionId: 'v1',
+			bindings: [],
+			warnings: [
+				{ key: 'syncStats', code: 'resource_unpublished', message: '' },
+				{ key: 'syncStats', code: 'resource_missing', message: '' },
+				{ key: 'chatBot', code: 'resource_unpublished', message: '' },
+			],
+		});
+		const { findByTestId } = renderComponent();
+
+		await waitFor(async () => expect(await findByTestId('attention-count')).toHaveTextContent('2'));
+		expect(getAppBindings).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1');
+	});
+
+	it('clears the attention count when the connections fail to load', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		vi.mocked(getAppBindings)
+			.mockResolvedValueOnce({
+				versionId: 'v1',
+				bindings: [],
+				warnings: [
+					{ key: 'syncStats', code: 'resource_unpublished', message: '' },
+					{ key: 'chatBot', code: 'resource_unpublished', message: '' },
+				],
+			})
+			.mockRejectedValueOnce(new Error('offline'));
+		const { findByTestId, getByTestId } = renderComponent();
+		await waitFor(() => expect(getByTestId('attention-count')).toHaveTextContent(/^2$/));
+
+		// Switching tabs loads the count again, and this load fails.
+		await userEvent.click(await findByTestId('configure'));
+
+		await waitFor(() => expect(getAppBindings).toHaveBeenCalledTimes(2));
+		await waitFor(() => expect(getByTestId('attention-count')).toHaveTextContent(/^0$/));
+		expect(showError).not.toHaveBeenCalled();
 	});
 });

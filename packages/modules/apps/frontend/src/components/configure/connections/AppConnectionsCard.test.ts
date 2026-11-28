@@ -110,6 +110,43 @@ describe('AppConnectionsCard', () => {
 		expect(queryByTestId('app-binding-weeklyChannelActivity-warning')).not.toBeInTheDocument();
 	});
 
+	it('describes an unpublished workflow on its chip', async () => {
+		providePermissions(['app:update']);
+		const { findByTestId } = renderComponent();
+
+		expect(await findByTestId('app-binding-syncSocialStats')).toHaveAttribute(
+			'aria-description',
+			"This workflow hasn't been published yet. Parts of the app that use it will show an error until you publish it.",
+		);
+	});
+
+	it('labels only the rows that have connections', async () => {
+		providePermissions(['app:update']);
+		const { findByTestId, getByTestId } = renderComponent();
+		await findByTestId('app-binding-syncSocialStats');
+
+		expect(getByTestId('app-connections-workflow')).toHaveTextContent('Workflows');
+		expect(getByTestId('app-connections-agent')).not.toHaveTextContent('Agents');
+	});
+
+	it('shows an icon-only add action for a row with connections and a labelled one for an empty row', async () => {
+		providePermissions(['app:update']);
+		const { findByTestId, getByTestId } = renderComponent();
+		await findByTestId('app-binding-syncSocialStats');
+
+		expect(getByTestId('app-binding-add-workflow')).toHaveAttribute('aria-label', 'Add workflow');
+		expect(getByTestId('app-binding-add-workflow')).not.toHaveTextContent('Add workflow');
+		expect(getByTestId('app-binding-add-agent')).toHaveTextContent('Add agent');
+	});
+
+	it('hides an empty row when the user cannot change the connections', async () => {
+		providePermissions([]);
+		const { findByTestId, queryByTestId } = renderComponent();
+		await findByTestId('app-binding-syncSocialStats');
+
+		expect(queryByTestId('app-connections-agent')).not.toBeInTheDocument();
+	});
+
 	it('hides changes until the connections load', async () => {
 		providePermissions(['app:update']);
 		const request = Promise.withResolvers<AppBindingsResponse>();
@@ -140,7 +177,7 @@ describe('AppConnectionsCard', () => {
 		const { findByTestId, emitted } = renderComponent();
 
 		await userEvent.click(await findByTestId('app-binding-add-workflow'));
-		await userEvent.click(await findByTestId('app-binding-picker-item-w2'));
+		await userEvent.click(await findByTestId('app-binding-picker-add-w2'));
 
 		await waitFor(() =>
 			expect(setAppBindings).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1', 'v1', [
@@ -179,7 +216,21 @@ describe('AppConnectionsCard', () => {
 		);
 	});
 
-	it('adds a data table with the chosen permissions', async () => {
+	it('shows when a search has no matches', async () => {
+		providePermissions(['app:update']);
+		vi.mocked(listBindableResources)
+			.mockResolvedValueOnce({ count: 1, data: [{ id: 'w2', name: 'Another workflow' }] })
+			.mockResolvedValueOnce({ count: 0, data: [] });
+		const { findByTestId, findByText, getByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('app-binding-add-workflow'));
+		await findByTestId('app-binding-picker-item-w2');
+		await userEvent.type(getByTestId('app-binding-picker-search'), 'zzz');
+
+		expect(await findByText('No workflows match your search')).toBeInTheDocument();
+	});
+
+	it('adds a data table with the default permissions and marks the added ones', async () => {
 		providePermissions(['app:update']);
 		vi.mocked(listBindableResources).mockResolvedValue({
 			count: 2,
@@ -188,97 +239,126 @@ describe('AppConnectionsCard', () => {
 				{ id: 't2', name: 'Orders' },
 			],
 		});
-		const { findByTestId, getByTestId } = renderComponent();
+		const { findByTestId, queryByTestId } = renderComponent();
 
 		await userEvent.click(await findByTestId('app-binding-add-dataTable'));
-		expect(await findByTestId('app-binding-picker-item-t1')).toBeDisabled();
-		await userEvent.click(getByTestId('app-binding-picker-item-t2'));
-		await userEvent.click(await findByTestId('app-binding-picker-permission-insert'));
-		await userEvent.click(getByTestId('app-binding-picker-confirm'));
+		expect(await findByTestId('app-binding-picker-added-t1')).toHaveTextContent('Added');
+		expect(queryByTestId('app-binding-picker-add-t1')).not.toBeInTheDocument();
+		await userEvent.click(await findByTestId('app-binding-picker-add-t2'));
 
 		await waitFor(() =>
 			expect(setAppBindings).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1', 'v1', [
 				workflow,
 				table,
-				{ key: 'orders', kind: 'dataTable', dataTableId: 't2', permissions: ['read', 'insert'] },
+				{ key: 'orders', kind: 'dataTable', dataTableId: 't2', permissions: ['read'] },
 			]),
 		);
 	});
 
-	it('saves permission changes when the binding popover closes', async () => {
-		providePermissions(['app:update']);
-		const { findByTestId } = renderComponent();
-
-		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
-		await userEvent.click(
-			await findByTestId('app-binding-weeklyChannelActivity-permission-insert'),
-		);
-		await userEvent.click(
-			await findByTestId('app-binding-weeklyChannelActivity-permission-delete'),
-		);
-		expect(setAppBindings).not.toHaveBeenCalled();
-
-		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
-
-		await waitFor(() =>
-			expect(setAppBindings).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1', 'v1', [
-				workflow,
-				{ ...table, permissions: ['read', 'insert', 'delete'] },
-			]),
-		);
-		expect(setAppBindings).toHaveBeenCalledOnce();
-	});
-
-	it('keeps saved permissions when reopened before the save completes', async () => {
+	it('adds a resource once when Add is clicked again before the save ends', async () => {
 		providePermissions(['app:update']);
 		const pendingSave = Promise.withResolvers<AppBindingsResponse>();
 		vi.mocked(setAppBindings).mockReturnValueOnce(pendingSave.promise);
+		vi.mocked(listBindableResources).mockResolvedValue({
+			count: 1,
+			data: [{ id: 'w2', name: 'Post weekly report' }],
+		});
 		const { findByTestId } = renderComponent();
 
-		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
-		await userEvent.click(
-			await findByTestId('app-binding-weeklyChannelActivity-permission-delete'),
-		);
-		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
-		await waitFor(() => expect(setAppBindings).toHaveBeenCalledOnce());
-
-		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
-		pendingSave.resolve({
-			versionId: 'v2',
-			bindings: [
-				loaded.bindings[0],
-				{
-					...table,
-					permissions: ['read', 'delete'],
-					name: 'Weekly channel activity',
-					columns: [],
-					row: {},
-				},
-			],
-			warnings: [],
-		});
-
-		const deletePermission = await findByTestId(
-			'app-binding-weeklyChannelActivity-permission-delete',
-		);
-		await waitFor(() => expect(deletePermission).toBeChecked());
-		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
+		await userEvent.click(await findByTestId('app-binding-add-workflow'));
+		const add = await findByTestId('app-binding-picker-add-w2');
+		await userEvent.click(add);
+		await userEvent.click(add);
+		pendingSave.resolve(saved);
 		await flushPromises();
 
 		expect(setAppBindings).toHaveBeenCalledOnce();
 	});
 
-	it('removes a binding and links to its resource', async () => {
+	it('shows the warning, the setup and a link to the workflow in its dialog', async () => {
 		providePermissions(['app:update']);
-		const { findByTestId, getByRole } = renderComponent();
+		const { findByTestId, getByTestId, getByRole } = renderComponent();
 
 		await userEvent.click(await findByTestId('app-binding-syncSocialStats'));
-		expect(getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/workflow/w1');
-		await userEvent.click(await findByTestId('app-binding-syncSocialStats-remove'));
+
+		expect(await findByTestId('app-binding-syncSocialStats-callout')).toHaveTextContent(
+			"This workflow hasn't been published yet.",
+		);
+		expect(getByTestId('app-binding-syncSocialStats-setup')).toHaveTextContent(
+			'The Assistant set up the app to run this workflow',
+		);
+		expect(getByRole('link', { name: /Open workflow/ })).toHaveAttribute('href', '/workflow/w1');
+	});
+
+	it('names the data table permissions in bold in the setup', async () => {
+		providePermissions(['app:update']);
+		vi.mocked(getAppBindings).mockResolvedValue({
+			...loaded,
+			bindings: [
+				loaded.bindings[0],
+				{
+					...table,
+					permissions: ['delete', 'read', 'update', 'insert'],
+					name: 'Weekly channel activity',
+					columns: [],
+					row: {},
+				},
+			],
+		});
+		const { findByTestId, queryByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
+
+		const setup = await findByTestId('app-binding-weeklyChannelActivity-setup');
+		expect(setup).toHaveTextContent(
+			'The Assistant set up the app to read, insert, update, and delete rows in this table',
+		);
+		expect(setup.querySelector('strong')).toHaveTextContent(
+			'read, insert, update, and delete rows',
+		);
+		expect(queryByTestId('app-binding-weeklyChannelActivity-callout')).not.toBeInTheDocument();
+	});
+
+	it.each([
+		['confirms', 'Yes, remove', 1],
+		['cancels', 'Cancel', 0],
+	])(
+		'removes a binding from its dialog only when the user confirms (%s)',
+		async (_, button, saves) => {
+			providePermissions(['app:update']);
+			const { findByTestId, findByRole, getByRole } = renderComponent();
+
+			await userEvent.click(await findByTestId('app-binding-syncSocialStats'));
+			await userEvent.click(await findByTestId('app-binding-syncSocialStats-remove'));
+			expect(
+				await findByRole('heading', { name: 'Remove Sync social stats?' }),
+			).toBeInTheDocument();
+			await userEvent.click(getByRole('button', { name: button }));
+			await flushPromises();
+
+			expect(setAppBindings).toHaveBeenCalledTimes(saves);
+			if (saves) {
+				expect(setAppBindings).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1', 'v1', [
+					table,
+				]);
+			}
+		},
+	);
+
+	it('removes a binding from its right-click menu', async () => {
+		providePermissions(['app:update']);
+		const { findByTestId, findByRole, findByText } = renderComponent();
+
+		await userEvent.pointer({
+			keys: '[MouseRight]',
+			target: await findByTestId('app-binding-weeklyChannelActivity'),
+		});
+		await userEvent.click(await findByText('Remove'));
+		await userEvent.click(await findByRole('button', { name: 'Yes, remove' }));
 
 		await waitFor(() =>
 			expect(setAppBindings).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1', 'v1', [
-				table,
+				workflow,
 			]),
 		);
 	});
@@ -288,12 +368,11 @@ describe('AppConnectionsCard', () => {
 		['in read-only mode', ['app:update'] as Scope[], true],
 	])('shows the bindings but no changes %s', async (_, scopes, readOnly) => {
 		providePermissions(scopes, readOnly);
-		const { findByTestId, getAllByRole, queryByTestId } = renderComponent();
+		const { findByTestId, queryByTestId } = renderComponent();
 
 		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
 
-		await findByTestId('app-binding-weeklyChannelActivity-permission-read');
-		for (const checkbox of getAllByRole('checkbox')) expect(checkbox).toBeDisabled();
+		await findByTestId('app-binding-weeklyChannelActivity-setup');
 		expect(queryByTestId('app-binding-weeklyChannelActivity-remove')).not.toBeInTheDocument();
 		expect(queryByTestId('app-binding-add-workflow')).not.toBeInTheDocument();
 	});

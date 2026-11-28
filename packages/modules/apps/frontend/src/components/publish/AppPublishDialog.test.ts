@@ -1,6 +1,7 @@
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import userEvent from '@testing-library/user-event';
 import { screen, waitFor } from '@testing-library/vue';
+import { getProject, type Project } from '@n8n/rest-api-client/api/projects';
 import { flushPromises } from '@vue/test-utils';
 
 import { PUBLISHED_URL, testApp, testVersion } from '../../__tests__/fixtures';
@@ -8,22 +9,13 @@ import { getAppPublishPreview, publishApp } from '../../apps.api';
 import AppPublishDialog from './AppPublishDialog.vue';
 
 vi.mock('../../apps.api');
+vi.mock('@n8n/rest-api-client/api/projects', () => ({ getProject: vi.fn() }));
 
 const renderComponent = createComponentRenderer(AppPublishDialog, {
 	props: { open: true, app: testApp(), version: testVersion },
 	global: {
 		stubs: {
-			RouterLink: {
-				props: ['to'],
-				template: '<a :data-route="JSON.stringify(to)"><slot /></a>',
-			},
 			AppLinkField: { props: ['url'], template: '<span data-test-id="link">{{ url }}</span>' },
-			AppVisibilitySelect: {
-				props: ['modelValue'],
-				emits: ['update:modelValue'],
-				template:
-					'<button data-test-id="visibility" @click="$emit(\'update:modelValue\', \'instance\')">{{ modelValue }}</button>',
-			},
 		},
 	},
 });
@@ -46,21 +38,19 @@ describe('AppPublishDialog', () => {
 			versionId: 'v2',
 			label: 'Expense tracker',
 			description: '',
-			visibility: undefined,
 			publishResources: true,
 		});
 		expect(emitted('updated')).toEqual([[published]]);
 	});
 
-	it('publishes the name, description and a changed visibility in one request', async () => {
-		vi.mocked(publishApp).mockResolvedValue(testApp({ visibility: 'instance' }));
+	it('publishes the name and description in one request', async () => {
+		vi.mocked(publishApp).mockResolvedValue(testApp());
 		renderComponent();
 		const name = await screen.findByTestId('app-publish-name');
 
 		await userEvent.clear(name);
 		await userEvent.type(name, 'Launch');
 		await userEvent.type(screen.getByTestId('app-publish-description'), 'Adds charts');
-		await userEvent.click(screen.getByTestId('visibility'));
 		await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
 
 		await waitFor(() => expect(publishApp).toHaveBeenCalledOnce());
@@ -68,7 +58,6 @@ describe('AppPublishDialog', () => {
 			versionId: 'v2',
 			label: 'Launch',
 			description: 'Adds charts',
-			visibility: 'instance',
 			publishResources: true,
 		});
 	});
@@ -159,18 +148,20 @@ describe('AppPublishDialog', () => {
 			canPublish: true,
 		};
 
-		it('checks the publish-all checkbox by default and lists the resources with a type icon', async () => {
+		it('lists the connections that will be published with a type icon', async () => {
 			vi.mocked(getAppPublishPreview).mockResolvedValue({ resources: [sales, support] });
 			renderComponent();
 
-			const list = await screen.findByTestId('app-publish-resources-list');
+			const list = await screen.findByTestId('app-publish-connections');
 
-			expect(list).toHaveTextContent('Resources to be published');
-			expect(list).toHaveTextContent('Sales');
-			expect(list).toHaveTextContent('Support');
-			expect(screen.getByTestId('app-publish-resource-sales-icon')).toBeInTheDocument();
-			expect(screen.getByTestId('app-publish-resource-support-icon')).toBeInTheDocument();
-			expect(screen.getByTestId('app-publish-resources')).toBeChecked();
+			expect(list).toHaveTextContent(
+				'When you publish the app, these connections will be published too',
+			);
+			expect(screen.getByTestId('app-publish-connection-sales')).toHaveTextContent('Sales');
+			expect(screen.getByTestId('app-publish-connection-support')).toHaveTextContent('Support');
+			expect(screen.getByTestId('app-publish-connection-sales-icon')).toBeInTheDocument();
+			expect(screen.getByTestId('app-publish-connection-support-icon')).toBeInTheDocument();
+			expect(screen.queryByTestId('app-publish-connections-skipped')).not.toBeInTheDocument();
 			expect(getAppPublishPreview).toHaveBeenCalledWith(
 				expect.anything(),
 				'project-1',
@@ -179,118 +170,43 @@ describe('AppPublishDialog', () => {
 			);
 		});
 
-		it('hides the list when the box is unchecked and shows it again when checked', async () => {
-			vi.mocked(getAppPublishPreview).mockResolvedValue({ resources: [sales] });
-			renderComponent();
-			await screen.findByTestId('app-publish-resources-list');
-
-			await userEvent.click(screen.getByTestId('app-publish-resources'));
-			expect(screen.queryByTestId('app-publish-resources-list')).not.toBeInTheDocument();
-
-			await userEvent.click(screen.getByTestId('app-publish-resources'));
-			expect(screen.getByTestId('app-publish-resources-list')).toBeInTheDocument();
-		});
-
-		it('shows the list while the preview loads', async () => {
-			let resolve: (value: { resources: Array<typeof sales> }) => void = () => {};
-			vi.mocked(getAppPublishPreview).mockReturnValue(
-				new Promise((done) => {
-					resolve = done;
-				}),
-			);
-			renderComponent();
-
-			expect(await screen.findByTestId('app-publish-resources-list')).toBeInTheDocument();
-			expect(screen.queryByTestId('app-publish-resource-sales')).not.toBeInTheDocument();
-
-			resolve({ resources: [sales] });
-
-			expect(await screen.findByTestId('app-publish-resource-sales')).toBeInTheDocument();
-		});
-
-		it('lists the resources in the order that the server returns them', async () => {
+		it('lists the connections in the order that the server returns them', async () => {
 			vi.mocked(getAppPublishPreview).mockResolvedValue({ resources: [sales, support] });
 			renderComponent();
-			await screen.findByTestId('app-publish-resources-list');
+			await screen.findByTestId('app-publish-connections');
 
-			const rows = screen.getAllByTestId(/^app-publish-resource-[a-z]+$/);
+			const rows = screen.getAllByTestId(/^app-publish-connection-[a-z]+$/);
 
-			expect(rows.map((row) => row.textContent)).toEqual(['Sales', 'Support']);
+			expect(rows.map((row) => row.textContent?.trim())).toEqual(['Sales', 'Support']);
 		});
 
-		it('links each resource to its page in a new tab', async () => {
-			vi.mocked(getAppPublishPreview).mockResolvedValue({ resources: [sales, support] });
-			renderComponent();
-
-			const workflowLink = await screen.findByTestId('app-publish-resource-sales');
-			const agentLink = screen.getByTestId('app-publish-resource-support');
-
-			expect(workflowLink).toHaveAttribute('target', '_blank');
-			expect(workflowLink).toHaveAttribute('data-route', expect.stringContaining('workflow-1'));
-			expect(agentLink).toHaveAttribute('target', '_blank');
-			expect(agentLink).toHaveAttribute('data-route', expect.stringContaining('agent-1'));
-		});
-
-		it('lists a published resource with changes', async () => {
+		it('does not list a published connection, even with draft changes', async () => {
 			vi.mocked(getAppPublishPreview).mockResolvedValue({
-				resources: [{ ...sales, published: true, hasChanges: true }],
+				resources: [{ ...sales, published: true, hasChanges: true }, support],
 			});
 			renderComponent();
+			await screen.findByTestId('app-publish-connections');
 
-			expect(await screen.findByTestId('app-publish-resources-list')).toHaveTextContent('Sales');
+			expect(screen.queryByTestId('app-publish-connection-sales')).not.toBeInTheDocument();
+			expect(screen.getByTestId('app-publish-connection-support')).toBeInTheDocument();
 		});
 
-		it('lists only the resources that need a publish', async () => {
-			vi.mocked(getAppPublishPreview).mockResolvedValue({
-				resources: [{ ...sales, published: true }, support],
-			});
-			renderComponent();
-
-			const list = await screen.findByTestId('app-publish-resources-list');
-
-			expect(list).not.toHaveTextContent('Sales');
-			expect(list).toHaveTextContent('Support');
-		});
-
-		it('hides the list when all resources are published and unchanged', async () => {
+		it('shows no list when every connection is published', async () => {
 			vi.mocked(getAppPublishPreview).mockResolvedValue({
 				resources: [{ ...sales, published: true }],
 			});
 			renderComponent();
-			await screen.findByTestId('app-publish-resources');
+			await flushPromises();
 
-			expect(screen.queryByTestId('app-publish-resources-list')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('app-publish-connections')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('app-publish-connections-skipped')).not.toBeInTheDocument();
 		});
 
-		it('sends publishResources false when the box is unchecked', async () => {
+		it('always publishes the connections with the app', async () => {
 			vi.mocked(getAppPublishPreview).mockResolvedValue({ resources: [sales] });
 			vi.mocked(publishApp).mockResolvedValue(testApp());
 			renderComponent();
-			await screen.findByTestId('app-publish-resources-list');
-
-			await userEvent.click(screen.getByTestId('app-publish-resources'));
-			await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
-
-			await waitFor(() =>
-				expect(publishApp).toHaveBeenCalledWith(
-					expect.anything(),
-					'project-1',
-					'app-1',
-					expect.objectContaining({ publishResources: false }),
-				),
-			);
-		});
-
-		it('marks a resource that the user cannot publish and still allows the publish', async () => {
-			vi.mocked(getAppPublishPreview).mockResolvedValue({
-				resources: [{ ...sales, canPublish: false }, support],
-			});
-			vi.mocked(publishApp).mockResolvedValue(testApp());
-			renderComponent();
-
-			expect(await screen.findByTestId('app-publish-resource-sales-warning')).toBeInTheDocument();
-			expect(screen.queryByTestId('app-publish-resource-support-warning')).not.toBeInTheDocument();
-			expect(screen.getByTestId('app-publish-dialog-confirm')).toBeEnabled();
+			await screen.findByTestId('app-publish-connections');
 
 			await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
 
@@ -304,27 +220,47 @@ describe('AppPublishDialog', () => {
 			);
 		});
 
-		it('warns and still publishes when the preview cannot be loaded', async () => {
-			vi.mocked(getAppPublishPreview).mockRejectedValue(new Error('offline'));
+		it('warns about a connection that the user cannot publish and still allows the publish', async () => {
+			vi.mocked(getAppPublishPreview).mockResolvedValue({
+				resources: [{ ...sales, canPublish: false }, support],
+			});
 			vi.mocked(publishApp).mockResolvedValue(testApp());
 			renderComponent();
 
-			expect(await screen.findByTestId('app-publish-resources-error')).toBeInTheDocument();
-			expect(screen.queryByTestId('app-publish-resources-list')).not.toBeInTheDocument();
+			const warning = await screen.findByTestId('app-publish-connections-skipped');
+
+			expect(warning).toHaveTextContent("These connections can't be published yet");
+			expect(warning).toHaveTextContent('Sales');
+			expect(warning).not.toHaveTextContent('Support');
+			expect(screen.getByTestId('app-publish-connections')).not.toHaveTextContent('Sales');
+			expect(screen.getByTestId('app-publish-dialog-confirm')).toBeEnabled();
 
 			await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
 
 			await waitFor(() => expect(publishApp).toHaveBeenCalledOnce());
 		});
 
-		it('does not warn about the preview when the box is unchecked', async () => {
-			vi.mocked(getAppPublishPreview).mockRejectedValue(new Error('offline'));
+		it('shows only the warning when no connection can be published', async () => {
+			vi.mocked(getAppPublishPreview).mockResolvedValue({
+				resources: [{ ...sales, canPublish: false }],
+			});
 			renderComponent();
-			await screen.findByTestId('app-publish-resources-error');
 
-			await userEvent.click(screen.getByTestId('app-publish-resources'));
+			expect(await screen.findByTestId('app-publish-connections-skipped')).toBeInTheDocument();
+			expect(screen.queryByTestId('app-publish-connections')).not.toBeInTheDocument();
+		});
 
-			expect(screen.queryByTestId('app-publish-resources-error')).not.toBeInTheDocument();
+		it('warns and still publishes when the preview cannot be loaded', async () => {
+			vi.mocked(getAppPublishPreview).mockRejectedValue(new Error('offline'));
+			vi.mocked(publishApp).mockResolvedValue(testApp());
+			renderComponent();
+
+			expect(await screen.findByTestId('app-publish-resources-error')).toBeInTheDocument();
+			expect(screen.queryByTestId('app-publish-connections')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
+
+			await waitFor(() => expect(publishApp).toHaveBeenCalledOnce());
 		});
 
 		it('ignores an older preview response that arrives after a newer one', async () => {
@@ -340,36 +276,101 @@ describe('AppPublishDialog', () => {
 			renderComponent();
 
 			await userEvent.click(await screen.findByTestId('app-publish-dialog-confirm'));
-			await screen.findByTestId('app-publish-resource-support');
+			await screen.findByTestId('app-publish-connection-support');
 			resolveFirst({ resources: [sales, support] });
 
 			await flushPromises();
 
 			expect(getAppPublishPreview).toHaveBeenCalledTimes(2);
-			expect(screen.queryByTestId('app-publish-resource-sales')).not.toBeInTheDocument();
-			expect(screen.getByTestId('app-publish-resource-support')).toBeInTheDocument();
+			expect(screen.queryByTestId('app-publish-connection-sales')).not.toBeInTheDocument();
+			expect(screen.getByTestId('app-publish-connection-support')).toBeInTheDocument();
 		});
 
 		it('reloads the list after a failed publish', async () => {
 			vi.mocked(getAppPublishPreview).mockResolvedValueOnce({ resources: [sales, support] });
 			vi.mocked(publishApp).mockRejectedValue(new Error('Could not publish "Support": denied'));
 			renderComponent();
-			await screen.findByTestId('app-publish-resource-sales');
+			await screen.findByTestId('app-publish-connection-sales');
 			vi.mocked(getAppPublishPreview).mockResolvedValueOnce({ resources: [support] });
 
 			await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
 
 			await waitFor(() =>
-				expect(screen.queryByTestId('app-publish-resource-sales')).not.toBeInTheDocument(),
+				expect(screen.queryByTestId('app-publish-connection-sales')).not.toBeInTheDocument(),
 			);
-			expect(screen.getByTestId('app-publish-resource-support')).toBeInTheDocument();
+			expect(screen.getByTestId('app-publish-connection-support')).toBeInTheDocument();
 			expect(getAppPublishPreview).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('availability', () => {
+		it('names the project of the app', async () => {
+			vi.mocked(getProject).mockResolvedValue({
+				id: 'project-1',
+				name: 'Sales',
+				type: 'team',
+			} as Project);
+			renderComponent();
+
+			const line = await screen.findByText('Sales');
+
+			expect(line.tagName).toBe('STRONG');
+			expect(screen.getByTestId('app-publish-availability')).toHaveTextContent(
+				'This app will be available to everyone in the Sales project',
+			);
+			expect(getProject).toHaveBeenCalledWith(expect.anything(), 'project-1');
+		});
+
+		it('names a personal project Personal', async () => {
+			vi.mocked(getProject).mockResolvedValue({
+				id: 'project-1',
+				name: 'Jane Doe <jane@example.com>',
+				type: 'personal',
+			} as Project);
+			renderComponent();
+
+			await waitFor(() =>
+				expect(screen.getByTestId('app-publish-availability')).toHaveTextContent(
+					'This app will be available to everyone in the Personal project',
+				),
+			);
+		});
+
+		it('falls back to this project when the project cannot be loaded', async () => {
+			vi.mocked(getProject).mockRejectedValue(new Error('offline'));
+			renderComponent();
+			await flushPromises();
+
+			expect(screen.getByTestId('app-publish-availability')).toHaveTextContent(
+				'This app will be available to everyone in this project',
+			);
+		});
+
+		it('says the whole instance for an app that the whole instance can open', async () => {
+			vi.mocked(getProject).mockResolvedValue({
+				id: 'project-1',
+				name: 'Sales',
+				type: 'team',
+			} as Project);
+			renderComponent({ props: { app: testApp({ visibility: 'instance' }) } });
+			await flushPromises();
+
+			expect(screen.getByTestId('app-publish-availability')).toHaveTextContent(
+				'This app will be available to everyone in your n8n instance',
+			);
+		});
+
+		it('has no access control', async () => {
+			renderComponent();
+			await screen.findByTestId('app-publish-name');
+
+			expect(screen.queryByText('Who can open it')).not.toBeInTheDocument();
 		});
 	});
 
 	it('shows the link only for a published app', async () => {
 		const { rerender } = renderComponent();
-		await screen.findByTestId('visibility');
+		await screen.findByTestId('app-publish-name');
 		expect(screen.queryByTestId('link')).not.toBeInTheDocument();
 
 		await rerender({ app: testApp({ publishedVersionId: 'v1', publishedUrl: PUBLISHED_URL }) });

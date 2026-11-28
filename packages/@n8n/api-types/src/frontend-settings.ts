@@ -460,6 +460,16 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for the apps module.
+	 *
+	 * - `appUrl`: The fixed parts of an app URL around its namespace, for example
+	 *   `https://` and `--foo.apps.example.com`.
+	 */
+	apps?: {
+		enabled: boolean;
+		appUrl: { prefix: string; suffix: string };
+	};
+	/**
 	 * Client settings for the agents module.
 	 */
 	agents?: {

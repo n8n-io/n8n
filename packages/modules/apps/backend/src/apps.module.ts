@@ -62,6 +62,7 @@ export class AppsModule implements ModuleInterface {
 	}
 
 	async settings() {
-		return { enabled: true };
+		const { AppHostService } = await import('./serving/app-host.service.js');
+		return { enabled: true, appUrl: Container.get(AppHostService).urlParts() };
 	}
 }

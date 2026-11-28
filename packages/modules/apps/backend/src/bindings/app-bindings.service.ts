@@ -197,9 +197,8 @@ export class AppBindingsService {
 		versionId: string,
 	): Promise<void> {
 		const entries = await this.listPublishResources(user, projectId, appId, versionId);
-		const pending = entries.filter(
-			({ resource }) => resource.canPublish && (!resource.published || resource.hasChanges),
-		);
+		// A published resource keeps its live version, so its unfinished draft changes do not go live.
+		const pending = entries.filter(({ resource }) => resource.canPublish && !resource.published);
 		for (const { target, resource } of pending) {
 			try {
 				await target.publish(user, projectId);

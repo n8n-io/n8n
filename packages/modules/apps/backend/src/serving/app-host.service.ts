@@ -87,6 +87,17 @@ export class AppHostService {
 	}
 
 	/**
+	 * The fixed parts of an app URL around its namespace, for example `https://` and
+	 * `--foo.apps.example.com`. The editor shows them around the namespace field.
+	 */
+	urlParts(): { prefix: string; suffix: string } {
+		return {
+			prefix: `${this.baseUrl.protocol}//`,
+			suffix: `${this.hostSuffix}.${this.baseUrl.host}`,
+		};
+	}
+
+	/**
 	 * The longest namespace that forms valid app and preview hosts on this instance.
 	 * The preview host is the longer one, so it sets the limit.
 	 */

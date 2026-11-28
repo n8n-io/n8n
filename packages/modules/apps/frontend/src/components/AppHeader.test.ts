@@ -43,7 +43,13 @@ const version: AppVersionResponse = {
 const project = (overrides: Partial<Project>) => ({ id: 'project-1', ...overrides }) as Project;
 
 const renderComponent = createComponentRenderer(AppHeader, {
-	props: { projectId: 'project-1', app, publishableVersion: version, tab: 'preview' },
+	props: {
+		projectId: 'project-1',
+		app,
+		publishableVersion: version,
+		tab: 'preview',
+		attentionCount: 0,
+	},
 	global: {
 		stubs: {
 			N8nBreadcrumbs: {
@@ -190,5 +196,24 @@ describe('AppHeader', () => {
 		await userEvent.click(getByTestId('app-actions'));
 
 		expect(emitted('deleted')).toEqual([['app-1']]);
+	});
+
+	it('shows no attention dot while no connection has a warning', () => {
+		vi.mocked(getProject).mockResolvedValue(project({ type: 'team', name: 'Marketing' }));
+		const { getByRole, queryByTestId } = renderComponent();
+
+		expect(queryByTestId('app-header-configure-attention')).not.toBeInTheDocument();
+		expect(getByRole('radio', { name: 'Configure' })).toBeInTheDocument();
+	});
+
+	it.each([
+		[1, 'Configure, 1 connection needs your attention'],
+		[3, 'Configure, 3 connections need your attention'],
+	])('shows an attention dot on Configure for %i warnings', (attentionCount, name) => {
+		vi.mocked(getProject).mockResolvedValue(project({ type: 'team', name: 'Marketing' }));
+		const { getByRole, getByTestId } = renderComponent({ props: { attentionCount } });
+
+		expect(getByTestId('app-header-configure-attention')).toBeInTheDocument();
+		expect(getByRole('radio', { name })).toHaveTextContent('Configure');
 	});
 });

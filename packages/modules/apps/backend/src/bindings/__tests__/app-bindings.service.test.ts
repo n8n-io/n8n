@@ -476,13 +476,13 @@ describe('AppBindingsService', () => {
 			expect(agents.publish).toHaveBeenCalledWith(user, 'p1', agentChat);
 		});
 
-		it('publishes a published resource whose draft changed and skips an unchanged one', async () => {
-			const { service, workflows, agents } = setupPublish(changed, published);
+		it('does not publish a published resource whose draft changed', async () => {
+			const { service, workflows, agents } = setupPublish(changed, unpublished);
 
 			await service.publishResources(user, 'p1', APP_ID, DRAFT_ID);
 
-			expect(workflows.publish).toHaveBeenCalledWith(user, 'p1', workflow);
-			expect(agents.publish).not.toHaveBeenCalled();
+			expect(workflows.publish).not.toHaveBeenCalled();
+			expect(agents.publish).toHaveBeenCalledWith(user, 'p1', agentChat);
 		});
 
 		it('stops at the first failure and names the resource and the reason', async () => {
@@ -509,7 +509,7 @@ describe('AppBindingsService', () => {
 		});
 
 		it('skips a resource that the user cannot publish and publishes the rest', async () => {
-			const { service, workflows, agents } = setupPublish(changed, unpublished);
+			const { service, workflows, agents } = setupPublish(unpublished, unpublished);
 			workflows.canPublish.mockResolvedValue(false);
 
 			await service.publishResources(user, 'p1', APP_ID, DRAFT_ID);

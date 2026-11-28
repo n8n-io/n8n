@@ -1,12 +1,12 @@
 import type { AppResponse } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import type { Scope } from '@n8n/permissions';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 
-import { getAppBindings, updateApp } from '../../apps.api';
-import type { AppVersions } from '../../composables/useAppVersions';
+import { updateApp } from '../../apps.api';
 import AppConfigureGeneral from './AppConfigureGeneral.vue';
 
 vi.mock('../../apps.api');
@@ -33,7 +33,7 @@ const app = (name = 'Expense tracker', overrides: Partial<AppResponse> = {}): Ap
 });
 
 const renderComponent = createComponentRenderer(AppConfigureGeneral, {
-	props: { app: app(), versions: { refresh: vi.fn() } as unknown as AppVersions },
+	props: { app: app() },
 });
 
 function providePermissions(scopes: Scope[], readOnly = false) {
@@ -44,9 +44,6 @@ function providePermissions(scopes: Scope[], readOnly = false) {
 }
 
 describe('AppConfigureGeneral', () => {
-	beforeEach(() => {
-		vi.mocked(getAppBindings).mockResolvedValue({ versionId: null, bindings: [], warnings: [] });
-	});
 	afterEach(() => {
 		capabilityRegistry.clear();
 		vi.clearAllMocks();
@@ -127,7 +124,7 @@ describe('AppConfigureGeneral', () => {
 		await userEvent.tab();
 
 		expect(updateApp).not.toHaveBeenCalled();
-		expect(getByTestId('app-configure-name-error')).toHaveTextContent('Enter an app name.');
+		expect(getByTestId('app-configure-name-error')).toHaveTextContent('Enter an app title');
 	});
 
 	it('saves the second field only after the first save ends', async () => {
@@ -215,13 +212,31 @@ describe('AppConfigureGeneral', () => {
 		expect(emitted('updated')).toBeUndefined();
 	});
 
-	it('shows the connections of the app below the basics', async () => {
-		providePermissions(['app:read']);
+	it('shows the app URL around the namespace', () => {
+		providePermissions(['app:update']);
+		useSettingsStore().moduleSettings = {
+			apps: { enabled: true, appUrl: { prefix: 'https://', suffix: '.apps.example.com' } },
+		};
 		const { getByTestId } = renderComponent();
 
-		expect(getByTestId('app-configure-connections')).toBeInTheDocument();
-		await waitFor(() =>
-			expect(getAppBindings).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1'),
-		);
+		expect(getByTestId('app-configure-namespace-prefix')).toHaveTextContent('https://');
+		expect(getByTestId('app-configure-namespace')).toHaveValue('expenses');
+		expect(getByTestId('app-configure-namespace-suffix')).toHaveTextContent('.apps.example.com');
+	});
+
+	it('shows only the namespace when the app URL is unknown', () => {
+		providePermissions(['app:update']);
+		const { getByTestId, queryByTestId } = renderComponent();
+
+		expect(getByTestId('app-configure-namespace')).toHaveValue('expenses');
+		expect(queryByTestId('app-configure-namespace-prefix')).not.toBeInTheDocument();
+	});
+
+	it('labels each field', () => {
+		providePermissions(['app:update']);
+		const { getByLabelText } = renderComponent();
+
+		expect(getByLabelText('App title')).toHaveValue('Expense tracker');
+		expect(getByLabelText('App URL')).toHaveValue('expenses');
 	});
 });
