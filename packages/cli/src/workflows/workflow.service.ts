@@ -766,6 +766,10 @@ export class WorkflowService {
 				nodes: workflowUpdateData.nodes,
 				connections: workflowUpdateData.connections,
 			});
+			WorkflowHelpers.validateCredentialDisplayParameters(
+				{ nodes: workflowUpdateData.nodes },
+				this.nodeTypes,
+			);
 			// Only a workflow with groups needs the flags.
 			const rules = workflowUpdateData.nodeGroups?.length
 				? await this.nodeGroupRulesFlagGate.getEnabledRules(user)

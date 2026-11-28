@@ -843,6 +843,24 @@ describe('CredentialsPermissionChecker', () => {
 					expect.arrayContaining([staleCredentialId, activeCredentialId]),
 				);
 			});
+
+			it('should check every credential for a non-string value in a displayed selector parameter', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+
+				const node = makeNode({
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: ['slackApi'] as unknown as string,
+				});
+
+				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+					'Node "HTTP Request" does not have access to the credential',
+				);
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					expect.arrayContaining([staleCredentialId, activeCredentialId]),
+				);
+			});
 		});
 
 		describe('with a default-valued authentication parameter', () => {
@@ -913,6 +931,132 @@ describe('CredentialsPermissionChecker', () => {
 
 			it('should return the credential id for the node', () => {
 				expect(permissionChecker.getCredentialIdsForNodes([node])).toEqual([credentialId]);
+			});
+		});
+
+		describe('with a boolean display option on a credential', () => {
+			const gatedCredentialId = 'gated-cred';
+			const description = {
+				credentials: [
+					{
+						name: 'testGatedApi',
+						required: true,
+						displayOptions: { show: { useGatedAuth: [true] } },
+					},
+				],
+				properties: [
+					{
+						displayName: 'Gated Credential',
+						name: 'useGatedAuth',
+						type: 'boolean',
+						default: false,
+					},
+				],
+			};
+
+			const makeGatedNode = (parameters: INode['parameters']): INode => ({
+				id: 'node-7',
+				name: 'Gated Node',
+				type: 'n8n-nodes-base.gatedNode',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters,
+				credentials: {
+					testGatedApi: { id: gatedCredentialId, name: 'Gated Credential' },
+				},
+			});
+
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockReturnValue({ description } as never);
+				credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
+			});
+
+			it.each([
+				[1],
+				[0],
+				['true'],
+				['false'],
+				[{}],
+				[[]],
+				[[false]],
+				[{ __rl: true, value: false }],
+				[{ __rl: true, mode: 'id', value: false }],
+				[null],
+			])('should check the credential when the boolean parameter is %j', async (value) => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+				const node = makeGatedNode({
+					useGatedAuth: value,
+				} as unknown as INode['parameters']);
+
+				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+					'Node "Gated Node" does not have access to the credential',
+				);
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[gatedCredentialId],
+				);
+			});
+
+			it('should allow execution when the boolean parameter has another type and the credential is accessible', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+					gatedCredentialId,
+				]);
+				const node = makeGatedNode({
+					useGatedAuth: 1,
+				} as unknown as INode['parameters']);
+
+				await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[gatedCredentialId],
+				);
+			});
+
+			it('should skip the credential when the boolean parameter is false or omitted', async () => {
+				const falseNode = makeGatedNode({ useGatedAuth: false });
+				const omittedNode = makeGatedNode({});
+
+				await expect(permissionChecker.check(workflowId, [falseNode])).resolves.not.toThrow();
+				await expect(permissionChecker.check(workflowId, [omittedNode])).resolves.not.toThrow();
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
+			});
+
+			it('should check the credential when the boolean parameter is true', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+				const node = makeGatedNode({ useGatedAuth: true });
+
+				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+					'Node "Gated Node" does not have access to the credential',
+				);
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[gatedCredentialId],
+				);
+			});
+
+			it('should return the credential id from getCredentialIdsForNodes when the boolean parameter has another type', () => {
+				expect(
+					permissionChecker.getCredentialIdsForNodes([
+						makeGatedNode({ useGatedAuth: 1 } as unknown as INode['parameters']),
+					]),
+				).toEqual([gatedCredentialId]);
+				expect(
+					permissionChecker.getCredentialIdsForNodes([
+						makeGatedNode({ useGatedAuth: 'true' } as unknown as INode['parameters']),
+					]),
+				).toEqual([gatedCredentialId]);
+				expect(
+					permissionChecker.getCredentialIdsForNodes([
+						makeGatedNode({ useGatedAuth: {} } as unknown as INode['parameters']),
+					]),
+				).toEqual([gatedCredentialId]);
+				expect(
+					permissionChecker.getCredentialIdsForNodes([makeGatedNode({ useGatedAuth: false })]),
+				).toEqual([]);
 			});
 		});
 

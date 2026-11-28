@@ -225,6 +225,7 @@ export class WorkflowCreationService {
 		WorkflowHelpers.addNodeIds(newWorkflow);
 		WorkflowHelpers.resolveNodeWebhookIds(newWorkflow, this.nodeTypes);
 		WorkflowHelpers.validateWorkflowStructure(newWorkflow);
+		WorkflowHelpers.validateCredentialDisplayParameters(newWorkflow, this.nodeTypes);
 		// Only a workflow with groups needs the flags.
 		const rules = newWorkflow.nodeGroups?.length
 			? await this.nodeGroupRulesFlagGate.getEnabledRules(user)
