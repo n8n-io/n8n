@@ -21,6 +21,7 @@ import { parseString } from 'xml2js';
 
 import { nextCloudApiRequest, parseFolderList, webDavPath } from './GenericFunctions';
 import { wrapData } from '../../utils/utilities';
+import * as createFromText from './actions/file/createFromText.operation';
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -115,6 +116,12 @@ export class NextCloud implements INodeType {
 						value: 'copy',
 						description: 'Copy a file',
 						action: 'Copy a file',
+					},
+					{
+						name: 'Create From Text',
+						value: 'createFromText',
+						description: 'Create a file from text',
+						action: 'Create a file from text',
 					},
 					{
 						name: 'Delete',
@@ -371,6 +378,11 @@ export class NextCloud implements INodeType {
 				},
 				hint: 'The name of the output binary field to put the file in',
 			},
+
+			// ----------------------------------
+			//         file:createFromText
+			// ----------------------------------
+			...createFromText.description,
 
 			// ----------------------------------
 			//         file:upload
@@ -909,6 +921,16 @@ export class NextCloud implements INodeType {
 			}
 
 			try {
+				if (resource === 'file' && operation === 'createFromText') {
+					returnData.push(
+						...this.helpers.constructExecutionMetaData(
+							wrapData(await createFromText.execute.call(this, i)),
+							{ itemData: { item: i } },
+						),
+					);
+					continue;
+				}
+
 				if (resource === 'file') {
 					if (operation === 'download') {
 						// ----------------------------------
