@@ -46,6 +46,17 @@ describe('SDK_LANGUAGE_REFERENCE rendering', () => {
 		}
 	});
 
+	it('gives general arrow-function guidance in Forbidden constructs and scopes fromAi to AI tool parameters', () => {
+		const forbiddenSection =
+			SDK_LANGUAGE_REFERENCE.split('## Forbidden constructs')[1]?.split(
+				'## Language constraints',
+			)[0];
+		expect(forbiddenSection).toContain(FORBIDDEN_NODE_TYPES.ArrowFunctionExpression);
+		expect(forbiddenSection).toContain('SDK code is a static subset of TypeScript');
+		expect(forbiddenSection).toContain('For AI tool parameters, call fromAi() directly.');
+		expect(forbiddenSection).not.toContain('instead of ($) => $.fromAi()');
+	});
+
 	it('names the safe non-builder methods', () => {
 		for (const name of SAFE_JSON_METHOD_NAMES) {
 			expect(SDK_LANGUAGE_REFERENCE).toContain(`JSON.${name}`);
