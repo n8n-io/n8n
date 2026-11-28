@@ -8,7 +8,17 @@ export const convertToDateTime = (value: string | Date | DateTime): DateTime | u
 	let converted: DateTime | undefined;
 
 	if (typeof value === 'string') {
-		converted = DateTime.fromJSDate(new Date(value));
+		// Date-only strings (e.g. '2023-06-16') parsed with new Date() become
+		// UTC midnight, which is the previous day west of UTC. Luxon parses them
+		// as local midnight, matching `.toDateTime()` semantics.
+		// Date-only strings parsed with new Date() become UTC midnight; Luxon
+		// parses them as local midnight, matching `.toDateTime()` semantics.
+		// Full timestamps keep the existing Date parsing to preserve their zone.
+		if (/^\d{4}(-\d{2}(-\d{2})?)?$/.test(value)) {
+			converted = DateTime.fromISO(value);
+		} else {
+			converted = DateTime.fromJSDate(new Date(value));
+		}
 		if (converted.invalidReason !== null) {
 			return;
 		}
