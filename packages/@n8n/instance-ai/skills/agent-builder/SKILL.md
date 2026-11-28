@@ -186,9 +186,13 @@ continue one, pass the exact `sessionId` from an earlier
 `agent_builder_call_agent` result. Never make one up.
 
 Do not call `agent_builder_call_agent` by default after a build. Run it through `call_tool` when
-the user reports a problem with the Agent: use it to reproduce the problem, and
-again to confirm your fix. It runs the configured tools and can have external side effects, so do
-not call it twice for the same check.
+the user asks to test the Agent or reports a problem with it: use it to reproduce the problem, and
+again to confirm your fix. When its result has `simulated: true`, external writes were simulated or
+blocked, so no real emails, messages, or writes were sent. Without it, the test used the real
+configured tools and can have external side effects, so do not call it twice for the same check.
+Describe simulated actions honestly as
+what the Agent would have done in the test run (for example, "in the test run it would have sent an
+email"), never as completed real actions.
 
 Run `agent_builder_call_agent` through `call_tool` to verify the Agent's behavior, not its channel
 integrations. After you configure a channel, tell the user to publish the

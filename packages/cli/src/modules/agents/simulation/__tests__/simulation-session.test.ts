@@ -82,6 +82,22 @@ describe('SimulationSession', () => {
 			'plan saved',
 		);
 		expect(session.takeDecision('tc-1')).toBeUndefined();
+		expect(session.takeLocalCall('tc-1')).toBe(true);
+		expect(session.takeLocalCall('tc-1')).toBe(false);
+	});
+
+	it('does not record a simulated tool that sent no request as a local call', async () => {
+		const session = new SimulationSession({
+			testChatId: 't',
+			world: makeWorld({ outcome: 'unsupported' }),
+			capabilities: [slackCapability],
+		});
+		const tool = nodeTool('send_slack', 'n8n-nodes-base.slack', async () => ({ skipped: true }));
+
+		await runTool(session, tool);
+
+		expect(session.takeDecision('tc-1')).toBeUndefined();
+		expect(session.takeLocalCall('tc-1')).toBe(false);
 	});
 
 	it('marks a call that the LLM mock answered as simulated_made_up', async () => {

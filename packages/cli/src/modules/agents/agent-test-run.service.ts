@@ -49,7 +49,9 @@ export type PrepareDraftRunResult =
 
 interface DraftRunState {
 	response: string;
+	toolCallInputs: Map<string, unknown>;
 	simulatedToolCalls: SimulatedToolCall[];
+	localToolCalls: LocalToolCall[];
 	suspensions: AgentTestRunSuspension[];
 	maxIterations: boolean;
 	errorChunk?: Extract<StreamChunk, { type: 'error' }>;
@@ -65,6 +67,12 @@ interface DraftRunConsumptionOptions {
 export interface SimulatedToolCall extends ToolCallSimulation {
 	toolCallId: string;
 	toolName: string;
+	input?: unknown;
+}
+
+export interface LocalToolCall {
+	toolCallId: string;
+	toolName: string;
 }
 
 /** Absent for a live run. */
@@ -72,6 +80,7 @@ export interface DraftRunSimulation {
 	/** Absent when the simulator was unavailable. */
 	worldId?: string;
 	toolCalls: SimulatedToolCall[];
+	localToolCalls?: LocalToolCall[];
 }
 
 export interface ExecutePreparedDraftRunInput
@@ -89,10 +98,13 @@ export interface ResumePreparedDraftRunInput
 	/** A draft resume runs in the preview chat or on no chat surface, never in n8n Chat. */
 	chatSurface?: 'preview';
 	initialResponse?: string;
+	/** `test` requires a test run so a resumed turn never runs live. */
+	chatMode?: AgentChatMode;
 }
 
 type ExecuteDraftRunInput = PrepareDraftRunInput &
-	Pick<ExecuteForChatConfig, 'message' | 'user' | 'source' | 'abortSignal'>;
+	Pick<ExecuteForChatConfig, 'message' | 'user' | 'source' | 'abortSignal'> &
+	Pick<ExecutePreparedDraftRunInput, 'chatMode'>;
 
 interface ResumeDraftRunInput
 	extends Omit<
@@ -108,6 +120,8 @@ interface ResumeDraftRunInput
 	/** A draft resume runs in the preview chat or on no chat surface, never in n8n Chat. */
 	chatSurface?: 'preview';
 	response: string;
+	/** `test` requires a test run so a resumed turn never runs live. */
+	chatMode?: AgentChatMode;
 }
 
 export const agentTestRunContinuationSchema = z
@@ -283,11 +297,12 @@ export class AgentTestRunService {
 		errorMode,
 		onChunk,
 		onExecutionRecorded,
+		chatMode,
 		...execution
 	}: ResumePreparedDraftRunInput): Promise<PreparedDraftRunResult> {
 		await this.assertCanRunDraft(execution.user, execution.projectId);
 		let executionId: string | undefined;
-		const simulation = this.simulationResolver(execution, '');
+		const simulation = this.simulationResolver(execution, '', chatMode === 'test');
 		const stream = this.agentExecutionOrchestratorService.resumeForChat({
 			...execution,
 			usePublishedVersion: false,
@@ -406,6 +421,7 @@ export class AgentTestRunService {
 		approved: boolean;
 		user: User;
 		source?: string;
+		chatMode?: AgentChatMode;
 		abortSignal?: AbortSignal;
 	}): Promise<AgentTestRunResult> {
 		const continuation = agentTestRunContinuationSchema.safeParse(input.continuation);
@@ -422,6 +438,7 @@ export class AgentTestRunService {
 			resumeData: { approved: input.approved },
 			user: input.user,
 			source: input.source,
+			...(input.chatMode ? { chatMode: input.chatMode } : {}),
 			response: continuation.data.response,
 			...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
 		});
@@ -495,7 +512,9 @@ export class AgentTestRunService {
 	): Promise<PreparedDraftRunResult> {
 		const state: DraftRunState = {
 			response: initialResponse,
+			toolCallInputs: new Map(),
 			simulatedToolCalls: [],
+			localToolCalls: [],
 			suspensions: [],
 			maxIterations: false,
 			observerFailed: false,
@@ -525,6 +544,7 @@ export class AgentTestRunService {
 						simulation: {
 							...(session.worldId ? { worldId: session.worldId } : {}),
 							toolCalls: state.simulatedToolCalls,
+							...(state.localToolCalls.length > 0 ? { localToolCalls: state.localToolCalls } : {}),
 						},
 					}
 				: {}),
@@ -566,11 +586,19 @@ export class AgentTestRunService {
 	): AgentExecutionStreamChunk {
 		if (!session || chunk.type !== 'tool-result') return chunk;
 		const simulation = session.takeDecision(chunk.toolCallId);
-		if (!simulation) return chunk;
+		// Only the session knows which calls were local: a call with no decision may have sent nothing.
+		const local = session.takeLocalCall(chunk.toolCallId);
+		if (!simulation) {
+			if (local)
+				state.localToolCalls.push({ toolCallId: chunk.toolCallId, toolName: chunk.toolName });
+			return chunk;
+		}
+		const input = state.toolCallInputs.get(chunk.toolCallId);
 		state.simulatedToolCalls.push({
 			toolCallId: chunk.toolCallId,
 			toolName: chunk.toolName,
 			...simulation,
+			...(input !== undefined ? { input } : {}),
 		});
 		return { ...chunk, simulation };
 	}
@@ -599,7 +627,9 @@ export class AgentTestRunService {
 			return;
 		}
 		if (state.errorChunk) return;
-		if (chunk.type === 'text-delta') {
+		if (chunk.type === 'tool-call') {
+			state.toolCallInputs.set(chunk.toolCallId, chunk.input);
+		} else if (chunk.type === 'text-delta') {
 			state.response += chunk.delta;
 		} else if (chunk.type === 'finish' && chunk.finishReason === 'max-iterations') {
 			state.maxIterations = true;

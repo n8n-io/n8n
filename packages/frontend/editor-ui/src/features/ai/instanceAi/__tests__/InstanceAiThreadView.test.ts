@@ -266,7 +266,7 @@ const InstanceAiAgentPreviewStub = defineComponent({
 	emits: ['preview-open-change', 'assistant-handoff'],
 	setup(props, { emit }) {
 		const openAgentChatPreview = inject<
-			((agentId: string, projectId: string) => boolean) | undefined
+			((agentId: string, projectId: string, sessionId?: string) => boolean) | undefined
 		>('openAgentChatPreview', undefined);
 
 		return () =>
@@ -321,6 +321,14 @@ const InstanceAiAgentPreviewStub = defineComponent({
 							onClick: () => openAgentChatPreview?.(props.agentId, props.projectId),
 						},
 						'Preview',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-agent-preview-card-link',
+							onClick: () => openAgentChatPreview?.(props.agentId, props.projectId, 'card-session'),
+						},
+						'Test run card',
 					),
 					h(
 						'button',
@@ -1209,6 +1217,29 @@ describe('InstanceAiThreadView', () => {
 				'preview-session-1',
 			);
 		});
+	});
+
+	it('drops a clicked test run card session on a later hand-off', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
+		const stub = () => getByTestId('instance-ai-agent-preview-stub');
+
+		await user.click(getByTestId('instance-ai-agent-preview-card-link'));
+		expect(stub()).toHaveAttribute('data-preview-session-id', 'card-session');
+
+		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+		expect(stub()).toHaveAttribute('data-preview-session-id', 'preview-session-1');
+	});
+
+	it('drops a clicked test run card session when the test chat dock closes', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+
+		await user.click(getByTestId('instance-ai-agent-preview-card-link'));
+		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
+
+		expect(getByTestId('instance-ai-agent-preview-stub')).not.toHaveAttribute(
+			'data-preview-session-id',
+		);
 	});
 
 	// The edit/accept distinction is the point of prompt_modified, so assert the

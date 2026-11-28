@@ -687,7 +687,10 @@ async function handleFixWithAiFromOffer(): Promise<void> {
 const isAgentTestDockOpen = ref(false);
 const agentPreviewChatTarget = useTemplateRef<HTMLElement>('agentPreviewChatTarget');
 
-function openAgentChatPreview(agentId: string, projectId: string): boolean {
+const requestedAgentPreviewSession = ref<{ agentId: string; threadId: string }>();
+
+function openAgentChatPreview(agentId: string, projectId: string, sessionId?: string): boolean {
+	requestedAgentPreviewSession.value = sessionId ? { agentId, threadId: sessionId } : undefined;
 	preview.openAgentPreview(agentId, projectId);
 	isAgentTestDockOpen.value = true;
 	return true;
@@ -697,6 +700,16 @@ watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, visible], [previousTabId]) => {
 		if (tabId !== previousTabId || !visible) isAgentTestDockOpen.value = false;
+	},
+	{ flush: 'sync' },
+);
+
+// A clicked card wins only while its dock is open. A hand-off closes the dock, so a later hand-off
+// for the same agent shows its own session.
+watch(
+	isAgentTestDockOpen,
+	(open) => {
+		if (!open) requestedAgentPreviewSession.value = undefined;
 	},
 	{ flush: 'sync' },
 );
@@ -715,13 +728,15 @@ function handleAgentTestDockOpenChange(open: boolean): void {
 // is sent, so the stored session is older until the targets load again.
 const lastHandoffSession = ref<{ agentId: string; threadId: string }>();
 
-/** The test chat session that the preview shows: the last hand-off, else the stored one. */
+/** The test chat session that the preview shows: a clicked card, the last hand-off, else the stored one. */
 const activeAgentPreviewSessionId = computed(() => {
 	const agentId = preview.activeAgentId.value;
 	// Check the agent of each session, so a hand-off for one agent keeps the stored session of another.
-	return [lastHandoffSession.value, agentTargets.state.value?.previewSession].find(
-		(session) => session?.agentId === agentId,
-	)?.threadId;
+	return [
+		requestedAgentPreviewSession.value,
+		lastHandoffSession.value,
+		agentTargets.state.value?.previewSession,
+	].find((session) => session?.agentId === agentId)?.threadId;
 });
 
 /** The user asks the Assistant about a test chat of the agent preview. */

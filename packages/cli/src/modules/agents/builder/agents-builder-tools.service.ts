@@ -77,10 +77,16 @@ import {
 	collectStandardApprovals,
 	InvalidAgentTestRunCheckpointError,
 	type AgentTestRunResult,
+	type DraftRunSimulation,
 } from '../agent-test-run.service';
 import { AgentsService } from '../agents.service';
+import { SafeTestingFlagGate } from '../simulation/safe-testing-flag-gate';
 import type { BuilderTrackFn } from './builder-config-telemetry';
 import { buildAgentTestPath } from './agent-builder-test-path';
+import {
+	formatAssistantTestRunSimulation,
+	SIMULATED_TEST_RUN_NOTE,
+} from './assistant-test-run-result';
 import { describeCallAgentFailure } from './call-agent-failure';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
@@ -571,6 +577,7 @@ export class AgentsBuilderToolsService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly safeTestingFlagGate: SafeTestingFlagGate,
 	) {}
 
 	/**
@@ -923,15 +930,20 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.CALL_AGENT)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.CALL_AGENT))
 			.description(
-				'Call it only when the user reports a problem with the agent, to reproduce it and ' +
-					'confirm the fix; not by default after a build. Tests the draft agent in the built-in ' +
+				'Call this tool only when the user asks to test the agent or reports a problem with it, ' +
+					'not by default after a build. It runs the draft agent in a simulated test run in ' +
 					'Preview chat, not channel integrations (triggers, platform context, delivery, or ' +
-					'replies). It runs the real configured tools and credentials, so external side ' +
-					'effects are possible. Omit sessionId to start a new conversation. To continue one, ' +
-					'pass the exact sessionId from an earlier result; never make one up. An unknown ' +
-					'sessionId starts a new conversation and the result has a sessionNote. Standard tool ' +
-					'approvals pause the test until the user decides in chat. Unsupported interactive ' +
-					'requests return approval_required with a Preview path.',
+					'replies). When the result has simulated: true, external tool calls were simulated or ' +
+					'blocked, so no real emails, messages, or writes were sent, and the result reports how ' +
+					'each tool call ran (simulated, blocked, or local). Without it, the run used the real ' +
+					'configured tools and credentials, so external side effects are possible. Always describe simulated ' +
+					'actions honestly as what the agent would have done in the test run (for example, ' +
+					'"in the test run it would have sent an email"), never as completed real actions. ' +
+					'Omit sessionId to start a new test conversation. To continue one, pass the exact ' +
+					'sessionId from an earlier result; never make one up. An unknown sessionId starts a ' +
+					'new conversation and the result has a sessionNote. Standard tool approvals pause the ' +
+					'test until the user decides in chat. Unsupported interactive requests return ' +
+					'approval_required with a Preview path.',
 			)
 			.input(
 				z.object({
@@ -956,6 +968,8 @@ export class AgentsBuilderToolsService {
 
 					const previewPath = buildAgentTestPath(projectId, agentId);
 					try {
+						// A test run needs the safe testing flag. Without it the test runs live, as before.
+						const testRun = await this.safeTestingFlagGate.isEnabled(user);
 						const { result, sessionNote } = await this.runDraftTest(
 							ctx,
 							agentId,
@@ -964,12 +978,14 @@ export class AgentsBuilderToolsService {
 							sessionId || undefined,
 							credentialProvider,
 							user,
+							testRun,
 						);
 
 						return await this.formatDraftTestResult(
 							result,
 							ctx,
 							agentId,
+							projectId,
 							user,
 							previewPath,
 							sessionNote,
@@ -1001,7 +1017,9 @@ export class AgentsBuilderToolsService {
 		sessionId: string | undefined,
 		credentialProvider: CredentialProvider,
 		user: User,
+		testRun: boolean,
 	): Promise<{ result: AgentTestRunResult; sessionNote?: string }> {
+		const chatMode = testRun ? { chatMode: 'test' as const } : {};
 		if (ctx.resumeData === undefined) {
 			const execute = async (id: string | undefined) =>
 				await this.agentTestRunService.executeDraftRun({
@@ -1012,6 +1030,7 @@ export class AgentsBuilderToolsService {
 					credentialProvider,
 					user,
 					source: 'instance-ai',
+					...chatMode,
 					...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
 				});
 			const result = await execute(sessionId);
@@ -1034,6 +1053,7 @@ export class AgentsBuilderToolsService {
 				approved: ctx.resumeData.approved,
 				user,
 				source: 'instance-ai',
+				...chatMode,
 				...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
 			}),
 			...(noted.success ? { sessionNote: noted.data.sessionNote } : {}),
@@ -1977,10 +1997,40 @@ export class AgentsBuilderToolsService {
 		return { ok: true, config: jsonpatch.applyPatch(jsonpatch.deepClone(config), ops).newDocument };
 	}
 
+	private async resolveAgentDisplayName(
+		agentId: string,
+		projectId: string,
+	): Promise<string | undefined> {
+		try {
+			const agent = await this.agentsService.findById(agentId, projectId);
+			const name = agent?.name?.trim();
+			return name && name.length > 0 ? name : undefined;
+		} catch {
+			return undefined;
+		}
+	}
+
+	private async describeSimulatedRun(
+		simulation: DraftRunSimulation,
+		agentId: string,
+		projectId: string,
+	) {
+		const agentName = await this.resolveAgentDisplayName(agentId, projectId);
+		return {
+			simulated: true as const,
+			agentId,
+			projectId,
+			...(agentName ? { agentName } : {}),
+			simulation: formatAssistantTestRunSimulation(simulation),
+			simulationNote: SIMULATED_TEST_RUN_NOTE,
+		};
+	}
+
 	private async formatDraftTestResult(
 		result: AgentTestRunResult,
 		ctx: InterruptibleToolContext<ApprovalSuspendPayload, ApprovalResumePayload>,
 		agentId: string,
+		projectId: string,
 		user: User,
 		previewPath: string,
 		sessionNote?: string,
@@ -2005,6 +2055,10 @@ export class AgentsBuilderToolsService {
 		// A run that stopped on the iteration cap did not finish its work. Without
 		// this the builder reads `completed` plus apologetic prose and retries.
 		if (result.status === 'completed' && result.maxIterations) {
+			// The calls before the cap were simulated too, so the builder must not report them as real.
+			const simulated = result.simulation
+				? await this.describeSimulatedRun(result.simulation, agentId, projectId)
+				: {};
 			return {
 				status: 'error',
 				code: 'max_iterations',
@@ -2016,10 +2070,22 @@ export class AgentsBuilderToolsService {
 				sessionId: result.sessionId,
 				response: result.response,
 				...(result.executionId ? { executionId: result.executionId } : {}),
+				...simulated,
 				...note,
 			};
 		}
-		if (result.status === 'completed') return { ...result, ...note };
+		if (result.status === 'completed') {
+			// A live run (safe testing flag off) keeps the plain result.
+			if (!result.simulation) return { ...result, ...note };
+			return {
+				status: 'completed' as const,
+				response: result.response,
+				sessionId: result.sessionId,
+				executionId: result.executionId,
+				...(await this.describeSimulatedRun(result.simulation, agentId, projectId)),
+				...note,
+			};
+		}
 
 		const approvals = collectStandardApprovals(result);
 		const firstApproval = approvals?.[0];
