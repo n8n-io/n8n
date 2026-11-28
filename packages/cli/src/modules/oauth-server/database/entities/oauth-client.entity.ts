@@ -14,6 +14,13 @@ export class OAuthClient extends WithTimestamps {
 	@Column({ type: String })
 	name: string;
 
+	@Column({ type: String, length: 255, nullable: true })
+	displayName: string | null;
+
+	/** Admin-supplied note shown in the connected client details. */
+	@Column({ type: 'text', nullable: true })
+	description: string | null;
+
 	@JsonColumn()
 	redirectUris: string[];
 

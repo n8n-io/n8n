@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
-import type { OAuthClientResponseDto } from '@n8n/api-types';
+import {
+	OAUTH_CLIENT_DESCRIPTION_MAX_LENGTH,
+	OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH,
+	isOAuthClientDisplayNameTooLong,
+	type OAuthClientResponseDto,
+} from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nDialog,
@@ -11,27 +17,115 @@ import {
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIcon,
+	N8nInput,
 	N8nText,
 	N8nTimeAgo,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { getClientBrand, scopeLabel } from '../clients.utils';
+import { getClientBrand, getClientDisplayName, scopeLabel } from '../clients.utils';
+import { useMCPStore } from '../mcp.store';
 
-const props = defineProps<{
-	client: OAuthClientResponseDto | null;
-	open: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		client: OAuthClientResponseDto | null;
+		open: boolean;
+		/** Refetch the clients page's list after a save. The overview passes `false`. */
+		refreshList?: boolean;
+	}>(),
+	{ refreshList: true },
+);
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
 	revoke: [client: OAuthClientResponseDto];
+	/** The display name or description was saved. Carries the row with the saved values. */
+	updated: [client: OAuthClientResponseDto];
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const rootStore = useRootStore();
+const rbacStore = useRBACStore();
+const mcpStore = useMCPStore();
+
+// The registration is shared by every user connected through it, so only managers edit it.
+const canEdit = computed(() => rbacStore.hasScope('mcp:manage'));
+
+const nameDraft = ref('');
+const descriptionDraft = ref('');
+const saving = ref(false);
+
+function resetDrafts() {
+	nameDraft.value = props.client ? getClientDisplayName(props.client) : '';
+	descriptionDraft.value = props.client?.description ?? '';
+}
+
+watch(
+	[() => props.open, () => props.client],
+	([open]) => {
+		if (open) resetDrafts();
+	},
+	{ immediate: true },
+);
+
+const displayNameToSave = computed(() => {
+	const trimmedName = nameDraft.value.trim();
+	return trimmedName === '' || trimmedName === props.client?.name ? null : trimmedName;
+});
+const trimmedDescription = computed(() => descriptionDraft.value.trim());
+const displayNameChanged = computed(
+	() => !!props.client && displayNameToSave.value !== props.client.displayName,
+);
+const descriptionChanged = computed(
+	() => !!props.client && trimmedDescription.value !== (props.client.description ?? ''),
+);
+// Not a native maxlength: that counts UTF-16 units, while registration and the API count code points.
+const nameTooLong = computed(() => isOAuthClientDisplayNameTooLong(nameDraft.value.trim()));
+const canSave = computed(
+	() => !nameTooLong.value && (displayNameChanged.value || descriptionChanged.value),
+);
+
+// A row is one consent (client × owner), so the owner is part of its identity.
+function isSameRow(a: OAuthClientResponseDto | null, b: OAuthClientResponseDto) {
+	return a?.id === b.id && a.owner?.id === b.owner?.id;
+}
+
+async function onSave() {
+	const client = props.client;
+	if (!client || !canSave.value || saving.value) return;
+
+	try {
+		saving.value = true;
+		const updated = await mcpStore.updateOAuthClientDetails(
+			client,
+			{
+				...(displayNameChanged.value ? { displayName: displayNameToSave.value } : {}),
+				...(descriptionChanged.value ? { description: trimmedDescription.value || null } : {}),
+			},
+			{ refreshList: props.refreshList },
+		);
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.mcp.oAuthClients.details.save.success'),
+		});
+		// The modal can show another client by now, if it was closed and reopened during the save.
+		if (isSameRow(props.client, client)) emit('updated', updated);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.oAuthClients.details.save.error'));
+	} finally {
+		saving.value = false;
+	}
+}
+
+function onNameEnter(event: KeyboardEvent) {
+	// This Enter commits an IME composition. It does not submit the form.
+	if (event.isComposing || event.keyCode === 229) return;
+	void onSave();
+}
 
 const brand = computed(() => (props.client ? getClientBrand(props.client.name) : null));
 
@@ -77,7 +171,7 @@ function onRevoke() {
 							<component :is="brand.icon" v-if="brand?.icon" :class="$style.icon" />
 							<N8nIcon v-else icon="mcp" :class="$style.icon" />
 						</span>
-						{{ client.name }}
+						{{ getClientDisplayName(client) }}
 					</span>
 				</N8nDialogTitle>
 				<N8nDialogDescription>{{ subtitle }}</N8nDialogDescription>
@@ -85,6 +179,89 @@ function onRevoke() {
 
 			<N8nDialogBody>
 				<div :class="$style.details">
+					<template v-if="canEdit">
+						<N8nText
+							tag="label"
+							for="mcp-client-details-name"
+							color="text-light"
+							size="small"
+							:class="$style['field-label']"
+						>
+							{{ i18n.baseText('settings.mcp.oAuthClients.details.name') }}
+						</N8nText>
+						<div :class="$style['name-field']">
+							<N8nInput
+								id="mcp-client-details-name"
+								v-model="nameDraft"
+								size="small"
+								:placeholder="client.name"
+								:disabled="saving"
+								data-test-id="mcp-client-details-name-input"
+								@keydown.enter="onNameEnter"
+							/>
+							<N8nText
+								v-if="nameTooLong"
+								color="danger"
+								size="xsmall"
+								data-test-id="mcp-client-details-name-too-long"
+							>
+								{{
+									i18n.baseText('settings.mcp.oAuthClients.details.name.tooLong', {
+										interpolate: { max: String(OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH) },
+									})
+								}}
+							</N8nText>
+							<N8nText
+								v-if="client.displayName"
+								color="text-light"
+								size="xsmall"
+								data-test-id="mcp-client-details-registered-name"
+							>
+								{{
+									i18n.baseText('settings.mcp.oAuthClients.details.registeredName', {
+										interpolate: { name: client.name },
+									})
+								}}
+							</N8nText>
+						</div>
+
+						<N8nText
+							tag="label"
+							for="mcp-client-details-description"
+							color="text-light"
+							size="small"
+							:class="$style['field-label']"
+						>
+							{{ i18n.baseText('settings.mcp.oAuthClients.details.description') }}
+						</N8nText>
+						<N8nInput
+							id="mcp-client-details-description"
+							v-model="descriptionDraft"
+							type="textarea"
+							size="small"
+							:autosize="{ minRows: 2, maxRows: 6 }"
+							:maxlength="OAUTH_CLIENT_DESCRIPTION_MAX_LENGTH"
+							:disabled="saving"
+							:placeholder="
+								i18n.baseText('settings.mcp.oAuthClients.details.description.placeholder')
+							"
+							data-test-id="mcp-client-details-description-input"
+						/>
+					</template>
+					<template v-else-if="client.description">
+						<N8nText color="text-light" size="small">
+							{{ i18n.baseText('settings.mcp.oAuthClients.details.description') }}
+						</N8nText>
+						<N8nText
+							color="text-dark"
+							size="small"
+							:class="$style.description"
+							data-test-id="mcp-client-details-description"
+						>
+							{{ client.description }}
+						</N8nText>
+					</template>
+
 					<template v-if="ownerLabel">
 						<N8nText color="text-light" size="small">
 							{{ i18n.baseText('settings.mcp.oAuthClients.details.connectedBy') }}
@@ -133,6 +310,15 @@ function onRevoke() {
 				<N8nButton variant="destructive" data-test-id="mcp-client-details-revoke" @click="onRevoke">
 					{{ i18n.baseText('settings.mcp.oAuthClients.table.action.revokeAccess') }}
 				</N8nButton>
+				<N8nButton
+					v-if="canEdit"
+					:disabled="!canSave"
+					:loading="saving"
+					data-test-id="mcp-client-details-save"
+					@click="onSave"
+				>
+					{{ i18n.baseText('generic.save') }}
+				</N8nButton>
 			</N8nDialogFooter>
 		</template>
 	</N8nDialog>
@@ -180,5 +366,22 @@ function onRevoke() {
 	flex-direction: column;
 	gap: var(--spacing--3xs);
 	min-width: 0;
+}
+
+.name-field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+
+/* Center the label on the first line of its input. */
+.field-label {
+	padding-top: var(--spacing--3xs);
+}
+
+.description {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
 }
 </style>
