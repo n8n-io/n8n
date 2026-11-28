@@ -61,6 +61,11 @@ describe('Test MicrosoftTeamsV2, chatMessage => create adaptive card errors', ()
 			{ type: 'AdaptiveCard', padding: 'x'.repeat(102400) },
 			'The adaptive card is larger than the 100 KB limit',
 		],
+		[
+			'an unsupported action',
+			{ type: 'AdaptiveCard', actions: [{ type: 'Action.Submit' }] },
+			'The adaptive card contains an unsupported action: Action.Submit',
+		],
 	])('rejects %s before any request', async (_label, card, message) => {
 		const error = await catchError(card);
 

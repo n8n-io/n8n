@@ -19,10 +19,50 @@ export type ChatMessageBody = {
 
 const MAX_ENVELOPE_BYTES = 102400;
 
+const UNSUPPORTED_ACTIONS = new Set(['Action.Submit', 'Action.ShowCard', 'Action.Execute']);
+
+/**
+ * Graph messages can run only `Action.OpenUrl`. Other interactive actions need a bot, so a card
+ * that carries one either fails or renders a button that does nothing. Walk `actions` arrays only,
+ * so a payload in an action's `data` is not mistaken for an action.
+ */
+function findUnsupportedAction(value: unknown): string | undefined {
+	if (Array.isArray(value)) {
+		for (const item of value) {
+			const found = findUnsupportedAction(item);
+			if (found !== undefined) return found;
+		}
+		return undefined;
+	}
+
+	if (!isRecord(value)) return undefined;
+
+	if (Array.isArray(value.actions)) {
+		for (const action of value.actions) {
+			if (
+				isRecord(action) &&
+				typeof action.type === 'string' &&
+				UNSUPPORTED_ACTIONS.has(action.type)
+			) {
+				return action.type;
+			}
+		}
+	}
+
+	for (const [key, child] of Object.entries(value)) {
+		if (key === 'data') continue;
+		const found = findUnsupportedAction(child);
+		if (found !== undefined) return found;
+	}
+
+	return undefined;
+}
+
 /**
  * Builds the Graph message envelope for an Adaptive Card. The card may arrive as an object or
- * as a JSON string. The card must be an object with `type: "AdaptiveCard"`, and the serialized
- * envelope must stay within Microsoft's 100 KB limit.
+ * as a JSON string. The card must be an object with `type: "AdaptiveCard"`, it must not carry an
+ * interactive action that needs a bot, and the serialized envelope must stay within Microsoft's
+ * 100 KB limit.
  */
 export function buildAdaptiveCardMessage(
 	this: IExecuteFunctions,
@@ -53,6 +93,19 @@ export function buildAdaptiveCardMessage(
 			'The adaptive card must have type "AdaptiveCard"',
 			{
 				itemIndex,
+			},
+		);
+	}
+
+	const unsupportedAction = findUnsupportedAction(parsed);
+	if (unsupportedAction !== undefined) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`The adaptive card contains an unsupported action: ${unsupportedAction}`,
+			{
+				itemIndex,
+				description:
+					'Microsoft Graph messages support only Action.OpenUrl. Use a bot to handle Action.Submit, Action.ShowCard or Action.Execute.',
 			},
 		);
 	}

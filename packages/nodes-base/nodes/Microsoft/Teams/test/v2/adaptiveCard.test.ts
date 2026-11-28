@@ -73,6 +73,43 @@ describe('Test MicrosoftTeamsV2, buildAdaptiveCardMessage', () => {
 		);
 	});
 
+	it.each(['Action.Submit', 'Action.ShowCard', 'Action.Execute'])(
+		'rejects the unsupported action %s',
+		(actionType) => {
+			const card = { type: 'AdaptiveCard', actions: [{ type: actionType }] };
+
+			expect(() => buildAdaptiveCardMessage.call(ctx, card, 0)).toThrow(
+				`The adaptive card contains an unsupported action: ${actionType}`,
+			);
+		},
+	);
+
+	it('rejects an unsupported action nested in an ActionSet', () => {
+		const card = {
+			type: 'AdaptiveCard',
+			body: [{ type: 'ActionSet', actions: [{ type: 'Action.Submit' }] }],
+		};
+
+		expect(() => buildAdaptiveCardMessage.call(ctx, card, 0)).toThrow(
+			'The adaptive card contains an unsupported action: Action.Submit',
+		);
+	});
+
+	it('allows Action.OpenUrl and ignores an action payload in data', () => {
+		const card = {
+			type: 'AdaptiveCard',
+			actions: [
+				{
+					type: 'Action.OpenUrl',
+					url: 'https://example.com',
+					data: { actions: [{ type: 'Action.Submit' }] },
+				},
+			],
+		};
+
+		expect(() => buildAdaptiveCardMessage.call(ctx, card, 0)).not.toThrow();
+	});
+
 	it('rejects an envelope larger than 100 KB', () => {
 		const big = { type: 'AdaptiveCard', padding: 'x'.repeat(102400) };
 
