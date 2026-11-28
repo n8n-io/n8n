@@ -403,6 +403,27 @@ describe('SubAgentRunner', () => {
 		);
 	});
 
+	it('stores the generated title of the child thread while the run is live', async () => {
+		const result = await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		const options = childAgent.stream.mock.calls[0][1];
+		await options?.onThreadTitle?.({ threadId: result.threadId, title: 'Research' });
+		expect(agentExecutionService.applyGeneratedTitle).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId,
+				agentId: runtimeSource.source.sourceId,
+				threadId: result.threadId,
+			}),
+			'Research',
+			null,
+		);
+	});
+
 	it('uses the captured job pause signal without an ancestor lookup', async () => {
 		const shouldPause = vi.fn().mockResolvedValue(true);
 		await runner.run(spawnRequest, {

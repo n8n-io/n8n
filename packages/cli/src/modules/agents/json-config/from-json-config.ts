@@ -685,7 +685,8 @@ async function applyMemoryFromConfig(
 		});
 	}
 
-	memory.titleGeneration({ sync: true });
+	// The run does not wait for the title: the host stores and pushes it through `onThreadTitle`.
+	memory.titleGeneration(true);
 
 	agent.memory(memory);
 }

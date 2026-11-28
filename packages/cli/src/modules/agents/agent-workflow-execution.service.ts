@@ -535,6 +535,10 @@ export class AgentWorkflowExecutionService {
 				}),
 				...modelStreamStallOptions(this.aiConfig),
 				...(telemetry ? { telemetry } : {}),
+				// Only stored agents have a recorded thread that shows a title.
+				...(recordingParams
+					? { onThreadTitle: this.turnExecutionService.threadTitleHandler(recordingParams) }
+					: {}),
 			},
 			{
 				budget,
