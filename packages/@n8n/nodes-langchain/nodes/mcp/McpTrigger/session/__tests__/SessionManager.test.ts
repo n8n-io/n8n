@@ -106,6 +106,28 @@ describe('SessionManager', () => {
 			expect(server.close).toHaveBeenCalled();
 		});
 
+		it('should drop the session and close its server when the store fails to unregister it', async () => {
+			const server = createMockServer();
+			await manager.registerSession('session-1', server, createMockTransport('session-1'));
+			mockStore.unregister.mockRejectedValueOnce(new Error('Connection is closed.'));
+
+			await expect(manager.destroySession('session-1')).rejects.toThrow('Connection is closed.');
+
+			expect(manager.getSession('session-1')).toBeUndefined();
+			expect(server.close).toHaveBeenCalled();
+		});
+
+		it('should close the session here before it waits for the store', async () => {
+			const server = createMockServer();
+			await manager.registerSession('session-1', server, createMockTransport('session-1'));
+			mockStore.unregister.mockReturnValueOnce(new Promise<void>(() => {}));
+
+			void manager.destroySession('session-1');
+
+			await vi.waitFor(() => expect(server.close).toHaveBeenCalled());
+			expect(manager.getSession('session-1')).toBeUndefined();
+		});
+
 		it('should not recurse when closing the server re-enters destroySession', async () => {
 			const server = createMockServer();
 			// Production wires transport.onclose -> cleanupSession -> destroySession, so
@@ -124,6 +146,46 @@ describe('SessionManager', () => {
 			// Deleted before close, so the re-entrant call finds nothing and skips close.
 			expect(server.close).toHaveBeenCalledTimes(1);
 			expect(manager.getSession('session-1')).toBeUndefined();
+		});
+	});
+
+	describe('detachSession', () => {
+		it('should drop the session here and keep it registered in the store', async () => {
+			const server = createMockServer();
+			const transport = createMockTransport('session-1', 'streamableHttp');
+			transport.onclose = vi.fn();
+			await manager.registerSession('session-1', server, transport);
+
+			await manager.detachSession('session-1');
+
+			expect(manager.getSession('session-1')).toBeUndefined();
+			expect(mockStore.unregister).not.toHaveBeenCalled();
+			expect(mockStore.clearTools).toHaveBeenCalledWith('session-1');
+			expect(transport.onclose).toBeUndefined();
+			expect(server.close).toHaveBeenCalled();
+		});
+
+		it('should ignore an unknown session', async () => {
+			await expect(manager.detachSession('unknown')).resolves.toBeUndefined();
+
+			expect(mockStore.clearTools).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getSessionIds', () => {
+		it('should list the registered sessions', async () => {
+			await manager.registerSession(
+				'session-1',
+				createMockServer(),
+				createMockTransport('session-1'),
+			);
+			await manager.registerSession(
+				'session-2',
+				createMockServer(),
+				createMockTransport('session-2'),
+			);
+
+			expect(manager.getSessionIds()).toEqual(['session-1', 'session-2']);
 		});
 	});
 

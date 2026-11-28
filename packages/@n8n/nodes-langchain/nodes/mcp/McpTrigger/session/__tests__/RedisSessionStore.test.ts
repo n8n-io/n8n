@@ -56,6 +56,15 @@ describe('RedisSessionStore', () => {
 			expect(mockPublisher.clear).toHaveBeenCalledWith('mcp-session:session-123');
 			expect(store.getTools('session-123')).toBeUndefined();
 		});
+
+		it('should drop the cached tools even when the session key cannot be cleared', async () => {
+			store.setTools('session-123', [mock<Tool>()]);
+			mockPublisher.clear.mockRejectedValueOnce(new Error('Connection is closed.'));
+
+			await expect(store.unregister('session-123')).rejects.toThrow('Connection is closed.');
+
+			expect(store.getTools('session-123')).toBeUndefined();
+		});
 	});
 
 	describe('tool management', () => {
