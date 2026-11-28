@@ -331,6 +331,16 @@ describe('Mapping Utils', () => {
 				).toBe("foo['with spaces\\' here']");
 			});
 
+			test('should keep dot access after a root bracket key', () => {
+				expect(propertyNameFromExpression("{{ $json['my obj'].id }}")).toBe("['my obj'].id");
+			});
+
+			test('should keep dot access after a root bracket key from another node', () => {
+				expect(propertyNameFromExpression("{{ $('Node').item.json['my obj'].user.id }}")).toBe(
+					"['my obj'].user.id",
+				);
+			});
+
 			test('should handle nested bracket access', () => {
 				expect(
 					propertyNameFromExpression(

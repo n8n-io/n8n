@@ -84,7 +84,10 @@ export function propertyNameFromExpression(expression: string, forceBracketAcces
 		.replace(/^{{\s*|\s*}}$/g, '')
 		.replace(/^(\$\(.*\)\.item\.json|\$json|\$node\[.*\]\.json)\.?(.*)/, '$2');
 
-	const isSingleBracketAccess = propPath.startsWith('[') && !propPath.slice(1).includes('[');
+	// Only a path that is one bracket segment, such as "['a b']", can be unwrapped.
+	// "['a b'].c" is nested and must stay as it is.
+	const isSingleBracketAccess =
+		propPath.startsWith('[') && propPath.endsWith(']') && !propPath.slice(1).includes('[');
 	if (isSingleBracketAccess && !forceBracketAccess) {
 		// "['Key with spaces']" -> "Key with spaces"
 		return unquote(propPath.slice(1, -1));
