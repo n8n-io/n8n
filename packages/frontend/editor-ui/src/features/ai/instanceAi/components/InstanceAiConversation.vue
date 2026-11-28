@@ -521,7 +521,11 @@ watch(
 
 watch([chatInputRef, pendingComposerDraft], ([input, draft]) => {
 	if (!input || !draft) return;
-	input.setPrefill({ text: draft.text, prefillType: draft.prefillType });
+	input.setPrefill({
+		text: draft.text,
+		prefillType: draft.prefillType,
+		...(draft.prefillId ? { prefillId: draft.prefillId } : {}),
+	});
 	generatedComposerDraft.value = draft.text;
 	pendingComposerDraft.value = null;
 	void nextTick(focusChatInputIfFocusIsIdle);

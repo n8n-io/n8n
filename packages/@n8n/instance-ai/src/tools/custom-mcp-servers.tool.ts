@@ -249,7 +249,11 @@ async function withApproval<T extends object>(
 	if (grantable && resumeData?.approved && resumeData.scope === 'session') {
 		await context.grantSessionToolApproval?.(sessionGrantKey(action));
 	}
-	return { success: true, ...(await run()) };
+	const result = await run();
+	// The editor reloads an open server page on this stamp. A new server is on no open page.
+	return action === 'create'
+		? { success: true, ...result }
+		: { success: true, serverMutated: true, ...result };
 }
 
 function requireService(context: InstanceAiContext): InstanceAiCustomMcpServerService {

@@ -1,10 +1,11 @@
 import type { McpServerResponse } from '@n8n/api-types';
-import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import type { Scope } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
+import { computed, defineComponent } from 'vue';
 
 import {
 	MCP_SERVER_CONNECTIONS_VIEW,
@@ -63,11 +64,50 @@ const BUILDER: Scope[] = [
 const VIEWER: Scope[] = ['mcpServer:read', 'mcpServer:list'];
 
 // The Contents tab loads the tools. Its own test covers it.
+const McpServerContentsTabStub = defineComponent({
+	props: ['assistantAvailable', 'assistantOpen', 'refreshKey'],
+	emits: ['build-with-assistant'],
+	template: `<div data-test-id="mcp-server-contents" :data-refresh-key="refreshKey">
+		<button
+			v-if="assistantAvailable"
+			data-test-id="stub-build"
+			type="button"
+			:disabled="assistantOpen"
+			@click="$emit('build-with-assistant')"
+		/>
+	</div>`,
+});
+
+// The panel loads its suggestion. Its own test covers it.
+const McpServerAssistantPanelStub = defineComponent({
+	props: ['server', 'prefill'],
+	emits: ['close', 'changed'],
+	template: `<div data-test-id="mcp-assistant-panel" :data-server-id="server.id">
+		<span data-test-id="stub-prefill">{{ prefill ? JSON.stringify(prefill) : '' }}</span>
+		<button data-test-id="stub-changed" type="button" @click="$emit('changed')" />
+		<button data-test-id="stub-close" type="button" @click="$emit('close')" />
+	</div>`,
+});
+
 const renderComponent = createComponentRenderer(McpServerView, {
 	global: {
-		stubs: { McpServerContentsTab: { template: '<div data-test-id="mcp-server-contents" />' } },
+		stubs: {
+			McpServerContentsTab: McpServerContentsTabStub,
+			McpServerAssistantPanel: McpServerAssistantPanelStub,
+		},
 	},
 });
+
+const openServer = vi.fn();
+
+/** The Assistant of the shell, with or without its docked panel. */
+function provideAssistant({ available = true, panel = true } = {}) {
+	capabilityRegistry.provide(capabilities.createMcpServerAssistantHandoff, () => ({
+		available: computed(() => available),
+		openServer,
+	}));
+	if (panel) componentRegistry.register('assistant-panel', { template: '<div />' });
+}
 
 async function renderPage(scopes: Scope[] = BUILDER, readOnly = false) {
 	capabilityRegistry.provide(capabilities.projectPermissions, {
@@ -97,7 +137,122 @@ describe('McpServerView', () => {
 
 	afterEach(() => {
 		capabilityRegistry.clear();
+		componentRegistry.clear();
 		vi.clearAllMocks();
+	});
+
+	describe('Assistant', () => {
+		it('shows no "Assistant" when the instance has no Assistant', async () => {
+			provideAssistant({ available: false });
+			await renderPage();
+
+			expect(screen.queryByTestId('mcp-server-assistant-button')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('stub-build')).not.toBeInTheDocument();
+		});
+
+		it('shows no "Assistant" to a project viewer', async () => {
+			provideAssistant();
+			await renderPage(VIEWER);
+
+			expect(screen.queryByTestId('mcp-server-assistant-button')).not.toBeInTheDocument();
+		});
+
+		it('docks the Assistant panel of the server beside the page', async () => {
+			provideAssistant();
+			await renderPage();
+			expect(screen.queryByTestId('mcp-assistant-panel')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('mcp-server-assistant-button'));
+
+			expect(screen.getByTestId('mcp-assistant-panel')).toHaveAttribute(
+				'data-server-id',
+				server.id,
+			);
+			expect(screen.getByTestId('mcp-server-assistant-button')).toBeDisabled();
+			expect(screen.getByTestId('stub-prefill')).toHaveTextContent('');
+		});
+
+		it('closes the panel', async () => {
+			provideAssistant();
+			await renderPage();
+			await userEvent.click(screen.getByTestId('mcp-server-assistant-button'));
+
+			await userEvent.click(screen.getByTestId('stub-close'));
+
+			expect(screen.queryByTestId('mcp-assistant-panel')).not.toBeInTheDocument();
+			expect(screen.getByTestId('mcp-server-assistant-button')).toBeEnabled();
+		});
+
+		it('opens the panel with a prompt to edit from "Build with Assistant"', async () => {
+			provideAssistant();
+			await renderPage();
+
+			await userEvent.click(screen.getByTestId('stub-build'));
+
+			expect(JSON.parse(screen.getByTestId('stub-prefill').textContent ?? '')).toEqual({
+				text: 'Build out the MCP server "Sales tools". It is for [team] to [what they need to do].\n\nAdd the workflows that fit, and give each tool a clear name and description.',
+				prefillType: 'mcp_server_build_prompt',
+			});
+			expect(screen.getByTestId('stub-build')).toBeDisabled();
+			expect(openServer).not.toHaveBeenCalled();
+		});
+
+		it('opens the full Assistant on the server when the page has no panel', async () => {
+			provideAssistant({ panel: false });
+			await renderPage();
+
+			await userEvent.click(screen.getByTestId('stub-build'));
+
+			expect(openServer).toHaveBeenCalledWith({
+				serverId: server.id,
+				projectId: 'project-1',
+				serverName: 'Sales tools',
+			});
+			expect(screen.queryByTestId('mcp-assistant-panel')).not.toBeInTheDocument();
+		});
+
+		it('shows each change of the Assistant on the page at once', async () => {
+			provideAssistant();
+			await renderPage();
+			await userEvent.click(screen.getByTestId('mcp-server-assistant-button'));
+			const refreshKey = screen.getByTestId('mcp-server-contents').dataset.refreshKey;
+			api.getMcpServer.mockResolvedValue({ ...server, name: 'Revenue tools' });
+
+			await userEvent.click(screen.getByTestId('stub-changed'));
+
+			await waitFor(() =>
+				expect(screen.getByTestId('mcp-server-name')).toHaveTextContent('Revenue tools'),
+			);
+			expect(screen.getByTestId('mcp-server-contents').dataset.refreshKey).not.toBe(refreshKey);
+			expect(screen.getByTestId('mcp-assistant-panel')).toBeInTheDocument();
+		});
+
+		it('keeps the page and the panel when the reload after a change fails', async () => {
+			provideAssistant();
+			await renderPage();
+			await userEvent.click(screen.getByTestId('mcp-server-assistant-button'));
+			api.getMcpServer.mockRejectedValue(
+				new ResponseError('Server error', { httpStatusCode: 500 }),
+			);
+
+			await userEvent.click(screen.getByTestId('stub-changed'));
+
+			await waitFor(() => expect(api.getMcpServer).toHaveBeenCalledTimes(2));
+			expect(screen.getByTestId('mcp-server-name')).toHaveTextContent('Sales tools');
+			expect(screen.getByTestId('mcp-assistant-panel')).toBeInTheDocument();
+		});
+
+		it('goes back to the list when the Assistant deletes the server', async () => {
+			provideAssistant();
+			await renderPage();
+			await userEvent.click(screen.getByTestId('mcp-server-assistant-button'));
+			api.getMcpServer.mockRejectedValue(new ResponseError('Not found', { httpStatusCode: 404 }));
+
+			await userEvent.click(screen.getByTestId('stub-changed'));
+
+			await waitFor(() => expect(push).toHaveBeenCalledWith({ name: MCP_SERVERS_LIST_VIEW }));
+			expect(screen.queryByTestId('mcp-server-contents')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('tabs', () => {

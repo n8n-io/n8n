@@ -223,6 +223,13 @@ export interface TagNames {
 	nameOf(id: string): string | undefined;
 }
 
+export interface McpServerAssistantHandoff {
+	/** Whether the Assistant is ready to open a thread on a custom MCP server. */
+	available: ComputedRef<boolean>;
+	/** Opens the full Assistant on the newest thread of the server, or on a new one. */
+	openServer(input: { serverId: string; projectId: string; serverName?: string }): Promise<boolean>;
+}
+
 export interface AppAssistantHandoff {
 	/** Whether the Assistant is ready to open an App thread. */
 	available: ComputedRef<boolean>;

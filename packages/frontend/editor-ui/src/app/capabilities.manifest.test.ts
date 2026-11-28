@@ -33,11 +33,13 @@ const {
 	offerToExposeAllWorkflows,
 	createSelfHealingChatHandoff,
 	createAppAssistantHandoff,
+	createMcpServerAssistantHandoff,
 } = vi.hoisted(() => ({
 	openDocumentStores: new Map<string, { mergeSettings: ReturnType<typeof vi.fn> }>(),
 	offerToExposeAllWorkflows: vi.fn(),
 	createSelfHealingChatHandoff: vi.fn(),
 	createAppAssistantHandoff: vi.fn(),
+	createMcpServerAssistantHandoff: vi.fn(),
 }));
 
 vi.mock('@/features/ai/instanceAi/composables/useSelfHealingChatHandoff', () => ({
@@ -45,6 +47,9 @@ vi.mock('@/features/ai/instanceAi/composables/useSelfHealingChatHandoff', () => 
 }));
 vi.mock('@/features/ai/instanceAi/composables/useAppAssistantHandoff', () => ({
 	useAppAssistantHandoff: createAppAssistantHandoff,
+}));
+vi.mock('@/features/ai/instanceAi/composables/useMcpServerAssistantHandoff', () => ({
+	useMcpServerAssistantHandoff: createMcpServerAssistantHandoff,
 }));
 
 vi.mock(
@@ -93,6 +98,10 @@ describe('registerShellCapabilities', () => {
 			createAppAssistantHandoff,
 		);
 		expect(createAppAssistantHandoff).not.toHaveBeenCalled();
+		expect(capabilityRegistry.use(capabilities.createMcpServerAssistantHandoff)).toBe(
+			createMcpServerAssistantHandoff,
+		);
+		expect(createMcpServerAssistantHandoff).not.toHaveBeenCalled();
 	});
 
 	it('forwards openModal to the UI store', () => {

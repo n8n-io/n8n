@@ -37,6 +37,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		threadProvenanceMetadata: vi.fn(() => ({ thread_source: 'evals' })),
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 		deriveInstanceContextReach: profiles.deriveInstanceContextReach,
+		parseMcpServerTarget: profiles.parseMcpServerTarget,
 		WorkSummaryAccumulator: profiles.WorkSummaryAccumulator,
 		mergeInstanceContextReach: profiles.mergeInstanceContextReach,
 		suspendedInstanceContextSchema: profiles.suspendedInstanceContextSchema,

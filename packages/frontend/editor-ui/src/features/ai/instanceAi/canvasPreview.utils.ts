@@ -401,7 +401,8 @@ const SKILL_WRITE_ACTIONS = new Set(['create', 'update']);
 
 const UNTRUSTED_DATA_PATTERN = /^<untrusted_data\b[^>]*>\n([\s\S]*)\n<\/untrusted_data>$/;
 
-function unwrapUntrustedToolResult(result: unknown): unknown {
+/** The tool result inside the `<untrusted_data>` wrapper of a tool with `untrustedOutput()`. */
+export function unwrapUntrustedToolResult(result: unknown): unknown {
 	if (!isRecord(result) || result.type !== 'content' || !Array.isArray(result.value)) {
 		return result;
 	}

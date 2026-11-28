@@ -651,4 +651,107 @@ describe('McpServerContentsTab', () => {
 		const empty = await findByTestId('mcp-server-empty-contents');
 		expect(within(empty).getByTestId('mcp-server-add-workflow')).toBeInTheDocument();
 	});
+
+	describe('the Assistant', () => {
+		function renderWith(props: Record<string, unknown>) {
+			return renderComponent({
+				props: { projectId: PROJECT_ID, serverId: SERVER_ID, ...props },
+				global: { plugins: [createTestRouter()] },
+			});
+		}
+
+		it('offers "Build with the Assistant" on an empty server', async () => {
+			api.getMcpServer.mockResolvedValue(server([]));
+			const { findByTestId, getByTestId, emitted } = renderWith({ assistantAvailable: true });
+
+			const card = await findByTestId('mcp-server-build-with-assistant');
+			expect(card).toHaveTextContent('Build with the Assistant');
+			expect(
+				within(getByTestId('mcp-server-empty-contents')).getByTestId('mcp-server-add-workflow'),
+			).toBeInTheDocument();
+
+			await userEvent.click(getByTestId('mcp-server-build-with-assistant-button'));
+
+			expect(emitted('build-with-assistant')).toHaveLength(1);
+		});
+
+		it('disables "Build with Assistant" while the panel is open', async () => {
+			api.getMcpServer.mockResolvedValue(server([]));
+			const { findByTestId } = renderWith({ assistantAvailable: true, assistantOpen: true });
+
+			expect(await findByTestId('mcp-server-build-with-assistant-button')).toBeDisabled();
+		});
+
+		it('does not offer the Assistant without it, or to a project viewer', async () => {
+			api.getMcpServer.mockResolvedValue(server([]));
+			const first = renderWith({ assistantAvailable: false });
+			await first.findByTestId('mcp-server-empty-contents');
+			expect(first.queryByTestId('mcp-server-build-with-assistant')).not.toBeInTheDocument();
+			first.unmount();
+
+			permissions.canUpdate = false;
+			const second = renderWith({ assistantAvailable: true });
+			await second.findByTestId('mcp-server-empty-contents');
+			expect(second.queryByTestId('mcp-server-build-with-assistant')).not.toBeInTheDocument();
+		});
+
+		it('loads the tools again on a change, and highlights the new rows', async () => {
+			const first = tool();
+			const added = tool({
+				id: '0190a8d6-4a2e-7000-8000-0000000000a2',
+				targetId: 'wf-6',
+				toolName: 'escalate_to_on_call',
+			});
+			api.getMcpServer.mockResolvedValue(server([first]));
+			const { findAllByTestId, rerender } = renderWith({ refreshKey: 0 });
+			await findAllByTestId('mcp-tool-row');
+			api.getMcpServer.mockResolvedValue(server([first, added]));
+
+			await rerender({ refreshKey: 1 });
+
+			await waitFor(async () => expect(await findAllByTestId('mcp-tool-row')).toHaveLength(2));
+			const rows = await findAllByTestId('mcp-tool-row');
+			const byName = (name: string) => rows.find((row) => row.dataset.toolName === name);
+			expect(byName('escalate_to_on_call')).toHaveAttribute('data-highlighted', 'true');
+			expect(byName('get_campaign_numbers')).toHaveAttribute('data-highlighted', 'false');
+		});
+
+		it('keeps the newest tools when an older reload answers last', async () => {
+			const first = tool();
+			const added = tool({
+				id: '0190a8d6-4a2e-7000-8000-0000000000a2',
+				targetId: 'wf-6',
+				toolName: 'escalate_to_on_call',
+			});
+			api.getMcpServer.mockResolvedValue(server([first]));
+			const { findAllByTestId, rerender } = renderWith({ refreshKey: 0 });
+			await findAllByTestId('mcp-tool-row');
+			const slow = deferred<McpServerDetailResponse>();
+			api.getMcpServer.mockReturnValueOnce(slow.promise);
+			await rerender({ refreshKey: 1 });
+			api.getMcpServer.mockResolvedValueOnce(server([first, added]));
+			await rerender({ refreshKey: 2 });
+			await waitFor(async () => expect(await findAllByTestId('mcp-tool-row')).toHaveLength(2));
+
+			slow.resolve(server([first]));
+			await slow.promise;
+			await new Promise((resolve) => setTimeout(resolve));
+
+			expect(await findAllByTestId('mcp-tool-row')).toHaveLength(2);
+		});
+
+		it('highlights no row when a reload replaces the first load', async () => {
+			const firstLoad = deferred<McpServerDetailResponse>();
+			api.getMcpServer.mockReturnValueOnce(firstLoad.promise);
+			const { findAllByTestId, rerender } = renderWith({ refreshKey: 0 });
+			api.getMcpServer.mockResolvedValueOnce(server([tool()]));
+
+			await rerender({ refreshKey: 1 });
+			firstLoad.resolve(server([]));
+
+			const rows = await findAllByTestId('mcp-tool-row');
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toHaveAttribute('data-highlighted', 'false');
+		});
+	});
 });

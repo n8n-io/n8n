@@ -428,7 +428,11 @@ const activeArtifactId = ref<string>();
 
 // The preview shows the subject of a new thread until the server has its bindings, which the
 // first message writes. Only a saved resource: a pending one needs a thread that the server knows.
-const launchSubject = launch?.subject?.pending ? undefined : launch?.subject;
+// The MCP server subject has no pending state, so the check narrows the union first.
+const launchSubject =
+	launch?.subject && 'pending' in launch.subject && launch.subject.pending
+		? undefined
+		: launch?.subject;
 const projectAndName = ({ projectId, name }: { projectId: string; name?: string }) => ({
 	projectId,
 	...(name ? { name } : {}),

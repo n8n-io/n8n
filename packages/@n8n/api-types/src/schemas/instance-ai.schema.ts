@@ -1758,8 +1758,26 @@ export type InstanceAiAppSubject = z.infer<typeof instanceAiAppSubjectSchema>;
 export const instanceAiAgentSubjectSchema = instanceAiAgentAttachmentSchema;
 export type InstanceAiAgentSubject = z.infer<typeof instanceAiAgentSubjectSchema>;
 
+export const INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY = 'instanceAiMcpServerTarget';
+
+export const instanceAiMcpServerTargetSchema = z.object({
+	serverId: z.string().uuid(),
+	projectId: z.string().min(1),
+	name: z.string().max(255).optional(),
+});
+export type InstanceAiMcpServerTarget = z.infer<typeof instanceAiMcpServerTargetSchema>;
+
+/** A custom MCP server that its page hands off to a thread. A thread works on one server. */
+export const instanceAiMcpServerSubjectSchema = z.object({
+	type: z.literal('mcpServer'),
+	id: z.string().uuid(),
+	projectId: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+});
+export type InstanceAiMcpServerSubject = z.infer<typeof instanceAiMcpServerSubjectSchema>;
+
 /**
- * The resource of the page that opened a thread: an agent or an app. The
+ * The resource of the page that opened a thread: an agent, an app, or a custom MCP server. The
  * Assistant agent binds it in the thread metadata, so its tools work on that
  * resource and the page finds the thread again. Only the subject binds a thread:
  * an attached or mentioned resource is a reference for one turn. Add a
@@ -1768,6 +1786,7 @@ export type InstanceAiAgentSubject = z.infer<typeof instanceAiAgentSubjectSchema
 export const instanceAiThreadSubjectSchema = z.discriminatedUnion('type', [
 	instanceAiAgentSubjectSchema,
 	instanceAiAppSubjectSchema,
+	instanceAiMcpServerSubjectSchema,
 ]);
 export type InstanceAiThreadSubject = z.infer<typeof instanceAiThreadSubjectSchema>;
 
@@ -2015,6 +2034,7 @@ export class InstanceAiCloudBrowserReturnControlRequest extends Z.class({
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
  * - `app_builder_page` — Instance AI hand-off from the app builder
+ * - `mcp_server_page` — the Assistant panel or hand-off of a custom MCP server page
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `self_healing_result` — continue from a saved Assistant report in the Inbox
  * - `migration_report`: fix one finding of the major-version migration report
@@ -2038,6 +2058,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'credentials_list',
 	'agent_builder_page',
 	'app_builder_page',
+	'mcp_server_page',
 	'agent_preview',
 	'self_healing_result',
 	'migration_report',
@@ -2111,6 +2132,8 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'workflow_attachment_opener',
 	'contextual_followup',
 	'preferences_suggestion', // Experiment cleanup (127_preferences_empty_state)
+	'mcp_server_build_prompt',
+	'mcp_server_suggestion',
 ] as const;
 export type InstanceAiPrefillType = (typeof INSTANCE_AI_PREFILL_TYPES)[number];
 

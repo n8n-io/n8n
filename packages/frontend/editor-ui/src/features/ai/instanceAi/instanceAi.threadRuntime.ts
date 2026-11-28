@@ -13,6 +13,7 @@ import {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	aiPreferencesAppliedPayloadSchema,
 	instanceAiEventSchema,
+	instanceAiMcpServerTargetSchema,
 	isSafeObjectKey,
 	resolveBuilderToolName,
 	WORKFLOW_BUILDER_TOOL_NAMES,
@@ -89,6 +90,7 @@ import {
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
+	INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	NEW_CONVERSATION_TITLE,
@@ -295,6 +297,16 @@ export function getPendingAppTargetFromThreadMetadata(
 		return undefined;
 	}
 	return { appId: target.appId, projectId: target.projectId };
+}
+
+/** The custom MCP server that the thread works on, from the server page that opened it. */
+export function getMcpServerTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const parsed = instanceAiMcpServerTargetSchema.safeParse(
+		metadata?.[INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY],
+	);
+	return parsed.success ? parsed.data : undefined;
 }
 
 /** The approval mode that the backend uses for the run of a message sent now. */

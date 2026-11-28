@@ -76,6 +76,7 @@ import InstanceAiConversation from '../components/InstanceAiConversation.vue';
 import ApprovalModeSelector from '@/features/ai/instanceAi/components/ApprovalModeSelector.vue';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
+import { getMcpServerMutations } from './mcpServerMutations';
 import {
 	INSTANCE_AI_EMBED_SUBJECT_KEY,
 	threadTargetsSubject,
@@ -106,11 +107,15 @@ const emit = defineEmits<{
 	'update:building': [building: boolean];
 	'update:working': [working: boolean];
 	close: [];
+	/** A tool call of the Assistant changed the subject. Only a custom MCP server emits it. */
+	'subject-changed': [];
 	'message-sent': [];
 	'content-change': [hasContent: boolean];
 }>();
 
 const slots = defineSlots<{
+	/** A row under the header that names the subject. */
+	subject?: () => unknown;
 	/** A host's welcome state, rendered by the conversation until the thread has its first message. */
 	empty?: () => unknown;
 	'composer-start'?: () => unknown;
@@ -300,10 +305,35 @@ function flushQueuedHandoff(threadId: string) {
 	stashHandoff(threadId, queued);
 }
 
+/** A pre-fill that the host set before the panel had a thread, with the subject it is for. */
+const queuedPrefill = ref<{ draft: PendingComposerDraft; subjectKey: string } | null>(null);
+
+function subjectKeyOf(subject: InstanceAiEmbedSubject): string {
+	return `${subject.type}:${subject.projectId ?? ''}:${subject.id}`;
+}
+
+// A pre-fill for one subject must not reach the thread of the next subject.
+watch(
+	() => subjectKeyOf(props.subject),
+	() => {
+		queuedPrefill.value = null;
+	},
+);
+
+/** The conversation of the thread reads the stash when it mounts. */
+function flushQueuedPrefill(threadId: string) {
+	const queued = queuedPrefill.value;
+	if (!queued) return;
+	queuedPrefill.value = null;
+	if (queued.subjectKey !== subjectKeyOf(props.subject)) return;
+	stashPendingComposerDraft(threadId, queued.draft);
+}
+
 /** Every path that discovers a thread id routes through here so a queued
  * hand-off always lands before the host (and the conversation) see the id. */
 function emitThreadId(threadId: string) {
 	flushQueuedHandoff(threadId);
+	flushQueuedPrefill(threadId);
 	emit('update:threadId', threadId);
 }
 
@@ -338,12 +368,26 @@ function handoff(context: InstanceAiHandoffContext, initialDraft?: PendingCompos
 }
 
 /**
- * Puts n8n-authored text into the mounted conversation's composer without
- * sending it. The host (e.g. the agent builder) owns the wording and the
- * pre-fill tag. A no-op while no thread is mounted yet.
+ * Puts n8n-authored text into the conversation's composer without sending it.
+ * The host (e.g. the agent builder) owns the wording and the pre-fill tag.
+ * Before a conversation mounts, the text waits for the thread that the panel
+ * opens next.
  */
 function setPrefill(prefill: InstanceAiPrefillPayload) {
-	activeChat.value?.setPrefill(prefill);
+	const conversation = activeChat.value;
+	if (conversation) {
+		conversation.setPrefill(prefill);
+		return;
+	}
+	queuedPrefill.value = {
+		draft: {
+			text: prefill.text,
+			prefillType: prefill.prefillType,
+			...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+		},
+		subjectKey: subjectKeyOf(props.subject),
+	};
+	if (activeThreadId.value) flushQueuedPrefill(activeThreadId.value);
 }
 
 /**
@@ -488,6 +532,9 @@ async function resumeOrMintThread() {
  */
 const threadIdVerified = ref(!props.threadId);
 const activeThreadId = computed(() => (threadIdVerified.value ? props.threadId : undefined));
+watch(activeThreadId, (threadId) => {
+	if (threadId) flushQueuedPrefill(threadId);
+});
 /** The verified thread runs on the Assistant agent, not on the current runtime. */
 const isAgentThread = ref(false);
 /** The credit total of the open thread, from the store of its runtime. */
@@ -700,11 +747,32 @@ const ThreadScope = defineComponent({
 		const working = useIsAgentWorking(runtime);
 		watch(working, (value) => emit('update:working', value), { immediate: true });
 		useAgentMutationRefresh(runtime);
+		const serverMutations = computed(() =>
+			props.subject.type === 'mcpServer'
+				? getMcpServerMutations(runtime.artifactTurns, props.subject.id)
+				: [],
+		);
+		const seenServerMutations = new Set<string>();
+		let seededServerMutations = false;
+		watch(
+			serverMutations,
+			(toolCallIds) => {
+				const unseen = toolCallIds.filter((toolCallId) => !seenServerMutations.has(toolCallId));
+				for (const toolCallId of unseen) seenServerMutations.add(toolCallId);
+				// The changes of the history are already on the page: the thread at mount, and the
+				// messages that hydration loads. `sync` sees the hydrating flag before it turns off.
+				if (unseen.length > 0 && seededServerMutations && !runtime.isHydratingThread) {
+					emit('subject-changed');
+				}
+				seededServerMutations = true;
+			},
+			{ immediate: true, flush: 'sync' },
+		);
 		const buildingArtifactIds = useBuildingArtifactIds(runtime);
 		watch(
 			() => buildingArtifactIds.value.has(props.subject.id),
 			(value) => scopeEmit('update:building', value),
-			{ immediate: true },
+			{ immediate: true, flush: 'sync' },
 		);
 		return () =>
 			h(
@@ -825,6 +893,7 @@ function handleCloseShortcut(event: KeyboardEvent) {
 				</KeyboardShortcutTooltip>
 			</template>
 		</InstanceAiViewHeader>
+		<slot name="subject" />
 		<div :class="$style.body">
 			<AssistantAgentPanelThread
 				v-if="activeThreadId && isAgentThread && props.subject.type === 'agent'"

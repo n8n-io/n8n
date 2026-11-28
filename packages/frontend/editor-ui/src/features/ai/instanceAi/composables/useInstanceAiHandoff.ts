@@ -26,6 +26,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
+	INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
@@ -229,6 +230,8 @@ export function clearPendingHandoffContext(threadId: string): void {
 export interface PendingComposerDraft {
 	text: string;
 	prefillType: InstanceAiPrefillTypeReported;
+	/** The host's id for the pre-fill, which the message telemetry reports. */
+	prefillId?: string;
 }
 
 export function stashPendingComposerDraft(threadId: string, draft: PendingComposerDraft): void {
@@ -261,6 +264,7 @@ export function getPendingComposerDraft(threadId: string): PendingComposerDraft 
 			prefillType: isInstanceAiPrefillTypeReported(parsed.prefillType)
 				? parsed.prefillType
 				: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+			...(typeof parsed.prefillId === 'string' ? { prefillId: parsed.prefillId } : {}),
 		};
 	} catch {
 		return legacy;
@@ -563,6 +567,14 @@ export async function provisionSubjectThread(
 		targetMetadata = subject.pending
 			? { [INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: target }
 			: { [INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [target] };
+	} else if (subject.type === 'mcpServer') {
+		targetMetadata = {
+			[INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY]: {
+				serverId: subject.id,
+				projectId: subject.projectId,
+				...(subject.name ? { name: subject.name } : {}),
+			},
+		};
 	}
 
 	try {

@@ -38,6 +38,8 @@ const props = defineProps<{
 	workflowHref: string | null;
 	/** Open the row on mount, for a deep link. */
 	initiallyExpanded?: boolean;
+	/** The Assistant added the tool. The row shows a short highlight. */
+	highlighted?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -105,8 +107,16 @@ function saveDescription() {
 
 <template>
 	<div
-		:class="[$style.row, { [$style.expanded]: expanded, [$style.warning]: !!tool.brokenReason }]"
+		:class="[
+			$style.row,
+			{
+				[$style.expanded]: expanded,
+				[$style.warning]: !!tool.brokenReason,
+				[$style.highlighted]: highlighted,
+			},
+		]"
 		data-test-id="mcp-tool-row"
+		:data-highlighted="String(!!highlighted)"
 		:data-tool-name="tool.toolName"
 	>
 		<div v-if="drafting && !expanded" :class="$style.drafting" data-test-id="mcp-tool-row-drafting">
@@ -313,6 +323,16 @@ function saveDescription() {
 
 	&.warning {
 		border-color: var(--border-color--warning);
+	}
+
+	&.highlighted {
+		animation: highlight var(--duration--slowest) ease-out;
+	}
+}
+
+@keyframes highlight {
+	from {
+		background-color: var(--background--success);
 	}
 }
 

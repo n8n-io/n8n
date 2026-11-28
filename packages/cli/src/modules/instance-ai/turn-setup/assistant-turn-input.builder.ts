@@ -34,6 +34,7 @@ import {
 	observeWorkflowSetupStates,
 	orchestratorAgentId,
 	parseAppTargets,
+	parseMcpServerTarget,
 	parsePendingAppTarget,
 	saveAgentBuilderTarget,
 	type InstanceAiContext,
@@ -65,6 +66,7 @@ import { InstanceAiSkillsService, SKILLS } from '../instance-ai-skills.service';
 import {
 	asStoredThreadContextSection,
 	buildAppTargetsBlock,
+	buildMcpServerTargetBlock,
 	buildAutoApprovalModeBlock,
 	buildCurrentDateTimeBlock,
 	buildInstanceUrlsBlock,
@@ -493,10 +495,13 @@ export class AssistantTurnInputBuilder {
 						loadReplayedHistory,
 					)
 				: '';
-		const appTargetsBlock =
+		const [appTargetsBlock, mcpServerTargetBlock] =
 			resumeReason === undefined
-				? await this.resolveAppTargetsBlock(context, thread?.metadata ?? {})
-				: '';
+				? await Promise.all([
+						this.resolveAppTargetsBlock(context, thread?.metadata ?? {}),
+						this.resolveMcpServerTargetBlock(context, thread?.metadata ?? {}),
+					])
+				: ['', ''];
 		const [boundProject, pastConversationsSection] = await Promise.all([
 			this.resolveBoundProject(context),
 			isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
@@ -524,6 +529,7 @@ export class AssistantTurnInputBuilder {
 			onboardingSkill ? buildOnboardingSkillBlock(onboardingSkill) : undefined,
 			threadArtifactsBlock,
 			appTargetsBlock,
+			mcpServerTargetBlock,
 			projectSection ? buildProjectContextBlock(projectSection) : undefined,
 			resumeReason === undefined
 				? buildInstanceUrlsBlock({
@@ -642,6 +648,33 @@ export class AssistantTurnInputBuilder {
 			apps.flatMap((app) => (app ? [app] : [])),
 			parsePendingAppTarget(metadata) !== undefined,
 		);
+	}
+
+	/**
+	 * The custom MCP server of the page that opened the thread, read per turn so that a
+	 * rename reaches the model. A server that is gone, or a service that is off, sends nothing.
+	 */
+	private async resolveMcpServerTargetBlock(
+		context: InstanceAiContext,
+		metadata: Record<string, unknown>,
+	): Promise<string> {
+		const target = parseMcpServerTarget(metadata);
+		const service = context.customMcpServerService;
+		if (!target || !service) return '';
+		try {
+			const server = await service.getServer({
+				serverId: target.serverId,
+				projectId: target.projectId,
+			});
+			return buildMcpServerTargetBlock(server);
+		} catch (error) {
+			// The server can be gone, or the user can have lost access. The turn runs without it.
+			this.logger.warn('Assistant could not name the custom MCP server of this thread', {
+				serverId: target.serverId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return '';
+		}
 	}
 
 	/**

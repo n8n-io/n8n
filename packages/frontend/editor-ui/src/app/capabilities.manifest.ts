@@ -29,6 +29,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import { useSelfHealingChatHandoff } from '@/features/ai/instanceAi/composables/useSelfHealingChatHandoff';
 import { useAppAssistantHandoff } from '@/features/ai/instanceAi/composables/useAppAssistantHandoff';
+import { useMcpServerAssistantHandoff } from '@/features/ai/instanceAi/composables/useMcpServerAssistantHandoff';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 import { mcpDiscoverySettings } from '@/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscoverySettings';
 // EOF Experiment cleanup
@@ -217,6 +218,10 @@ export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.tagNames, tagNames);
 	capabilityRegistry.provide(capabilities.typeDescriptions, typeDescriptions);
 	capabilityRegistry.provide(capabilities.createAppAssistantHandoff, useAppAssistantHandoff);
+	capabilityRegistry.provide(
+		capabilities.createMcpServerAssistantHandoff,
+		useMcpServerAssistantHandoff,
+	);
 	capabilityRegistry.provide(capabilities.appsFeedbackFormUrl, appsFeedbackFormUrl);
 	capabilityRegistry.provide(capabilities.customMcpServersEnabled, customMcpServersEnabled);
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
