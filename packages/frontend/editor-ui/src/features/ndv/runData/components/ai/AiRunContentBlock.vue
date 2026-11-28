@@ -105,8 +105,8 @@ watch(
 				:model-value="renderType"
 				:class="$style.rawSwitch"
 				:options="[
-					{ label: 'Rendered', value: 'rendered' },
-					{ label: 'JSON', value: 'json' },
+					{ label: i18n.baseText('runData.rendered'), value: 'rendered' },
+					{ label: i18n.baseText('runData.json'), value: 'json' },
 				]"
 				@update:model-value="onRenderTypeChange"
 			/>
