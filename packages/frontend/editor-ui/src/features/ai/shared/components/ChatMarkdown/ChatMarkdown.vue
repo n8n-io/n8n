@@ -25,6 +25,7 @@ const props = withDefaults(
 		openAgentChatPreview?: (id: string, projectId: string) => boolean;
 		openSkillPreview?: (id: string) => boolean;
 		openAppPreview?: (id: string) => boolean;
+		openMcpServerPreview?: (id: string, projectId?: string) => boolean;
 		artifactLinks?: Pick<
 			ReturnType<typeof useArtifactLinks>,
 			'artifactHref' | 'routerPathHref' | 'toRouterPath'
@@ -65,6 +66,7 @@ const markdown = useChatMarkdownOptions(() => props.options);
 				:open-agent-chat-preview="props.openAgentChatPreview"
 				:open-skill-preview="props.openSkillPreview"
 				:open-app-preview="props.openAppPreview"
+				:open-mcp-server-preview="props.openMcpServerPreview"
 				:artifact-links="props.artifactLinks"
 			/>
 		</template>

@@ -23,6 +23,7 @@ export const ARTIFACT_TAB_ICONS: Record<ArtifactTab['type'], IconName> = {
 	agent: 'robot',
 	skill: 'book-open',
 	app: 'layout-template',
+	'mcp-server': 'mcp',
 };
 
 type TabsLayout = Pick<AssistantThreadTabsState, 'tabs' | 'closedTabs'>;
@@ -76,6 +77,24 @@ function fromStoredTab(tab: AssistantThreadTab): ArtifactTab {
 }
 
 /**
+ * Prefer live artifact fields, but keep the stored tab's `projectId` and real `name`
+ * when the live entry has none (e.g. a partial mutation result with a fallback name).
+ */
+function mergeLiveWithStored(live: ArtifactTab, stored: AssistantThreadTab): ArtifactTab {
+	const useStoredName = live.isFallbackName === true && Boolean(stored.name);
+	const name = useStoredName ? stored.name : live.name;
+	const projectId = live.projectId ?? stored.projectId;
+	if (!useStoredName && projectId === live.projectId) return live;
+	const { isFallbackName: _ignored, ...rest } = live;
+	return {
+		...rest,
+		name,
+		...(projectId ? { projectId } : {}),
+		...(!useStoredName && live.isFallbackName ? { isFallbackName: true } : {}),
+	};
+}
+
+/**
  * The tabs a user has open in a thread, on top of the artifacts the thread
  * produced. Until the thread has stored tabs, every artifact is open. After
  * that, the stored layout keeps its order and its closed tabs, and artifacts
@@ -122,7 +141,8 @@ export function useOpenArtifactTabs({
 			seenKeys.add(key);
 			// The live artifact has the current name and build state. A stored tab
 			// renders on its own when its artifact is not in the loaded messages.
-			result.push(artifactsByKey.get(key) ?? fromStoredTab(tab));
+			const live = artifactsByKey.get(key);
+			result.push(live ? mergeLiveWithStored(live, tab) : fromStoredTab(tab));
 		}
 		for (const tab of artifacts) {
 			const key = tabKey(tab);
@@ -217,6 +237,17 @@ export function useOpenArtifactTabs({
 			},
 			new Set([key]),
 		);
+	}
+
+	/** Fill in a missing projectId on a stored tab (e.g. learned from a resource link). */
+	function setTabProjectId(tabId: string, projectId: string) {
+		const current = layout.value;
+		if (!current) return;
+		const index = current.tabs.findIndex((tab) => tab.id === tabId && !tab.projectId);
+		if (index === -1) return;
+		const nextTabs = [...current.tabs];
+		nextTabs[index] = { ...nextTabs[index], projectId };
+		layout.value = { ...current, tabs: nextTabs };
 	}
 
 	/** Move an open tab to a new position in the tab order. */
@@ -328,6 +359,7 @@ export function useOpenArtifactTabs({
 		closeTab,
 		reopenTab,
 		openTab,
+		setTabProjectId,
 		moveTab,
 		saveTabs,
 		storeDefaultTabs,

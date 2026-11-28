@@ -60,6 +60,27 @@ describe('buildThreadArtifactsContext', () => {
 		});
 	});
 
+	it('indexes custom MCP servers', () => {
+		expect(
+			buildThreadArtifactsContext(
+				[
+					entry({
+						type: 'mcp-server',
+						id: 'srv-1',
+						name: 'Marketing tools',
+						projectId: 'proj-1',
+					}),
+				],
+				'srv-1',
+			),
+		).toEqual({
+			artifacts: [
+				{ type: 'mcp-server', id: 'srv-1', name: 'Marketing tools', projectId: 'proj-1' },
+			],
+			activeId: 'srv-1',
+		});
+	});
+
 	it('keeps the newest tabs and the focused one when over the cap', () => {
 		const entries = Array.from({ length: 25 }, (_, index) =>
 			entry({ type: 'workflow', id: `wf-${index}`, name: `Workflow ${index}` }),

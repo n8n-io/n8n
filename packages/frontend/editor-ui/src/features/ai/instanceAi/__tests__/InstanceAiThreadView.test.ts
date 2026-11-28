@@ -427,6 +427,45 @@ const InstanceAiAppPreviewStub = defineComponent({
 		}),
 });
 
+const InstanceAiMcpServerPreviewStub = defineComponent({
+	props: {
+		serverId: { type: String, required: true },
+		projectId: { type: String, required: true },
+		refreshKey: { type: Number, default: 0 },
+	},
+	setup: (props) => () =>
+		h('div', {
+			'data-test-id': 'instance-ai-mcp-server-preview-stub',
+			'data-server-id': props.serverId,
+			'data-project-id': props.projectId,
+			'data-refresh-key': String(props.refreshKey),
+		}),
+});
+
+const InstanceAiMcpServerEmptyStateStub = defineComponent({
+	props: {
+		serverId: { type: String, required: true },
+		projectId: { type: String, required: true },
+	},
+	emits: ['select'],
+	setup:
+		(props, { emit }) =>
+		() =>
+			h(
+				'button',
+				{
+					'data-test-id': 'instance-ai-mcp-server-empty-state-stub',
+					'data-server-id': props.serverId,
+					onClick: () =>
+						emit('select', {
+							text: 'Add the workflows that fit this server.',
+							prefillType: 'mcp_server_suggestion',
+						}),
+				},
+				'Suggestion',
+			),
+});
+
 // Picking a resource emits a fixed workflow, so the tests do not depend on the resource search.
 const InstanceAiResourcePickerStub = defineComponent({
 	props: {
@@ -464,6 +503,8 @@ const defaultViewStubs = {
 	AgentSection: AgentSectionStub,
 	InstanceAiDataTablePreview: InstanceAiDataTablePreviewStub,
 	InstanceAiAppPreview: InstanceAiAppPreviewStub,
+	InstanceAiMcpServerPreview: InstanceAiMcpServerPreviewStub,
+	InstanceAiMcpServerEmptyState: InstanceAiMcpServerEmptyStateStub,
 	InstanceAiArtifactsPanel: InstanceAiArtifactsPanelStub,
 	InstanceAiResourcePicker: InstanceAiResourcePickerStub,
 };
@@ -630,6 +671,31 @@ describe('InstanceAiThreadView', () => {
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-app-preview-stub')).toHaveAttribute('data-app-id', 'app-2');
 		});
+	});
+
+	it('opens a custom MCP server tab and shows its empty-state suggestion when the thread targets a server', async () => {
+		const serverId = '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f71';
+		store.threads[0].metadata = {
+			instanceAiMcpServerTarget: {
+				serverId,
+				projectId: 'project-1',
+				name: 'Marketing tools',
+			},
+		};
+		thread.producedArtifacts = new Map([
+			[
+				serverId,
+				{ type: 'mcp-server', id: serverId, projectId: 'project-1', name: 'Marketing tools' },
+			],
+		]) as typeof thread.producedArtifacts;
+		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		const previewStub = await findByTestId('instance-ai-mcp-server-preview-stub');
+		expect(previewStub).toHaveAttribute('data-server-id', serverId);
+		expect(previewStub).toHaveAttribute('data-project-id', 'project-1');
+
+		const emptyState = await findByTestId('instance-ai-mcp-server-empty-state-stub');
+		expect(emptyState).toHaveAttribute('data-server-id', serverId);
 	});
 
 	describe('skill drafts', () => {

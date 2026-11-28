@@ -7,6 +7,7 @@ import {
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiNodesAttachment,
+	type InstanceAiPrefillPayload,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
@@ -48,6 +49,8 @@ import InstanceAiCanvasRunOverlay from '../components/InstanceAiCanvasRunOverlay
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
+import InstanceAiMcpServerEmptyState from '@/features/ai/instanceAi/components/InstanceAiMcpServerEmptyState.vue';
+import InstanceAiMcpServerPreview from '@/features/ai/instanceAi/components/InstanceAiMcpServerPreview.vue';
 import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview.vue';
 import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
@@ -97,7 +100,10 @@ import {
 import { buildFixWithAiPrompt } from '../fixWithAi';
 import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { getAppTargetsFromThreadMetadata } from '../instanceAi.threadRuntime';
+import {
+	getAppTargetsFromThreadMetadata,
+	getMcpServerTargetFromThreadMetadata,
+} from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext, createDisplayedExecutionReader } from '../threadArtifacts';
 import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from '../useCanvasPreview';
@@ -472,6 +478,15 @@ const appTargets = computed(() => {
 	if (targets.some(({ appId }) => appId === launchSubject.id)) return targets;
 	return [...targets, { appId: launchSubject.id, ...projectAndName(launchSubject) }];
 });
+// The custom MCP server of the thread metadata, or of the launch subject until the first turn binds it.
+const mcpServerTarget = computed(() => {
+	const fromMetadata = getMcpServerTargetFromThreadMetadata(
+		threadsStore.threadsById.get(props.threadId)?.metadata,
+	);
+	if (fromMetadata) return fromMetadata;
+	if (launchSubject?.type !== 'mcpServer') return undefined;
+	return { serverId: launchSubject.id, ...projectAndName(launchSubject) };
+});
 // An app page opens its chat with `?appId=`. Only an app of this thread opens.
 const requestedAppId = computed(() => {
 	const appId = route.query[INSTANCE_AI_APP_ID_QUERY];
@@ -500,6 +515,7 @@ const thread = useAssistantArtifactThread({
 	pendingWorkflowAttachment: handoff.workflow,
 	agentTargets: () => agentTargets.state.value ?? launchAgentTargets,
 	appTargets: () => appTargets.value,
+	mcpServerTarget: () => mcpServerTarget.value,
 	activeArtifactId: () => activeArtifactId.value,
 });
 provideArtifactThread(thread);
@@ -545,6 +561,7 @@ const preview = useCanvasPreview({
 	threadId: () => props.threadId,
 	initialAgentId: () => launchAgentTargets?.bound?.agentId,
 	initialAppId: () => requestedAppId.value ?? appTargets.value[0]?.appId,
+	initialMcpServerId: () => mcpServerTarget.value?.serverId,
 	tabsStorage: {
 		// A new thread has no stored tabs, and the server does not know it before its first message.
 		load: async () =>
@@ -562,6 +579,7 @@ const canvasRunState = draftPreview.useCanvasRunState(preview);
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAppPreview', preview.openAppPreview);
+provide('openMcpServerPreview', preview.openMcpServerPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
@@ -945,6 +963,12 @@ function onComposerChipRemoved(chipId: string): void {
 	}
 }
 
+function onMcpServerSuggestion(prefill: InstanceAiPrefillPayload): void {
+	messageTelemetry.setPrefill(prefill);
+	panel.value?.setDraft(prefill.text);
+	panel.value?.focusInput();
+}
+
 /** The user removed some of the nodes from a chip. */
 function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 	const { chip, clientContextPatch } = toNodesComposerAttachment(attachment, []);
@@ -1103,6 +1127,13 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						@update:input-draft="mentions.handleTextChange"
 						@composer-attachment-removed="onComposerChipRemoved"
 					>
+						<template v-if="mcpServerTarget" #empty-state>
+							<InstanceAiMcpServerEmptyState
+								:project-id="mcpServerTarget.projectId"
+								:server-id="mcpServerTarget.serverId"
+								@select="onMcpServerSuggestion"
+							/>
+						</template>
 						<!-- Passed only with an offer, so the chat keeps its empty state and spacing. -->
 						<template v-if="activeFixWithAiOffer" #inline-offers>
 							<InstanceAiFixWithAiPanel
@@ -1280,6 +1311,15 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 								:refresh-key="preview.appRefreshKey.value"
 								:assistant-working="preview.isActiveAppInLiveTurn.value"
 								@deleted="preview.closeTab"
+							/>
+							<InstanceAiMcpServerPreview
+								v-if="preview.isPreviewVisible.value && preview.activeMcpServer.value"
+								:class="$style.previewSlot"
+								:project-id="preview.activeMcpServer.value.projectId"
+								:server-id="preview.activeMcpServer.value.id"
+								:refresh-key="preview.mcpServerRefreshKey.value"
+								@deleted="preview.closeTab"
+								@renamed="preview.renameMcpServerTab(preview.activeMcpServer.value.id, $event)"
 							/>
 							<InstanceAiAgentPreview
 								v-if="

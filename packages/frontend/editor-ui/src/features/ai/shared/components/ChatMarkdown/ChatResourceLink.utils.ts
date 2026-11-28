@@ -8,16 +8,19 @@ export const resourceIcons: Record<string, InstanceType<typeof ResourceIcon>['$p
 	assistant: 'message-circle',
 	skill: 'graduation-cap',
 	app: 'layout-grid',
+	'mcp-server': 'mcp',
 };
 export const INTERNAL_ROUTE_PATTERNS = [
 	{ pattern: /^\/workflow\/([a-zA-Z0-9]+)/, type: 'workflow' },
 	{ pattern: /^\/(?:home\/)?credentials(?:\/|$)/, type: 'credential' },
 	{ pattern: /^\/(?:home\/)?data-?tables(?:\/|$)/, type: 'data-table' },
 	{ pattern: /^\/home\/agents(?:\/|$)/, type: 'agent' },
+	{ pattern: /^\/home\/mcp-servers(?:\/|$)/, type: 'mcp-server' },
 	{ pattern: /^\/projects\/[^/]+\/credentials(?:\/|$)/, type: 'credential' },
 	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
 	{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
 	{ pattern: /^\/projects\/[^/]+\/apps(?:\/|$)/, type: 'app' },
+	{ pattern: /^\/projects\/[^/]+\/mcp-servers(?:\/|$)/, type: 'mcp-server' },
 ];
 
 /**
@@ -31,12 +34,16 @@ export function parseResourceRoute(
 	const workflow = /^\/workflow\/([a-zA-Z0-9]+)\/?$/.exec(pathname);
 	if (workflow) return { type: 'workflow', id: workflow[1] };
 
-	const projectResource = /^\/projects\/([^/]+)\/(datatables|agents|apps)\/([^/]+)\/?$/.exec(
-		pathname,
-	);
+	const projectResource =
+		/^\/projects\/([^/]+)\/(datatables|agents|apps|mcp-servers)\/([^/]+)\/?$/.exec(pathname);
 	if (!projectResource) return undefined;
 	const [, projectId, segment, id] = projectResource;
-	const type = { datatables: 'data-table', agents: 'agent', apps: 'app' }[segment];
+	const type = {
+		datatables: 'data-table',
+		agents: 'agent',
+		apps: 'app',
+		'mcp-servers': 'mcp-server',
+	}[segment];
 	return type ? { type, id: decodeResourceId(id), projectId } : undefined;
 }
 
@@ -83,10 +90,12 @@ export function buildResourceUrl(type: string, id: string, projectId: string | u
 		if (type === 'data-table') return `/projects/${projectId}/datatables/${encodedId}`;
 		if (type === 'credential') return `/projects/${projectId}/credentials/${encodedId}`;
 		if (type === 'agent') return `/projects/${projectId}/agents/${encodedId}`;
+		if (type === 'mcp-server') return `/projects/${projectId}/mcp-servers/${encodedId}`;
 	}
 	if (type === 'workflow') return `/workflow/${encodedId}`;
 	if (type === 'credential') return `/home/credentials/${encodedId}`;
 	if (type === 'data-table') return '/home/datatables';
 	if (type === 'agent') return '/home/agents';
+	if (type === 'mcp-server') return '/home/mcp-servers';
 	return '#';
 }

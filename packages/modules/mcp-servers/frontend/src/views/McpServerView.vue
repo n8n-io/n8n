@@ -17,14 +17,13 @@ import {
 	type PathItem,
 } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
-import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/frontend-module-sdk';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, useId, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import McpServerAssistantPanel from '../components/McpServerAssistantPanel.vue';
 import McpServerConnectionsTab from '../components/McpServerConnectionsTab.vue';
 import McpServerContentsTab from '../components/McpServerContentsTab.vue';
 import RenameMcpServerDialog from '../components/RenameMcpServerDialog.vue';
@@ -38,6 +37,25 @@ import {
 } from '../mcp-servers.constants';
 import { getMcpServerPermissions } from '../mcp-servers.permissions';
 
+const props = withDefaults(
+	defineProps<{
+		/** Rendered inside an Assistant preview tab: hides breadcrumbs and switches tabs locally. */
+		artifactMode?: boolean;
+		artifactProjectId?: string;
+		artifactServerId?: string;
+	}>(),
+	{
+		artifactMode: false,
+		artifactProjectId: undefined,
+		artifactServerId: undefined,
+	},
+);
+
+const emit = defineEmits<{
+	deleted: [serverId: string];
+	renamed: [name: string];
+}>();
+
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -47,12 +65,22 @@ const { serverUrl, copyServerUrl, copyShareLink } = useMcpServerUrl();
 const latestFetch = useLatestFetch();
 const assistant = capabilityRegistry.use(capabilities.createMcpServerAssistantHandoff)();
 
-const projectId = computed(() => String(route.params.projectId));
-const serverId = computed(() => String(route.params.serverId));
+const projectId = computed(() =>
+	props.artifactMode && props.artifactProjectId !== undefined
+		? props.artifactProjectId
+		: String(route.params.projectId),
+);
+const serverId = computed(() =>
+	props.artifactMode && props.artifactServerId !== undefined
+		? props.artifactServerId
+		: String(route.params.serverId),
+);
 const permissions = computed(() => getMcpServerPermissions(projectId.value));
 const connections = useMcpServerConnections(projectId, serverId);
-/** The Assistant on this page changes the server, so a project viewer does not get it. */
-const canUseAssistant = computed(() => assistant.available.value && permissions.value.canUpdate);
+/** The Assistant changes the server, so a project viewer does not get it. Artifact mode is already in the Assistant. */
+const canUseAssistant = computed(
+	() => !props.artifactMode && assistant.available.value && permissions.value.canUpdate,
+);
 
 const server = ref<McpServerResponse | null>(null);
 /** The share page omits broken tools, so Share waits for at least one working tool. */
@@ -66,12 +94,9 @@ const renaming = ref(false);
 const deleteOpen = ref(false);
 const deleting = ref(false);
 
-const assistantOpen = ref(false);
-const assistantPrefill = ref<InstanceAiPrefillPayload>();
+const localTab = ref<string>(MCP_SERVER_VIEW);
 /** A new value makes the Build tab load the server again. */
 const contentsRefreshKey = ref(0);
-/** The shell gives the docked panel. Without it, the page opens the full Assistant. */
-const hasAssistantPanel = computed(() => componentRegistry.has('assistant-panel'));
 
 const tabs = computed(() => [
 	{ value: MCP_SERVER_VIEW, label: i18n.baseText('mcpServers.server.tabs.contents') },
@@ -86,9 +111,10 @@ const tabs = computed(() => [
 	},
 ]);
 
-const selectedTab = computed(() =>
-	route.name === MCP_SERVER_CONNECTIONS_VIEW ? MCP_SERVER_CONNECTIONS_VIEW : MCP_SERVER_VIEW,
-);
+const selectedTab = computed(() => {
+	if (props.artifactMode) return localTab.value;
+	return route.name === MCP_SERVER_CONNECTIONS_VIEW ? MCP_SERVER_CONNECTIONS_VIEW : MCP_SERVER_VIEW;
+});
 
 const breadcrumbs = computed<PathItem[]>(() => [
 	{
@@ -183,24 +209,18 @@ watch(
 	{ immediate: true },
 );
 
-// A panel binds one server, so a route to another server closes it.
 watch(serverId, () => {
-	assistantOpen.value = false;
-	assistantPrefill.value = undefined;
+	localTab.value = MCP_SERVER_VIEW;
 });
 
 async function openAssistant(prefill?: InstanceAiPrefillPayload) {
 	if (!server.value) return;
-	if (!hasAssistantPanel.value) {
-		await assistant.openServer({
-			serverId: server.value.id,
-			projectId: server.value.projectId,
-			serverName: server.value.name,
-		});
-		return;
-	}
-	assistantOpen.value = true;
-	if (prefill) assistantPrefill.value = prefill;
+	await assistant.openServer({
+		serverId: server.value.id,
+		projectId: server.value.projectId,
+		serverName: server.value.name,
+		...(prefill ? { prefill } : {}),
+	});
 }
 
 async function onBuildWithAssistant() {
@@ -213,21 +233,20 @@ async function onBuildWithAssistant() {
 	});
 }
 
-function closeAssistant() {
-	assistantOpen.value = false;
-	assistantPrefill.value = undefined;
-}
-
-async function onAssistantChanged() {
+/** Reloads the server, its tools, and its connections in place after an Assistant change. */
+async function refresh() {
 	const name = server.value?.name ?? '';
 	await load({ silent: true });
 	if (notFound.value) {
-		// The Assistant deleted the server: the page ends as after a delete from the menu.
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('mcpServers.delete.success', { interpolate: { name } }),
 		});
-		await router.push({ name: MCP_SERVERS_LIST_VIEW });
+		if (props.artifactMode) {
+			emit('deleted', serverId.value);
+		} else {
+			await router.push({ name: MCP_SERVERS_LIST_VIEW });
+		}
 		return;
 	}
 	contentsRefreshKey.value++;
@@ -237,6 +256,10 @@ async function onAssistantChanged() {
 async function onSelectTab(tab: string) {
 	// People connect at any time, so the tab shows the list as it is now.
 	if (tab === MCP_SERVER_CONNECTIONS_VIEW) void connections.load();
+	if (props.artifactMode) {
+		localTab.value = tab;
+		return;
+	}
 	await router.push({ name: tab, params: route.params });
 }
 
@@ -262,9 +285,11 @@ async function onRename(name: string) {
 	if (!current) return;
 	renaming.value = true;
 	try {
-		applyResponse(
-			await updateMcpServer(rootStore.restApiContext, current.projectId, current.id, { name }),
-		);
+		const updated = await updateMcpServer(rootStore.restApiContext, current.projectId, current.id, {
+			name,
+		});
+		applyResponse(updated);
+		emit('renamed', updated.name);
 		renameOpen.value = false;
 		toast.showMessage({ type: 'success', title: i18n.baseText('mcpServers.rename.success') });
 	} catch (error) {
@@ -286,7 +311,11 @@ async function onDelete() {
 			type: 'success',
 			title: i18n.baseText('mcpServers.delete.success', { interpolate: { name } }),
 		});
-		await router.push({ name: MCP_SERVERS_LIST_VIEW });
+		if (props.artifactMode) {
+			emit('deleted', current.id);
+		} else {
+			await router.push({ name: MCP_SERVERS_LIST_VIEW });
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('mcpServers.delete.error'));
 	} finally {
@@ -297,223 +326,189 @@ async function onDelete() {
 async function onBreadcrumbSelected(item: PathItem) {
 	if (item.id !== MCP_SERVER_VIEW) await router.push({ name: item.id });
 }
+
+defineExpose({ refresh });
 </script>
 
 <template>
-	<div :class="$style.layout">
-		<aside
-			v-if="assistantOpen && server"
-			:class="$style.assistantDock"
-			data-test-id="mcp-server-assistant-dock"
-		>
-			<McpServerAssistantPanel
-				:class="$style.assistantPanel"
-				:server="server"
-				:prefill="assistantPrefill"
-				@changed="onAssistantChanged"
-				@close="closeAssistant"
-			/>
-		</aside>
-		<section :class="$style.editorColumn" data-test-id="mcp-server-page">
-			<div :class="$style.panelArea">
-				<div v-if="loading && !server" :class="$style.panelAreaContainer">
-					<N8nLoading :rows="3" />
-				</div>
-				<div v-else-if="notFound" :class="$style.panelAreaContainer">
-					<N8nEmptyState
-						:icon="{ type: 'icon', value: 'mcp' }"
-						:heading="i18n.baseText('mcpServers.server.notFound.heading')"
-						:description="i18n.baseText('mcpServers.server.notFound.description')"
-						:button-text="i18n.baseText('mcpServers.server.notFound.button')"
-						data-test-id="mcp-server-not-found"
-						@click:button="router.push({ name: MCP_SERVERS_LIST_VIEW })"
-					/>
-				</div>
-				<template v-else-if="server">
-					<header :class="$style.headerRow" data-test-id="mcp-server-header">
-						<div :class="$style.headerContent">
-							<N8nBreadcrumbs
-								:items="breadcrumbs"
-								data-test-id="mcp-server-breadcrumbs"
-								@item-selected="onBreadcrumbSelected"
-							/>
-							<div :class="$style.titleRow">
-								<div :class="$style.title">
-									<N8nHeading
-										bold
-										tag="h1"
-										size="xlarge"
-										:class="$style.name"
-										data-test-id="mcp-server-name"
-										@dblclick="onTitleDoubleClick"
-									>
-										{{ server.name }}
-									</N8nHeading>
-									<div :class="$style.url">
-										<N8nText
-											size="small"
-											color="text-light"
-											:class="$style.urlText"
-											data-test-id="mcp-server-url"
-										>
-											{{ serverUrl(server.slug) }}
-										</N8nText>
-										<N8nTooltip :content="i18n.baseText('mcpServers.copyUrl.tooltip')">
-											<N8nButton
-												variant="ghost"
-												size="xsmall"
-												icon="copy"
-												:label="i18n.baseText('mcpServers.actions.copyUrlShort')"
-												data-test-id="mcp-server-copy-url"
-												data-attr="mcp-server-copy-url"
-												@click="copyServerUrl(server)"
-											/>
-										</N8nTooltip>
-									</div>
-								</div>
-								<div :class="$style.actions">
-									<N8nButton
-										v-if="canUseAssistant"
-										variant="outline"
+	<section :class="$style.editorColumn" data-test-id="mcp-server-page">
+		<div :class="$style.panelArea">
+			<div v-if="loading && !server" :class="$style.panelAreaContainer">
+				<N8nLoading :rows="3" />
+			</div>
+			<div v-else-if="notFound" :class="$style.panelAreaContainer">
+				<N8nEmptyState
+					:icon="{ type: 'icon', value: 'mcp' }"
+					:heading="i18n.baseText('mcpServers.server.notFound.heading')"
+					:description="i18n.baseText('mcpServers.server.notFound.description')"
+					:button-text="
+						props.artifactMode ? undefined : i18n.baseText('mcpServers.server.notFound.button')
+					"
+					data-test-id="mcp-server-not-found"
+					@click:button="router.push({ name: MCP_SERVERS_LIST_VIEW })"
+				/>
+			</div>
+			<template v-else-if="server">
+				<header :class="$style.headerRow" data-test-id="mcp-server-header">
+					<div :class="$style.headerContent">
+						<N8nBreadcrumbs
+							v-if="!props.artifactMode"
+							:items="breadcrumbs"
+							data-test-id="mcp-server-breadcrumbs"
+							@item-selected="onBreadcrumbSelected"
+						/>
+						<div :class="$style.titleRow">
+							<div :class="$style.title">
+								<N8nHeading
+									bold
+									tag="h1"
+									size="xlarge"
+									:class="$style.name"
+									data-test-id="mcp-server-name"
+									@dblclick="onTitleDoubleClick"
+								>
+									{{ server.name }}
+								</N8nHeading>
+								<div :class="$style.url">
+									<N8nText
 										size="small"
-										icon="n8n-assistant"
-										:label="i18n.baseText('mcpServers.assistant.open')"
-										:disabled="assistantOpen"
-										data-test-id="mcp-server-assistant-button"
-										data-attr="mcp-server-assistant-button"
-										@click="openAssistant()"
-									/>
-									<N8nTooltip
-										as-child
-										:disabled="canShare"
-										:content="i18n.baseText('mcpServers.actions.share.noTools')"
+										color="text-light"
+										:class="$style.urlText"
+										data-test-id="mcp-server-url"
 									>
+										{{ serverUrl(server.slug) }}
+									</N8nText>
+									<N8nTooltip :content="i18n.baseText('mcpServers.copyUrl.tooltip')">
 										<N8nButton
-											variant="outline"
-											size="small"
-											icon="share"
-											:label="i18n.baseText('mcpServers.actions.share')"
-											:disabled="!canShare"
-											focusable-when-disabled
-											:aria-describedby="!canShare ? shareDisabledReasonId : undefined"
-											data-test-id="mcp-server-share-button"
-											data-attr="mcp-server-share-button"
-											@click="copyShareLink(server)"
+											variant="ghost"
+											size="xsmall"
+											icon="copy"
+											:label="i18n.baseText('mcpServers.actions.copyUrlShort')"
+											data-test-id="mcp-server-copy-url"
+											data-attr="mcp-server-copy-url"
+											@click="copyServerUrl(server)"
 										/>
 									</N8nTooltip>
-									<N8nVisuallyHidden v-if="!canShare" :id="shareDisabledReasonId">
-										{{ i18n.baseText('mcpServers.actions.share.noTools') }}
-									</N8nVisuallyHidden>
-									<N8nActionToggle
-										:actions="menuActions"
-										:aria-label="i18n.baseText('mcpServers.server.menu')"
-										placement="bottom-end"
-										data-test-id="mcp-server-menu"
-										@action="onMenu"
-									/>
 								</div>
 							</div>
-						</div>
-					</header>
-
-					<div :class="$style.tabsRow">
-						<div :class="$style.tabsRule">
-							<N8nTabs
-								:model-value="selectedTab"
-								:options="tabs"
-								:class="$style.tabs"
-								show-border
-								data-test-id="mcp-server-tabs"
-								@update:model-value="onSelectTab"
-							/>
+							<div :class="$style.actions">
+								<N8nButton
+									v-if="canUseAssistant"
+									variant="outline"
+									size="small"
+									icon="n8n-assistant"
+									:label="i18n.baseText('mcpServers.assistant.open')"
+									data-test-id="mcp-server-assistant-button"
+									data-attr="mcp-server-assistant-button"
+									@click="openAssistant()"
+								/>
+								<N8nTooltip
+									as-child
+									:disabled="canShare"
+									:content="i18n.baseText('mcpServers.actions.share.noTools')"
+								>
+									<N8nButton
+										variant="outline"
+										size="small"
+										icon="share"
+										:label="i18n.baseText('mcpServers.actions.share')"
+										:disabled="!canShare"
+										focusable-when-disabled
+										:aria-describedby="!canShare ? shareDisabledReasonId : undefined"
+										data-test-id="mcp-server-share-button"
+										data-attr="mcp-server-share-button"
+										@click="copyShareLink(server)"
+									/>
+								</N8nTooltip>
+								<N8nVisuallyHidden v-if="!canShare" :id="shareDisabledReasonId">
+									{{ i18n.baseText('mcpServers.actions.share.noTools') }}
+								</N8nVisuallyHidden>
+								<N8nActionToggle
+									:actions="menuActions"
+									:aria-label="i18n.baseText('mcpServers.server.menu')"
+									placement="bottom-end"
+									data-test-id="mcp-server-menu"
+									@action="onMenu"
+								/>
+							</div>
 						</div>
 					</div>
+				</header>
 
-					<div :class="$style.panelAreaContainer">
-						<McpServerContentsTab
-							v-if="selectedTab === MCP_SERVER_VIEW"
-							:key="serverId"
-							:project-id="projectId"
-							:server-id="serverId"
-							:assistant-available="assistant.available.value"
-							:assistant-open="assistantOpen"
-							:refresh-key="contentsRefreshKey"
-							@build-with-assistant="onBuildWithAssistant"
-							@server-updated="applyResponse"
-							@tools-changed="shareableToolCount = $event"
-						/>
-						<McpServerConnectionsTab
-							v-else
-							:server="server"
-							:connections="connections.data.value"
-							:loading="connections.loading.value"
-							:load-failed="connections.loadFailed.value"
-							:can-share="canShare"
-							@changed="connections.load"
+				<div :class="$style.tabsRow">
+					<div :class="$style.tabsRule">
+						<N8nTabs
+							:model-value="selectedTab"
+							:options="tabs"
+							:class="$style.tabs"
+							show-border
+							data-test-id="mcp-server-tabs"
+							@update:model-value="onSelectTab"
 						/>
 					</div>
+				</div>
 
-					<RenameMcpServerDialog
-						v-model:open="renameOpen"
-						:name="server.name"
-						:url="serverUrl(server.slug)"
-						:saving="renaming"
-						@rename="onRename"
+				<div :class="$style.panelAreaContainer">
+					<McpServerContentsTab
+						v-if="selectedTab === MCP_SERVER_VIEW"
+						:key="serverId"
+						:project-id="projectId"
+						:server-id="serverId"
+						:assistant-available="canUseAssistant"
+						:refresh-key="contentsRefreshKey"
+						@build-with-assistant="onBuildWithAssistant"
+						@server-updated="applyResponse"
+						@tools-changed="shareableToolCount = $event"
 					/>
-					<N8nAlertDialog
-						:open="deleteOpen"
-						:title="
-							i18n.baseText('mcpServers.delete.title', { interpolate: { name: server.name } })
-						"
-						:description="
-							i18n.baseText('mcpServers.delete.description', {
-								interpolate: { url: serverUrl(server.slug) },
-							})
-						"
-						:action-label="i18n.baseText('mcpServers.delete.confirm')"
-						:cancel-label="i18n.baseText('generic.cancel')"
-						action-variant="destructive"
-						:loading="deleting"
-						@update:open="!deleting && (deleteOpen = $event)"
-						@action="onDelete"
-						@cancel="!deleting && (deleteOpen = false)"
+					<McpServerConnectionsTab
+						v-else
+						:server="server"
+						:connections="connections.data.value"
+						:loading="connections.loading.value"
+						:load-failed="connections.loadFailed.value"
+						:can-share="canShare"
+						@changed="connections.load"
 					/>
-				</template>
-			</div>
-		</section>
-	</div>
+				</div>
+
+				<RenameMcpServerDialog
+					v-model:open="renameOpen"
+					:name="server.name"
+					:url="serverUrl(server.slug)"
+					:saving="renaming"
+					@rename="onRename"
+				/>
+				<N8nAlertDialog
+					:open="deleteOpen"
+					:title="i18n.baseText('mcpServers.delete.title', { interpolate: { name: server.name } })"
+					:description="
+						i18n.baseText('mcpServers.delete.description', {
+							interpolate: { url: serverUrl(server.slug) },
+						})
+					"
+					:action-label="i18n.baseText('mcpServers.delete.confirm')"
+					:cancel-label="i18n.baseText('generic.cancel')"
+					action-variant="destructive"
+					:loading="deleting"
+					@update:open="!deleting && (deleteOpen = $event)"
+					@action="onDelete"
+					@cancel="!deleting && (deleteOpen = false)"
+				/>
+			</template>
+		</div>
+	</section>
 </template>
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/breakpoints';
 @use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
-.layout {
-	display: flex;
-	width: 100%;
-	height: 100%;
-	min-height: 0;
-}
-
-.assistantDock {
-	display: flex;
-	flex-shrink: 0;
-	width: calc(var(--spacing--5xl) * 1.5);
-	height: 100%;
-	border-inline-end: var(--border);
-	background-color: var(--background--surface);
-}
-
-.assistantPanel {
-	flex: 1;
-	min-width: 0;
-	height: 100%;
-}
-
 .editorColumn {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
+	width: 100%;
+	height: 100%;
 	min-width: 0;
 	min-height: 0;
 	background-color: light-dark(var(--background--surface), var(--background));

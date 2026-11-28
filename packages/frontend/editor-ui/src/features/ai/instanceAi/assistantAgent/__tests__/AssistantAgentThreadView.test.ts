@@ -313,6 +313,43 @@ vi.mock('../../components/InstanceAiAppPreview.vue', () => ({
 	}),
 }));
 
+const { mcpServerPreviewProps } = vi.hoisted(() => ({
+	mcpServerPreviewProps: { current: undefined as Record<string, unknown> | undefined },
+}));
+vi.mock('../../components/InstanceAiMcpServerPreview.vue', () => ({
+	default: defineComponent({
+		inheritAttrs: false,
+		setup(_props, { attrs }) {
+			return () => {
+				mcpServerPreviewProps.current = { ...attrs };
+				return h('div', { 'data-test-id': 'mcp-server-preview-stub' });
+			};
+		},
+	}),
+}));
+vi.mock('../../components/InstanceAiMcpServerEmptyState.vue', () => ({
+	default: defineComponent({
+		props: { projectId: String, serverId: String },
+		emits: ['select'],
+		setup(props, { emit }) {
+			return () =>
+				h(
+					'button',
+					{
+						'data-test-id': 'mcp-server-empty-state-stub',
+						'data-server-id': props.serverId,
+						onClick: () =>
+							emit('select', {
+								text: 'Add the workflows that fit this server.',
+								prefillType: 'mcp_server_suggestion',
+							}),
+					},
+					'Suggestion',
+				);
+		},
+	}),
+}));
+
 // The real editor has its own tests. The stub keeps a local draft, so a remount loses it.
 vi.mock('../../components/InstanceAiSkillPreview.vue', () => ({
 	default: defineComponent({
@@ -1357,6 +1394,41 @@ describe('AssistantAgentThreadView', () => {
 			expect(appPreviewProps.current).toBeUndefined();
 			expect(clientContext()).toMatchObject({
 				subject: { type: 'app', id: APP_ID, projectId: 'project-1', pending: true },
+			});
+		});
+
+		it('opens a custom MCP server tab for a server launch subject and sends the subject until session creation', async () => {
+			mcpServerPreviewProps.current = undefined;
+			const SERVER_ID = '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f71';
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'mcp_server_page',
+				origin: 'internal',
+				subject: {
+					type: 'mcpServer',
+					id: SERVER_ID,
+					projectId: 'project-1',
+					name: 'Marketing tools',
+				},
+			});
+
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-new', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			expect(mcpServerPreviewProps.current).toMatchObject({
+				'project-id': 'project-1',
+				'server-id': SERVER_ID,
+			});
+			expect(clientContext()).toMatchObject({
+				subject: {
+					type: 'mcpServer',
+					id: SERVER_ID,
+					projectId: 'project-1',
+					name: 'Marketing tools',
+				},
 			});
 		});
 

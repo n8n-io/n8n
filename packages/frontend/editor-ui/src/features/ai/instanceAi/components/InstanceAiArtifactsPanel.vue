@@ -61,6 +61,10 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 );
 const openSkillPreview = inject<((id: string) => void) | undefined>('openSkillPreview', undefined);
 const openAppPreview = inject<((id: string) => void) | undefined>('openAppPreview', undefined);
+const openMcpServerPreview = inject<((id: string, projectId?: string) => void) | undefined>(
+	'openMcpServerPreview',
+	undefined,
+);
 const pendingComposerContext = inject<Readonly<Ref<InstanceAiHandoffContext | null>> | undefined>(
 	'pendingComposerContext',
 	undefined,
@@ -103,6 +107,10 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		if (!openAppPreview) return;
 		e.preventDefault();
 		openAppPreview(artifact.id);
+	} else if (artifact.type === 'mcp-server' && artifact.id) {
+		if (!artifact.projectId || !openMcpServerPreview) return;
+		e.preventDefault();
+		openMcpServerPreview(artifact.id, artifact.projectId);
 	}
 }
 
@@ -133,7 +141,8 @@ const artifacts = computed((): ResourceEntry[] => {
 			entry.type === 'data-table' ||
 			entry.type === 'agent' ||
 			entry.type === 'skill' ||
-			entry.type === 'app'
+			entry.type === 'app' ||
+			entry.type === 'mcp-server'
 		) {
 			result.push(entry);
 		}
@@ -147,6 +156,7 @@ const artifactIconMap: Record<string, IconName> = {
 	agent: 'robot',
 	skill: 'book-open',
 	app: 'layout-template',
+	'mcp-server': 'mcp',
 };
 
 function artifactHref(artifact: ResourceEntry) {

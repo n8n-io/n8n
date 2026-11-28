@@ -1,5 +1,5 @@
 import type { McpServerDetailResponse } from '@n8n/api-types';
-import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/frontend-module-sdk';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import type { Scope } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -82,7 +82,7 @@ const VIEWER: Scope[] = ['mcpServer:read', 'mcpServer:list'];
 
 // The Contents tab loads the tools. Its own test covers it.
 const McpServerContentsTabStub = defineComponent({
-	props: ['assistantAvailable', 'assistantOpen', 'refreshKey'],
+	props: ['assistantAvailable', 'refreshKey'],
 	emits: ['build-with-assistant', 'tools-changed'],
 	template: `<div data-test-id="mcp-server-contents" :data-refresh-key="refreshKey">
 		<button data-test-id="stub-add-tool" type="button" @click="$emit('tools-changed', 1)" />
@@ -90,20 +90,8 @@ const McpServerContentsTabStub = defineComponent({
 			v-if="assistantAvailable"
 			data-test-id="stub-build"
 			type="button"
-			:disabled="assistantOpen"
 			@click="$emit('build-with-assistant')"
 		/>
-	</div>`,
-});
-
-// The panel loads its suggestion. Its own test covers it.
-const McpServerAssistantPanelStub = defineComponent({
-	props: ['server', 'prefill'],
-	emits: ['close', 'changed'],
-	template: `<div data-test-id="mcp-assistant-panel" :data-server-id="server.id">
-		<span data-test-id="stub-prefill">{{ prefill ? JSON.stringify(prefill) : '' }}</span>
-		<button data-test-id="stub-changed" type="button" @click="$emit('changed')" />
-		<button data-test-id="stub-close" type="button" @click="$emit('close')" />
 	</div>`,
 });
 
@@ -111,29 +99,32 @@ const renderComponent = createComponentRenderer(McpServerView, {
 	global: {
 		stubs: {
 			McpServerContentsTab: McpServerContentsTabStub,
-			McpServerAssistantPanel: McpServerAssistantPanelStub,
 		},
 	},
 });
 
 const openServer = vi.fn();
 
-/** The Assistant of the shell, with or without its docked panel. */
-function provideAssistant({ available = true, panel = true } = {}) {
+/** The Assistant hand-off capability of the shell. */
+function provideAssistant({ available = true } = {}) {
 	capabilityRegistry.provide(capabilities.createMcpServerAssistantHandoff, () => ({
 		available: computed(() => available),
 		openServer,
 	}));
-	if (panel) componentRegistry.register('assistant-panel', { template: '<div />' });
 }
 
-async function renderPage(scopes: Scope[] = BUILDER, readOnly = false) {
+async function renderPage(
+	scopes: Scope[] = BUILDER,
+	readOnly = false,
+	props: Record<string, unknown> = {},
+) {
 	capabilityRegistry.provide(capabilities.projectPermissions, {
 		scopesFor: () => scopes,
 		isReadOnly: () => readOnly,
 	});
-	renderComponent();
+	const result = renderComponent({ props });
 	await screen.findByTestId('mcp-server-name');
+	return result;
 }
 
 async function openMenuItem(label: string) {
@@ -156,12 +147,11 @@ describe('McpServerView', () => {
 
 	afterEach(() => {
 		capabilityRegistry.clear();
-		componentRegistry.clear();
 		vi.clearAllMocks();
 	});
 
 	describe('Assistant', () => {
-		it('shows no "Assistant" when the instance has no Assistant', async () => {
+		it('shows no "Assistant" or "Build with Assistant" when the instance has no Assistant', async () => {
 			provideAssistant({ available: false });
 			await renderPage();
 
@@ -169,55 +159,29 @@ describe('McpServerView', () => {
 			expect(screen.queryByTestId('stub-build')).not.toBeInTheDocument();
 		});
 
-		it('shows no "Assistant" to a project viewer', async () => {
+		it('shows no "Assistant" or "Build with Assistant" to a project viewer', async () => {
 			provideAssistant();
 			await renderPage(VIEWER);
 
 			expect(screen.queryByTestId('mcp-server-assistant-button')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('stub-build')).not.toBeInTheDocument();
 		});
 
-		it('docks the Assistant panel of the server beside the page', async () => {
+		it('opens the Assistant view with the server when clicking "Assistant"', async () => {
 			provideAssistant();
 			await renderPage();
-			expect(screen.queryByTestId('mcp-assistant-panel')).not.toBeInTheDocument();
 
 			await userEvent.click(screen.getByTestId('mcp-server-assistant-button'));
 
-			expect(screen.getByTestId('mcp-assistant-panel')).toHaveAttribute(
-				'data-server-id',
-				server.id,
-			);
-			expect(screen.getByTestId('mcp-server-assistant-button')).toBeDisabled();
-			expect(screen.getByTestId('stub-prefill')).toHaveTextContent('');
-		});
-
-		it('closes the panel', async () => {
-			provideAssistant();
-			await renderPage();
-			await userEvent.click(screen.getByTestId('mcp-server-assistant-button'));
-
-			await userEvent.click(screen.getByTestId('stub-close'));
-
-			expect(screen.queryByTestId('mcp-assistant-panel')).not.toBeInTheDocument();
-			expect(screen.getByTestId('mcp-server-assistant-button')).toBeEnabled();
-		});
-
-		it('opens the panel with a prompt to edit from "Build with Assistant"', async () => {
-			provideAssistant();
-			await renderPage();
-
-			await userEvent.click(screen.getByTestId('stub-build'));
-
-			expect(JSON.parse(screen.getByTestId('stub-prefill').textContent ?? '')).toEqual({
-				text: 'Build out the MCP server "Sales tools". It is for [team] to [what they need to do].\n\nAdd the workflows that fit, and give each tool a clear name and description.',
-				prefillType: 'mcp_server_build_prompt',
+			expect(openServer).toHaveBeenCalledWith({
+				serverId: server.id,
+				projectId: 'project-1',
+				serverName: 'Sales tools',
 			});
-			expect(screen.getByTestId('stub-build')).toBeDisabled();
-			expect(openServer).not.toHaveBeenCalled();
 		});
 
-		it('opens the full Assistant on the server when the page has no panel', async () => {
-			provideAssistant({ panel: false });
+		it('opens the Assistant view with a prompt from "Build with Assistant"', async () => {
+			provideAssistant();
 			await renderPage();
 
 			await userEvent.click(screen.getByTestId('stub-build'));
@@ -226,51 +190,125 @@ describe('McpServerView', () => {
 				serverId: server.id,
 				projectId: 'project-1',
 				serverName: 'Sales tools',
+				prefill: {
+					text: 'Build out the MCP server "Sales tools". It is for [team] to [what they need to do].\n\nAdd the workflows that fit, and give each tool a clear name and description.',
+					prefillType: 'mcp_server_build_prompt',
+				},
 			});
-			expect(screen.queryByTestId('mcp-assistant-panel')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('artifact mode', () => {
+		const artifactProps = {
+			artifactMode: true,
+			artifactProjectId: 'project-1',
+			artifactServerId: server.id,
+		};
+
+		it('hides breadcrumbs and Assistant hand-off controls', async () => {
+			provideAssistant();
+			await renderPage(BUILDER, false, artifactProps);
+
+			expect(screen.queryByTestId('mcp-server-breadcrumbs')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('mcp-server-assistant-button')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('stub-build')).not.toBeInTheDocument();
 		});
 
-		it('shows each change of the Assistant on the page at once', async () => {
+		it('switches between Build and Access locally without changing the route', async () => {
 			provideAssistant();
-			await renderPage();
-			await userEvent.click(screen.getByTestId('mcp-server-assistant-button'));
-			const refreshKey = screen.getByTestId('mcp-server-contents').dataset.refreshKey;
-			api.getMcpServer.mockResolvedValue({ ...server, name: 'Revenue tools' });
+			await renderPage(BUILDER, false, artifactProps);
 
-			await userEvent.click(screen.getByTestId('stub-changed'));
+			expect(screen.getByTestId('mcp-server-contents')).toBeInTheDocument();
+			await userEvent.click(await screen.findByText('Access 0'));
+
+			expect(screen.getByTestId('mcp-server-connections')).toBeInTheDocument();
+			expect(screen.queryByTestId('mcp-server-contents')).not.toBeInTheDocument();
+			expect(push).not.toHaveBeenCalled();
+
+			await userEvent.click(screen.getByText('Build'));
+			expect(screen.getByTestId('mcp-server-contents')).toBeInTheDocument();
+		});
+
+		it('refreshes the server and tools in place when refresh() is called, and emits deleted on 404', async () => {
+			provideAssistant();
+			capabilityRegistry.provide(capabilities.projectPermissions, {
+				scopesFor: () => BUILDER,
+				isReadOnly: () => false,
+			});
+			const onDeleted = vi.fn();
+			const Host = defineComponent({
+				components: { McpServerView },
+				setup() {
+					return { onDeleted };
+				},
+				template: `<div>
+					<McpServerView
+						ref="view"
+						artifact-mode
+						artifact-project-id="project-1"
+						artifact-server-id="${server.id}"
+						@deleted="onDeleted"
+					/>
+					<button data-test-id="trigger-refresh" type="button" @click="$refs.view.refresh()" />
+				</div>`,
+			});
+			const renderHost = createComponentRenderer(Host, {
+				global: { stubs: { McpServerContentsTab: McpServerContentsTabStub } },
+			});
+			renderHost();
+			await screen.findByTestId('mcp-server-name');
+			const initialRefreshKey = screen.getByTestId('mcp-server-contents').dataset.refreshKey;
+
+			api.getMcpServer.mockResolvedValueOnce({ ...server, name: 'Revenue tools' });
+			await userEvent.click(screen.getByTestId('trigger-refresh'));
 
 			await waitFor(() =>
 				expect(screen.getByTestId('mcp-server-name')).toHaveTextContent('Revenue tools'),
 			);
-			expect(screen.getByTestId('mcp-server-contents').dataset.refreshKey).not.toBe(refreshKey);
-			expect(screen.getByTestId('mcp-assistant-panel')).toBeInTheDocument();
-		});
-
-		it('keeps the page and the panel when the reload after a change fails', async () => {
-			provideAssistant();
-			await renderPage();
-			await userEvent.click(screen.getByTestId('mcp-server-assistant-button'));
-			api.getMcpServer.mockRejectedValue(
-				new ResponseError('Server error', { httpStatusCode: 500 }),
+			expect(screen.getByTestId('mcp-server-contents').dataset.refreshKey).not.toBe(
+				initialRefreshKey,
 			);
 
-			await userEvent.click(screen.getByTestId('stub-changed'));
+			// Failed reload keeps the page in place
+			api.getMcpServer.mockRejectedValueOnce(
+				new ResponseError('Server error', { httpStatusCode: 500 }),
+			);
+			await userEvent.click(screen.getByTestId('trigger-refresh'));
+			await waitFor(() => expect(api.getMcpServer).toHaveBeenCalledTimes(3));
+			expect(screen.getByTestId('mcp-server-name')).toHaveTextContent('Revenue tools');
 
-			await waitFor(() => expect(api.getMcpServer).toHaveBeenCalledTimes(2));
-			expect(screen.getByTestId('mcp-server-name')).toHaveTextContent('Sales tools');
-			expect(screen.getByTestId('mcp-assistant-panel')).toBeInTheDocument();
+			// 404 emits deleted instead of routing
+			api.getMcpServer.mockRejectedValueOnce(
+				new ResponseError('Not found', { httpStatusCode: 404 }),
+			);
+			await userEvent.click(screen.getByTestId('trigger-refresh'));
+			await waitFor(() => expect(onDeleted).toHaveBeenCalledWith(server.id));
+			expect(push).not.toHaveBeenCalled();
 		});
 
-		it('goes back to the list when the Assistant deletes the server', async () => {
+		it('emits deleted instead of routing when deleting a server', async () => {
 			provideAssistant();
-			await renderPage();
-			await userEvent.click(screen.getByTestId('mcp-server-assistant-button'));
-			api.getMcpServer.mockRejectedValue(new ResponseError('Not found', { httpStatusCode: 404 }));
+			const { emitted } = await renderPage(BUILDER, false, artifactProps);
 
-			await userEvent.click(screen.getByTestId('stub-changed'));
+			await openMenuItem('Delete');
+			const dialog = await screen.findByRole('dialog');
+			await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
-			await waitFor(() => expect(push).toHaveBeenCalledWith({ name: MCP_SERVERS_LIST_VIEW }));
-			expect(screen.queryByTestId('mcp-server-contents')).not.toBeInTheDocument();
+			await waitFor(() => expect(emitted('deleted')).toEqual([[server.id]]));
+			expect(push).not.toHaveBeenCalled();
+		});
+
+		it('emits renamed when the server is renamed', async () => {
+			provideAssistant();
+			const { emitted } = await renderPage(BUILDER, false, artifactProps);
+
+			await openMenuItem('Rename');
+			const input = await screen.findByTestId('rename-mcp-server-name');
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Revenue tools');
+			await userEvent.click(screen.getByTestId('rename-mcp-server-submit'));
+
+			await waitFor(() => expect(emitted('renamed')).toEqual([['Revenue tools']]));
 		});
 	});
 

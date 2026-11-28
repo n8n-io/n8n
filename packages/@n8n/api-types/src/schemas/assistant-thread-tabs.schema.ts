@@ -7,6 +7,7 @@ export const assistantArtifactTypeSchema = z.enum([
 	'data-table',
 	'skill',
 	'app',
+	'mcp-server',
 ]);
 export type AssistantArtifactType = z.infer<typeof assistantArtifactTypeSchema>;
 

@@ -2,6 +2,7 @@ import type {
 	AssistantAgentTargetsState,
 	InstanceAiAppTarget,
 	InstanceAiHandoffContext,
+	InstanceAiMcpServerTarget,
 	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
@@ -43,6 +44,8 @@ interface UseAssistantArtifactThreadOptions {
 	agentTargets?: () => DeepReadonly<AssistantAgentTargetsState> | null;
 	/** The apps that the thread metadata binds. */
 	appTargets?: () => readonly InstanceAiAppTarget[];
+	/** The custom MCP server that the thread metadata binds. */
+	mcpServerTarget?: () => InstanceAiMcpServerTarget | undefined;
 	/** The artifact of the active preview tab. */
 	activeArtifactId?: () => string | undefined;
 }
@@ -77,6 +80,7 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 		},
 		agentBuilderTargets: () => [...(options.agentTargets?.()?.targets ?? [])],
 		appTargets: options.appTargets,
+		mcpServerTarget: options.mcpServerTarget,
 	});
 
 	const thread: ArtifactThread = reactive({

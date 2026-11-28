@@ -642,6 +642,10 @@ describe('InstanceAiArtifactsPanel', () => {
 			['wf-1', { type: 'workflow', id: 'wf-1', name: 'Sales workflow' }],
 			['dt-1', { type: 'data-table', id: 'dt-1', name: 'Orphan table' }],
 			['app-1', { type: 'app', id: 'app-1', name: 'Unscoped app' }],
+			[
+				'srv-1',
+				{ type: 'mcp-server', id: 'srv-1', name: 'Marketing tools', projectId: 'project-1' },
+			],
 		]);
 
 		const { getByRole } = renderComponent({
@@ -653,5 +657,53 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(hrefOf('Sales workflow')).toBe('/n8n/workflow/wf-1');
 		expect(hrefOf('Orphan table')).toBe('/n8n/home/datatables');
 		expect(hrefOf('Unscoped app')).toBe('#');
+		expect(hrefOf('Marketing tools')).toBe('/n8n/projects/project-1/mcp-servers/srv-1');
+	});
+
+	it('opens the custom MCP server preview when clicking its artifact row', () => {
+		const openMcpServerPreview = vi.fn();
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			[
+				'srv-1',
+				{ type: 'mcp-server', id: 'srv-1', name: 'Marketing tools', projectId: 'project-1' },
+			],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: { provide: { openMcpServerPreview } },
+		});
+
+		const link = getByRole('link', { name: 'Open Marketing tools' });
+		const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+		link.dispatchEvent(event);
+
+		expect(event.defaultPrevented).toBe(true);
+		expect(openMcpServerPreview).toHaveBeenCalledExactlyOnceWith('srv-1', 'project-1');
+	});
+
+	it('lets a projectless custom MCP server artifact fall through to its list link', () => {
+		const openMcpServerPreview = vi.fn();
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			['srv-1', { type: 'mcp-server', id: 'srv-1', name: 'Marketing tools' }],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: {
+				plugins: [createArtifactTestRouter('/')],
+				provide: { openMcpServerPreview },
+			},
+		});
+
+		const link = getByRole('link', { name: 'Open Marketing tools' });
+		expect(link.getAttribute('href')).toBe('/home/mcp-servers');
+		let wasDefaultPreventedByComponent: boolean | undefined;
+		link.addEventListener('click', (event) => {
+			wasDefaultPreventedByComponent = event.defaultPrevented;
+			event.preventDefault();
+		});
+		link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+		expect(wasDefaultPreventedByComponent).toBe(false);
+		expect(openMcpServerPreview).not.toHaveBeenCalled();
 	});
 });

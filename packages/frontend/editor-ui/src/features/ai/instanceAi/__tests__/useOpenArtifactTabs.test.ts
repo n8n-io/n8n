@@ -138,6 +138,41 @@ describe('useOpenArtifactTabs', () => {
 		expect(tabs.openTabs.value[0].name).toBe('New name');
 	});
 
+	it('keeps the stored name and projectId when a live artifact only has a fallback name and no projectId', async () => {
+		const { storage, finishLoad } = createStorage({
+			tabs: [{ type: 'mcp-server', id: 'srv-1', name: 'Marketing tools', projectId: 'project-1' }],
+			closedTabs: [],
+			activeTab: null,
+		});
+		const { tabs } = setup(
+			[{ id: 'srv-1', type: 'mcp-server', name: 'MCP server', icon: 'mcp', isFallbackName: true }],
+			storage,
+		);
+		await finishLoad();
+
+		expect(tabs.openTabs.value[0]).toEqual({
+			id: 'srv-1',
+			type: 'mcp-server',
+			name: 'Marketing tools',
+			icon: 'mcp',
+			projectId: 'project-1',
+		});
+	});
+
+	it('fills in a missing projectId on a stored tab with setTabProjectId', async () => {
+		const { storage, finishLoad } = createStorage({
+			tabs: [{ type: 'mcp-server', id: 'srv-1', name: 'Marketing tools' }],
+			closedTabs: [],
+			activeTab: null,
+		});
+		const { tabs } = setup([], storage);
+		await finishLoad();
+
+		tabs.setTabProjectId('srv-1', 'project-1');
+
+		expect(tabs.openTabs.value[0]?.projectId).toBe('project-1');
+	});
+
 	it('returns the next tab when a tab closes, or the previous tab for the last one', () => {
 		const { tabs } = setup([workflowTab('wf-1'), workflowTab('wf-2'), workflowTab('wf-3')]);
 

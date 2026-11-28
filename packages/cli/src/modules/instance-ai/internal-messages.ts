@@ -527,6 +527,7 @@ const THREAD_ARTIFACT_KIND: Record<InstanceAiThreadArtifact['type'], string> = {
 	'data-table': 'Data table',
 	skill: 'Skill',
 	app: 'App',
+	'mcp-server': 'MCP server',
 };
 
 function formatThreadArtifactLine(

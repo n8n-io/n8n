@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
 	fetchDataTablesApi: vi.fn(),
 	listAgentsPage: vi.fn(),
 	listApps: vi.fn(),
+	listMcpServers: vi.fn(),
+	isModuleActive: vi.fn((_name: string) => false),
+	customMcpServersEnabled: vi.fn(() => false),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -15,7 +18,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 vi.mock('@n8n/stores/settings.store', () => ({
-	useSettingsStore: () => ({ isAppsEnabled: true }),
+	useSettingsStore: () => ({ isAppsEnabled: true, isModuleActive: mocks.isModuleActive }),
 }));
 
 vi.mock('@/app/stores/workflowsList.store', () => ({
@@ -32,6 +35,14 @@ vi.mock('@/features/agents/composables/useAgentApi', () => ({
 
 vi.mock('@n8n/frontend-module-apps', () => ({
 	listApps: mocks.listApps,
+}));
+
+vi.mock('@n8n/frontend-module-mcp-servers', () => ({
+	listMcpServers: mocks.listMcpServers,
+}));
+
+vi.mock('@/experiments/customMcpServers/customMcpServersEnabled', () => ({
+	customMcpServersEnabled: () => mocks.customMcpServersEnabled(),
 }));
 
 const PROJECT_ID = 'project-1';
@@ -58,6 +69,9 @@ describe('useProjectResourceSearch', () => {
 		mocks.fetchDataTablesApi.mockResolvedValue({ count: 0, data: [] });
 		mocks.listAgentsPage.mockResolvedValue({ count: 0, data: [] });
 		mocks.listApps.mockResolvedValue({ count: 0, data: [] });
+		mocks.listMcpServers.mockResolvedValue([]);
+		mocks.isModuleActive.mockReturnValue(false);
+		mocks.customMcpServersEnabled.mockReturnValue(false);
 	});
 
 	it('lists project resources newest edit first', async () => {
@@ -256,5 +270,27 @@ describe('useProjectResourceSearch', () => {
 		expect(mocks.searchWorkflows).not.toHaveBeenCalled();
 		expect(mocks.fetchDataTablesApi).not.toHaveBeenCalled();
 		expect(mocks.listAgentsPage).not.toHaveBeenCalled();
+	});
+
+	it('includes custom MCP servers when enabled and filters them by query', async () => {
+		mocks.isModuleActive.mockImplementation((name: string) => name === 'mcp-servers');
+		mocks.customMcpServersEnabled.mockReturnValue(true);
+		mocks.listMcpServers.mockResolvedValue([
+			{ id: 'srv-1', name: 'Marketing tools', updatedAt: '2026-09-28T10:00:00.000Z' },
+			{ id: 'srv-2', name: 'Support tools', updatedAt: '2026-09-27T10:00:00.000Z' },
+		]);
+		const { results, search } = setup();
+
+		await search('market');
+
+		expect(results.value).toEqual([
+			{
+				type: 'mcp-server',
+				id: 'srv-1',
+				name: 'Marketing tools',
+				icon: 'mcp',
+				projectId: PROJECT_ID,
+			},
+		]);
 	});
 });

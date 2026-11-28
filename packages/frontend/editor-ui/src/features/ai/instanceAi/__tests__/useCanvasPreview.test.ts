@@ -162,6 +162,7 @@ function setup(options?: {
 	threadOverrides?: Partial<MockThread>;
 	initialAgentId?: () => string | undefined;
 	initialAppId?: () => string | undefined;
+	initialMcpServerId?: () => string | undefined;
 	tabsStorage?: ThreadTabsStorage;
 	staging?: WorkflowDraft;
 	isAwaitingUser?: () => boolean;
@@ -183,6 +184,7 @@ function setup(options?: {
 		threadId: () => route.params.threadId,
 		initialAgentId: options?.initialAgentId,
 		initialAppId: options?.initialAppId,
+		initialMcpServerId: options?.initialMcpServerId,
 		tabsStorage: options?.tabsStorage,
 		cloudBrowserTasks: () => cloudBrowserTasks.value,
 		workflowDrafts: () => drafts.value,
@@ -1671,6 +1673,236 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.openAppPreview('app-unknown')).toBe(false);
 			expect(ctx.activeTabId.value).toBeUndefined();
+		});
+	});
+
+	describe('custom MCP server preview', () => {
+		function untrusted(result: Record<string, unknown>) {
+			return {
+				type: 'content',
+				value: [
+					{
+						type: 'text',
+						text: `<untrusted_data source="tool:custom-mcp-servers">\n${JSON.stringify(result)}\n</untrusted_data>`,
+					},
+				],
+			};
+		}
+
+		function registerMcpServer(
+			thread: MockThread,
+			id: string,
+			name = 'Marketing tools',
+			projectId = 'project-1',
+		) {
+			thread.producedArtifacts.set(id, { type: 'mcp-server', id, name, projectId });
+		}
+
+		test('opens initialMcpServerId on arrival with its mcp icon', async () => {
+			const ctx = setup({ initialMcpServerId: () => 'srv-1' });
+			registerMcpServer(ctx.thread, 'srv-1');
+			await nextTick();
+
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(ctx.activeMcpServer.value).toEqual({ id: 'srv-1', projectId: 'project-1' });
+			expect(ctx.openTabs.value[0]?.icon).toBe('mcp');
+		});
+
+		test('refreshes the active server tab on each live mutation, including out-of-order approvals', async () => {
+			const ctx = setup({ initialMcpServerId: () => 'srv-1' });
+			registerMcpServer(ctx.thread, 'srv-1');
+			await nextTick();
+			expect(ctx.mcpServerRefreshKey.value).toBe(0);
+
+			const first = makeToolCall({
+				toolCallId: 'tc-first',
+				toolName: 'custom-mcp-servers',
+				args: { action: 'add-tools', serverId: 'srv-1', workflowIds: ['wf-1'] },
+				isLoading: true,
+				result: undefined,
+			});
+			const second = makeToolCall({
+				toolCallId: 'tc-second',
+				toolName: 'custom-mcp-servers',
+				args: { action: 'add-tools', serverId: 'srv-1', workflowIds: ['wf-2'] },
+				isLoading: true,
+				result: undefined,
+			});
+			ctx.thread.messages = [
+				makeMessage({ agentTree: makeAgentNode({ toolCalls: [first, second] }) }),
+			];
+			await nextTick();
+			expect(ctx.mcpServerRefreshKey.value).toBe(0);
+
+			const [liveFirst, liveSecond] = ctx.thread.messages[0].agentTree!.toolCalls;
+			// Second approval finishes first
+			liveSecond.result = untrusted({ success: true, serverMutated: true, tools: [] });
+			liveSecond.isLoading = false;
+			await nextTick();
+			expect(ctx.mcpServerRefreshKey.value).toBe(1);
+
+			// First approval finishes second
+			liveFirst.result = untrusted({ success: true, serverMutated: true, tools: [] });
+			liveFirst.isLoading = false;
+			await nextTick();
+			expect(ctx.mcpServerRefreshKey.value).toBe(2);
+		});
+
+		test('does not refresh or pop a server tab during hydration', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+			registerMcpServer(ctx.thread, 'srv-1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-old',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'add-tools', serverId: 'srv-1', workflowIds: ['wf-1'] },
+								result: untrusted({ success: true, serverMutated: true, tools: [] }),
+							}),
+						],
+					}),
+				}),
+			];
+			ctx.thread.isHydratingThread = false;
+			await nextTick();
+
+			expect(ctx.isPreviewVisible.value).toBe(false);
+			expect(ctx.mcpServerRefreshKey.value).toBe(0);
+		});
+
+		test('closes the server tab when the Assistant deletes the server', async () => {
+			const ctx = setup({ initialMcpServerId: () => 'srv-1' });
+			registerMcpServer(ctx.thread, 'srv-1');
+			await nextTick();
+			expect(ctx.activeMcpServer.value).toEqual({ id: 'srv-1', projectId: 'project-1' });
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-del',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'delete', serverId: 'srv-1' },
+								result: untrusted({ success: true, serverMutated: true, serverId: 'srv-1' }),
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeMcpServer.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('does not select initialMcpServerId when the server is absent from producedArtifacts', async () => {
+			const ctx = setup({ initialMcpServerId: () => 'srv-1' });
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('does not select initialMcpServerId when the server tab is stored as closed', async () => {
+			const ctx = setup({
+				initialMcpServerId: () => 'srv-1',
+				tabsStorage: {
+					load: vi.fn().mockResolvedValue({
+						tabs: [],
+						closedTabs: [{ type: 'mcp-server', id: 'srv-1' }],
+						activeTab: null,
+						previewOpen: false,
+					}),
+					save: vi.fn().mockResolvedValue(undefined),
+				},
+			});
+			registerMcpServer(ctx.thread, 'srv-1');
+			await flushPromises();
+
+			expect(ctx.openTabs.value).toEqual([]);
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('openMcpServerPreview switches to an existing tab or opens a known server by id', () => {
+			const ctx = setup();
+			ctx.thread.resourceNameIndex.set('marketing tools', {
+				type: 'mcp-server',
+				id: 'srv-1',
+				name: 'Marketing tools',
+				projectId: 'project-1',
+			});
+
+			expect(ctx.openMcpServerPreview('srv-1', 'project-1')).toBe(true);
+			expect(ctx.activeMcpServer.value).toEqual({ id: 'srv-1', projectId: 'project-1' });
+			expect(ctx.openMcpServerPreview('srv-1', 'project-1')).toBe(false);
+		});
+
+		test('preserves stored projectId and real name when live MCP server entry has none', async () => {
+			const ctx = setup({
+				tabsStorage: {
+					load: vi.fn().mockResolvedValue({
+						tabs: [
+							{ type: 'mcp-server', id: 'srv-1', name: 'Marketing tools', projectId: 'project-1' },
+						],
+						closedTabs: [],
+						activeTab: { type: 'mcp-server', id: 'srv-1' },
+						previewOpen: true,
+					}),
+					save: vi.fn().mockResolvedValue(undefined),
+				},
+			});
+			ctx.thread.producedArtifacts.set('srv-1', {
+				type: 'mcp-server',
+				id: 'srv-1',
+				name: 'MCP server',
+				isFallbackName: true,
+			});
+			await flushPromises();
+
+			expect(ctx.openTabs.value[0]?.name).toBe('Marketing tools');
+			expect(ctx.activeMcpServer.value).toEqual({ id: 'srv-1', projectId: 'project-1' });
+		});
+
+		test('openMcpServerPreview applies passed projectId to an existing projectless tab', async () => {
+			const ctx = setup();
+			ctx.thread.producedArtifacts.set('srv-1', {
+				type: 'mcp-server',
+				id: 'srv-1',
+				name: 'MCP server',
+				isFallbackName: true,
+			});
+			ctx.selectTab('srv-1');
+			await nextTick();
+			expect(ctx.activeMcpServer.value).toBeNull();
+
+			expect(ctx.openMcpServerPreview('srv-1', 'project-1')).toBe(true);
+			expect(ctx.activeMcpServer.value).toEqual({ id: 'srv-1', projectId: 'project-1' });
+			expect(ctx.openMcpServerPreview('srv-1', 'project-1')).toBe(false);
+		});
+
+		test('openMcpServerPreview applies passed projectId to a stored-only projectless tab', async () => {
+			const ctx = setup({
+				tabsStorage: {
+					load: vi.fn().mockResolvedValue({
+						tabs: [{ type: 'mcp-server', id: 'srv-1', name: 'Marketing tools' }],
+						closedTabs: [],
+						activeTab: { type: 'mcp-server', id: 'srv-1' },
+						previewOpen: true,
+					}),
+					save: vi.fn().mockResolvedValue(undefined),
+				},
+			});
+			await flushPromises();
+			expect(ctx.activeMcpServer.value).toBeNull();
+
+			expect(ctx.openMcpServerPreview('srv-1', 'project-1')).toBe(true);
+			expect(ctx.activeMcpServer.value).toEqual({ id: 'srv-1', projectId: 'project-1' });
 		});
 	});
 

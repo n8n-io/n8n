@@ -4,11 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises, mount } from '@vue/test-utils';
-import type {
-	InstanceAiHandoffContext,
-	InstanceAiMessage,
-	SystemAgentThreadSummary,
-} from '@n8n/api-types';
+import type { InstanceAiHandoffContext, SystemAgentThreadSummary } from '@n8n/api-types';
 
 import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -1385,56 +1381,6 @@ describe('InstanceAiChatPanel', () => {
 			instanceAiMcpServerTarget: { serverId: SERVER_ID, projectId: 'p1' },
 		};
 
-		/** An assistant message whose orchestrator made one call of the custom MCP servers tool. */
-		function serverToolCall(
-			toolCallId: string,
-			args: Record<string, unknown>,
-			result: unknown,
-		): InstanceAiMessage {
-			return {
-				id: `message-${toolCallId}`,
-				role: 'assistant',
-				createdAt: '2026-11-25T10:00:00.000Z',
-				content: '',
-				reasoning: '',
-				isStreaming: false,
-				agentTree: {
-					agentId: 'orchestrator',
-					role: 'orchestrator',
-					status: 'completed',
-					textContent: '',
-					reasoning: '',
-					toolCalls: [
-						{ toolCallId, toolName: 'custom-mcp-servers', args, result, isLoading: false },
-					],
-					children: [],
-					timeline: [],
-				},
-			} as InstanceAiMessage;
-		}
-
-		/** A tool result as it reaches the editor: the tool declares `untrustedOutput()`. */
-		function untrusted(result: Record<string, unknown>) {
-			return {
-				type: 'content',
-				value: [
-					{
-						type: 'text',
-						text: `<untrusted_data source="tool:custom-mcp-servers">\n${JSON.stringify(result)}\n</untrusted_data>`,
-					},
-				],
-			};
-		}
-
-		function mountServerPanel(runtime = makeThread()) {
-			store.getOrCreateRuntime.mockReturnValue(runtime);
-			store.getThreadMetadata.mockReturnValue(serverMetadata);
-			return mount(InstanceAiChatPanel, {
-				props: { subject: serverSubject, launch: serverLaunch, threadId: 't-server' },
-				global: { stubs: panelStubs },
-			});
-		}
-
 		it('binds a new thread to the server', async () => {
 			store.getThreadMetadata.mockReturnValue(undefined);
 			const wrapper = mount(InstanceAiChatPanel, {
@@ -1478,128 +1424,6 @@ describe('InstanceAiChatPanel', () => {
 			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toEqual([['t-server']]));
 		});
 
-		it('tells the host when the Assistant changes the server', async () => {
-			const runtime = makeThread();
-			const wrapper = mountServerPanel(runtime);
-			await flushPromises();
-
-			runtime.messages.push(
-				serverToolCall(
-					'tc-add',
-					{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['w1'] },
-					untrusted({ success: true, serverMutated: true, tools: [] }),
-				),
-			);
-			await flushPromises();
-
-			expect(wrapper.emitted('subject-changed')).toHaveLength(1);
-		});
-
-		it.each([
-			[
-				'a read',
-				() =>
-					serverToolCall(
-						'tc-get',
-						{ action: 'get', serverId: SERVER_ID },
-						untrusted({ server: {} }),
-					),
-			],
-			[
-				'a denied change',
-				() =>
-					serverToolCall(
-						'tc-denied',
-						{ action: 'update', serverId: SERVER_ID, name: 'New' },
-						untrusted({ success: false, denied: true }),
-					),
-			],
-			[
-				'a change of another server',
-				() =>
-					serverToolCall(
-						'tc-other',
-						{ action: 'remove-tool', serverId: 'other-server', toolId: 't1' },
-						untrusted({ success: true, serverMutated: true, toolId: 't1' }),
-					),
-			],
-		])('does not tell the host about %s', async (_case, message) => {
-			const runtime = makeThread();
-			const wrapper = mountServerPanel(runtime);
-			await flushPromises();
-
-			runtime.messages.push(message());
-			await flushPromises();
-
-			expect(wrapper.emitted('subject-changed')).toBeUndefined();
-		});
-
-		it('does not replay the changes of the history when the thread opens', async () => {
-			const runtime = makeThread();
-			runtime.messages.push(
-				serverToolCall(
-					'tc-old',
-					{ action: 'update', serverId: SERVER_ID, description: 'Old' },
-					untrusted({ success: true, serverMutated: true, server: {} }),
-				),
-			);
-			const wrapper = mountServerPanel(runtime);
-			await flushPromises();
-
-			expect(wrapper.emitted('subject-changed')).toBeUndefined();
-		});
-
-		it('tells the host about each change when approvals finish out of order', async () => {
-			const runtime = makeThread();
-			const wrapper = mountServerPanel(runtime);
-			await flushPromises();
-			runtime.messages.push(
-				serverToolCall(
-					'tc-first',
-					{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['w1'] },
-					undefined,
-				),
-				serverToolCall(
-					'tc-second',
-					{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['w2'] },
-					undefined,
-				),
-			);
-			const [first, second] = runtime.messages.map((message) => message.agentTree!.toolCalls[0]);
-			first.isLoading = true;
-			second.isLoading = true;
-			await flushPromises();
-
-			second.result = untrusted({ success: true, serverMutated: true, tools: [] });
-			second.isLoading = false;
-			await flushPromises();
-			first.result = untrusted({ success: true, serverMutated: true, tools: [] });
-			first.isLoading = false;
-			await flushPromises();
-
-			expect(wrapper.emitted('subject-changed')).toHaveLength(2);
-		});
-
-		it('does not replay the changes that the history loads in one tick', async () => {
-			const runtime = makeThread();
-			runtime.isHydratingThread = true;
-			const wrapper = mountServerPanel(runtime);
-			await flushPromises();
-
-			// History loading sets the messages and ends hydration in the same tick.
-			runtime.messages.push(
-				serverToolCall(
-					'tc-old',
-					{ action: 'update', serverId: SERVER_ID, description: 'Old' },
-					untrusted({ success: true, serverMutated: true, server: {} }),
-				),
-			);
-			runtime.isHydratingThread = false;
-			await flushPromises();
-
-			expect(wrapper.emitted('subject-changed')).toBeUndefined();
-		});
-
 		it('keeps a pre-fill for the composer of the thread that it opens', async () => {
 			store.getThreadMetadata.mockReturnValue(undefined);
 			const wrapper = mount(InstanceAiChatPanel, {
@@ -1635,17 +1459,6 @@ describe('InstanceAiChatPanel', () => {
 			for (const [threadId] of wrapper.emitted('update:threadId') ?? []) {
 				expect(getPendingComposerDraft(threadId as string)).toBeNull();
 			}
-		});
-
-		it('shows the subject row of the host', async () => {
-			const wrapper = mount(InstanceAiChatPanel, {
-				props: { subject: serverSubject, launch: serverLaunch, threadId: 't-server' },
-				slots: { subject: '<p data-test-id="host-subject-row">Marketing tools</p>' },
-				global: { stubs: panelStubs },
-			});
-			await flushPromises();
-
-			expect(wrapper.find('[data-test-id="host-subject-row"]').exists()).toBe(true);
 		});
 	});
 });
