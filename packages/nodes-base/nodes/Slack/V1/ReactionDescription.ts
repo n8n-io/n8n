@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { READ_ONLY_ANNOTATIONS } from 'n8n-workflow';
 
 export const reactionOperations: INodeProperties[] = [
 	{
@@ -15,18 +16,21 @@ export const reactionOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 				description: 'Adds a reaction to a message',
 				action: 'Add a reaction',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				annotations: READ_ONLY_ANNOTATIONS,
 				description: 'Get the reactions of a message',
 				action: 'Get a reaction',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 				description: 'Remove a reaction of a message',
 				action: 'Remove a reaction',
 			},
