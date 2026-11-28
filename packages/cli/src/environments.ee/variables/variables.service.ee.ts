@@ -305,6 +305,11 @@ export class VariablesService {
 					`You are not allowed to move this variable to ${variable.projectId ? 'the specified project' : 'the global scope'}`,
 				);
 			}
+
+			// The move must not land the variable in a scope that already holds the same key —
+			// a duplicate the create and key-change paths both reject. Validate the key that
+			// will land there: the new one when the update also renames, else the existing one.
+			await this.validateUniqueVariable(variable.key ?? existingVariable.key, newProjectId, id);
 		}
 
 		if (variable.key) {
