@@ -8761,6 +8761,7 @@
 	"insights.banner.title.timeSavedDailyAverage": "Time saved daily avg.",
 	"insights.banner.title.averageRunTime": "Run time (avg.)",
 	"insights.dashboard.chart.title": "Breakdown by {granularity}",
+	"insights.dashboard.table.name": "Name",
 	"insights.dashboard.table.projectName": "Project name",
 	"insights.dashboard.table.title": "Breakdown by workflow",
 	"insights.dashboard.table.estimate": "Estimate",
