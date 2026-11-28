@@ -193,12 +193,16 @@ export class TaskBroker {
 		this.pendingTaskRequests.splice(requestIndex, 1);
 		this.mismatchWarned.delete(requestId);
 
+		const timesOutAt = this.requestTimesOutAt.get(request.timeout);
+		const isCappedByShutdown =
+			this.shutdownDeadline !== undefined && timesOutAt === this.shutdownDeadline;
+
 		clearTimeout(request.timeout);
 
 		void this.requesters.get(request.requesterId)?.({
 			type: 'broker:requestexpired',
 			requestId: request.requestId,
-			reason: 'timeout',
+			reason: isCappedByShutdown ? 'shutdown' : 'timeout',
 		});
 	}
 

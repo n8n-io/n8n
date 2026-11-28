@@ -24,6 +24,7 @@ import { nanoid } from 'nanoid';
 
 import { NodeTypes } from '@/node-types';
 import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
+import { TaskRequestShutdownError } from '@/task-runners/errors/task-request-shutdown.error';
 import { TaskRequestTimeoutError } from '@/task-runners/errors/task-request-timeout.error';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
@@ -274,7 +275,7 @@ export abstract class TaskRequester {
 				this.taskError(message.taskId, message.error);
 				break;
 			case 'broker:requestexpired':
-				this.requestExpired(message.requestId);
+				this.requestExpired(message.requestId, message.reason);
 				break;
 			case 'broker:taskdatarequest':
 				this.sendTaskData(message.taskId, message.requestId, message.requestParams);
@@ -302,9 +303,17 @@ export abstract class TaskRequester {
 		this.requestAcceptRejects.delete(requestId);
 	}
 
-	requestExpired(requestId: string) {
+	requestExpired(requestId: string, reason: BrokerMessage.ToRequester.RequestExpired['reason']) {
 		const acceptReject = this.requestAcceptRejects.get(requestId);
 		if (!acceptReject) return;
+
+		// Shutdown is expected. Reporting it as a runner failure sends a Sentry event
+		// and tells the user to raise a timeout that did not expire.
+		if (reason === 'shutdown') {
+			acceptReject.reject(new TaskRequestShutdownError());
+			this.requestAcceptRejects.delete(requestId);
+			return;
+		}
 
 		const elapsedSeconds = Math.round((Date.now() - acceptReject.requestedAt) / 1000);
 
