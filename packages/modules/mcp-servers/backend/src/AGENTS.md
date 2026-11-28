@@ -64,7 +64,7 @@ This package exposes three entrypoints in `package.json`:
 
 - `@n8n/backend-module-mcp-servers` (`src/index.ts`): the main runtime API for other packages. It never exports `McpServersModule`, controllers, repositories, or database entities. `__tests__/index.test.ts` pins its export list and checks that importing it does not register the module.
 - `@n8n/backend-module-mcp-servers/module` (`src/mcp-servers.module.ts`): the module loader entrypoint. Only `packages/cli/src/modules/modules.manifest.ts` imports it.
-- `@n8n/backend-module-mcp-servers/testing` (`src/testing/index.ts`): fixtures for tests outside this package. Only test files import it.
+- `@n8n/backend-module-mcp-servers/testing` (`src/testing/index.ts`): fixtures for tests outside this package. Only test files import it. The `packages/cli` lint configurations (`oxlint.config.mts` and `eslint.config.mjs`) reject the import in production code.
 
 ### Exports of `@n8n/backend-module-mcp-servers` (`src/index.ts`)
 
