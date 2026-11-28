@@ -48,7 +48,9 @@ describe('Knowledge collection repositories', () => {
 		await testDb.terminate();
 	});
 
-	async function createCollection(): Promise<string> {
+	async function createCollection(
+		overrides: Partial<Pick<KnowledgeCollection, 'name' | 'projectId'>> = {},
+	): Promise<string> {
 		const id = generateNanoId();
 		await collectionTable.insert({
 			id,
@@ -57,6 +59,20 @@ describe('Knowledge collection repositories', () => {
 			slug: `collection_${id}`.slice(0, 24),
 			kind: 'shared',
 			projectId,
+			...overrides,
+		});
+
+		return id;
+	}
+
+	async function createPrivateCollection(agentId: string): Promise<string> {
+		const id = generateNanoId();
+		await collectionTable.insert({
+			id,
+			name: `Private ${id}`,
+			slug: `agent_${id}`.slice(0, 24),
+			kind: 'agent',
+			agentId,
 		});
 
 		return id;
@@ -117,6 +133,80 @@ describe('Knowledge collection repositories', () => {
 				NotFoundError,
 			);
 		});
+
+		describe('findSearchableByAgent', () => {
+			it('finds the linked collections that the project of the agent owns, by name', async () => {
+				const agent = await createAgent({ projectId });
+				const secondId = await createCollection({ name: 'B docs' });
+				const firstId = await createCollection({ name: 'A docs' });
+				await createCollection({ name: 'Not linked' });
+				await dependencyTable.insert([
+					{ agentId: agent.id, knowledgeCollectionId: secondId },
+					{ agentId: agent.id, knowledgeCollectionId: firstId },
+				]);
+
+				const collections = await collectionRepo.findSearchableByAgent(agent.id, projectId, {});
+
+				expect(collections.map(({ id }) => id)).toEqual([firstId, secondId]);
+				expect(collections[0]).toBeInstanceOf(KnowledgeCollection);
+				expect(await collectionRepo.hasSearchableByAgent(agent.id, projectId, {})).toBe(true);
+			});
+
+			it('leaves out a linked collection that another project owns', async () => {
+				const agent = await createAgent({ projectId });
+				const otherProjectId = (await createTeamProject()).id;
+				const foreignId = await createCollection({ projectId: otherProjectId });
+				await dependencyTable.insert({ agentId: agent.id, knowledgeCollectionId: foreignId });
+
+				await expect(
+					collectionRepo.findSearchableByAgent(agent.id, projectId, {}),
+				).resolves.toEqual([]);
+				expect(await collectionRepo.hasSearchableByAgent(agent.id, projectId, {})).toBe(false);
+			});
+
+			it('leaves out the private collection of the agent and the collections of other agents', async () => {
+				const agent = await createAgent({ projectId });
+				const otherAgent = await createAgent({ projectId });
+				const privateId = await createPrivateCollection(agent.id);
+				const otherAgentCollectionId = await createCollection();
+				await dependencyTable.insert([
+					{ agentId: agent.id, knowledgeCollectionId: privateId },
+					{ agentId: otherAgent.id, knowledgeCollectionId: otherAgentCollectionId },
+				]);
+
+				await expect(
+					collectionRepo.findSearchableByAgent(agent.id, projectId, {}),
+				).resolves.toEqual([]);
+				expect(await collectionRepo.hasSearchableByAgent(agent.id, projectId, {})).toBe(false);
+			});
+		});
+
+		describe('hasSearchableFileByAgent', () => {
+			it('is true only when a linked collection of the project has a file', async () => {
+				const agent = await createAgent({ projectId });
+				const emptyId = await createCollection({ name: 'Empty' });
+				await dependencyTable.insert({ agentId: agent.id, knowledgeCollectionId: emptyId });
+				const unlinkedId = await createCollection({ name: 'Not linked' });
+				await fileRepo.saveUploadedFile(fileParams(unlinkedId, 'unlinked.txt'), {});
+
+				expect(await collectionRepo.hasSearchableByAgent(agent.id, projectId, {})).toBe(true);
+				expect(await collectionRepo.hasSearchableFileByAgent(agent.id, projectId, {})).toBe(false);
+
+				await fileRepo.saveUploadedFile(fileParams(emptyId, 'first.txt'), {});
+
+				expect(await collectionRepo.hasSearchableFileByAgent(agent.id, projectId, {})).toBe(true);
+			});
+
+			it('ignores the file of a linked collection that another project owns', async () => {
+				const agent = await createAgent({ projectId });
+				const otherProjectId = (await createTeamProject()).id;
+				const foreignId = await createCollection({ projectId: otherProjectId });
+				await dependencyTable.insert({ agentId: agent.id, knowledgeCollectionId: foreignId });
+				await fileRepo.saveUploadedFile(fileParams(foreignId, 'foreign.txt'), {});
+
+				expect(await collectionRepo.hasSearchableFileByAgent(agent.id, projectId, {})).toBe(false);
+			});
+		});
 	});
 
 	describe('KnowledgeCollectionFileRepository', () => {
@@ -133,6 +223,22 @@ describe('Knowledge collection repositories', () => {
 
 			expect(files.map((file) => file.id)).toEqual([first.id, second.id]);
 			expect(files[1]).toMatchObject({ name: 'second.txt', fileSizeBytes: 10 });
+		});
+
+		it('lists the files of several collections, grouped by collection in upload order', async () => {
+			const firstCollectionId = await createCollection();
+			const secondCollectionId = await createCollection();
+			await fileRepo.saveUploadedFile(fileParams(await createCollection(), 'other.txt'), {});
+			const [earlierId, laterId] = [firstCollectionId, secondCollectionId].sort();
+			const laterFirst = await fileRepo.saveUploadedFile(fileParams(laterId, 'first.txt'), {});
+			await fileTable.update(laterFirst.id, { createdAt: new Date('2020-01-01T00:00:00.000Z') });
+			const laterSecond = await fileRepo.saveUploadedFile(fileParams(laterId, 'second.txt'), {});
+			const earlier = await fileRepo.saveUploadedFile(fileParams(earlierId, 'only.txt'), {});
+
+			const files = await fileRepo.findByCollectionIds([firstCollectionId, secondCollectionId], {});
+
+			expect(files.map((file) => file.id)).toEqual([earlier.id, laterFirst.id, laterSecond.id]);
+			await expect(fileRepo.findByCollectionIds([], {})).resolves.toEqual([]);
 		});
 
 		it('rejects a second file with the same name in one collection', async () => {

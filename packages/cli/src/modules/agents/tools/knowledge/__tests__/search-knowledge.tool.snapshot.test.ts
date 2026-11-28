@@ -114,11 +114,12 @@ const fixtures: {
 
 const failure = new Error('sandbox unavailable');
 
-function buildTools(retriever: KnowledgeRetriever): BuiltTool[] {
+function buildTools(retriever: KnowledgeRetriever, collectionsEnabled = false): BuiltTool[] {
 	return createKnowledgeRetrievalTools({
 		scope: { kind: 'agent', projectId, agentId },
 		retriever,
 		startToolCall: () => () => {},
+		collectionsEnabled,
 	}).map((builder) => builder.build());
 }
 
@@ -166,6 +167,48 @@ describe('knowledge retrieval tools contract', () => {
 		await expect(
 			callTool(tool, { pattern: '*.txt', limit: 20, offset: 0 }),
 		).resolves.toMatchSnapshot();
+	});
+
+	describe('with knowledge collections on', () => {
+		const collectionFileReference: KnowledgeFileReference = {
+			...fileReference,
+			file: 'employee_handbook/leave-policy.txt',
+			fileId: 'file-2',
+			storageKey: 'knowledge-collections/collection-1/files/file-2/content',
+			displayName: 'leave-policy.pdf',
+			mimeType: 'application/pdf',
+		};
+
+		it('exposes the same tools with the collection hints in their descriptions, and the same input schemas', () => {
+			const tools = buildTools(mock<KnowledgeRetriever>(), true);
+
+			expect(tools.map(toModelFacingDefinition)).toMatchSnapshot();
+			expect(tools.map((tool) => zodToJsonSchema(tool.inputSchema))).toEqual(
+				buildTools(mock<KnowledgeRetriever>()).map((tool) => zodToJsonSchema(tool.inputSchema)),
+			);
+		});
+
+		it('returns the same find_file output and model output with the collection catalog', async () => {
+			const retriever = mock<KnowledgeRetriever>();
+			retriever.findFiles.mockResolvedValue({
+				...fixtures.findFiles,
+				files: [fileReference, collectionFileReference],
+				collections: [
+					{
+						dir: 'employee_handbook',
+						name: 'Employee handbook',
+						description: 'Company policies on leave, expenses and benefits',
+						fileCount: 1,
+					},
+					{ dir: 'product_docs', name: 'Product docs', description: null, fileCount: 0 },
+				],
+			});
+			const tool = getTool(buildTools(retriever, true), 'find_file');
+
+			await expect(
+				callTool(tool, { pattern: '*', limit: 20, offset: 0 }),
+			).resolves.toMatchSnapshot();
+		});
 	});
 
 	it.each(['content', 'files_with_matches', 'count'] as const)(

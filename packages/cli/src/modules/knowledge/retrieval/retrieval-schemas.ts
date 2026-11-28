@@ -196,6 +196,14 @@ export interface KnowledgeFileReference {
 	createdAt: string;
 }
 
+/** A collection the scope can search. Its files have the `file` value `<dir>/<name>`. */
+export interface KnowledgeCollectionReference {
+	dir: string;
+	name: string;
+	description: string | null;
+	fileCount: number;
+}
+
 type KnowledgeFileIdentity = Pick<KnowledgeFileReference, 'file' | 'fileId' | 'displayName'>;
 
 export interface KnowledgeFileCitation extends KnowledgeFileIdentity {
@@ -254,6 +262,8 @@ export interface FindKnowledgeFilesResult {
 	limit: number;
 	offset: number;
 	hasMore: boolean;
+	/** On the first page, and only when the scope has collections. */
+	collections?: KnowledgeCollectionReference[];
 }
 
 export interface ReadKnowledgeFileRangeResult {

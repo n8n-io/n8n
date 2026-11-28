@@ -21,3 +21,11 @@ export class KnowledgeUploadError extends BadRequestError {
 		super(message);
 	}
 }
+
+/** Raised by the upload middleware and by `KnowledgeFileService.validateUploadMetadata`. */
+export function knowledgeFileTypeError(): KnowledgeUploadError {
+	return new KnowledgeUploadError(
+		'Only CSV, PDF, Markdown, and TXT files are allowed',
+		'file_type',
+	);
+}

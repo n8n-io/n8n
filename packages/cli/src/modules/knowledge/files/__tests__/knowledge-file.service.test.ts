@@ -17,6 +17,7 @@ import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
 import type { KnowledgeSandboxProviderProxy } from '../../knowledge-sandbox-provider-proxy';
 import { createKnowledgeTelemetryHmac } from '../../telemetry/helpers';
 import type { KnowledgeFileRepository } from '../../repositories/knowledge-file.repository';
+import type { KnowledgeCollectionSourceService } from '../../retrieval/collection-source.service';
 import type { KnowledgeMirrorService } from '../../retrieval/mirror.service';
 import type { KnowledgeFileStore } from '../knowledge-file-store';
 import { KnowledgeFileService, type KnowledgeWriteRunner } from '../knowledge-file.service';
@@ -167,6 +168,7 @@ describe('KnowledgeFileService', () => {
 	let fileStore: Mocked<KnowledgeFileStore>;
 	let mirrorService: Mocked<KnowledgeMirrorService>;
 	let sandboxProviderProxy: Mocked<KnowledgeSandboxProviderProxy>;
+	let collectionSourceService: Mocked<KnowledgeCollectionSourceService>;
 	let logger: Mocked<Logger>;
 	let service: KnowledgeFileService;
 
@@ -176,6 +178,7 @@ describe('KnowledgeFileService', () => {
 			fileStore,
 			mirrorService,
 			sandboxProviderProxy,
+			collectionSourceService,
 			mock<InstanceSettings>({ hmacSignatureSecret: instanceSecret }),
 			mock<GlobalConfig>({ diagnostics: { enabled: diagnosticsEnabled } }),
 			// A fresh instance keeps the defaults; the getters derive the byte limits from the overrides.
@@ -198,6 +201,8 @@ describe('KnowledgeFileService', () => {
 		fileStore.delete.mockResolvedValue(undefined);
 		mirrorService = mock<KnowledgeMirrorService>();
 		sandboxProviderProxy = mock<KnowledgeSandboxProviderProxy>();
+		collectionSourceService = mock<KnowledgeCollectionSourceService>();
+		collectionSourceService.hasSearchableCollectionFile.mockResolvedValue(false);
 		logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
 		service = makeService();
@@ -380,6 +385,16 @@ describe('KnowledgeFileService', () => {
 		await expect(
 			service.uploadFiles(scope, [makeMulterFile({ originalname: '..' })], writeFence),
 		).rejects.toThrow('Invalid knowledge file name');
+
+		expect(fileRepository.all()).toEqual([]);
+		expect(fileStore.write).not.toHaveBeenCalled();
+	});
+
+	// The mirror tells a file of the agent from a collection directory by the `.` of the extension.
+	it('rejects uploads whose file name has no allowed extension, without the middleware', async () => {
+		await expect(
+			service.uploadFiles(scope, [makeMulterFile({ originalname: 'handbook' })], writeFence),
+		).rejects.toThrow('Only CSV, PDF, Markdown, and TXT files are allowed');
 
 		expect(fileRepository.all()).toEqual([]);
 		expect(fileStore.write).not.toHaveBeenCalled();
@@ -645,6 +660,12 @@ describe('KnowledgeFileService', () => {
 			).rejects.toMatchObject({ reason: 'invalid_file_name' });
 		});
 
+		it('gives a file name without an allowed extension the file_type reason', async () => {
+			await expect(
+				service.uploadFiles(scope, [makeMulterFile({ originalname: 'tool.exe' })], writeFence),
+			).rejects.toMatchObject({ reason: 'file_type' });
+		});
+
 		it('gives a too long MIME type no reason, so it is reported as unknown', async () => {
 			const upload = service.uploadFiles(
 				scope,
@@ -791,6 +812,34 @@ describe('KnowledgeFileService', () => {
 
 		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
 
+		expect(collectionSourceService.hasSearchableCollectionFile).toHaveBeenCalledWith(scope);
+		expect(sandboxProviderProxy.destroy).toHaveBeenCalledExactlyOnceWith(scope);
+		expect(mirrorService.syncMirrorInBackground).not.toHaveBeenCalled();
+	});
+
+	it('keeps the sandbox after the final file is deleted when a collection of the scope has files', async () => {
+		await fileRepository.save(makeAgentFile({ id: 'file-1' }));
+		collectionSourceService.hasSearchableCollectionFile.mockResolvedValue(true);
+
+		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
+
+		expect(sandboxProviderProxy.destroy).not.toHaveBeenCalled();
+		expect(mirrorService.syncMirrorInBackground).toHaveBeenCalledExactlyOnceWith(
+			scope,
+			expect.any(Function),
+		);
+	});
+
+	it('decides on the files of the collections, not on the collections, after the final file is deleted', async () => {
+		await fileRepository.save(makeAgentFile({ id: 'file-1' }));
+		// A collection without files keeps the tools attached, but not the sandbox.
+		collectionSourceService.hasSearchableCollection.mockResolvedValue(true);
+		collectionSourceService.hasSearchableCollectionFile.mockResolvedValue(false);
+
+		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
+
+		expect(collectionSourceService.hasSearchableCollection).not.toHaveBeenCalled();
+		expect(collectionSourceService.hasSearchableCollectionFile).toHaveBeenCalledWith(scope);
 		expect(sandboxProviderProxy.destroy).toHaveBeenCalledExactlyOnceWith(scope);
 		expect(mirrorService.syncMirrorInBackground).not.toHaveBeenCalled();
 	});

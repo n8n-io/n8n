@@ -1433,15 +1433,17 @@ export class AgentRuntimeReconstructionService {
 			(await this.knowledgeRetriever.hasFiles(scope));
 		throwIfAborted(params.abortSignal);
 		if (hasFiles) {
-			const { createKnowledgeRetrievalTools } = await import(
-				'./tools/knowledge/search-knowledge.tool.js'
-			);
+			const [{ createKnowledgeRetrievalTools }, collectionsEnabled] = await Promise.all([
+				import('./tools/knowledge/search-knowledge.tool.js'),
+				this.knowledgeAvailabilityService.isCollectionsEnabled(),
+			]);
 			throwIfAborted(params.abortSignal);
 			agent.tool(
 				createKnowledgeRetrievalTools({
 					scope,
 					retriever: this.knowledgeRetriever,
 					startToolCall: (runId, call) => this.knowledgeUsageTracker.startToolCall(runId, call),
+					collectionsEnabled,
 				}),
 			);
 		}

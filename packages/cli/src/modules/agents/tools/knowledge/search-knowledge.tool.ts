@@ -34,6 +34,18 @@ const MODEL_OUTPUT_SEARCH_TEXT_CHARS = 240;
 const MODEL_OUTPUT_READ_TEXT_BUDGET = 6_000;
 const MODEL_OUTPUT_READ_RANGE_MIN_CHARS = 800;
 
+// Added to the descriptions only while collections are on, so that the tools read as before without them.
+const FIND_FILES_COLLECTIONS_HINT =
+	'Knowledge files are the files uploaded to this agent and the files of its knowledge collections. A file of a collection has the file value `<collection>/<name>`, where `<collection>` is the directory of the collection; a pattern like `<collection>/*` lists the files of one collection. The first page of a result also lists every collection under `collections`, with its directory, name, description and file count: read them to decide which collection a question calls for.';
+const SEARCH_TEXT_COLLECTIONS_HINT =
+	'Files of a knowledge collection have file values of `<collection>/<name>`. To search one collection, pass its directory `<collection>` as a path value, alone or next to file values; a directory counts as one path.';
+const READ_FILE_COLLECTIONS_HINT =
+	'A file of a knowledge collection has the file value `<collection>/<name>`.';
+
+function withCollectionsHint(description: string, hint: string, collectionsEnabled: boolean) {
+	return collectionsEnabled ? `${description} ${hint}` : description;
+}
+
 function formatKnowledgeToolError(error: unknown): KnowledgeToolErrorOutput {
 	if (error instanceof Error) {
 		return {
@@ -193,6 +205,16 @@ function toFindKnowledgeFilesModelOutput(output: unknown): unknown {
 		returnedFiles: files.length,
 		offset: output.offset,
 		hasMore: output.hasMore,
+		...(output.collections
+			? {
+					collections: output.collections.map(({ dir, name, description, fileCount }) => ({
+						dir,
+						name,
+						description,
+						fileCount,
+					})),
+				}
+			: {}),
 	};
 }
 
@@ -324,15 +346,22 @@ export function createKnowledgeRetrievalTools({
 	scope,
 	retriever,
 	startToolCall,
+	collectionsEnabled = false,
 }: {
 	scope: KnowledgeConsumerScope;
 	retriever: KnowledgeRetriever;
 	/** Called when each call starts. The returned function gets the size of the output that the model gets. */
 	startToolCall: (runId: string | undefined, call: KnowledgeToolCall) => FinishKnowledgeToolCall;
+	/** Adds the collection hints to the descriptions. */
+	collectionsEnabled?: boolean;
 }) {
 	const findFilesTool = new Tool('find_file')
 		.description(
-			'Find uploaded knowledge files by filename pattern, such as `*knowledge*`, `*agent*tool*`, or `*sandbox*`. Use `*` to list every uploaded file, an extension pattern like `*.pdf` to filter by type, or a name fragment when the user gives title or filename clues. Use first for knowledge lookup to discover plausible candidate files; call until enough candidates are found, then copy returned file values into search_text path or read_file. Results are paged: page through the full list with `limit` and `offset` while `hasMore` is true. Returns file, fileId, mimeType, and fileSizeBytes metadata; does not read file contents.',
+			withCollectionsHint(
+				'Find uploaded knowledge files by filename pattern, such as `*knowledge*`, `*agent*tool*`, or `*sandbox*`. Use `*` to list every uploaded file, an extension pattern like `*.pdf` to filter by type, or a name fragment when the user gives title or filename clues. Use first for knowledge lookup to discover plausible candidate files; call until enough candidates are found, then copy returned file values into search_text path or read_file. Results are paged: page through the full list with `limit` and `offset` while `hasMore` is true. Returns file, fileId, mimeType, and fileSizeBytes metadata; does not read file contents.',
+				FIND_FILES_COLLECTIONS_HINT,
+				collectionsEnabled,
+			),
 		)
 		.input(findKnowledgeFilesInputSchema)
 		.handler(async (input, ctx) => {
@@ -346,7 +375,11 @@ export function createKnowledgeRetrievalTools({
 
 	const searchTextTool = new Tool('search_text')
 		.description(
-			'Search uploaded knowledge file contents with a ripgrep regex `pattern`. Omit `path` to search across every uploaded knowledge file. Pass `path` — one exact file value or an array of exact file values returned by find_file, search_text, or read_file — to scope the search to specific files. Does not accept empty path, `*`, fileId, absolute paths, guessed paths, arrays of non-strings, offsets, or semantic questions. Searching more than 20 files with an explicit `path` requires batching arrays across multiple calls (max 20 paths per call). `output_mode` defaults to content for snippets; use files_with_matches for matching files only or count for per-file match counts. Use `head_limit` to bound results and small `-C` values for nearby context. Answer from snippets when enough; use read_file only for quotes, citations, exact wording, source text, or larger missing context.',
+			withCollectionsHint(
+				'Search uploaded knowledge file contents with a ripgrep regex `pattern`. Omit `path` to search across every uploaded knowledge file. Pass `path` — one exact file value or an array of exact file values returned by find_file, search_text, or read_file — to scope the search to specific files. Does not accept empty path, `*`, fileId, absolute paths, guessed paths, arrays of non-strings, offsets, or semantic questions. Searching more than 20 files with an explicit `path` requires batching arrays across multiple calls (max 20 paths per call). `output_mode` defaults to content for snippets; use files_with_matches for matching files only or count for per-file match counts. Use `head_limit` to bound results and small `-C` values for nearby context. Answer from snippets when enough; use read_file only for quotes, citations, exact wording, source text, or larger missing context.',
+				SEARCH_TEXT_COLLECTIONS_HINT,
+				collectionsEnabled,
+			),
 		)
 		.input(searchKnowledgeTextInputSchema)
 		.handler(async (input, ctx) => {
@@ -366,7 +399,11 @@ export function createKnowledgeRetrievalTools({
 
 	const readFileTool = new Tool('read_file')
 		.description(
-			`Read one uploaded knowledge file using an exact \`file\` or \`fileId\` returned by a knowledge tool. Use only for exact quotes, citations, source text, or extra surrounding context not covered by search_text snippets or small -C context. Prefer bounded line ranges; each call supports up to ${MAX_READ_RANGES} ranges and output is truncated when too large. Read all needed ranges from the same file in one call when practical, and do not use read_file for broad manual scanning. If using fileId without an exact matching file value, omit file.`,
+			withCollectionsHint(
+				`Read one uploaded knowledge file using an exact \`file\` or \`fileId\` returned by a knowledge tool. Use only for exact quotes, citations, source text, or extra surrounding context not covered by search_text snippets or small -C context. Prefer bounded line ranges; each call supports up to ${MAX_READ_RANGES} ranges and output is truncated when too large. Read all needed ranges from the same file in one call when practical, and do not use read_file for broad manual scanning. If using fileId without an exact matching file value, omit file.`,
+				READ_FILE_COLLECTIONS_HINT,
+				collectionsEnabled,
+			),
 		)
 		.input(readKnowledgeFileInputSchema)
 		.handler(async (input, ctx) => {

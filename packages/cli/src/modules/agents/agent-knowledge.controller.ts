@@ -142,6 +142,7 @@ export class AgentKnowledgeController {
 		@Param('collectionId') collectionId: string,
 	) {
 		await this.agentKnowledgeService.addCollection(req.user, agentId, projectId, collectionId);
+		this.runtimeCacheService.clearRuntimes(agentId);
 		return { success: true };
 	}
 
@@ -155,6 +156,7 @@ export class AgentKnowledgeController {
 		@Param('collectionId') collectionId: string,
 	) {
 		await this.agentKnowledgeService.removeCollection(req.user, agentId, projectId, collectionId);
+		this.runtimeCacheService.clearRuntimes(agentId);
 		return { success: true };
 	}
 

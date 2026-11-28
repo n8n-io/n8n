@@ -15,7 +15,12 @@ import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
 import type { KnowledgeSandboxHandle } from '../../knowledge-sandbox-provider';
 import type { KnowledgeSandboxProviderProxy } from '../../knowledge-sandbox-provider-proxy';
 import type { KnowledgeFileRepository } from '../../repositories/knowledge-file.repository';
+import type {
+	KnowledgeCollectionSource,
+	KnowledgeCollectionSourceService,
+} from '../collection-source.service';
 import { KnowledgeMirrorService } from '../mirror.service';
+import type { KnowledgeFileReference } from '../retrieval-schemas';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';
@@ -99,16 +104,46 @@ function makeSandboxProviderProxy(
 	return provider;
 }
 
+/** Defaults to no collections, as while collections are off. */
+function makeCollectionSourceService(
+	source: KnowledgeCollectionSource = { collections: [], files: [] },
+): ReturnType<typeof mock<KnowledgeCollectionSourceService>> {
+	const service = mock<KnowledgeCollectionSourceService>();
+	service.loadSearchableCollections.mockResolvedValue(source);
+	return service;
+}
+
+function makeCollectionFile(
+	dir: string,
+	name: string,
+	id: string,
+	overrides: Partial<KnowledgeFileReference> = {},
+): KnowledgeFileReference {
+	return {
+		file: `${dir}/${name}`,
+		fileId: id,
+		storedAt: 'fs',
+		storageKey: `knowledge-collections/${dir}/files/${id}/content`,
+		displayName: name,
+		mimeType: 'text/plain',
+		fileSizeBytes: 100,
+		createdAt: '2024-02-01T00:00:00.000Z',
+		...overrides,
+	};
+}
+
 function makeService({
 	sandboxProviderProxy,
 	logger = mock<Logger>(),
 	fileRepository = mock<KnowledgeFileRepository>(),
 	fileStore = makeKnowledgeFileStore(),
+	collectionSourceService = makeCollectionSourceService(),
 }: {
 	sandboxProviderProxy: KnowledgeSandboxProviderProxy;
 	logger?: ReturnType<typeof mock<Logger>>;
 	fileRepository?: KnowledgeFileRepository;
 	fileStore?: KnowledgeFileStore;
+	collectionSourceService?: KnowledgeCollectionSourceService;
 }): KnowledgeMirrorService {
 	logger.scoped.mockReturnValue(logger);
 	return new KnowledgeMirrorService(
@@ -117,6 +152,7 @@ function makeService({
 		sandboxProviderProxy,
 		fileRepository,
 		fileStore,
+		collectionSourceService,
 	);
 }
 
@@ -191,6 +227,24 @@ describe('KnowledgeMirrorService', () => {
 				'delta.md',
 			]);
 			expect(result.hasMore).toBe(false);
+		});
+
+		it('skips a file whose stored name cannot be a file name, with a warning, and lists the others', async () => {
+			const fileRepository = mock<KnowledgeFileRepository>();
+			fileRepository.findByAgentId.mockResolvedValue([
+				makeAgentFile({ id: 'file-bad', fileName: '..' }),
+				makeAgentFile({ id: 'file-alpha', fileName: 'alpha.pdf' }),
+			]);
+			const logger = mock<Logger>();
+			const service = makeService({ sandboxProviderProxy, fileRepository, logger });
+
+			const result = await service.findFiles(scope, { pattern: '*' });
+
+			expect(result.files.map((file) => file.fileId)).toEqual(['file-alpha']);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped an agent knowledge file whose name cannot be a file name',
+				{ agentId: 'agent-1', fileId: 'file-bad' },
+			);
 		});
 
 		it('filters by extension pattern', async () => {
@@ -720,6 +774,287 @@ describe('KnowledgeMirrorService', () => {
 
 				expect(onPreparationWait).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('collections', () => {
+		const handbook = {
+			dir: 'handbook',
+			name: 'Employee handbook',
+			description: 'Company policies',
+			fileCount: 2,
+		};
+		const docs = { dir: 'docs', name: 'Product docs', description: null, fileCount: 1 };
+		const collectionFiles = [
+			makeCollectionFile('handbook', 'leave.txt', 'file-leave'),
+			makeCollectionFile('handbook', 'expenses.txt', 'file-expenses'),
+			makeCollectionFile('docs', 'api.txt', 'file-api'),
+		];
+
+		function isManifestReadCommand(command: string): boolean {
+			return command.startsWith('cat ') && command.includes('/manifest');
+		}
+
+		function makeCollectionService({
+			ownFiles = [makeAgentFile({ id: 'file-own', fileName: 'own.txt' })],
+			source = { collections: [handbook, docs], files: collectionFiles },
+			fileStore = makeKnowledgeFileStore(),
+		}: {
+			ownFiles?: AgentFile[];
+			source?: KnowledgeCollectionSource;
+			fileStore?: KnowledgeFileStore;
+		} = {}): KnowledgeMirrorService {
+			const fileRepository = mock<KnowledgeFileRepository>();
+			fileRepository.findByAgentId.mockResolvedValue(ownFiles);
+			return makeService({
+				sandboxProviderProxy,
+				fileRepository,
+				fileStore,
+				collectionSourceService: makeCollectionSourceService(source),
+			});
+		}
+
+		it('lists the files of the collections next to the own files, with the catalog', async () => {
+			const service = makeCollectionService();
+
+			const result = await service.findFiles(scope, { pattern: '*' });
+
+			expect(result.files.map((file) => file.file)).toEqual([
+				'docs/api.txt',
+				'handbook/expenses.txt',
+				'handbook/leave.txt',
+				'own.txt',
+			]);
+			expect(result.collections).toEqual([handbook, docs]);
+		});
+
+		it('lists the catalog on the first page only', async () => {
+			const service = makeCollectionService();
+
+			const secondPage = await service.findFiles(scope, { pattern: '*', limit: 2, offset: 2 });
+
+			expect(secondPage.files.map((file) => file.file)).toEqual(['handbook/leave.txt', 'own.txt']);
+			expect(secondPage).not.toHaveProperty('collections');
+		});
+
+		it('lists the files of one collection with a directory pattern', async () => {
+			const service = makeCollectionService();
+
+			const result = await service.findFiles(scope, { pattern: 'handbook/*' });
+
+			expect(result.files.map((file) => file.file)).toEqual([
+				'handbook/expenses.txt',
+				'handbook/leave.txt',
+			]);
+		});
+
+		it('lists the catalog of an agent whose only collection has no files', async () => {
+			const service = makeCollectionService({
+				ownFiles: [],
+				source: { collections: [{ ...docs, fileCount: 0 }], files: [] },
+			});
+
+			const result = await service.findFiles(scope, { pattern: '*' });
+
+			expect(result).toEqual({
+				files: [],
+				limit: 20,
+				offset: 0,
+				hasMore: false,
+				collections: [{ ...docs, fileCount: 0 }],
+			});
+		});
+
+		it('leaves the catalog out of the result of an agent without collections', async () => {
+			const service = makeCollectionService({ source: { collections: [], files: [] } });
+
+			const result = await service.findFiles(scope, { pattern: '*' });
+
+			expect(result).not.toHaveProperty('collections');
+		});
+
+		it('mirrors the files of a collection in the directory of the collection', async () => {
+			let manifestState = '';
+			sandbox.executeCommand.mockImplementation(async (command) =>
+				makeCommandResult(isManifestReadCommand(command) ? manifestState : ''),
+			);
+			const fileStore = makeKnowledgeFileStore();
+			const service = makeCollectionService({ fileStore });
+
+			await service.searchText(scope, { pattern: 'foo' });
+
+			const stagingDir = filesystem.mkdir.mock.calls[0][0];
+			expect(filesystem.mkdir.mock.calls.map(([path]) => path)).toEqual([
+				stagingDir,
+				`${stagingDir}/handbook`,
+				`${stagingDir}/docs`,
+			]);
+			expect(filesystem.writeFile.mock.calls.map(([path]) => path)).toEqual([
+				`${stagingDir}/own.txt`,
+				`${stagingDir}/handbook/leave.txt`,
+				`${stagingDir}/handbook/expenses.txt`,
+				`${stagingDir}/docs/api.txt`,
+			]);
+			expect(fileStore.readAsBuffer).toHaveBeenCalledWith({
+				storedAt: 'fs',
+				storageKey: 'knowledge-collections/handbook/files/file-leave/content',
+			});
+			const syncCommand = sandbox.executeCommand.mock.calls
+				.map(([command]) => command)
+				.find(isMirrorSyncCommand);
+			expect(syncCommand).toContain(`${knowledgePaths.filesDir}/handbook`);
+			expect(syncCommand).toContain(`${knowledgePaths.filesDir}/docs`);
+			expect(syncCommand).toContain('file-leave\thandbook/leave.txt');
+			expect(syncCommand).toContain('file-own\town.txt');
+
+			// An unchanged repeat reads the manifest and copies nothing.
+			manifestState =
+				'file-own\town.txt\nfile-leave\thandbook/leave.txt\nfile-expenses\thandbook/expenses.txt\nfile-api\tdocs/api.txt\n';
+			filesystem.writeFile.mockClear();
+			sandbox.executeCommand.mockClear();
+
+			await service.searchText(scope, { pattern: 'foo' });
+
+			expect(filesystem.writeFile).not.toHaveBeenCalled();
+			expect(sandbox.executeCommand.mock.calls.map(([command]) => command)).not.toContainEqual(
+				expect.stringContaining(`mkdir -p ${knowledgePaths.filesDir}`),
+			);
+		});
+
+		it('removes the files of a collection that the agent no longer uses on the next sync', async () => {
+			sandbox.executeCommand.mockImplementation(async (command) =>
+				makeCommandResult(
+					isManifestReadCommand(command)
+						? 'file-own\town.txt\nfile-leave\thandbook/leave.txt\nfile-api\tdocs/api.txt\n'
+						: '',
+				),
+			);
+			const service = makeCollectionService({
+				source: { collections: [docs], files: [makeCollectionFile('docs', 'api.txt', 'file-api')] },
+			});
+
+			await service.searchText(scope, { pattern: 'foo' });
+
+			expect(filesystem.writeFile).not.toHaveBeenCalled();
+			const syncCommand = sandbox.executeCommand.mock.calls
+				.map(([command]) => command)
+				.find(isMirrorSyncCommand);
+			expect(syncCommand).toContain(
+				`rm -f '\\''${knowledgePaths.filesDir}/handbook/leave.txt'\\''`,
+			);
+			expect(syncCommand).toContain(`rmdir '\\''${knowledgePaths.filesDir}/handbook'\\''`);
+			expect(syncCommand).not.toContain('handbook/leave.txt\n');
+			expect(syncCommand).toContain('file-api\tdocs/api.txt');
+		});
+
+		it('searches and reads a collection file by its directory path, and maps the result back to it', async () => {
+			const rgMatch = JSON.stringify({
+				type: 'match',
+				data: {
+					path: { text: './handbook/leave.txt' },
+					lines: { text: 'ten days of leave\n' },
+					line_number: 3,
+				},
+			});
+			sandbox.executeCommand.mockImplementation(async (command) => {
+				if (isManifestReadCommand(command)) return makeCommandResult('');
+				if (command.includes(' rg ')) return makeCommandResult(`${rgMatch}\n`);
+				if (command.includes('awk ')) return makeCommandResult('0\t3\tten days of leave\n');
+				return makeCommandResult();
+			});
+			const service = makeCollectionService();
+
+			const searchResult = await service.searchText(scope, {
+				pattern: 'leave',
+				path: ['handbook/leave.txt'],
+			});
+			const readResult = await service.readFile(scope, { file: 'handbook/leave.txt' });
+			const readByIdResult = await service.readFile(scope, { fileId: 'file-leave' });
+
+			const searchCommand = sandbox.executeCommand.mock.calls
+				.map(([command]) => command)
+				.find((command) => command.includes(' rg '));
+			expect(searchCommand).toContain("-- '\\''./handbook/leave.txt'\\''");
+			expect(searchResult).toEqual(
+				expect.objectContaining({
+					matches: [
+						expect.objectContaining({
+							file: 'handbook/leave.txt',
+							fileId: 'file-leave',
+							displayName: 'leave.txt',
+							lineNumber: 3,
+						}),
+					],
+				}),
+			);
+			expect(readResult).toEqual(
+				expect.objectContaining({ file: 'handbook/leave.txt', fileId: 'file-leave' }),
+			);
+			expect(readByIdResult.file).toBe('handbook/leave.txt');
+		});
+
+		it('searches one collection when its directory is a path value, next to file paths', async () => {
+			const service = makeCollectionService();
+
+			await service.searchText(scope, { pattern: 'leave', path: ['handbook', 'own.txt'] });
+
+			const searchCommand = sandbox.executeCommand.mock.calls
+				.map(([command]) => command)
+				.find((command) => command.includes(' rg '));
+			expect(searchCommand).toContain("-- '\\''./handbook'\\'' '\\''./own.txt'\\''");
+		});
+
+		it('accepts a collection directory with a trailing slash', async () => {
+			const service = makeCollectionService();
+
+			await service.searchText(scope, { pattern: 'leave', path: ['handbook/'] });
+
+			const searchCommand = sandbox.executeCommand.mock.calls
+				.map(([command]) => command)
+				.find((command) => command.includes(' rg '));
+			expect(searchCommand).toContain("-- '\\''./handbook'\\''");
+		});
+
+		it('searches a file once when its collection directory is also a path value', async () => {
+			const service = makeCollectionService();
+
+			await service.searchText(scope, {
+				pattern: 'leave',
+				path: ['handbook/leave.txt', 'handbook', 'own.txt'],
+			});
+
+			const searchCommand = sandbox.executeCommand.mock.calls
+				.map(([command]) => command)
+				.find((command) => command.includes(' rg '));
+			expect(searchCommand).toContain("-- '\\''./handbook'\\'' '\\''./own.txt'\\''");
+			expect(searchCommand).not.toContain('./handbook/leave.txt');
+		});
+
+		it('finds nothing in a collection without files, without a sandbox command', async () => {
+			const service = makeCollectionService({
+				source: { collections: [{ ...docs, fileCount: 0 }], files: [] },
+			});
+
+			const result = await service.searchText(scope, { pattern: 'leave', path: ['docs'] });
+
+			expect(result).toEqual(expect.objectContaining({ matches: [], hasMore: false }));
+			expect(sandboxProviderProxy.acquire).not.toHaveBeenCalled();
+		});
+
+		it('rejects a path that is neither a file nor a collection directory', async () => {
+			const service = makeCollectionService();
+
+			await expect(
+				service.searchText(scope, { pattern: 'leave', path: ['unknown'] }),
+			).rejects.toThrow('Knowledge file not found');
+		});
+
+		it('does not read a file by the directory of its collection', async () => {
+			const service = makeCollectionService();
+
+			await expect(service.readFile(scope, { file: 'handbook' })).rejects.toThrow(
+				'Knowledge file not found',
+			);
 		});
 	});
 });

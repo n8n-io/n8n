@@ -116,6 +116,52 @@ export class KnowledgeCollectionRepository {
 		return await this.table.managerFor(ctx).existsBy(KnowledgeCollection, { slug });
 	}
 
+	/** Phase 1 rule: the agent has the collection and its project owns it. The link alone gives no access. */
+	async findSearchableByAgent(
+		agentId: string,
+		projectId: string,
+		ctx: OperationContext,
+	): Promise<KnowledgeCollection[]> {
+		return await this.searchableByAgentQuery(agentId, projectId, ctx)
+			.orderBy('collection.name', 'ASC')
+			.addOrderBy('collection.id', 'ASC')
+			.getMany();
+	}
+
+	/** Same rule as `findSearchableByAgent`. */
+	async hasSearchableByAgent(
+		agentId: string,
+		projectId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		return await this.searchableByAgentQuery(agentId, projectId, ctx).getExists();
+	}
+
+	/** Same rule as `findSearchableByAgent`, with at least one file. */
+	async hasSearchableFileByAgent(
+		agentId: string,
+		projectId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		return await this.searchableByAgentQuery(agentId, projectId, ctx)
+			.innerJoin(KnowledgeFile, 'file', 'file.knowledgeCollectionId = collection.id')
+			.getExists();
+	}
+
+	private searchableByAgentQuery(agentId: string, projectId: string, ctx: OperationContext) {
+		return this.table
+			.managerFor(ctx)
+			.createQueryBuilder(KnowledgeCollection, 'collection')
+			.innerJoin(
+				AgentKnowledgeDependency,
+				'dependency',
+				'dependency.knowledgeCollectionId = collection.id AND dependency.agentId = :agentId',
+				{ agentId },
+			)
+			.where('collection.kind = :kind', { kind: 'shared' })
+			.andWhere('collection.projectId = :projectId', { projectId });
+	}
+
 	/**
 	 * Inserts a shared collection and the owner row of its home project, in one
 	 * transaction: a shared collection has exactly one owner row.

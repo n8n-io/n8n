@@ -4,6 +4,7 @@ import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import type { KnowledgeRetrievalObserver, KnowledgeRetriever } from '../knowledge-retriever';
 import { KnowledgeSandboxProviderProxy } from '../knowledge-sandbox-provider-proxy';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
+import { KnowledgeCollectionSourceService } from './collection-source.service';
 import { KnowledgeMirrorService } from './mirror.service';
 import type {
 	FindKnowledgeFilesRequest,
@@ -26,19 +27,34 @@ export class KnowledgeRetrievalService implements KnowledgeRetriever {
 		private readonly fileRepository: KnowledgeFileRepository,
 		private readonly mirrorService: KnowledgeMirrorService,
 		private readonly sandboxProviderProxy: KnowledgeSandboxProviderProxy,
+		private readonly collectionSourceService: KnowledgeCollectionSourceService,
 	) {}
 
+	/**
+	 * An empty collection counts: the tools attach once per runtime, so a file
+	 * added to it later must reach the agent without a change to the agent.
+	 */
 	async hasFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
-		return await this.fileRepository.hasFilesForAgent(scope.agentId, {});
+		return (
+			(await this.fileRepository.hasFilesForAgent(scope.agentId, {})) ||
+			(await this.collectionSourceService.hasSearchableCollection(scope))
+		);
 	}
 
-	/** Boots the sandbox of the scope ahead of use. A scope without files needs no sandbox. */
+	/** Boots the sandbox ahead of use. Without a file to mirror, no search or read reaches a sandbox. */
 	async warmSandbox(scope: KnowledgeConsumerScope): Promise<void> {
-		if (!(await this.hasFiles(scope))) {
+		if (!(await this.hasFilesToMirror(scope))) {
 			return;
 		}
 
 		await this.sandboxProviderProxy.warm(scope);
+	}
+
+	private async hasFilesToMirror(scope: KnowledgeConsumerScope): Promise<boolean> {
+		return (
+			(await this.fileRepository.hasFilesForAgent(scope.agentId, {})) ||
+			(await this.collectionSourceService.hasSearchableCollectionFile(scope))
+		);
 	}
 
 	/** Deletes the sandbox of the scope. Reads no file row, so it also runs while the module is off. Never throws. */

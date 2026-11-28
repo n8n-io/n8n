@@ -2,7 +2,12 @@ import { redactText } from '@n8n/utils/redaction/redact-text';
 import { Buffer } from 'node:buffer';
 import { z } from 'zod';
 
-import { assertKnowledgePathSegment, type KnowledgeMirrorPaths } from '../files/storage-naming';
+import {
+	assertKnowledgeMirrorPath,
+	assertKnowledgePathSegment,
+	getKnowledgeMirrorPathDir,
+	type KnowledgeMirrorPaths,
+} from '../files/storage-naming';
 import {
 	DEFAULT_SEARCH_TEXT_LIMIT,
 	MAX_OPERATION_OUTPUT_CHARS,
@@ -66,15 +71,16 @@ type RipgrepJsonEvent = z.infer<typeof ripgrepJsonEventSchema>;
 type RipgrepContentEvent = Extract<RipgrepJsonEvent, { type: 'match' | 'context' }>;
 type RipgrepEncodedText = z.infer<typeof ripgrepEncodedTextSchema>;
 
+/** A scoped target is a mirror-relative file path or a collection directory. */
 export function buildSearchKnowledgeTextCommand(
 	request: SearchKnowledgeTextRequest,
-	scopedFiles: string[],
+	scopedTargets: string[],
 ): string {
 	const outputMode = request.output_mode ?? 'content';
 	const resultLimit = (request.head_limit ?? DEFAULT_SEARCH_TEXT_LIMIT) + 1;
-	// No scoped files means an unscoped `path` — search every mirrored file.
+	// No scoped targets means an unscoped `path` — search every mirrored file.
 	const targets =
-		scopedFiles.length > 0 ? scopedFiles.map((file) => quoteShellArg(`./${file}`)) : ['.'];
+		scopedTargets.length > 0 ? scopedTargets.map((file) => quoteShellArg(`./${file}`)) : ['.'];
 	const baseCommand = [
 		'timeout',
 		String(COMMAND_TIMEOUT_SECONDS),
@@ -555,11 +561,18 @@ export function buildScopedKnowledgeShellCommand(
 	return `bash -o pipefail -c ${quoteShellArg(scopedCommand)}`;
 }
 
+export function getKnowledgeMirrorDirs(mirrorPaths: string[]): string[] {
+	return [
+		...new Set(mirrorPaths.flatMap((mirrorPath) => getKnowledgeMirrorPathDir(mirrorPath) ?? [])),
+	];
+}
+
 /**
  * Finalizes a mirror sync: moves `toCopy` names from their already-uploaded
  * per-sync staging path into place, removes `toDelete` names, and rewrites the
  * manifest to `manifestFiles`. The staging + `mv` sequence means a search
- * running concurrently never sees a partially-written file.
+ * running concurrently never sees a partially-written file. A collection
+ * directory is made before the move and removed after the delete once empty.
  */
 export function buildMirrorFinalizeCommand(
 	toCopy: string[],
@@ -569,11 +582,13 @@ export function buildMirrorFinalizeCommand(
 	stagingId: string,
 ): string {
 	for (const name of [...toCopy, ...toDelete, ...manifestFiles.map((file) => file.file)]) {
-		assertKnowledgePathSegment(name, 'knowledge mirror file name');
+		assertKnowledgeMirrorPath(name, 'knowledge mirror file name');
 	}
 	assertKnowledgePathSegment(stagingId, 'knowledge mirror staging ID');
 
-	const commands = [`mkdir -p ${paths.filesDir}`];
+	const commands = [
+		`mkdir -p ${[paths.filesDir, ...getKnowledgeMirrorDirs(toCopy).map((dir) => quoteShellArg(`${paths.filesDir}/${dir}`))].join(' ')}`,
+	];
 
 	for (const name of toCopy) {
 		const tmpPath = quoteShellArg(`${paths.stagingDir}/${stagingId}/${name}`);
@@ -584,6 +599,11 @@ export function buildMirrorFinalizeCommand(
 	if (toDelete.length > 0) {
 		const targets = toDelete.map((name) => quoteShellArg(`${paths.filesDir}/${name}`));
 		commands.push(`rm -f ${targets.join(' ')}`);
+	}
+
+	// `rmdir` removes only an empty directory.
+	for (const dir of getKnowledgeMirrorDirs(toDelete)) {
+		commands.push(`{ rmdir ${quoteShellArg(`${paths.filesDir}/${dir}`)} 2>/dev/null || true; }`);
 	}
 
 	const manifestBody =

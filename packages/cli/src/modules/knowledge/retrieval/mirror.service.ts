@@ -11,21 +11,24 @@ import { nanoid } from 'nanoid';
 
 import { KnowledgeFileStore } from '../files/knowledge-file-store';
 import {
-	assertKnowledgePathSegment,
+	assertKnowledgeMirrorPath,
+	getKnowledgeMirrorPathDir,
 	getKnowledgeMirrorPaths,
 	type KnowledgeMirrorPaths,
-	toKnowledgeContentFileName,
+	tryKnowledgeContentFileName,
 } from '../files/storage-naming';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import type { KnowledgePreparationWait, KnowledgeRetrievalObserver } from '../knowledge-retriever';
 import type { KnowledgeSandboxHandle } from '../knowledge-sandbox-provider';
 import { KnowledgeSandboxProviderProxy } from '../knowledge-sandbox-provider-proxy';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
+import { KnowledgeCollectionSourceService } from './collection-source.service';
 import {
 	buildMirrorFinalizeCommand,
 	buildReadKnowledgeFileCommand,
 	buildScopedKnowledgeShellCommand,
 	buildSearchKnowledgeTextCommand,
+	getKnowledgeMirrorDirs,
 	getSearchContextWindow,
 	KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE,
 	MIRROR_SYNC_TIMEOUT_SECONDS,
@@ -41,6 +44,7 @@ import {
 	parseFindKnowledgeFilesRequest,
 	parseReadKnowledgeFileRequest,
 	parseSearchKnowledgeTextRequest,
+	type KnowledgeCollectionReference,
 	type KnowledgeFileReference,
 	type FindKnowledgeFilesRequest,
 	type FindKnowledgeFilesResult,
@@ -58,6 +62,7 @@ interface KnowledgeMirrorRuntime extends KnowledgeSandboxHandle {
 
 interface KnowledgeFileLookup {
 	files: KnowledgeFileReference[];
+	collections: KnowledgeCollectionReference[];
 	byPath: Map<string, KnowledgeFileReference>;
 	byFileId: Map<string, KnowledgeFileReference>;
 }
@@ -132,6 +137,7 @@ export class KnowledgeMirrorService {
 		private readonly sandboxProviderProxy: KnowledgeSandboxProviderProxy,
 		private readonly fileRepository: KnowledgeFileRepository,
 		private readonly fileStore: KnowledgeFileStore,
+		private readonly collectionSourceService: KnowledgeCollectionSourceService,
 	) {
 		this.logger = logger.scoped('knowledge');
 	}
@@ -150,11 +156,13 @@ export class KnowledgeMirrorService {
 			return emptySearchKnowledgeTextResult(outputMode, limit);
 		}
 
-		const scopedFiles = this.resolveSearchFiles(validatedRequest, references);
-		const command = buildSearchKnowledgeTextCommand(
-			validatedRequest,
-			scopedFiles.map((file) => file.file),
-		);
+		const targets = this.resolveSearchTargets(validatedRequest, references);
+		if (validatedRequest.path !== undefined && targets.length === 0) {
+			// Every path named a collection without files.
+			return emptySearchKnowledgeTextResult(outputMode, limit);
+		}
+
+		const command = buildSearchKnowledgeTextCommand(validatedRequest, targets);
 		const result = await this.executeKnowledgeOperation(scope, command, references.files, observer);
 
 		assertKnowledgeFilesDirectoryAvailable('search', result);
@@ -176,9 +184,15 @@ export class KnowledgeMirrorService {
 		const references = await this.loadKnowledgeFileLookup(scope);
 		const limit = validatedRequest.limit ?? DEFAULT_FIND_FILES_LIMIT;
 		const offset = validatedRequest.offset ?? 0;
+		// The catalog goes on the first page only, and only when the scope has
+		// collections, so an agent without them keeps the result of before.
+		const catalog =
+			offset === 0 && references.collections.length > 0
+				? { collections: references.collections }
+				: {};
 
 		if (references.files.length === 0) {
-			return { files: [], limit, offset, hasMore: false };
+			return { files: [], limit, offset, hasMore: false, ...catalog };
 		}
 
 		const matches = matchKnowledgeFilesByGlob(references.files, validatedRequest);
@@ -188,6 +202,7 @@ export class KnowledgeMirrorService {
 			limit,
 			offset,
 			hasMore: matches.length > offset + limit,
+			...catalog,
 		};
 	}
 
@@ -343,7 +358,7 @@ export class KnowledgeMirrorService {
 		onChangesDetected?.();
 
 		for (const name of [...expectedNames, ...toDelete]) {
-			assertKnowledgePathSegment(name, 'knowledge mirror file name');
+			assertKnowledgeMirrorPath(name, 'knowledge mirror file name');
 		}
 
 		const stagingId = nanoid();
@@ -360,7 +375,7 @@ export class KnowledgeMirrorService {
 	 * a per-sync staging path; `buildMirrorFinalizeCommand`
 	 * moves it into place so a concurrent search never sees a partially-written
 	 * file. Files are loaded and written one at a time so the whole knowledge
-	 * base (up to 1.5 GB) is never held in memory at once.
+	 * base, which can be gigabytes, is never held in memory at once.
 	 * Returns the names of files that were fetched and uploaded successfully.
 	 */
 	private async uploadMirrorFiles(
@@ -373,6 +388,10 @@ export class KnowledgeMirrorService {
 
 		const stagingDir = `${runtime.paths.stagingDir}/${stagingId}`;
 		await runtime.filesystem.mkdir(stagingDir, { recursive: true });
+		// One directory per collection, as in the mirror.
+		for (const dir of getKnowledgeMirrorDirs(files.map((file) => file.file))) {
+			await runtime.filesystem.mkdir(`${stagingDir}/${dir}`, { recursive: true });
+		}
 
 		for (const file of files) {
 			const name = file.file;
@@ -406,14 +425,23 @@ export class KnowledgeMirrorService {
 		return copiedNames;
 	}
 
+	/**
+	 * Own files at the root, collection files under the slug of their collection.
+	 * The two cannot collide: a file name holds a `.`, a slug never does.
+	 */
 	private async loadKnowledgeFileLookup(
 		scope: KnowledgeConsumerScope,
 	): Promise<KnowledgeFileLookup> {
 		this.sandboxProviderProxy.assertConfiguration(scope);
 
-		const files = await this.loadKnowledgeFileReferences(scope.agentId);
+		const [ownFiles, collectionSource] = await Promise.all([
+			this.loadKnowledgeFileReferences(scope.agentId),
+			this.collectionSourceService.loadSearchableCollections(scope),
+		]);
+		const files = [...ownFiles, ...collectionSource.files];
 		return {
 			files,
+			collections: collectionSource.collections,
 			byPath: new Map(files.map((file) => [file.file, file])),
 			byFileId: new Map(files.map((file) => [file.fileId, file])),
 		};
@@ -421,16 +449,29 @@ export class KnowledgeMirrorService {
 
 	private async loadKnowledgeFileReferences(agentId: string): Promise<KnowledgeFileReference[]> {
 		const files = await this.fileRepository.findByAgentId(agentId, {});
-		return files.map((file) => ({
-			file: toKnowledgeContentFileName(file.fileName),
-			fileId: file.id,
-			storedAt: file.storedAt,
-			storageKey: file.storageKey,
-			displayName: file.fileName,
-			mimeType: file.mimeType,
-			fileSizeBytes: file.fileSizeBytes,
-			createdAt: file.createdAt.toISOString(),
-		}));
+		return files.flatMap((file) => {
+			const name = tryKnowledgeContentFileName(file.fileName);
+			if (name === undefined) {
+				this.logger.warn('Skipped an agent knowledge file whose name cannot be a file name', {
+					agentId,
+					fileId: file.id,
+				});
+				return [];
+			}
+
+			return [
+				{
+					file: name,
+					fileId: file.id,
+					storedAt: file.storedAt,
+					storageKey: file.storageKey,
+					displayName: file.fileName,
+					mimeType: file.mimeType,
+					fileSizeBytes: file.fileSizeBytes,
+					createdAt: file.createdAt.toISOString(),
+				},
+			];
+		});
 	}
 
 	private resolveRequiredFile(
@@ -483,19 +524,38 @@ export class KnowledgeMirrorService {
 		return { ...runtime, paths: getKnowledgeMirrorPaths(runtime.provider) };
 	}
 
-	private resolveSearchFiles(
+	/**
+	 * A path is a `file` value or the directory of a collection, which stands
+	 * for its files. A file whose directory is also a target is left out: rg
+	 * would search it twice.
+	 */
+	private resolveSearchTargets(
 		request: SearchKnowledgeTextRequest,
 		references: KnowledgeFileLookup,
-	): KnowledgeFileReference[] {
-		const scopedFilesByPath = new Map<string, KnowledgeFileReference>();
+	): string[] {
+		const targets = new Set<string>();
+		const fileCountByDir = new Map(
+			references.collections.map((collection) => [collection.dir, collection.fileCount]),
+		);
 		for (const path of request.path ?? []) {
+			// Models often write a directory as `handbook/`.
+			const directory = parseKnowledgeFilePath(path.endsWith('/') ? path.slice(0, -1) : path);
+			const collectionFileCount = fileCountByDir.get(directory);
+			if (collectionFileCount !== undefined) {
+				if (collectionFileCount > 0) targets.add(directory);
+				continue;
+			}
+
 			const file = this.resolveOptionalFile({ file: path }, references);
 			if (!file) {
 				throw new BadRequestError('Knowledge file not found');
 			}
-			scopedFilesByPath.set(file.file, file);
+			targets.add(file.file);
 		}
-		return [...scopedFilesByPath.values()];
+		return [...targets].filter((target) => {
+			const dir = getKnowledgeMirrorPathDir(target);
+			return dir === undefined || !targets.has(dir);
+		});
 	}
 
 	private parseSearchResult(

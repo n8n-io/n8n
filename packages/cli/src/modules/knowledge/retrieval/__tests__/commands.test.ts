@@ -26,6 +26,11 @@ const filesByPath = new Map([[mobyDickFile.file, mobyDickFile]]);
 const bearerSecret = 'Authorization: Bearer abc.def-ghi_jkl/mno=012345678901234567890123456789';
 const knowledgePaths = getKnowledgeMirrorPaths('daytona');
 
+/** A single-quoted argument as it appears inside the single-quoted `bash -c` script. */
+function innerQuoted(value: string): string {
+	return `'\\''${value}'\\''`;
+}
+
 function rgEvent(
 	type: 'match' | 'context',
 	lineNumber: number,
@@ -225,25 +230,70 @@ describe('agent knowledge commands', () => {
 			expect(command).toContain(`${knowledgePaths.filesDir}/stale.txt`);
 		});
 
-		it('rejects names that look like path traversal', () => {
-			expect(() =>
-				buildMirrorFinalizeCommand(
-					['../secret'],
-					[],
-					[{ file: '../secret', fileId: 'file-1' }],
-					knowledgePaths,
-					'sync-1',
-				),
-			).toThrow();
-			expect(() =>
-				buildMirrorFinalizeCommand(
-					[],
-					[],
-					[{ file: 'nested/name.txt', fileId: 'file-1' }],
-					knowledgePaths,
-					'sync-1',
-				),
-			).toThrow();
+		it('makes the directory of a collection before moving its files into it', () => {
+			const command = buildMirrorFinalizeCommand(
+				['handbook/leave.txt', 'handbook/expenses.txt', 'docs/api.txt', 'own.txt'],
+				[],
+				[
+					{ file: 'handbook/leave.txt', fileId: 'file-1' },
+					{ file: 'handbook/expenses.txt', fileId: 'file-2' },
+					{ file: 'docs/api.txt', fileId: 'file-3' },
+					{ file: 'own.txt', fileId: 'file-4' },
+				],
+				knowledgePaths,
+				'sync-1',
+			);
+
+			expect(command).toContain(
+				`mkdir -p ${knowledgePaths.filesDir} ${innerQuoted(`${knowledgePaths.filesDir}/handbook`)} ${innerQuoted(`${knowledgePaths.filesDir}/docs`)} &&`,
+			);
+			expect(command).toContain(
+				`mv ${innerQuoted(`${knowledgePaths.stagingDir}/sync-1/handbook/leave.txt`)} ${innerQuoted(`${knowledgePaths.filesDir}/handbook/leave.txt`)}`,
+			);
+			expect(command).toContain('file-1\thandbook/leave.txt');
+			expect(command).not.toContain('rmdir');
+		});
+
+		it('removes the directory of a collection once its last file is deleted', () => {
+			const command = buildMirrorFinalizeCommand(
+				[],
+				['handbook/leave.txt', 'handbook/expenses.txt', 'own.txt'],
+				[],
+				knowledgePaths,
+				'sync-1',
+			);
+
+			expect(command).toContain(`mkdir -p ${knowledgePaths.filesDir} &&`);
+			expect(command).toContain(
+				`rm -f ${innerQuoted(`${knowledgePaths.filesDir}/handbook/leave.txt`)} ${innerQuoted(`${knowledgePaths.filesDir}/handbook/expenses.txt`)} ${innerQuoted(`${knowledgePaths.filesDir}/own.txt`)}`,
+			);
+			expect(command).toContain(
+				`&& { rmdir ${innerQuoted(`${knowledgePaths.filesDir}/handbook`)} 2>/dev/null || true; } &&`,
+			);
+		});
+
+		it('rejects names that look like path traversal, and paths deeper than one collection directory', () => {
+			const rejected = [
+				'../secret',
+				'handbook/../secret',
+				'a/b/c.txt',
+				'/handbook/a.txt',
+				'handbook/',
+			];
+			for (const file of rejected) {
+				expect(() =>
+					buildMirrorFinalizeCommand(
+						[file],
+						[],
+						[{ file, fileId: 'file-1' }],
+						knowledgePaths,
+						'sync-1',
+					),
+				).toThrow();
+				expect(() =>
+					buildMirrorFinalizeCommand([], [file], [], knowledgePaths, 'sync-1'),
+				).toThrow();
+			}
 		});
 	});
 

@@ -535,6 +535,39 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		);
 	});
 
+	it.each([
+		{ collectionsFlag: true, expectHint: true },
+		{ collectionsFlag: false, expectHint: false },
+	])(
+		'tells the knowledge tools about collections only while collections are on (flag: $collectionsFlag)',
+		async ({ collectionsFlag, expectHint }) => {
+			const knowledgeRetriever = mock<KnowledgeRetrievalService>();
+			const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+				isEnabled: () => true,
+			});
+			const agentWorkspaceService = mock<AgentWorkspaceService>();
+			knowledgeRetriever.hasFiles.mockResolvedValue(true);
+			agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+				workspace: new Workspace({}),
+				handle: mock<AgentSandboxRuntime>(),
+			});
+			const service = makeReconstructionService({
+				agentSandboxRuntimeService,
+				knowledgeRetriever,
+				agentWorkspaceService,
+				knowledgeAvailabilityService: makeKnowledgeAvailabilityService({ collectionsFlag }),
+			});
+
+			await reconstructWithWorkspace(service);
+
+			const findFileTool = builtAgent.tool.mock.calls
+				.flatMap(([tools]) => (Array.isArray(tools) ? tools : [tools]))
+				.map((tool) => (tool as { build?: () => { name: string; description?: string } }).build?.())
+				.find((tool) => tool?.name === 'find_file');
+			expect(findFileTool?.description?.includes('knowledge collections')).toBe(expectHint);
+		},
+	);
+
 	it('keeps the workspace but skips knowledge tools when the knowledge module is inactive', async () => {
 		const knowledgeRetriever = mock<KnowledgeRetrievalService>();
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({

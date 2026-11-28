@@ -117,9 +117,9 @@ Files in `outputs/` become conversation files with source `sandbox`. A turn that
 
 ### Knowledge retrieval tools
 
-- Purpose: `find_file` finds uploaded knowledge files by filename pattern. `search_text` searches the file contents with a regex. `read_file` reads one file.
-- Attach condition: The sandbox is on, the `knowledge` module is active (`KnowledgeAvailabilityService` in the knowledge module answers this), the agent is not an inline agent, and the agent has knowledge files.
-- Source: [`tools/knowledge/search-knowledge.tool.ts`](./tools/knowledge/search-knowledge.tool.ts). The tools call `KnowledgeRetrievalService` in the knowledge module with the scope of the agent. The knowledge module owns the search, the read and the sandbox copy of the files.
+- Purpose: `find_file` finds uploaded knowledge files by filename pattern. `search_text` searches the file contents with a regex. `read_file` reads one file. The files are the files of the agent and, while knowledge collections are on, the files of the collections that the agent uses: a file of a collection has the `file` value `<collection>/<name>`, and `find_file` lists the collections with their name and description.
+- Attach condition: The sandbox is on, the `knowledge` module is active (`KnowledgeAvailabilityService` in the knowledge module answers this), the agent is not an inline agent, and the agent has knowledge: files of its own, or a collection it can search (`KnowledgeRetrievalService.hasFiles`). The descriptions tell the model about collections only while collections are on (`KnowledgeAvailabilityService.isCollectionsEnabled()`, read once when the tools are attached). A runtime is cached, so a change to the collections of an agent must clear its runtimes (`AgentRuntimeCacheService.clearRuntimes`), as an upload to the agent does.
+- Source: [`tools/knowledge/search-knowledge.tool.ts`](./tools/knowledge/search-knowledge.tool.ts). The tools call `KnowledgeRetrievalService` in the knowledge module with the scope of the agent. The knowledge module owns the search, the read, the sandbox copy of the files and the access check of the collections.
 
 ## Tools attached to top-level agents only
 

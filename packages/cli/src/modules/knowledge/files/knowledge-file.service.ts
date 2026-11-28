@@ -18,9 +18,15 @@ import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import { KnowledgeSandboxProviderProxy } from '../knowledge-sandbox-provider-proxy';
 import { createKnowledgeTelemetryHmac } from '../telemetry/helpers';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
+import { KnowledgeCollectionSourceService } from '../retrieval/collection-source.service';
 import { KnowledgeMirrorService } from '../retrieval/mirror.service';
 import { KnowledgeFileStore, type KnowledgeFileStorageReference } from './knowledge-file-store';
-import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
+import {
+	KnowledgeUploadError,
+	type KnowledgeUploadFailureReason,
+	knowledgeFileTypeError,
+} from './knowledge-upload.error';
+import { hasAllowedKnowledgeFileExtension } from './knowledge-upload.middleware';
 import { extractPdfText } from './pdf-text';
 import { toKnowledgeContentFileName, toAgentFileDto } from './storage-naming';
 
@@ -46,8 +52,9 @@ export type KnowledgeWriteRunner = <T>(write: (ctx: OperationContext) => Promise
 /**
  * Upload, listing and deletion of the knowledge files of one consumer scope.
  * An upload or a delete also refreshes the sandbox mirror of the scope, and
- * the delete of the last file removes the sandbox. The caller owns the
- * availability and ownership checks.
+ * the delete of the last file removes the sandbox, unless the scope still has
+ * a file to search in a collection. The caller owns the availability and
+ * ownership checks.
  */
 @Service()
 export class KnowledgeFileService {
@@ -58,6 +65,7 @@ export class KnowledgeFileService {
 		private readonly fileStore: KnowledgeFileStore,
 		private readonly mirrorService: KnowledgeMirrorService,
 		private readonly sandboxProviderProxy: KnowledgeSandboxProviderProxy,
+		private readonly collectionSourceService: KnowledgeCollectionSourceService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
 		private readonly config: KnowledgeConfig,
@@ -128,7 +136,11 @@ export class KnowledgeFileService {
 				});
 			});
 
-		if (await this.fileRepository.hasFilesForAgent(scope.agentId, {})) {
+		// A collection without files keeps the tools, but no tool call needs a sandbox then.
+		const hasFilesToMirror =
+			(await this.fileRepository.hasFilesForAgent(scope.agentId, {})) ||
+			(await this.collectionSourceService.hasSearchableCollectionFile(scope));
+		if (hasFilesToMirror) {
 			this.scheduleMirrorSync(scope, writeFence);
 		} else {
 			await this.sandboxProviderProxy.destroy(scope);
@@ -270,12 +282,20 @@ export class KnowledgeFileService {
 		}
 	}
 
-	/** Rejects a file name or a MIME type that is too long for its column. */
+	/**
+	 * The middleware checks the extension too, but the mirror relies on it (a
+	 * file name holds a `.`, a collection directory never does), so a caller
+	 * that skips multer must not get past it either.
+	 */
 	validateUploadMetadata(files: Express.Multer.File[]) {
 		for (const file of files) {
 			this.validateMetadataLength('File name', file.originalname, 'invalid_file_name');
 			// No reason fits a MIME type that is too long, so the failure event reports `unknown`.
 			this.validateMetadataLength('MIME type', file.mimetype);
+			toKnowledgeContentFileName(file.originalname);
+			if (!hasAllowedKnowledgeFileExtension(file)) {
+				throw knowledgeFileTypeError();
+			}
 		}
 	}
 

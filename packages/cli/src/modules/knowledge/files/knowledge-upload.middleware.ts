@@ -6,7 +6,10 @@ import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 
 import { KnowledgeConfig } from '../knowledge.config';
-import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
+import {
+	type KnowledgeUploadFailureReason,
+	knowledgeFileTypeError,
+} from './knowledge-upload.error';
 
 const allowedKnowledgeFileExtensions = new Set<string>(ALLOWED_AGENT_FILE_EXTENSIONS);
 
@@ -57,12 +60,7 @@ export class KnowledgeUploadMiddleware {
 			limits: { fileSize: config.maxFileSizeBytes },
 			fileFilter: (_req, file, done) => {
 				if (!hasAllowedKnowledgeFileExtension(file)) {
-					done(
-						new KnowledgeUploadError(
-							'Only CSV, PDF, Markdown, and TXT files are allowed',
-							'file_type',
-						),
-					);
+					done(knowledgeFileTypeError());
 					return;
 				}
 
