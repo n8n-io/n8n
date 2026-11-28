@@ -46,4 +46,13 @@ describe('V1Runner', () => {
 		expect(outcome?.nodes.Body).toHaveLength(3);
 		expect(outcome?.terminal).toEqual([{ ran: 'yes' }, { ran: 'yes' }, { ran: 'yes' }]);
 	});
+
+	it('runs Code nodes in process', async () => {
+		const outcome = await run('code node, each item');
+
+		expect(outcome?.terminal).toEqual([
+			{ n: 1, doubled: 2, first: 1 },
+			{ n: 2, doubled: 4, first: 1 },
+		]);
+	});
 });

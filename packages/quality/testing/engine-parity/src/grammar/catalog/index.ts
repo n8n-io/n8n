@@ -1,4 +1,5 @@
 import { aggregateAll, aggregateFields } from './aggregate';
+import { codeAllItems, codeEachItem } from './code';
 import { filter } from './filter';
 import { ifCondition } from './if';
 import { limit } from './limit';
@@ -12,7 +13,7 @@ import { switchExpression, switchRules } from './switch';
 import { manualTrigger } from './triggers';
 import type { CatalogEntry, NodeRole } from './types';
 
-export type { CatalogEntry, GenContext, NodeRole, ParamDraft } from './types';
+export type { CatalogEntry, CodeSpec, GenContext, NodeRole, ParamDraft } from './types';
 export { outputCount } from './types';
 
 const entries: CatalogEntry[] = [
@@ -32,6 +33,8 @@ const entries: CatalogEntry[] = [
 	limit,
 	noOp,
 	splitInBatches,
+	codeAllItems,
+	codeEachItem,
 	manualTrigger,
 ];
 
