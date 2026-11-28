@@ -8,6 +8,9 @@ import {
 	N8nCheckbox,
 	N8nIcon,
 	N8nInput,
+	N8nListbox,
+	N8nListboxItem,
+	N8nSidebar,
 	N8nTabs,
 	N8nText,
 	N8nTooltip,
@@ -72,6 +75,13 @@ const searchToggle = useTemplateRef<InstanceType<typeof N8nButton>>('searchToggl
 const { focused: searchToggleFocused } = useFocus(searchToggle);
 /** The skill that the right pane shows. */
 const previewKey = ref<string | null>(null);
+/** The folders that the user closed. A folder is open until then. */
+const collapsedFolders = ref<string[]>([]);
+/**
+ * The listbox moves the focus to its selected row when the value changes from outside. Each
+ * tab gets a new listbox, so a change of tab leaves the focus on the tab.
+ */
+const listKey = ref(0);
 
 async function toggleSearch() {
 	searchOpen.value = !searchOpen.value;
@@ -85,6 +95,22 @@ async function toggleSearch() {
 function selectTab(tab: ReviewTab) {
 	activeTab.value = tab;
 	previewKey.value = visibleSkills.value[0]?.key ?? null;
+	listKey.value += 1;
+}
+
+function onPreview(key: string | undefined) {
+	if (key) previewKey.value = key;
+}
+
+function toggleFolder(folder: string) {
+	collapsedFolders.value = collapsedFolders.value.includes(folder)
+		? collapsedFolders.value.filter((closed) => closed !== folder)
+		: [...collapsedFolders.value, folder];
+}
+
+/** Only Tab leaves the header of a folder, so its keys do not move or select a row. */
+function stopListKeys(event: KeyboardEvent) {
+	if (event.key !== 'Tab') event.stopPropagation();
 }
 
 function matches(skill: DiscoveredSkill, term: string): boolean {
@@ -99,7 +125,22 @@ const visibleSkills = computed(() => {
 	return term ? skills.filter((skill) => matches(skill, term)) : skills;
 });
 
-const groups = computed(() => groupByFolder(visibleSkills.value));
+/**
+ * A folder with one skill shows that skill as a plain row. A header and an indent say nothing
+ * more than the row does.
+ */
+const groups = computed(() =>
+	groupByFolder(visibleSkills.value).map((group) => ({
+		...group,
+		hasHeader: group.skills.length > 1,
+		open: !collapsedFolders.value.includes(group.folder),
+	})),
+);
+
+// A search shows each match, so it opens the folders that the user closed.
+watch(search, (term) => {
+	if (term.trim()) collapsedFolders.value = [];
+});
 
 // A new discovery opens the first tab with skills, Warning first.
 watch(
@@ -107,6 +148,7 @@ watch(
 	() => {
 		search.value = '';
 		searchOpen.value = false;
+		collapsedFolders.value = [];
 		selectTab(TABS.find((tab) => skillsByTab.value[tab].length > 0) ?? 'warning');
 	},
 	{ immediate: true },
@@ -205,63 +247,79 @@ function warningLabel(key: string): string {
 			@update:model-value="selectTab"
 		/>
 		<div :class="$style.panes">
-			<div :class="$style.left">
-				<div :class="$style.listHeader">
-					<N8nCheckbox
-						:model-value="selectAll.checked"
-						:indeterminate="selectAll.indeterminate"
-						:disabled="disabled || selectAll.keys.length === 0"
-						:label="searchOpen ? undefined : i18n.baseText('settings.context.skills.columns.skill')"
-						:aria-label="i18n.baseText('settings.context.skills.connect.review.selectAll')"
-						data-test-id="skill-source-select-all"
-						@update:model-value="toggleAll(visibleSkills)"
-					/>
-					<N8nInput
-						v-if="searchOpen"
-						ref="searchInput"
-						v-model="search"
-						size="small"
-						:class="$style.search"
-						:placeholder="i18n.baseText('settings.context.skills.connect.review.search')"
-						:aria-label="i18n.baseText('settings.context.skills.connect.review.search')"
-						data-test-id="skill-source-search"
-						@keydown.esc.stop.prevent="toggleSearch"
-					/>
-					<N8nTooltip
-						as-child
-						placement="bottom"
-						:enterable="false"
-						:content="
-							i18n.baseText(
-								searchOpen ? 'generic.close' : 'settings.context.skills.connect.review.search',
-							)
-						"
-					>
-						<N8nButton
-							ref="searchToggle"
-							variant="ghost"
+			<N8nSidebar
+				:class="$style.sidebar"
+				:width="320"
+				:min-width="240"
+				:max-width="560"
+				width-storage-id="n8n-skills-review-sidebar-width"
+				:label="i18n.baseText('settings.context.skills.title')"
+			>
+				<template #header>
+					<div :class="$style.listHeader">
+						<N8nCheckbox
+							:model-value="selectAll.checked"
+							:indeterminate="selectAll.indeterminate"
+							:disabled="disabled || selectAll.keys.length === 0"
+							:label="searchOpen ? undefined : i18n.baseText('settings.context.skills.title')"
+							:aria-label="i18n.baseText('settings.context.skills.connect.review.selectAll')"
+							data-test-id="skill-source-select-all"
+							@update:model-value="toggleAll(visibleSkills)"
+						/>
+						<N8nInput
+							v-if="searchOpen"
+							ref="searchInput"
+							v-model="search"
 							size="small"
-							icon-only
-							:icon="searchOpen ? 'x' : 'search'"
-							:aria-label="
+							:class="$style.search"
+							:placeholder="i18n.baseText('settings.context.skills.connect.review.search')"
+							:aria-label="i18n.baseText('settings.context.skills.connect.review.search')"
+							data-test-id="skill-source-search"
+							@keydown.esc.stop.prevent="toggleSearch"
+						/>
+						<N8nTooltip
+							as-child
+							placement="bottom"
+							:enterable="false"
+							:content="
 								i18n.baseText(
 									searchOpen ? 'generic.close' : 'settings.context.skills.connect.review.search',
 								)
 							"
-							:aria-expanded="searchOpen"
-							data-test-id="skill-source-search-toggle"
-							@click="toggleSearch"
-						/>
-					</N8nTooltip>
-				</div>
-				<ul :class="$style.list" data-test-id="skill-source-skills">
-					<li
+						>
+							<N8nButton
+								ref="searchToggle"
+								variant="ghost"
+								size="small"
+								icon-only
+								:icon="searchOpen ? 'x' : 'search'"
+								:aria-label="
+									i18n.baseText(
+										searchOpen ? 'generic.close' : 'settings.context.skills.connect.review.search',
+									)
+								"
+								:aria-expanded="searchOpen"
+								data-test-id="skill-source-search-toggle"
+								@click="toggleSearch"
+							/>
+						</N8nTooltip>
+					</div>
+				</template>
+				<N8nListbox
+					:key="listKey"
+					:model-value="previewKey ?? undefined"
+					:label="i18n.baseText('settings.context.skills.title')"
+					data-test-id="skill-source-skills"
+					@update:model-value="onPreview"
+				>
+					<div
 						v-for="group in groups"
 						:key="group.folder"
+						:class="$style.group"
 						:data-folder="group.folder"
 						data-test-id="skill-source-group"
 					>
-						<div v-if="groups.length > 1" :class="$style.groupHeader">
+						<div v-if="group.hasHeader" :class="$style.groupHeader" @keydown="stopListKeys">
 							<N8nCheckbox
 								:model-value="stateOf(group.skills).checked"
 								:indeterminate="stateOf(group.skills).indeterminate"
@@ -270,103 +328,146 @@ function warningLabel(key: string): string {
 								data-test-id="skill-source-group-checkbox"
 								@update:model-value="toggleAll(group.skills)"
 							/>
-							<N8nText size="small" color="text-light" bold>{{ group.folder }}</N8nText>
+							<!-- A plain button: the folder path must wrap, which N8nButton does not do. -->
+							<button
+								type="button"
+								:class="$style.groupToggle"
+								:aria-expanded="group.open"
+								data-test-id="skill-source-group-toggle"
+								@click="toggleFolder(group.folder)"
+							>
+								<N8nText size="small" color="text-light" bold :class="$style.folder">{{
+									group.folder
+								}}</N8nText>
+								<N8nIcon
+									:icon="group.open ? 'chevron-down' : 'chevron-right'"
+									size="xsmall"
+									color="text-light"
+								/>
+							</button>
 						</div>
-						<ul :class="$style.groupSkills">
-							<li
+						<div
+							v-if="!group.hasHeader || group.open"
+							:class="[$style.groupSkills, group.hasHeader && $style.nested]"
+						>
+							<N8nListboxItem
 								v-for="item in group.skills"
 								:key="item.key"
-								:class="[$style.item, item.key === previewKey && $style.active]"
+								:value="item.key"
 								:data-skill-key="item.key"
 								data-test-id="skill-source-skill"
 							>
-								<N8nCheckbox
-									:model-value="canSelectSkill(item) && selected.includes(item.key)"
-									:disabled="disabled || !canSelectSkill(item)"
-									:aria-label="titleOf(item)"
-									data-test-id="skill-source-skill-checkbox"
-									@update:model-value="toggle(item.key, $event)"
-								/>
-								<button type="button" :class="$style.itemText" @click="previewKey = item.key">
-									<N8nText bold size="small">{{ titleOf(item) }}</N8nText>
-									<slot name="row-details" :skill="item" />
-									<N8nText
-										v-if="activeTab === 'blocked'"
-										size="small"
-										color="danger"
-										data-test-id="skill-source-skill-reason"
-									>
-										{{ blockedReason(item) }}
-									</N8nText>
-									<N8nText
-										v-else-if="
-											activeTab === 'passed' && linkedDomainsText(item.check?.findings ?? [])
-										"
-										size="small"
-										color="text-light"
-										data-test-id="skill-source-skill-findings"
-									>
-										{{ linkedDomainsText(item.check?.findings ?? []) }}
-									</N8nText>
-								</button>
-								<N8nTooltip
-									v-if="activeTab === 'warning' && warningsByKey[item.key].length"
-									as-child
-									placement="right"
+								<template #leading>
+									<!-- The checkbox keeps its click and its keys, so they do not change the preview. -->
+									<N8nCheckbox
+										:model-value="canSelectSkill(item) && selected.includes(item.key)"
+										:disabled="disabled || !canSelectSkill(item)"
+										:aria-label="titleOf(item)"
+										data-test-id="skill-source-skill-checkbox"
+										@update:model-value="toggle(item.key, $event)"
+										@click.stop
+										@keydown.enter.stop
+										@keydown.space.stop
+									/>
+								</template>
+								<N8nText bold size="small">{{ titleOf(item) }}</N8nText>
+								<N8nText
+									v-if="activeTab === 'blocked'"
+									size="small"
+									color="danger"
+									:class="$style.reason"
+									data-test-id="skill-source-skill-reason"
 								>
-									<template #content>
-										<div>
-											{{ warningLabel(item.key) }}
-											<ul :class="$style.warningList">
-												<li v-for="(finding, index) in warningsByKey[item.key]" :key="index">
-													{{ findingsText([finding]) }}
-												</li>
-											</ul>
-											{{ linkedDomainsText(item.check?.findings ?? []) }}
-										</div>
-									</template>
-									<N8nButton
-										variant="ghost"
-										size="small"
-										:class="$style.warning"
-										:aria-label="warningLabel(item.key)"
-										data-test-id="skill-source-skill-warnings"
-									>
-										<span v-if="warningsByKey[item.key].length > 1">{{
-											warningsByKey[item.key].length
-										}}</span>
-										<N8nIcon icon="triangle-alert" size="small" />
-									</N8nButton>
-								</N8nTooltip>
-							</li>
-						</ul>
-					</li>
-				</ul>
-				<N8nText v-if="visibleSkills.length === 0" size="small" color="text-light">
-					{{
-						search
-							? i18n.baseText('settings.context.skills.connect.review.noMatch')
-							: i18n.baseText('settings.context.skills.connect.review.empty')
-					}}
-				</N8nText>
-				<N8nText
-					v-if="discovery.truncated"
-					size="small"
-					color="text-light"
-					data-test-id="skill-source-truncated"
+									{{ blockedReason(item) }}
+								</N8nText>
+								<N8nText
+									v-else-if="
+										activeTab === 'passed' && linkedDomainsText(item.check?.findings ?? [])
+									"
+									size="small"
+									color="text-light"
+									:class="$style.reason"
+									data-test-id="skill-source-skill-findings"
+								>
+									{{ linkedDomainsText(item.check?.findings ?? []) }}
+								</N8nText>
+								<template
+									v-if="
+										$slots['row-trailing'] ||
+										(activeTab === 'warning' && warningsByKey[item.key].length)
+									"
+									#trailing
+								>
+									<span :class="$style.rowTrailing">
+										<slot name="row-trailing" :skill="item" />
+										<N8nTooltip
+											v-if="activeTab === 'warning' && warningsByKey[item.key].length"
+											as-child
+											placement="right"
+										>
+											<template #content>
+												<div>
+													{{ warningLabel(item.key) }}
+													<ul :class="$style.warningList">
+														<li v-for="(finding, index) in warningsByKey[item.key]" :key="index">
+															{{ findingsText([finding]) }}
+														</li>
+													</ul>
+													{{ linkedDomainsText(item.check?.findings ?? []) }}
+												</div>
+											</template>
+											<N8nButton
+												variant="ghost"
+												size="xsmall"
+												:class="$style.warning"
+												:aria-label="warningLabel(item.key)"
+												data-test-id="skill-source-skill-warnings"
+												@click.stop
+												@keydown.enter.stop
+												@keydown.space.stop
+											>
+												<span v-if="warningsByKey[item.key].length > 1">{{
+													warningsByKey[item.key].length
+												}}</span>
+												<N8nIcon icon="triangle-alert" size="small" />
+											</N8nButton>
+										</N8nTooltip>
+									</span>
+								</template>
+							</N8nListboxItem>
+						</div>
+					</div>
+				</N8nListbox>
+				<div
+					v-if="visibleSkills.length === 0 || discovery.truncated || discovery.tooDeep"
+					:class="$style.notices"
 				>
-					{{ reasonText('too_many_skills') }}
-				</N8nText>
-				<N8nText
-					v-if="discovery.tooDeep"
-					size="small"
-					color="text-light"
-					data-test-id="skill-source-too-deep"
-				>
-					{{ reasonText('too_deep') }}
-				</N8nText>
-			</div>
-			<div :class="$style.right">
+					<N8nText v-if="visibleSkills.length === 0" size="small" color="text-light">
+						{{
+							search
+								? i18n.baseText('settings.context.skills.connect.review.noMatch')
+								: i18n.baseText('settings.context.skills.connect.review.empty')
+						}}
+					</N8nText>
+					<N8nText
+						v-if="discovery.truncated"
+						size="small"
+						color="text-light"
+						data-test-id="skill-source-truncated"
+					>
+						{{ reasonText('too_many_skills') }}
+					</N8nText>
+					<N8nText
+						v-if="discovery.tooDeep"
+						size="small"
+						color="text-light"
+						data-test-id="skill-source-too-deep"
+					>
+						{{ reasonText('too_deep') }}
+					</N8nText>
+				</div>
+			</N8nSidebar>
+			<div :class="$style.preview">
 				<slot v-if="previewSkill" name="preview" :skill="previewSkill">
 					<SkillSourceFilesView :key="previewSkill.key" :skill="previewSkill" />
 				</slot>
@@ -376,42 +477,51 @@ function warningLabel(key: string): string {
 </template>
 
 <style lang="scss" module>
+/* The panes go from edge to edge of the dialog, so the review takes back the padding of the body. */
 .review {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
 	min-height: 0;
-}
-
-.panes {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-	gap: var(--spacing--sm);
-	height: 60vh;
+	margin-inline: calc(-1 * var(--n8n-dialog-region--padding, var(--spacing--md)));
+	margin-block-end: calc(-1 * var(--focus--border-width));
 }
 
 .tabs {
 	width: auto;
-	margin-inline: calc(-1 * var(--n8n-dialog-region--padding, var(--spacing--md)));
 	padding-inline: var(--n8n-dialog-region--padding, var(--spacing--md));
 	border-bottom: var(--border);
 }
 
-.left {
+/* The sidebar draws the one divider between the panes. The bottom line closes it at the footer. */
+.panes {
 	display: flex;
-	flex-direction: column;
+	height: 60vh;
 	min-height: 0;
-	border: var(--border);
-	border-radius: var(--radius);
+	border-block-end: var(--border);
 }
 
+/* The list starts one row gap below the header. */
+.sidebar {
+	flex: none;
+	--n8n-sidebar--padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--2xs);
+}
+
+.preview {
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+}
+
+/* The header has the box of a row, so its checkbox and its button are in line with the rows. */
 .listHeader {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) var(--spacing--xs);
-	border-bottom: var(--border);
+	min-height: var(--spacing--xl);
+	margin: var(--spacing--2xs) var(--spacing--2xs) 0;
+	padding: var(--spacing--4xs) var(--spacing--xs);
 }
 
 .search {
@@ -419,46 +529,72 @@ function warningLabel(key: string): string {
 	min-width: 0;
 }
 
-.right {
-	min-height: 0;
-	overflow: hidden;
-	border: var(--border);
-	border-radius: var(--radius);
-}
-
-.list {
-	flex: 1;
-	margin: 0;
-	padding: 0;
-	overflow-y: auto;
-	list-style: none;
+.group,
+.groupSkills {
+	display: flex;
+	flex-direction: column;
+	gap: var(--n8n-listbox--gap, var(--spacing--4xs));
 }
 
 .groupHeader {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) var(--spacing--xs);
-	background-color: var(--color--background--light-2);
-	border-bottom: var(--border);
+	min-height: var(--spacing--xl);
+	padding-inline: var(--spacing--xs);
 }
 
-.groupSkills {
-	margin: 0;
-	padding: 0;
-	list-style: none;
-}
-
-.item {
+.groupToggle {
 	display: flex;
-	align-items: flex-start;
+	flex: 1;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+	padding: var(--spacing--4xs) 0;
+	text-align: start;
+	background: none;
+	border: none;
+	border-radius: var(--radius);
+	cursor: pointer;
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--outline-color);
+	}
+}
+
+.folder {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+/* The checkbox of a skill sits below the path of its folder. */
+.nested {
+	--n8n-listbox-item--padding: var(--spacing--4xs) var(--spacing--xs) var(--spacing--4xs)
+		calc(var(--spacing--xs) + var(--spacing--lg));
+}
+
+/* A reason can be long, and the user needs all of it to fix the skill. */
+.reason {
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.notices {
+	display: flex;
+	flex-direction: column;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs) var(--spacing--xs);
-	border-bottom: var(--border);
 }
 
-.active {
-	background-color: var(--color--background--light-1);
+.rowTrailing {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+
+	/* Without a warning button, the text ends in line with the search icon of the header. */
+	&:not(:has(.warning)) {
+		padding-inline-end: var(--spacing--2xs);
+	}
 }
 
 .warning {
@@ -469,18 +605,5 @@ function warningLabel(key: string): string {
 .warningList {
 	margin: var(--spacing--5xs) 0;
 	padding-left: var(--spacing--xs);
-}
-
-.itemText {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
-	padding: 0;
-	text-align: left;
-	background: none;
-	border: none;
-	cursor: pointer;
 }
 </style>

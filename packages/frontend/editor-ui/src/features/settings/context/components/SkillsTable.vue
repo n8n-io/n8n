@@ -74,7 +74,10 @@ const emit = defineEmits<{
 	toggleSource: [sourceId: string];
 	checkSource: [source: SkillSourceListItem];
 	moveSource: [source: SkillSourceListItem];
+	/** Open the review of the updates of a source. */
 	reviewSource: [source: SkillSourceListItem];
+	/** Open the import of the skills of a source that are not imported yet. */
+	importNewSkills: [source: SkillSourceListItem];
 	deleteSource: [source: SkillSourceListItem];
 	replaceCredential: [source: SkillSourceListItem];
 	stopSyncing: [skill: SkillListItem];
@@ -277,7 +280,8 @@ function sourceActions(source: SkillSourceListItem) {
 
 function onSourceAction(source: SkillSourceListItem, action: SourceAction) {
 	if (action === 'checkNow') emit('checkSource', source);
-	else if (action === 'reviewSkills') emit('reviewSource', source);
+	// The skills of the source that are not imported, with those taken out of the "N new" count.
+	else if (action === 'reviewSkills') emit('importNewSkills', source);
 	else if (action === 'changeScope') emit('moveSource', source);
 	else if (action === 'deleteSource') emit('deleteSource', source);
 	else if (action === 'replaceCredential') emit('replaceCredential', source);
@@ -452,7 +456,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						:class="$style.updateButton"
 						data-test-id="skill-group-review-new"
 						data-attr="skill-group-review-new"
-						@click.stop="emit('reviewSource', sourcesById.get(group)!)"
+						@click.stop="emit('importNewSkills', sourcesById.get(group)!)"
 					>
 						<N8nBadge variant="outline" data-test-id="skill-group-new">
 							<template #leading>

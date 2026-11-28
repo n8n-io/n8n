@@ -1962,6 +1962,38 @@ describe('SettingsSkillsView', () => {
 				await userEvent.click(document.querySelector('[data-test-id="action-checkNow"]')!);
 			}
 
+			it.each([
+				['skill-group-review-new', 'review-new', 'review-updates'],
+				['skill-group-review-updates', 'review-updates', 'review-new'],
+			])('opens only its own dialog from %s', async (badge, opened, closed) => {
+				enableSkillSync();
+				const pending = { ...source, newSkillsAvailable: 2, updatesAvailable: 3 };
+				skillsStore.fetchSources.mockImplementation(async () => {
+					skillsStore.sources = [pending];
+					return [pending];
+				});
+				skillsStore.skills = [skill({ source: 'github', canEdit: false, sourceId: 'src-1' })];
+				skillsStore.count = 1;
+				const view = renderView({
+					global: {
+						stubs: {
+							SkillSourceUpdatesDialog: {
+								name: 'SkillSourceUpdatesDialog',
+								props: ['source', 'mode'],
+								template:
+									'<div :data-test-id="`review-${mode ?? \'updates\'}`">{{ source.id }}</div>',
+							},
+						},
+					},
+				});
+				await waitFor(() => expect(view.getByTestId('skill-group-title')).toBeInTheDocument());
+
+				await userEvent.click(view.getByTestId(badge));
+
+				expect(view.getByTestId(opened)).toHaveTextContent('src-1');
+				expect(view.queryByTestId(closed)).toBeNull();
+			});
+
 			it('asks for the list grouped by source and heads the skills with their source', async () => {
 				const view = await renderWithSource();
 

@@ -5,9 +5,29 @@ import type {
 	SkillScanLimitField,
 	SkillUpdateFile,
 } from '@n8n/api-types';
-import { computed, useCssModule, useId, useTemplateRef, type Directive } from 'vue';
+import {
+	computed,
+	nextTick,
+	ref,
+	useCssModule,
+	useId,
+	useTemplateRef,
+	watch,
+	type Directive,
+} from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nCallout, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
+import {
+	N8nAnimatedCollapsibleContent,
+	N8nCallout,
+	N8nIcon,
+	N8nIconButton,
+	N8nLink,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { diffText } from '@n8n/utils/diff-text';
+import SkillDiffCount from '@/features/agents/components/skillVersions/SkillDiffCount.vue';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
 
 import {
@@ -29,24 +49,93 @@ const statusLabels: Record<NonNullable<SkillUpdateFile['status']>, BaseTextKey> 
 type Segment = { text: string; finding?: SkillScanFinding };
 type Line = { number: number; segments: Segment[] };
 
+/** The unchanged lines that a diff shows around each change. The viewer folds the rest. */
+const DIFF_CONTEXT = 3;
+/** The cell that opens a folded part of a diff. The diff viewer has no API to open one. */
+const DIFF_FOLD = 'td.blob-num-hunk[colspan]';
+
 const findings = computed(() => props.skill.check?.findings ?? []);
 const fileSections = useTemplateRef<HTMLElement[]>('fileSections');
 const fileIdPrefix = useId();
+
+/** The paths of the open files. Each file starts closed. */
+const openFiles = ref<string[]>([]);
+watch(
+	() => props.skill.key,
+	() => {
+		openFiles.value = [];
+	},
+);
+
+function setFileOpen(path: string, open: boolean) {
+	openFiles.value = open
+		? [...new Set([...openFiles.value, path])]
+		: openFiles.value.filter((openPath) => openPath !== path);
+}
 
 function fileId(path: string): string {
 	return `${fileIdPrefix}-${encodeURIComponent(path)}`;
 }
 
-function goToFile(path: string, line?: number) {
+/** The number of a diff row in the new file. A removed line and a folded part have none. */
+function diffLineOf(row: Element): number {
+	return Number(row.children[1]?.textContent) || 0;
+}
+
+function rowOf(section: HTMLElement, line: number): Element | undefined {
+	return (
+		section.querySelector(`[data-line="${line}"]`) ??
+		Array.from(section.querySelectorAll('tr')).find((row) => diffLineOf(row) === line)
+	);
+}
+
+/** The folded parts of a diff: the cell that opens each one, and the lines of the new file that it hides. */
+function foldsOf(root: HTMLElement, lineCount = Infinity) {
+	const rows = Array.from(root.querySelectorAll('tr'));
+	let before = 0;
+	return rows.flatMap((row, index) => {
+		const cell = row.querySelector<HTMLElement>(DIFF_FOLD);
+		if (!cell) {
+			before = diffLineOf(row) || before;
+			return [];
+		}
+		const after = rows
+			.slice(index + 1)
+			.map(diffLineOf)
+			.find((number) => number > 0);
+		return [{ cell, row, first: before + 1, last: (after ?? lineCount + 1) - 1 }];
+	});
+}
+
+/** Opens the folded part of a diff that holds a line. Returns false when no fold holds it. */
+function unfoldLine(section: HTMLElement, line: number): boolean {
+	const fold = foldsOf(section).find(({ first, last }) => line >= first && line <= last);
+	fold?.cell.click();
+	return !!fold;
+}
+
+/** The open animation moves the content of a file, so a scroll waits for its end. */
+async function settled(section: HTMLElement) {
+	const animations = section.getAnimations?.({ subtree: true }) ?? [];
+	await Promise.allSettled(animations.map(async (animation) => await animation.finished));
+}
+
+async function goToFile(path: string, line?: number) {
+	setFileOpen(path, true);
+	await nextTick();
 	const section = fileSections.value?.find((element) => element.id === fileId(path));
-	const row = line
-		? (section?.querySelector(`[data-line="${line}"]`) ??
-			Array.from(section?.querySelectorAll('tr') ?? []).find(
-				(element) => Number(element.children[1]?.textContent) === line,
-			))
-		: undefined;
-	(row ?? section)?.scrollIntoView({ block: row ? 'center' : 'start', inline: 'nearest' });
-	section?.focus({ preventScroll: true });
+	if (!section) return;
+	await settled(section);
+	let row = line ? rowOf(section, line) : undefined;
+	if (line && !row && unfoldLine(section, line)) {
+		await nextTick();
+		const file = files.value.find((candidate) => candidate.path === path);
+		const diff = section.querySelector<HTMLElement>('[data-test-id="skill-source-file-diff"]');
+		if (file && diff) decorateDiff(diff, file);
+		row = rowOf(section, line);
+	}
+	(row ?? section).scrollIntoView({ block: row ? 'center' : 'start', inline: 'nearest' });
+	section.focus({ preventScroll: true });
 }
 
 /** The full path of a file in the source, as the user knows it from GitHub. */
@@ -126,7 +215,7 @@ function markClass(finding: SkillScanFinding): string {
 }
 
 // The diff viewer has no line slot. Keep its word spans and decorate only their text nodes.
-const vFindingMarks: Directive<HTMLElement, SkillScanFinding[]> = (element, { value }) => {
+function markFindings(element: HTMLElement, value: SkillScanFinding[]) {
 	for (const mark of element.querySelectorAll('[data-test-id="skill-source-finding-mark"]')) {
 		const parent = mark.parentNode;
 		mark.replaceWith(document.createTextNode(mark.textContent ?? ''));
@@ -134,7 +223,7 @@ const vFindingMarks: Directive<HTMLElement, SkillScanFinding[]> = (element, { va
 	}
 	if (!value.length) return;
 	for (const row of element.querySelectorAll('tr')) {
-		const line = Number(row.children[1]?.textContent);
+		const line = diffLineOf(row);
 		const marks = value.filter((finding) => finding.location?.line === line);
 		const code = row.querySelector('.blob-code-inner');
 		if (!marks.length || !code) continue;
@@ -160,7 +249,47 @@ const vFindingMarks: Directive<HTMLElement, SkillScanFinding[]> = (element, { va
 			node.replaceWith(fragment);
 		}
 	}
-};
+}
+
+type DiffFile = { marks: SkillScanFinding[]; after: string };
+
+/** The diff viewer has no slots, so this adds the marks of the findings and the labels of the folded parts. */
+function decorateDiff(diff: HTMLElement, file: DiffFile) {
+	markFindings(diff, file.marks);
+	// The viewer leaves out a line break at the end of the file.
+	const lineCount = file.after.replace(/\n$/, '').split('\n').length;
+	for (const { row, first, last } of foldsOf(diff, lineCount)) {
+		const count = last - first + 1;
+		const label = i18n.baseText('settings.context.skills.connect.review.unchangedLines', {
+			interpolate: { count },
+			adjustToNumber: count,
+		});
+		// The last cell shows the label. It is the button for the keyboard.
+		const attributes = { 'data-label': label, 'aria-label': label, role: 'button', tabindex: '0' };
+		for (const [name, value] of Object.entries(attributes)) {
+			row.lastElementChild?.setAttribute(name, value);
+		}
+	}
+}
+
+const vDiffDecor: Directive<HTMLElement, DiffFile> = (element, { value }) =>
+	decorateDiff(element, value);
+
+/**
+ * Opens a folded part from a click or a key on its row. Only the first cell of the viewer listens
+ * for a click. The viewer shows the lines without an update of this component, so the new rows
+ * get their marks and labels here.
+ */
+async function onFoldAction(event: MouseEvent | KeyboardEvent, file: DiffFile) {
+	const { currentTarget: diff, target } = event;
+	const cell =
+		target instanceof Element ? target.closest('tr')?.querySelector<HTMLElement>(DIFF_FOLD) : null;
+	if (!(diff instanceof HTMLElement) || !(target instanceof Node) || !cell) return;
+	if (event instanceof KeyboardEvent) event.preventDefault();
+	if (!cell.contains(target) || event instanceof KeyboardEvent) cell.click();
+	await nextTick();
+	decorateDiff(diff, file);
+}
 
 const reviewFiles = computed<SkillUpdateFile[]>(
 	() =>
@@ -190,8 +319,15 @@ const files = computed(() =>
 							marks.filter((finding) => finding.location?.line === index + 1),
 						),
 					}));
+		// The server counts the lines of a skill with the same function, so the files add up to it.
+		const { added, removed } =
+			props.diffFiles && file.before !== file.after
+				? diffText(file.before, file.after)
+				: { added: 0, removed: 0 };
 		return {
 			...file,
+			// A closed file must still say that it changed, and by how much.
+			change: { added, removed },
 			hasBinary: file.beforeIsBinary || file.afterIsBinary,
 			hasText:
 				(file.status !== 'added' && !file.beforeIsBinary) ||
@@ -270,23 +406,22 @@ function hasPreview(finding: SkillScanFinding): boolean {
 						:key="index"
 						data-test-id="skill-source-finding"
 					>
-						<N8nLink
+						<!-- Plain links: N8nLink has no theme that takes the color of the notice. -->
+						<a
 							v-if="finding.file && hasPreview(finding)"
 							:href="`#${encodeURIComponent(fileId(finding.file))}`"
-							target="_self"
-							theme="text"
-							size="small"
+							:class="$style.findingLink"
 							@click.prevent="goToFile(finding.file, finding.location?.line)"
-							>{{ findingText(finding) }}</N8nLink
+							>{{ findingText(finding) }}</a
 						>
-						<N8nLink
+						<a
 							v-else-if="finding.file"
 							:href="fileUrl(finding.file)"
-							new-window
-							theme="text"
-							size="small"
+							:class="$style.findingLink"
+							target="_blank"
+							rel="noopener noreferrer"
 							>{{ findingText(finding) }} ·
-							{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}</N8nLink
+							{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}</a
 						>
 						<template v-else>{{ findingText(finding) }}</template>
 						<div v-if="blockedReason(finding)" data-test-id="skill-source-finding-reason">
@@ -294,107 +429,127 @@ function hasPreview(finding: SkillScanFinding): boolean {
 						</div>
 					</li>
 					<li v-if="skippedScriptCount" data-test-id="skill-source-skipped-scripts">
-						<N8nLink
+						<a
 							:href="`#${encodeURIComponent(fileId('skipped'))}`"
-							target="_self"
-							theme="text"
-							size="small"
+							:class="$style.findingLink"
 							@click.prevent="goToSkipped"
 							>{{
 								i18n.baseText('settings.context.skills.connect.review.skippedScripts', {
 									interpolate: { count: skippedScriptCount },
 									adjustToNumber: skippedScriptCount,
 								})
-							}}</N8nLink
+							}}</a
 						>
 					</li>
 				</ul>
 			</N8nCallout>
-			<nav
-				v-if="files.length > 1"
-				:class="$style.fileIndex"
-				:aria-label="i18n.baseText('settings.context.skills.connect.review.files')"
-				data-test-id="skill-source-file-index"
-			>
-				<N8nText size="small" bold>
-					{{ i18n.baseText('settings.context.skills.connect.review.files') }}
-				</N8nText>
-				<ul :class="$style.fileList">
-					<li v-for="file in files" :key="file.path">
-						<N8nLink
-							:href="`#${encodeURIComponent(fileId(file.path))}`"
-							target="_self"
-							:class="$style.fileLink"
-							size="small"
-							theme="text"
-							:underline="false"
-							@click.prevent="goToFile(file.path)"
-						>
-							{{ file.path }}
-						</N8nLink>
-					</li>
-				</ul>
-			</nav>
 			<section
 				v-for="file in files"
 				:id="fileId(file.path)"
 				:key="file.path"
 				ref="fileSections"
 				:class="$style.file"
-				:aria-label="pathInSource(file.path)"
+				:aria-label="file.path"
 				tabindex="-1"
 				data-test-id="skill-source-file"
 			>
-				<header :class="$style.fileHeader">
-					<N8nIcon icon="file-text" size="small" color="text-light" />
-					<N8nText size="small" :class="$style.path" data-test-id="skill-source-file-path">{{
-						pathInSource(file.path)
-					}}</N8nText>
-					<N8nText v-if="file.status" size="small">{{
-						i18n.baseText(statusLabels[file.status])
-					}}</N8nText>
-					<N8nLink
-						v-if="file.status !== 'removed'"
-						:href="fileUrl(file.path)"
-						new-window
-						size="small"
+				<!-- A closed file stays in the page, so the search of the browser still finds its text. -->
+				<CollapsibleRoot
+					:open="openFiles.includes(file.path)"
+					:unmount-on-hide="false"
+					@update:open="setFileOpen(file.path, $event)"
+				>
+					<header
+						:class="[$style.fileHeader, openFiles.includes(file.path) && $style.fileHeaderOpen]"
 					>
-						{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
-					</N8nLink>
-				</header>
-				<N8nText v-if="file.hasBinary" size="small" :class="$style.binary">
-					{{
-						i18n.baseText(
-							file.hasText
-								? 'agents.builder.skills.versions.binarySide'
-								: 'agents.builder.skills.files.binary',
-						)
-					}}
-				</N8nText>
-				<pre v-if="!diffFiles && file.lines.length" :class="$style.text"><code><span
-				v-for="line in file.lines"
-				:key="line.number"
-				:data-line="line.number"
-				:class="$style.line"
-			><span :class="$style.number" :aria-hidden="!diffFiles">{{ line.number }}</span><span><template
-				v-for="(segment, index) in line.segments"
-				:key="index"
-			><mark
-				v-if="segment.finding"
-				:class="markClass(segment.finding)"
-				:title="ruleText(segment.finding.rule)"
-				data-test-id="skill-source-finding-mark"
-			>{{ segment.text }}</mark><template v-else>{{ segment.text }}</template></template></span></span></code></pre>
-				<NodeDiff
-					v-if="diffFiles && file.hasText"
-					v-finding-marks="file.marks"
-					:class="$style.diff"
-					:old-string="file.before"
-					:new-string="file.after"
-					language="plaintext"
-					:context="Math.max(file.before.split('\n').length, file.after.split('\n').length)"
-					data-test-id="skill-source-file-diff"
-				/>
+						<CollapsibleTrigger as-child>
+							<!-- A plain button: the path must wrap, which N8nButton does not do. -->
+							<button
+								type="button"
+								:class="$style.fileToggle"
+								data-test-id="skill-source-file-toggle"
+							>
+								<N8nIcon
+									:icon="openFiles.includes(file.path) ? 'chevron-down' : 'chevron-right'"
+									size="small"
+									color="text-light"
+								/>
+								<N8nIcon icon="file-text" size="small" color="text-light" />
+								<!-- The path in the skill, as n8n stores the file. The link goes to the full path. -->
+								<N8nText size="small" :class="$style.path" data-test-id="skill-source-file-path">{{
+									file.path
+								}}</N8nText>
+							</button>
+						</CollapsibleTrigger>
+						<N8nText v-if="file.status" size="small" data-test-id="skill-source-file-status">{{
+							i18n.baseText(statusLabels[file.status])
+						}}</N8nText>
+						<SkillDiffCount
+							:class="$style.counts"
+							:count="file.change"
+							:hide-zero="!!file.status"
+							:title="
+								i18n.baseText('settings.context.skills.updates.lines', {
+									interpolate: file.change,
+								})
+							"
+							data-test-id="skill-source-file-changes"
+						/>
+						<N8nTooltip
+							v-if="file.status !== 'removed'"
+							as-child
+							:content="i18n.baseText('settings.context.skills.synced.openInGithub')"
+							placement="top"
+						>
+							<N8nIconButton
+								icon="external-link"
+								variant="ghost"
+								size="small"
+								:href="fileUrl(file.path)"
+								target="_blank"
+								:aria-label="i18n.baseText('settings.context.skills.synced.openInGithub')"
+								data-test-id="skill-source-file-link"
+							/>
+						</N8nTooltip>
+					</header>
+					<N8nAnimatedCollapsibleContent>
+						<N8nText v-if="file.hasBinary" size="small" :class="$style.binary">
+							{{
+								i18n.baseText(
+									file.hasText
+										? 'agents.builder.skills.versions.binarySide'
+										: 'agents.builder.skills.files.binary',
+								)
+							}}
+						</N8nText>
+						<pre v-if="!diffFiles && file.lines.length" :class="$style.text"><code><span
+						v-for="line in file.lines"
+						:key="line.number"
+						:data-line="line.number"
+						:class="$style.line"
+					><span :class="$style.number" :aria-hidden="!diffFiles">{{ line.number }}</span><span><template
+						v-for="(segment, index) in line.segments"
+						:key="index"
+					><mark
+						v-if="segment.finding"
+						:class="markClass(segment.finding)"
+						:title="ruleText(segment.finding.rule)"
+						data-test-id="skill-source-finding-mark"
+					>{{ segment.text }}</mark><template v-else>{{ segment.text }}</template></template></span></span></code></pre>
+						<NodeDiff
+							v-if="diffFiles && file.hasText"
+							v-diff-decor="file"
+							:class="$style.diff"
+							:old-string="file.before"
+							:new-string="file.after"
+							language="plaintext"
+							:context="DIFF_CONTEXT"
+							data-test-id="skill-source-file-diff"
+							@click="onFoldAction($event, file)"
+							@keydown.enter.space="onFoldAction($event, file)"
+						/>
+					</N8nAnimatedCollapsibleContent>
+				</CollapsibleRoot>
 			</section>
 			<N8nText
 				v-if="skill.previewTruncated"
@@ -441,36 +596,6 @@ function hasPreview(finding: SkillScanFinding): boolean {
 	min-height: 0;
 }
 
-.fileIndex {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-	flex-shrink: 0;
-	padding-bottom: var(--spacing--xs);
-	border-bottom: var(--border);
-}
-
-.fileList {
-	min-height: 0;
-	margin: 0;
-	padding: 0;
-	overflow-y: auto;
-	list-style: none;
-}
-
-.fileLink {
-	display: block;
-	padding: var(--spacing--3xs);
-	border-radius: var(--radius);
-	font-family: var(--font-family--monospace);
-	overflow-wrap: anywhere;
-
-	&:hover,
-	&:focus-visible {
-		background-color: var(--background--hover);
-	}
-}
-
 .content {
 	display: flex;
 	flex: 1;
@@ -486,6 +611,11 @@ function hasPreview(finding: SkillScanFinding): boolean {
 	overflow-wrap: anywhere;
 	margin: 0;
 	padding-left: var(--spacing--sm);
+}
+
+/* A link in the notice has the color of the notice, in the warning theme and the danger theme. */
+.findings .findingLink {
+	color: inherit;
 }
 
 .skipped {
@@ -515,6 +645,63 @@ function hasPreview(finding: SkillScanFinding): boolean {
 		color: var(--color--text--tint-1);
 	}
 
+	/*
+	 * One number for each line: its number in the new file. The cell of the old number keeps its
+	 * place with no width, because the cell of a folded part spans the two number cells.
+	 */
+	:global(.blob-num):first-child:not([colspan]) {
+		width: 0;
+		min-width: 0;
+		max-width: 0;
+		padding: 0;
+		overflow: hidden;
+		font-size: 0;
+	}
+
+	/* A folded part is one grey row: an icon and "Show N unchanged lines", not the "> ⋯" of the viewer. */
+	tr:has(:global(.blob-num-hunk[colspan])) td {
+		background-color: var(--background--subtle);
+		font-size: 0;
+		cursor: pointer;
+
+		&[data-label] {
+			padding-block: var(--spacing--4xs);
+			color: var(--text-color--subtle);
+		}
+
+		/* The chevrons-up-down icon. The viewer owns the row, so the row cannot hold an N8nIcon. */
+		&[data-label]::before {
+			content: '';
+			display: inline-block;
+			width: var(--font-size--2xs);
+			height: var(--font-size--2xs);
+			/* The label starts below the line numbers. */
+			margin-inline: calc(-1 * var(--spacing--xl) - var(--spacing--2xs)) var(--spacing--2xs);
+			vertical-align: middle;
+			background-color: currentColor;
+			mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E")
+				center / contain no-repeat;
+		}
+
+		&[data-label]::after {
+			content: attr(data-label);
+			font-family: var(--font-family--monospace);
+			font-size: var(--font-size--2xs);
+			vertical-align: middle;
+		}
+
+		&:focus-visible {
+			outline: var(--focus--border-width) solid var(--focus--outline-color);
+			outline-offset: calc(-1 * var(--focus--border-width));
+		}
+	}
+
+	/* The lines of an opened part look like the other unchanged lines. */
+	:global(.blob-num-hunk):not([colspan]),
+	:global(.blob-num-hunk):not([colspan]) ~ :global(.blob-code-hunk) {
+		background-color: transparent;
+	}
+
 	tr:has(.warning) {
 		box-shadow: inset var(--spacing--5xs) 0 var(--text-color--warning);
 
@@ -534,8 +721,34 @@ function hasPreview(finding: SkillScanFinding): boolean {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	padding: var(--spacing--3xs) var(--spacing--xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--4xs) var(--spacing--xs);
+}
+
+.fileHeaderOpen {
 	border-bottom: var(--border);
+}
+
+/* The counts have the size of the path next to them. */
+.counts {
+	--skill-diff-count--font-size: var(--font-size--2xs);
+}
+
+.fileToggle {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+	padding: var(--spacing--4xs) 0;
+	text-align: start;
+	background: none;
+	border: none;
+	border-radius: var(--radius);
+	cursor: pointer;
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--outline-color);
+	}
 }
 
 .path {

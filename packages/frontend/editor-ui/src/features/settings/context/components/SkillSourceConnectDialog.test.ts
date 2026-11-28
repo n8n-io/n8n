@@ -730,6 +730,133 @@ describe('SkillSourceConnectDialog', () => {
 			expect(view.getByTestId('skill-source-import')).toHaveTextContent('Import 1 skill to Global');
 		});
 
+		describe('folders in the skill list', () => {
+			// Each skill has its own text, so the preview says which skill it shows.
+			const withText = (name: string, folder: string) =>
+				discovered({
+					key: `${folder}/${name}`,
+					location: `${folder}/${name}`,
+					name,
+					previewFiles: [{ path: 'SKILL.md', text: `Body of ${name}.` }],
+				});
+			const pdf = withText('pdf', 'skills');
+			const docx = withText('docx', 'skills');
+			const lint = withText('lint', 'tools');
+			const group = (view: View, folder: string) =>
+				view
+					.getAllByTestId('skill-source-group')
+					.find((element) => element.dataset.folder === folder)!;
+
+			it('lists the skills in a sidebar, next to the preview', async () => {
+				skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [pdf, lint, docx] }));
+				const view = render();
+				await review(view);
+
+				const sidebar = view.getByRole('complementary', { name: 'Skills' });
+				expect(within(sidebar).getByRole('listbox', { name: 'Skills' })).toBeVisible();
+				expect(within(sidebar).getByTestId('skill-source-select-all')).toBeVisible();
+				expect(sidebar).not.toContainElement(view.getByTestId('skill-source-preview'));
+			});
+
+			it('heads a folder with more than one skill, and shows the skill of any other folder as a plain row', async () => {
+				skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [pdf, lint, docx] }));
+				const view = render();
+				await review(view);
+
+				const skillsFolder = within(group(view, 'skills'));
+				expect(skillsFolder.getByTestId('skill-source-group-toggle')).toHaveTextContent('skills');
+				expect(skillsFolder.getByTestId('skill-source-group-checkbox')).toBeVisible();
+				const toolsFolder = within(group(view, 'tools'));
+				expect(toolsFolder.queryByTestId('skill-source-group-toggle')).toBeNull();
+				expect(toolsFolder.queryByTestId('skill-source-group-checkbox')).toBeNull();
+				expect(toolsFolder.getByRole('checkbox', { name: 'lint' })).toBeVisible();
+			});
+
+			it('shows no folder header when each folder has one skill', async () => {
+				skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [pdf, lint] }));
+				const view = render();
+				await review(view);
+
+				expect(rows(view)).toEqual(['skills/pdf', 'tools/lint']);
+				expect(view.queryByTestId('skill-source-group-toggle')).toBeNull();
+				expect(view.queryByTestId('skill-source-group-checkbox')).toBeNull();
+			});
+
+			it('closes and opens a folder from its header, and keeps the ticks of its skills', async () => {
+				skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [pdf, lint, docx] }));
+				const view = render();
+				await review(view);
+				const importButton = view.getByTestId('skill-source-import');
+				// A tick state that differs from the default, so a reset of the ticks shows.
+				await userEvent.click(view.getByRole('checkbox', { name: 'pdf' }));
+				expect(importButton).toHaveTextContent('Import 2 skills to Global');
+				const toggle = within(group(view, 'skills')).getByTestId('skill-source-group-toggle');
+				expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+				await userEvent.click(toggle);
+
+				expect(toggle).toHaveAttribute('aria-expanded', 'false');
+				expect(rows(view)).toEqual(['tools/lint']);
+				expect(importButton).toHaveTextContent('Import 2 skills to Global');
+
+				await userEvent.click(toggle);
+
+				expect(toggle).toHaveAttribute('aria-expanded', 'true');
+				expect(rows(view)).toEqual(['skills/pdf', 'skills/docx', 'tools/lint']);
+				expect(view.getByRole('checkbox', { name: 'pdf' })).not.toBeChecked();
+				expect(view.getByRole('checkbox', { name: 'docx' })).toBeChecked();
+				expect(importButton).toHaveTextContent('Import 2 skills to Global');
+			});
+
+			it('opens a closed folder when a search finds a skill in it', async () => {
+				skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [pdf, lint, docx] }));
+				const view = render();
+				await review(view);
+				await userEvent.click(
+					within(group(view, 'skills')).getByTestId('skill-source-group-toggle'),
+				);
+				expect(rows(view)).toEqual(['tools/lint']);
+
+				await userEvent.click(view.getByRole('button', { name: 'Search skills' }));
+				await userEvent.type(view.getByRole('textbox', { name: 'Search skills' }), 'skills/');
+
+				expect(rows(view)).toEqual(['skills/pdf', 'skills/docx']);
+			});
+
+			it('keeps the preview when the user ticks a skill, and changes it from the row', async () => {
+				skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [pdf, lint, docx] }));
+				const view = render();
+				await review(view);
+				const preview = view.getByTestId('skill-source-preview');
+				expect(preview).toHaveTextContent('Body of pdf.');
+
+				await userEvent.click(view.getByRole('checkbox', { name: 'lint' }));
+
+				expect(view.getByRole('checkbox', { name: 'lint' })).not.toBeChecked();
+				expect(preview).toHaveTextContent('Body of pdf.');
+
+				const lintRow = view
+					.getAllByTestId('skill-source-skill')
+					.find((row) => row.dataset.skillKey === 'tools/lint')!;
+				await userEvent.click(within(lintRow).getByText('lint'));
+
+				expect(view.getByTestId('skill-source-preview')).toHaveTextContent('Body of lint.');
+				expect(lintRow).toHaveAttribute('aria-selected', 'true');
+			});
+
+			it('changes the preview with the arrow keys and Enter', async () => {
+				skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [pdf, lint, docx] }));
+				const view = render();
+				await review(view);
+				const [first] = view.getAllByTestId('skill-source-skill');
+				first.focus();
+
+				await userEvent.keyboard('{ArrowDown}{Enter}');
+
+				expect(view.getByTestId('skill-source-preview')).toHaveTextContent('Body of docx.');
+			});
+		});
+
 		it('shows one finding notice before the files and skipped files after them', async () => {
 			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
 			const view = render();
@@ -744,7 +871,7 @@ describe('SkillSourceConnectDialog', () => {
 			const files = within(pane).getAllByTestId('skill-source-file');
 			expect(
 				files.map((file) => within(file).getByTestId('skill-source-file-path').textContent),
-			).toEqual(['skills/hidden/SKILL.md', 'skills/hidden/references/tone.md']);
+			).toEqual(['SKILL.md', 'references/tone.md']);
 			expect(within(files[0]).getByRole('link')).toHaveAttribute(
 				'href',
 				'https://github.com/acme/skills/blob/main/skills/hidden/SKILL.md',
@@ -771,7 +898,7 @@ describe('SkillSourceConnectDialog', () => {
 			const view = render();
 			await review(view);
 
-			const file = view.getByRole('region', { name: 'skills/hidden/SKILL.md' });
+			const file = view.getByRole('region', { name: 'SKILL.md' });
 			const line = file.querySelector<HTMLElement>('[data-line="6"]')!;
 			expect(line).toContainElement(within(file).getByTestId('skill-source-finding-mark'));
 			const scrollIntoView = vi.fn();
@@ -818,76 +945,77 @@ describe('SkillSourceConnectDialog', () => {
 		});
 
 		it.each(['click', 'keyboard'])(
-			'goes directly to a file from the index by %s',
+			'opens and closes a file from its header by %s, with each file closed at first',
 			async (action) => {
-				const path = 'references/nested/tone #1?.md';
 				const previewFiles = [
 					{ path: 'SKILL.md', text: SKILL_MD },
-					...Array.from({ length: 18 }, (_, index) => ({
-						path: `references/guide-${index}.md`,
-						text: 'Guide.\n'.repeat(100),
-					})),
-					{ path, text: 'Tone.' },
+					{ path: 'references/tone.md', text: 'Tone.' },
 				];
 				skillsStore.discoverSource.mockResolvedValue(
 					discovery({ skills: [discovered({ previewFiles })] }),
 				);
 				const view = render();
 				await review(view);
-				const index = view.getByRole('navigation', { name: 'Skill files' });
-				expect(
-					within(index)
-						.getAllByRole('link')
-						.map((link) => link.textContent?.trim()),
-				).toEqual(previewFiles.map((file) => file.path));
-				const target = view.getByRole('region', { name: `skills/brand-voice/${path}` });
-				const scrollIntoView = vi.fn();
-				target.scrollIntoView = scrollIntoView;
-				const link = within(index).getByRole('link', { name: path });
-				expect(link).toHaveAttribute('href', `#${encodeURIComponent(target.id)}`);
+				const files = view.getAllByTestId('skill-source-file');
+				const toggles = files.map((file) => within(file).getByTestId('skill-source-file-toggle'));
+				expect(toggles.map((toggle) => toggle.getAttribute('aria-expanded'))).toEqual([
+					'false',
+					'false',
+				]);
+				expect(within(files[1]).getByText('Tone.')).not.toBeVisible();
+				const activate = async () => {
+					if (action === 'keyboard') {
+						toggles[1].focus();
+						await userEvent.keyboard('{Enter}');
+					} else {
+						await userEvent.click(toggles[1]);
+					}
+				};
 
-				if (action === 'keyboard') {
-					link.focus();
-					await userEvent.keyboard('{Enter}');
-				} else {
-					await userEvent.click(link);
-				}
+				await activate();
 
-				expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', inline: 'nearest' });
-				expect(target).toHaveFocus();
+				expect(toggles[1]).toHaveAttribute('aria-expanded', 'true');
+				expect(within(files[1]).getByText('Tone.')).toBeVisible();
+				expect(toggles[0]).toHaveAttribute('aria-expanded', 'false');
+
+				await activate();
+
+				expect(toggles[1]).toHaveAttribute('aria-expanded', 'false');
+				expect(within(files[1]).getByText('Tone.')).not.toBeVisible();
 			},
 		);
 
-		it('indexes only the files that the preview can show', async () => {
+		it('opens the file of a finding when the user goes to it from the notice', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
+			const view = render();
+			await review(view);
+			const file = view.getByRole('region', { name: 'SKILL.md' });
+			const toggle = within(file).getByTestId('skill-source-file-toggle');
+			expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+			await userEvent.click(
+				within(view.getByTestId('skill-source-findings')).getByRole('link', {
+					name: 'Hidden Unicode characters in SKILL.md:6',
+				}),
+			);
+
+			await waitFor(() => expect(toggle).toHaveAttribute('aria-expanded', 'true'));
+			expect(within(file).getByTestId('skill-source-finding-mark')).toBeVisible();
+		});
+
+		it('shows only the files that the preview can show, with no list of files above them', async () => {
 			skillsStore.discoverSource.mockResolvedValue(
 				discovery({ skills: [{ ...warning, previewTruncated: true }] }),
 			);
 			const view = render();
 			await review(view);
 
-			const index = view.getByRole('navigation', { name: 'Skill files' });
+			expect(view.queryByRole('navigation')).not.toBeInTheDocument();
 			expect(
-				within(index)
-					.getAllByRole('link')
-					.map((link) => link.textContent?.trim()),
+				view.getAllByTestId('skill-source-file-path').map((path) => path.textContent?.trim()),
 			).toEqual(['SKILL.md', 'references/tone.md']);
 			expect(view.getAllByTestId('skill-source-skipped-file')).toHaveLength(2);
 			expect(view.getByTestId('skill-source-preview-truncated')).toBeInTheDocument();
-		});
-
-		it.each([0, 1])('omits the index when the preview has %s files', async (count) => {
-			skillsStore.discoverSource.mockResolvedValue(
-				discovery({
-					skills: [
-						discovered({ previewFiles: [{ path: 'SKILL.md', text: SKILL_MD }].slice(0, count) }),
-					],
-				}),
-			);
-			const view = render();
-			await review(view);
-
-			expect(view.queryByRole('navigation', { name: 'Skill files' })).not.toBeInTheDocument();
-			expect(view.queryAllByTestId('skill-source-file')).toHaveLength(count);
 		});
 
 		it('lists a finding in a part of the skill that the preview leaves out above the files', async () => {
@@ -969,14 +1097,15 @@ describe('SkillSourceConnectDialog', () => {
 			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
 			const view = render();
 			await review(view);
-			expect(view.getByRole('navigation', { name: 'Skill files' })).toBeInTheDocument();
+			const paths = () =>
+				view.getAllByTestId('skill-source-file-path').map((path) => path.textContent?.trim());
+			expect(paths()).toEqual(['SKILL.md', 'references/tone.md']);
 			const previousContent = view.getByTestId('skill-source-file-content');
 
 			await userEvent.click(tab(view, 'Passed'));
 			await userEvent.click(within(view.getByTestId('skill-source-skills')).getByText('lint'));
 
-			expect(view.getByTestId('skill-source-preview')).toHaveTextContent('tools/lint/SKILL.md');
-			expect(view.queryByRole('navigation', { name: 'Skill files' })).not.toBeInTheDocument();
+			expect(paths()).toEqual(['SKILL.md']);
 			expect(previousContent).not.toBeInTheDocument();
 		});
 

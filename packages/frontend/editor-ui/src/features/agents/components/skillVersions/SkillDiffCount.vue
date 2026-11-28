@@ -24,7 +24,8 @@ defineProps<{ count?: DiffCount; hideZero?: boolean }>();
 	display: inline-flex;
 	flex-shrink: 0;
 	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
+	/* A caller sets the token for a larger count. */
+	font-size: var(--skill-diff-count--font-size, var(--font-size--3xs));
 }
 
 .removed {

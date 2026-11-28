@@ -1011,6 +1011,8 @@ const collapsedSourceIds = useLocalStorage<string[]>(
 /** The sources with a check that runs, so their rows show progress. */
 const checkingSourceIds = ref<string[]>([]);
 const reviewSource = ref<SkillSourceListItem | null>(null);
+/** The source whose new skills the import dialog shows. */
+const importSource = ref<SkillSourceListItem | null>(null);
 
 async function onSourceUpdatesChanged() {
 	await Promise.all([load(), loadSources()]);
@@ -1439,6 +1441,7 @@ onMounted(async () => {
 			@check-source="onCheckSource"
 			@move-source="movingSource = $event"
 			@review-source="reviewSource = $event"
+			@import-new-skills="importSource = $event"
 			@delete-source="sourceToDelete = $event"
 			@replace-credential="sourceToReplaceCredential = $event"
 			@stop-syncing="onStopSyncing($event)"
@@ -1492,6 +1495,13 @@ onMounted(async () => {
 			v-if="skillSyncEnabled && reviewSource"
 			:source="reviewSource"
 			@close="reviewSource = null"
+			@changed="onSourceUpdatesChanged"
+		/>
+		<SkillSourceUpdatesDialog
+			v-if="skillSyncEnabled && importSource"
+			:source="importSource"
+			mode="new"
+			@close="importSource = null"
 			@changed="onSourceUpdatesChanged"
 		/>
 		<RecommendedSkillsDialog

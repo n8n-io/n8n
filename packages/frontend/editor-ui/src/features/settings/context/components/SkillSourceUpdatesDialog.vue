@@ -11,27 +11,31 @@ import type {
 import { computed, ref, watch } from 'vue';
 import {
 	N8nButton,
-	N8nBadge,
 	N8nCallout,
 	N8nCheckbox,
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
-	N8nDialogHeader,
-	N8nDialogTitle,
-	N8nIcon,
 	N8nLink,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { ResponseError } from '@n8n/rest-api-client';
+import SkillScopeBadge from './SkillScopeBadge.vue';
+import SkillSourceDialogHeader from './SkillSourceDialogHeader.vue';
 import SkillSourceReview from './SkillSourceReview.vue';
 import SkillSourceFilesView from './SkillSourceFilesView.vue';
+import SkillDiffCount from '@/features/agents/components/skillVersions/SkillDiffCount.vue';
 import { useSkillsStore } from '../skills.store';
 import { SKIPPED_FILE_RULES, useSkillSourceReasons } from '../skills.utils';
 
-const props = defineProps<{ source: SkillSourceListItem }>();
+const props = defineProps<{
+	source: SkillSourceListItem;
+	/** `new` shows the skills of the source that are not imported, as the review of an import. */
+	mode?: 'updates' | 'new';
+}>();
+const isImport = computed(() => props.mode === 'new');
 const emit = defineEmits<{ close: []; changed: [] }>();
 const i18n = useI18n();
 const store = useSkillsStore();
@@ -45,8 +49,6 @@ const loading = ref(true);
 const saving = ref(false);
 const hiding = ref(false);
 const error = ref('');
-/** Why the new skills did not load. The stored updates still show. */
-const newSkillsError = ref('');
 const previewKey = ref<string | null>(null);
 const detail = ref<SkillUpdateReview | null>(null);
 const detailLoading = ref(false);
@@ -65,6 +67,18 @@ const disabledImportKeys = computed(() =>
 	props.source.canImport
 		? []
 		: updates.value.filter((update) => update.newSkill).map(({ skillId }) => skillId),
+);
+/** The import button names the scope, as in the import of a new source. */
+const importLabel = computed(() =>
+	i18n.baseText(
+		props.source.projectId
+			? 'settings.context.skills.connect.importProject'
+			: 'settings.context.skills.connect.importGlobal',
+		{
+			interpolate: { count: selectedUpdates.value.length, project: scopeLabel.value },
+			adjustToNumber: selectedUpdates.value.length,
+		},
+	),
 );
 const selectedUpdates = computed(() =>
 	updates.value.filter((update) => selected.value.includes(update.skillId) && acceptable(update)),
@@ -137,10 +151,15 @@ function isStale(cause: unknown) {
 	return cause instanceof ResponseError && cause.meta?.reason === 'stale';
 }
 function errorText(cause: unknown) {
-	if (cause instanceof ResponseError && typeof cause.meta?.reason === 'string') {
-		return reasonText(cause.meta.reason) || i18n.baseText('settings.context.skills.updates.error');
-	}
-	return i18n.baseText('settings.context.skills.updates.error');
+	const reason = cause instanceof ResponseError ? cause.meta?.reason : cause;
+	return (
+		(typeof reason === 'string' && reasonText(reason)) ||
+		i18n.baseText(
+			isImport.value
+				? 'settings.context.skills.newSkills.error'
+				: 'settings.context.skills.updates.error',
+		)
+	);
 }
 
 async function load() {
@@ -152,9 +171,10 @@ async function load() {
 	try {
 		const result = await store.fetchSourceUpdates(props.source.id);
 		if (closed || request !== listRequest) return;
+		// Each mode has its own list: the updates, or the skills that are not imported.
 		updates.value = [
-			...result.updates,
-			...(result.newSkills ?? []).map(
+			...(isImport.value ? [] : result.updates),
+			...((isImport.value && result.newSkills) || []).map(
 				(skill): ReviewItem => ({
 					skillId: skill.key,
 					name: skill.name ?? skill.location,
@@ -180,14 +200,8 @@ async function load() {
 			)
 			.map(({ skillId }) => skillId);
 		loaded = true;
-		newSkillsError.value = result.newSkillsError
-			? [
-					i18n.baseText('settings.context.skills.updates.newSkillsError'),
-					result.newSkillsError.reason ? reasonText(result.newSkillsError.reason) : '',
-				]
-					.filter(Boolean)
-					.join(' ')
-			: '';
+		if (isImport.value && result.newSkillsError)
+			error.value = errorText(result.newSkillsError.reason);
 		if (commit.value?.revision !== result.commit?.revision) commit.value = result.commit;
 	} catch (cause) {
 		if (!closed && request === listRequest) error.value = errorText(cause);
@@ -203,19 +217,8 @@ async function loadPreview() {
 	detailError.value = '';
 	detailLoading.value = false;
 	if (!update) return;
-	if (update.newSkill) {
-		detail.value = {
-			files: update.newSkill.previewFiles.map(({ path, text }) => ({
-				path,
-				before: '',
-				after: text,
-				status: 'added',
-			})),
-			agents: [],
-			hiddenAgentCount: 0,
-		};
-		return;
-	}
+	// A new skill shows the files that came with the list, as an import does.
+	if (update.newSkill) return;
 	detailLoading.value = true;
 	try {
 		const result = await store.fetchSourceUpdate(props.source.id, update.skillId, {
@@ -238,7 +241,7 @@ watch(focused, loadPreview);
 watch(
 	() => focused.value?.revision,
 	async (revision) => {
-		if (!revision) return;
+		if (!revision || isImport.value) return;
 		commit.value = {
 			revision,
 			webUrl: focused.value?.revisionUrl ?? null,
@@ -357,26 +360,43 @@ async function hideNewSkill() {
 		hiding.value = false;
 	}
 }
+async function retry() {
+	error.value = '';
+	await load();
+}
+
 void load();
 </script>
 
 <template>
 	<N8nDialog
 		:open="true"
-		:aria-description="i18n.baseText('settings.context.skills.updates.description')"
+		:aria-description="
+			isImport ? undefined : i18n.baseText('settings.context.skills.updates.description')
+		"
 		size="full"
 		:container-class="$style.wide"
-		data-test-id="skill-source-updates-dialog"
+		:data-test-id="isImport ? 'skill-source-new-skills-dialog' : 'skill-source-updates-dialog'"
 		@update:open="!$event && close()"
 	>
-		<N8nDialogHeader :class="$style.header">
-			<N8nDialogTitle>{{ i18n.baseText('settings.context.skills.updates.title') }}</N8nDialogTitle>
-			<div :class="$style.metadata">
-				<N8nText size="small" color="text-light" :class="$style.source">
-					<N8nIcon icon="git-branch" size="small" />
-					{{ sourceLine }}
-				</N8nText>
-				<div v-if="commit" :class="$style.commit" data-test-id="skill-update-commit">
+		<SkillSourceDialogHeader
+			:title="
+				i18n.baseText(
+					isImport
+						? 'settings.context.skills.connect.title'
+						: 'settings.context.skills.updates.title',
+				)
+			"
+			:source-line="sourceLine"
+		>
+			<template v-if="isImport" #trailing>
+				<SkillScopeBadge
+					:skill="{ ...source, scope: source.projectId ? 'project' : 'instance' }"
+					:label="scopeLabel"
+				/>
+			</template>
+			<template v-if="commit && !isImport" #details>
+				<div :class="$style.commit" data-test-id="skill-update-commit">
 					<N8nLink
 						v-if="commit.webUrl"
 						:href="commit.webUrl"
@@ -405,18 +425,22 @@ void load();
 						· {{ [commit.author, commitDate].filter(Boolean).join(' · ') }}
 					</N8nText>
 				</div>
-			</div>
-		</N8nDialogHeader>
+			</template>
+		</SkillSourceDialogHeader>
 		<N8nDialogBody :class="$style.body">
-			<N8nCallout v-if="error" theme="warning" data-test-id="skill-updates-error">{{
-				error
-			}}</N8nCallout>
-			<N8nCallout
-				v-if="newSkillsError && !loading"
-				theme="warning"
-				data-test-id="skill-updates-new-error"
-				>{{ newSkillsError }}</N8nCallout
-			>
+			<N8nCallout v-if="error" theme="warning" data-test-id="skill-updates-error">
+				{{ error }}
+				<!-- With no list to review, the only way forward is to load it again. -->
+				<template v-if="!loading && !updates.length" #trailingContent>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						:label="i18n.baseText('generic.retry')"
+						data-test-id="skill-updates-retry"
+						@click="retry"
+					/>
+				</template>
+			</N8nCallout>
 			<N8nText v-if="loading">{{ i18n.baseText('generic.loading') }}</N8nText>
 			<SkillSourceReview
 				v-else-if="updates.length"
@@ -427,21 +451,20 @@ void load();
 				:disabled-skill-keys="disabledImportKeys"
 				@preview="previewKey = $event"
 			>
-				<template #row-details="{ skill }">
-					<N8nBadge
-						v-if="byId.get(skill.key)?.newSkill"
-						variant="secondary"
-						data-test-id="skill-update-new"
-						>{{ i18n.baseText('settings.context.skills.updates.new') }}</N8nBadge
-					>
-					<N8nText v-else size="small" color="text-light" data-test-id="skill-update-counts">{{
-						i18n.baseText('settings.context.skills.updates.lines', {
-							interpolate: {
-								added: byId.get(skill.key)?.changes.added ?? 0,
-								removed: byId.get(skill.key)?.changes.removed ?? 0,
-							},
-						})
-					}}</N8nText>
+				<template #row-trailing="{ skill }">
+					<SkillDiffCount
+						:class="$style.counts"
+						:count="byId.get(skill.key)?.changes"
+						:title="
+							i18n.baseText('settings.context.skills.updates.lines', {
+								interpolate: {
+									added: byId.get(skill.key)?.changes.added ?? 0,
+									removed: byId.get(skill.key)?.changes.removed ?? 0,
+								},
+							})
+						"
+						data-test-id="skill-update-counts"
+					/>
 				</template>
 				<template #preview="{ skill }">
 					<N8nText v-if="detailLoading" :class="$style.detailNotice">{{
@@ -451,19 +474,24 @@ void load();
 					<SkillSourceFilesView
 						v-else
 						:skill="{ ...skill, ...detail?.preview }"
-						:diff-files="detail?.preview ? undefined : (detail?.files ?? [])"
+						:diff-files="detail?.preview || focused?.newSkill ? undefined : (detail?.files ?? [])"
 					>
 						<template #footer>
 							<N8nCallout
 								v-if="detailError"
 								theme="warning"
 								data-test-id="skill-update-detail-error"
-								>{{ detailError }}
-								<N8nButton
-									variant="ghost"
-									:label="i18n.baseText('generic.retry')"
-									@click="loadPreview"
-							/></N8nCallout>
+							>
+								{{ detailError }}
+								<template #trailingContent>
+									<N8nButton
+										variant="ghost"
+										size="small"
+										:label="i18n.baseText('generic.retry')"
+										@click="loadPreview"
+									/>
+								</template>
+							</N8nCallout>
 							<N8nText
 								v-if="detail && !focused?.newSkill && skill.check?.verdict !== 'blocked'"
 								size="small"
@@ -507,17 +535,12 @@ void load();
 				</template>
 			</SkillSourceReview>
 			<N8nText v-else-if="!error">{{
-				i18n.baseText('settings.context.skills.updates.empty')
+				i18n.baseText(
+					isImport
+						? 'settings.context.skills.newSkills.empty'
+						: 'settings.context.skills.updates.empty',
+				)
 			}}</N8nText>
-			<N8nButton
-				v-else
-				variant="ghost"
-				:label="i18n.baseText('generic.retry')"
-				@click="
-					error = '';
-					load();
-				"
-			/>
 		</N8nDialogBody>
 		<N8nDialogFooter :class="$style.footer">
 			<N8nCheckbox
@@ -537,17 +560,12 @@ void load();
 				:loading="saving && !hiding"
 				:disabled="loading || saving || selectedUpdates.length === 0 || (needsReview && !reviewed)"
 				:label="
-					i18n.baseText(
-						selectedNew.length
-							? selectedNew.length === selectedUpdates.length
-								? 'settings.context.skills.updates.import'
-								: 'settings.context.skills.updates.apply'
-							: 'settings.context.skills.updates.accept',
-						{
-							interpolate: { count: selectedUpdates.length },
-							adjustToNumber: selectedUpdates.length,
-						},
-					)
+					isImport
+						? importLabel
+						: i18n.baseText('settings.context.skills.updates.accept', {
+								interpolate: { count: selectedUpdates.length },
+								adjustToNumber: selectedUpdates.length,
+							})
 				"
 				data-test-id="skill-updates-accept"
 				@click="accept"
@@ -564,34 +582,12 @@ void load();
 	gap: var(--spacing--2xs);
 }
 
-.header {
-	flex-direction: column;
-	align-items: stretch;
-	gap: var(--spacing--xs);
-	padding-bottom: var(--spacing--sm);
-}
-
-.metadata,
-.commit,
-.source {
+.commit {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-}
-
-.metadata,
-.commit {
 	min-width: 0;
 	color: var(--text-color--subtler);
-}
-
-.metadata {
-	flex-wrap: wrap;
-	column-gap: var(--spacing--md);
-}
-
-.commit {
-	flex: 1 1 50%;
 }
 
 .commitLink {
@@ -609,15 +605,15 @@ void load();
 	flex-shrink: 0;
 }
 
-.source {
-	overflow-wrap: anywhere;
+/* The counts have the size of the skill name next to them. */
+.counts {
+	--skill-diff-count--font-size: var(--font-size--2xs);
 }
 
 .footer {
 	align-items: center;
 	flex-wrap: wrap;
 	gap: var(--spacing--sm);
-	border-top: var(--border);
 }
 
 .detailActions {

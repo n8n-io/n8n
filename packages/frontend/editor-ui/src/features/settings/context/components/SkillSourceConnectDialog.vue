@@ -19,8 +19,6 @@ import {
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
-	N8nDialogHeader,
-	N8nDialogTitle,
 	N8nIcon,
 	N8nInputLabel,
 	N8nSelect2,
@@ -38,6 +36,7 @@ import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.co
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 
+import SkillSourceDialogHeader from './SkillSourceDialogHeader.vue';
 import SkillSourceReview from './SkillSourceReview.vue';
 import SkillScopeBadge from './SkillScopeBadge.vue';
 import { useSkillsStore } from '../skills.store';
@@ -718,21 +717,14 @@ function onInteractOutside(event: Event) {
 		@update:open="onOpenChange"
 		@interact-outside="onInteractOutside"
 	>
-		<N8nDialogHeader :class="$style.header">
-			<N8nDialogTitle>{{ i18n.baseText('settings.context.skills.connect.title') }}</N8nDialogTitle>
-			<template v-if="step === 'review'">
-				<N8nText
-					size="small"
-					color="text-light"
-					:class="$style.source"
-					data-test-id="skill-source-summary"
-				>
-					<N8nIcon icon="git-branch" size="small" />
-					<span :class="$style.sourceLabel" :title="sourceLine">{{ sourceLine }}</span>
-				</N8nText>
+		<SkillSourceDialogHeader
+			:title="i18n.baseText('settings.context.skills.connect.title')"
+			:source-line="step === 'review' ? sourceLine : undefined"
+		>
+			<template v-if="step === 'review'" #trailing>
 				<SkillScopeBadge :skill="scopeSkill" :label="selectedScope?.label" />
 			</template>
-		</N8nDialogHeader>
+		</SkillSourceDialogHeader>
 		<N8nDialogBody v-if="step === 'repository'" :class="$style.body">
 			<N8nCallout
 				v-if="createdCredential && createdCredential.id === credentialId"
@@ -935,31 +927,10 @@ function onInteractOutside(event: Event) {
 	gap: var(--spacing--5xs);
 }
 
-.header {
-	align-items: center;
-	column-gap: var(--spacing--sm);
-	row-gap: var(--spacing--xs);
-}
-
-.source {
-	display: flex;
-	flex: 1;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	min-width: 0;
-}
-
-.sourceLabel {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
 .footer {
 	align-items: center;
 	flex-wrap: wrap;
 	gap: var(--spacing--sm);
-	border-top: var(--border);
 }
 
 /* The review shows the skill list and the files side by side. */

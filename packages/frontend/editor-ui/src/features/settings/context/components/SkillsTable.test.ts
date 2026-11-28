@@ -437,14 +437,16 @@ describe('SkillsTable', () => {
 			expect(getAllByTestId('skill-scope-badge')[0]).toHaveTextContent('Marketing');
 		});
 
-		it('opens the shared review from the new count', async () => {
-			const current = source({ newSkillsAvailable: 2 });
+		it('opens the import of the new skills from the new count, not the review of updates', async () => {
+			const current = source({ newSkillsAvailable: 2, updatesAvailable: 1 });
 			const view = renderGrouped({ sources: [current] });
 			const badge = view.getByTestId('skill-group-review-new');
 			expect(badge).toHaveTextContent('2 new');
 			expect(view.getByTestId('skill-group-new-dot').className).toMatch(/success/);
 			await userEvent.click(badge);
-			expect(view.emitted().reviewSource).toEqual([[current]]);
+			expect(view.emitted().importNewSkills).toEqual([[current]]);
+			expect(view.emitted().reviewSource).toBeUndefined();
+			expect(view.emitted().toggleSource).toBeUndefined();
 		});
 
 		it('offers explicit review without a new count so initial omissions remain reachable', async () => {
@@ -455,7 +457,8 @@ describe('SkillsTable', () => {
 				expect(document.querySelector('[data-test-id="action-reviewSkills"]')).toBeInTheDocument(),
 			);
 			await userEvent.click(document.querySelector('[data-test-id="action-reviewSkills"]')!);
-			expect(view.emitted().reviewSource).toEqual([[current]]);
+			expect(view.emitted().importNewSkills).toEqual([[current]]);
+			expect(view.emitted().reviewSource).toBeUndefined();
 		});
 
 		it('names a source that has not loaded as unknown', () => {
@@ -577,6 +580,7 @@ describe('SkillsTable', () => {
 			const { getByTestId, emitted } = renderGrouped({ sources: [current] });
 			await userEvent.click(getByTestId('skill-group-updates'));
 			expect(emitted('reviewSource')).toEqual([[current]]);
+			expect(emitted('importNewSkills')).toBeUndefined();
 			expect(emitted('toggleSource')).toBeUndefined();
 		});
 
