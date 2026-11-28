@@ -23,6 +23,7 @@ import type { PromotionRun } from './promotion-run.entity';
  */
 @Entity('promotion_review')
 @Index(['state', 'createdAt'])
+@Index('IDX_promotion_review_projectId', ['projectId'])
 @Index(['environmentId', 'remoteReviewId'], {
 	unique: true,
 	where: '"remoteReviewId" IS NOT NULL',
@@ -39,6 +40,15 @@ export class PromotionReview extends WithCreatedAt {
 	@Index()
 	@Column({ type: 'uuid', nullable: true })
 	environmentId: string | null;
+
+	/**
+	 * The team project whose changes the review holds. NULL for a promotion of the whole
+	 * instance, or after the project is deleted. Only instance owners and admins can see and
+	 * approve those reviews. The foreign key to `project` is in the migration only, like
+	 * `PromotionEnvironmentProject.projectId`.
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	projectId: string | null;
 
 	/** Where the review lives. The application checks the value. */
 	@Column({ type: 'varchar', length: 16 })

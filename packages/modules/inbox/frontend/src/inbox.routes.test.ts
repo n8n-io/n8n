@@ -115,6 +115,8 @@ it('links a promotion review row to its detail route', () => {
 		hasConflicts: false,
 		createdAt: '',
 		updatedAt: '',
+		viewerApproval: 'notAllowed',
+		viewerCanClose: false,
 	});
 	expect(router.resolve(location).path).toBe('/inbox/promotion-reviews/review-1');
 });

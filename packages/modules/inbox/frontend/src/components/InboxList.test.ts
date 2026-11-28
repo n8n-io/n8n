@@ -289,6 +289,8 @@ it('renders promotion review rows with the branch as fallback title and the GitL
 		hasConflicts: false,
 		createdAt: '2026-01-01T00:00:00.000Z',
 		updatedAt: '2026-01-01T00:00:00.000Z',
+		viewerApproval: 'notAllowed',
+		viewerCanClose: false,
 		...props,
 	});
 	const { getByRole } = renderComponent({

@@ -11,6 +11,7 @@
 | environmentId | uuid |  | true |  | [public.promotion_environment](public.promotion_environment.md) | The environment that remoteReviewId resolves through. NULL after the environment is deleted. |
 | id | uuid |  | false | [public.promotion_run](public.promotion_run.md) |  |  |
 | lastStateChangeAt | timestamp(3) with time zone |  | true |  |  | Time of the latest state change. Covers every transition, including changes_requested and a reopened review. NULL until the first change. |
+| projectId | varchar(36) |  | true |  | [public.project](public.project.md) | The team project whose changes the review holds. NULL for a promotion of the whole instance, or after the project is deleted. Only instance owners and admins can see and approve those reviews |
 | remoteReviewId | varchar(255) |  | true |  |  | Host reference for type. GitLab stores "\<projectId\>!\<iid\>". NULL when the review lives in n8n. |
 | state | varchar(32) | 'open'::character varying | false |  |  | PromotionReviewState enum: "open", "changes_requested", "merged", "closed". "merged" and "closed" are terminal. |
 | type | varchar(16) |  | false |  |  | PromotionReviewType enum: "gitlab". |
@@ -24,6 +25,7 @@
 | FK_promotion_review_approvedById | FOREIGN KEY | FOREIGN KEY ("approvedById") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_promotion_review_createdById | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_promotion_review_environmentId | FOREIGN KEY | FOREIGN KEY ("environmentId") REFERENCES promotion_environment(id) ON DELETE SET NULL |
+| FK_promotion_review_projectId | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE SET NULL |
 | PK_fe93e2f1add228dc14d3330c8e5 | PRIMARY KEY | PRIMARY KEY (id) |
 | promotion_review_createdAt_not_null | n | NOT NULL "createdAt" |
 | promotion_review_id_not_null | n | NOT NULL id |
@@ -37,6 +39,7 @@
 | IDX_5fe8a74722bbd043487ab35a97 | CREATE INDEX "IDX_5fe8a74722bbd043487ab35a97" ON public.promotion_review USING btree ("environmentId") |
 | IDX_82d6930410e9e6c7d04c515079 | CREATE INDEX "IDX_82d6930410e9e6c7d04c515079" ON public.promotion_review USING btree (state, "createdAt") |
 | IDX_promotion_review_environmentId_remoteReviewId | CREATE UNIQUE INDEX "IDX_promotion_review_environmentId_remoteReviewId" ON public.promotion_review USING btree ("environmentId", "remoteReviewId") WHERE ("remoteReviewId" IS NOT NULL) |
+| IDX_promotion_review_projectId | CREATE INDEX "IDX_promotion_review_projectId" ON public.promotion_review USING btree ("projectId") |
 | PK_fe93e2f1add228dc14d3330c8e5 | CREATE UNIQUE INDEX "PK_fe93e2f1add228dc14d3330c8e5" ON public.promotion_review USING btree (id) |
 
 ## Relations
@@ -48,6 +51,7 @@ erDiagram
 "public.promotion_review" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.promotion_review" }o--o| "public.promotion_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES promotion_environment(id) ON DELETE SET NULL"
 "public.promotion_run" }o--o| "public.promotion_review" : "FOREIGN KEY (#quot;reviewId#quot;) REFERENCES promotion_review(id) ON DELETE SET NULL"
+"public.promotion_review" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE SET NULL"
 
 "public.promotion_review" {
   timestamp_3__with_time_zone approvedAt
@@ -57,6 +61,7 @@ erDiagram
   uuid environmentId FK
   uuid id
   timestamp_3__with_time_zone lastStateChangeAt
+  varchar_36_ projectId FK
   varchar_255_ remoteReviewId
   varchar_32_ state
   varchar_16_ type
@@ -99,6 +104,17 @@ erDiagram
   uuid id
   uuid reviewId FK
   varchar_16_ type
+}
+"public.project" {
+  timestamp_3__with_time_zone createdAt
+  uuid creatorId FK
+  json customTelemetryTags
+  varchar_512_ description
+  json icon
+  varchar_36_ id
+  varchar_255_ name
+  varchar_36_ type
+  timestamp_3__with_time_zone updatedAt
 }
 ```
 

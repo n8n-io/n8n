@@ -189,7 +189,7 @@ export class PromotionChangeService {
 			},
 			projectId,
 		);
-		const hiddenKeys = await this.unreadableCredentialKeys(user, keys, branchIndex);
+		const hiddenKeys = await unreadableCredentialKeys(user, keys, branchIndex);
 		// A resource can disappear after the summary, for example when a local workflow is deleted.
 		const missingKeys = keys.filter(
 			(key) => hiddenKeys.has(key) || (!branchIndex.has(key) && !instanceIndex.has(key)),
@@ -366,31 +366,6 @@ export class PromotionChangeService {
 		});
 	}
 
-	/**
-	 * The branch can hold a credential that the user cannot read on this instance, for example
-	 * after its owner stopped sharing it with the project. Its content stays hidden, as in the export.
-	 */
-	private async unreadableCredentialKeys(
-		user: User,
-		keys: readonly string[],
-		branchIndex: SideIndex,
-	): Promise<Set<string>> {
-		const hidden = new Set<string>();
-		for (const key of keys) {
-			const resource = branchIndex.get(key);
-			if (resource?.type !== 'credential') continue;
-			const canRead = await userHasScopes(user, ['credential:read'], false, {
-				credentialId: resource.id,
-			}).catch((error: unknown) => {
-				// A credential that is gone from this instance has nobody who can read it.
-				if (error instanceof NotFoundError) return false;
-				throw error;
-			});
-			if (!canRead) hidden.add(key);
-		}
-		return hidden;
-	}
-
 	/** One route serves both directions, so the per-direction scope is checked here, not on the decorator. */
 	private async assertCanPreview(user: User, projectId: string, direction: PromotionDirection) {
 		const scope = PROMOTION_SCOPES[direction];
@@ -402,6 +377,31 @@ export class PromotionChangeService {
 			);
 		}
 	}
+}
+
+/**
+ * The branch can hold a credential that the user cannot read on this instance, for example
+ * after its owner stopped sharing it with the project. Its content stays hidden, as in the export.
+ */
+export async function unreadableCredentialKeys(
+	user: User,
+	keys: readonly string[],
+	...indexes: SideIndex[]
+): Promise<Set<string>> {
+	const hidden = new Set<string>();
+	for (const key of keys) {
+		const resource = indexes.map((index) => index.get(key)).find(Boolean);
+		if (resource?.type !== 'credential') continue;
+		const canRead = await userHasScopes(user, ['credential:read'], false, {
+			credentialId: resource.id,
+		}).catch((error: unknown) => {
+			// A credential that is gone from this instance has nobody who can read it.
+			if (error instanceof NotFoundError) return false;
+			throw error;
+		});
+		if (!canRead) hidden.add(key);
+	}
+	return hidden;
 }
 
 /** Parses the branch manifest and keeps this project's part. `null` when the file is missing or invalid. */

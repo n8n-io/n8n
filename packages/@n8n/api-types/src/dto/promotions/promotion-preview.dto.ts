@@ -113,6 +113,10 @@ export type PromotionResourceDependency = z.infer<typeof promotionResourceDepend
 export const promotionBlockerSchema = z.object({
 	code: z.literal('reviewOpen'),
 	reviewId: z.string(),
+	viewerCanRead: z.boolean().openapi({
+		description:
+			'Whether the user, or the owner of the API key, can read the open review in the Inbox. Reading it through the API also needs the `promotions:readReviews` key scope. A review of a whole-instance promotion can block a project, and only instance owners and admins can read it.',
+	}),
 });
 
 export type PromotionBlocker = z.infer<typeof promotionBlockerSchema>;

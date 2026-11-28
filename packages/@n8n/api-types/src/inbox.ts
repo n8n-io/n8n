@@ -31,7 +31,18 @@ export type InboxSelfHealingItem = Pick<
 	workflowName: string;
 };
 
-export type InboxPromotionReviewItem = PromotionReviewItem & { type: 'promotion_review' };
+/**
+ * Whether the viewer can approve a promotion review. `madeRun`: the viewer is an approver, but
+ * made a promotion run in the review.
+ */
+export type PromotionReviewViewerApproval = 'allowed' | 'madeRun' | 'notAllowed';
+
+/** The `viewer` fields say what the signed-in user can do with the review now. */
+export type InboxPromotionReviewItem = PromotionReviewItem & {
+	type: 'promotion_review';
+	viewerApproval: PromotionReviewViewerApproval;
+	viewerCanClose: boolean;
+};
 
 export type InboxItem = InboxWorkflowReviewItem | InboxSelfHealingItem | InboxPromotionReviewItem;
 

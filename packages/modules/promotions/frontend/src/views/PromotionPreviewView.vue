@@ -436,7 +436,11 @@ const treeResizer = useResizablePanel({
 			data-test-id="promotion-preview-error"
 			@click:button="refresh"
 		/>
-		<PromotionReviewBlocker v-else-if="state === 'blocked'" :class="$style.state" />
+		<PromotionReviewBlocker
+			v-else-if="state === 'blocked'"
+			:class="$style.state"
+			:can-read-review="preview?.blocker?.viewerCanRead === true"
+		/>
 		<N8nEmptyState
 			v-else-if="state === 'empty'"
 			:class="$style.state"

@@ -1,11 +1,11 @@
-import type { UpdatePromotionEnvironmentDto } from '@n8n/api-types';
+import type { UpdatePromotionEnvironmentDto, UpdatePromotionSettingsDto } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
-import { testDb } from '@n8n/backend-test-utils';
-import { GLOBAL_ADMIN_ROLE, type User } from '@n8n/db';
+import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
+import { GLOBAL_ADMIN_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import nock from 'nock';
-import type { MockInstance } from 'vitest';
+import { onTestFinished, type MockInstance } from 'vitest';
 import { v7 as uuidv7 } from 'uuid';
 
 import { PromotionEnvironmentRepository } from '@/modules/promotions.ee/database/repositories/promotion-environment.repository';
@@ -17,11 +17,12 @@ import { storePromotionRemote } from '@/modules/promotions.ee/git-hosts/git-host
 import { PromotionEnvironmentResolver } from '@/modules/promotions.ee/promotion-environment.resolver';
 import { PromotionEnvironmentsService } from '@/modules/promotions.ee/promotion-environments.service';
 import { PromotionReviewsService } from '@/modules/promotions.ee/promotion-reviews.service';
+import { PromotionSettingsService } from '@/modules/promotions.ee/promotion-settings.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import {
 	createAdmin,
-	createAdminWithApiKey,
 	createMember,
+	createMemberWithApiKey,
 	createOwnerWithApiKey,
 	createUser,
 } from '@test-integration/db/users';
@@ -141,14 +142,20 @@ describe('Promotion reviews in the Inbox', () => {
 	let environmentId: string;
 	let reviewRepository: PromotionReviewRepository;
 
-	async function insertReview(iid: number, over: { environmentId?: string } = {}) {
+	/** Without `projectId`, the review holds a promotion of the whole instance. */
+	async function insertReview(
+		iid: number,
+		over: { environmentId?: string; projectId?: string; createdBy?: User } = {},
+	) {
 		const reviewEnvironmentId = over.environmentId ?? environmentId;
+		const createdById = (over.createdBy ?? owner).id;
 		const review = await reviewRepository.insertReview({
 			id: uuidv7(),
 			environmentId: reviewEnvironmentId,
+			projectId: over.projectId ?? null,
 			type: 'gitlab',
 			remoteReviewId: `${projectId}!${iid}`,
-			createdById: owner.id,
+			createdById,
 		});
 		await reviewRepository.update(
 			{ id: review.id },
@@ -156,7 +163,7 @@ describe('Promotion reviews in the Inbox', () => {
 		);
 		await Container.get(PromotionRunRepository).insertRun({
 			environmentId: reviewEnvironmentId,
-			createdById: owner.id,
+			createdById,
 			direction: 'promote',
 			type: 'git',
 			details: { schemaVersion: 1, branchName: `n8n-promotion/${iid}`, commitSha: 'c'.repeat(40) },
@@ -183,6 +190,21 @@ describe('Promotion reviews in the Inbox', () => {
 		return environment.id;
 	}
 
+	/** Lets project admins promote or approve, and adds `member` as an admin of `project`. */
+	async function makeProjectAdmin<T extends User>(
+		member: T,
+		project: Project,
+		setting: 'whoCanPromote' | 'whoCanApprove',
+	) {
+		const settings = Container.get(PromotionSettingsService);
+		onTestFinished(async () => {
+			await settings.update(owner, { [setting]: 'instanceAdmins' } as UpdatePromotionSettingsDto);
+		});
+		await settings.update(owner, { [setting]: 'projectAdmins' } as UpdatePromotionSettingsDto);
+		await linkUserToProject(member, project, 'project:admin');
+		return member;
+	}
+
 	/** A plain Git provider has no host API, so its reviews report no_connection. */
 	const createGitEnvironment = async (name: string) =>
 		await createEnvironment(
@@ -206,7 +228,13 @@ describe('Promotion reviews in the Inbox', () => {
 		return response.body as { data: Array<{ id: string }>; nextCursor: string | null };
 	};
 
-	const withoutType = ({ type: _, ...review }: Record<string, unknown>) => review;
+	/** The public API leaves out the Inbox type and what the viewer can do. */
+	const toPublicItem = ({
+		type: _,
+		viewerApproval: __,
+		viewerCanClose: ___,
+		...review
+	}: Record<string, unknown>) => review;
 
 	const approve = async (user: User, reviewId: string, headCommitSha = headSha) =>
 		await testServer
@@ -237,7 +265,7 @@ describe('Promotion reviews in the Inbox', () => {
 		await reviewRepository.delete({});
 		await Container.get(PromotionEnvironmentRepository).delete({});
 		await Container.get(PromotionProviderRepository).delete({});
-		await testDb.truncate(['User']);
+		await testDb.truncate(['ProjectRelation', 'Project', 'User']);
 		owner = await createOwnerWithApiKey({ scopes: ['promotions:readReviews'] });
 		environmentId = await createEnvironment(
 			{ name: 'GitLab', type: 'gitlab', password: token, config: { schemaVersion: 1, baseUrl } },
@@ -346,7 +374,7 @@ describe('Promotion reviews in the Inbox', () => {
 		const result = await Container.get(PromotionReviewsService).openMergeRequest(
 			input,
 			owner,
-			{ branchName, baseBranchName: 'main', commitSha, title: 'Promotion 1' },
+			{ projectId: null, branchName, baseBranchName: 'main', commitSha, title: 'Promotion 1' },
 			run.id,
 		);
 		opened.done();
@@ -398,8 +426,8 @@ describe('Promotion reviews in the Inbox', () => {
 		const closedList = await inbox(owner, { state: 'closed' });
 		const open = await inbox(owner, { state: 'open', category: 'waiting' });
 
-		expect(publicClosed.data).toEqual(closedList.body.data.data.map(withoutType));
-		expect(publicOpen.data).toEqual(open.body.data.data.map(withoutType));
+		expect(publicClosed.data).toEqual(closedList.body.data.data.map(toPublicItem));
+		expect(publicOpen.data).toEqual(open.body.data.data.map(toPublicItem));
 		expect(closedList.status, JSON.stringify(closedList.body)).toBe(200);
 		expect(closedList.body.data.data).toHaveLength(4);
 		expect(closedList.body.data.data).toEqual(
@@ -439,6 +467,8 @@ describe('Promotion reviews in the Inbox', () => {
 					hasConflicts: false,
 					createdAt: expect.any(String),
 					updatedAt: expect.any(String),
+					viewerApproval: 'allowed',
+					viewerCanClose: true,
 				},
 				expect.objectContaining({ id: changesRequested, reviewState: 'changes_requested' }),
 				expect.objectContaining({
@@ -516,15 +546,24 @@ describe('Promotion reviews in the Inbox', () => {
 		expect(otherTab.status).toBe(400);
 	});
 
-	it('hides promotion reviews from a member and on environments v1', async () => {
-		const reviewId = await insertReview(1);
-		gitlab({ 1: { state: 'opened' } });
-		const member = await createMember();
+	it('shows a project admin only the reviews of their projects, also through a key, keeps instance reviews with instance admins, and shows none on environments v1', async () => {
+		const [projectA, projectB] = [
+			await createTeamProject('A', owner),
+			await createTeamProject('B', owner),
+		];
+		const ofA = await insertReview(1, { projectId: projectA.id });
+		const ofB = await insertReview(2, { projectId: projectB.id });
+		const ofInstance = await insertReview(3);
+		gitlab({ 1: { state: 'opened' }, 2: { state: 'opened' }, 3: { state: 'opened' } });
+		const writes = gitlabWrites(3);
+		const member = await makeProjectAdmin(await createMember(), projectA, 'whoCanApprove');
 
 		const asMember = await inbox(member, { state: 'open', category: 'waiting' });
-		expect(asMember.body.data.data).toEqual([]);
+		expect(asMember.body.data.data).toEqual([
+			expect.objectContaining({ id: ofA, viewerApproval: 'allowed', viewerCanClose: true }),
+		]);
 		expect((await testServer.authAgentFor(member).get('/inbox/summary')).body.data.counts).toEqual({
-			open: 0,
+			open: 1,
 			closed: 0,
 		});
 
@@ -535,10 +574,18 @@ describe('Promotion reviews in the Inbox', () => {
 			.send({ label: 'Reviews', expiresAt: null, scopes: ['promotions:readReviews'] });
 		expect(created.status, created.text).toBe(200);
 		const memberKey = testServer.publicApiAgentWithApiKey(created.body.data.rawApiKey);
-		const memberList = await memberKey.get('/promotions/reviews');
+		// One review for each page: the two newer, hidden reviews must not fill the first page.
+		const memberList = await memberKey.get('/promotions/reviews').query({ limit: '1' });
 		expect(memberList.status, memberList.text).toBe(200);
-		expect(memberList.body.data).toEqual([]);
-		expect((await memberKey.get(`/promotions/reviews/${reviewId}`)).status).toBe(404);
+		expect(memberList.body.data.map(({ id }: { id: string }) => id)).toEqual([ofA]);
+		expect(memberList.body.nextCursor).toBeNull();
+		expect((await memberKey.get(`/promotions/reviews/${ofB}`)).status).toBe(404);
+		expect((await memberKey.get(`/promotions/reviews/${ofInstance}`)).status).toBe(404);
+		expect((await approve(member, ofInstance)).status).toBe(404);
+		expect(
+			(await testServer.authAgentFor(member).get(`/promotions/reviews/${ofB}/changes`)).status,
+		).toBe(404);
+		expect(writes).toEqual([]);
 		expect(
 			(await testServer.publicApiAgentFor(owner).get(`/promotions/reviews/${uuidv7()}`)).status,
 		).toBe(404);
@@ -558,14 +605,20 @@ describe('Promotion reviews in the Inbox', () => {
 	});
 
 	describe('approve and merge', () => {
-		it('approves and merges the head the admin saw, names the admin in a note, and closes the review', async () => {
-			const reviewId = await insertReview(1);
+		it('lets a project admin approve and merge the head they saw, names them in a note, and closes the review', async () => {
+			const project = await createTeamProject('A', owner);
+			const reviewId = await insertReview(1, { projectId: project.id });
 			gitlab({ 1: { state: 'opened' } });
 			const writes = gitlabWrites(1);
-			const admin = await createAdminWithApiKey({ scopes: ['promotions:readReviews'] });
+			// The approver needs no promote permission.
+			const approver = await makeProjectAdmin(
+				await createMemberWithApiKey({ scopes: ['promotions:readReviews'] }),
+				project,
+				'whoCanApprove',
+			);
 			const readReview = async () => {
 				const response = await testServer
-					.publicApiAgentFor(admin)
+					.publicApiAgentFor(approver)
 					.get(`/promotions/reviews/${reviewId}`);
 				expect(response.status, response.text).toBe(200);
 				return response.body;
@@ -583,23 +636,26 @@ describe('Promotion reviews in the Inbox', () => {
 					approver: null,
 				}),
 			);
-			const [row] = (await inbox(admin, { state: 'open', category: 'waiting' })).body.data.data;
-			const response = await approve(admin, reviewId, row.headCommitSha);
+			const [row] = (await inbox(approver, { state: 'open', category: 'waiting' })).body.data.data;
+			const response = await approve(approver, reviewId, row.headCommitSha);
 
 			expect(response.status, JSON.stringify(response.body)).toBe(200);
 			expect(writes).toEqual([
 				['approve', { sha: headSha }],
 				['merge', { sha: headSha, should_remove_source_branch: true }],
-				['note', { body: `Approved and merged in n8n by ${admin.firstName} ${admin.lastName}.` }],
+				[
+					'note',
+					{ body: `Approved and merged in n8n by ${approver.firstName} ${approver.lastName}.` },
+				],
 			]);
 			const merged = expect.objectContaining({
 				id: reviewId,
 				state: 'closed',
 				reviewState: 'merged',
-				approver: expect.objectContaining({ id: admin.id }),
+				approver: expect.objectContaining({ id: approver.id }),
 			});
 			expect(response.body.data).toEqual(merged);
-			expect((await inbox(admin, { state: 'closed' })).body.data.data).toEqual([merged]);
+			expect((await inbox(approver, { state: 'closed' })).body.data.data).toEqual([merged]);
 			expect(await readReview()).toEqual(merged);
 			expect(emitSpy).toHaveBeenCalledWith(
 				'promotion-review-approved',
@@ -617,7 +673,8 @@ describe('Promotion reviews in the Inbox', () => {
 			gitlab({ 1: { state: 'opened' } });
 			const writes = gitlabWrites(1);
 
-			expect((await approve(await createMember(), reviewId)).status).toBe(403);
+			// A member without a project role cannot see the review.
+			expect((await approve(await createMember(), reviewId)).status).toBe(404);
 			const preferences = Container.get(SourceControlPreferencesService);
 			preferences.sourceControlPreferences = { environmentsVersion: 'v1' };
 			try {
@@ -626,6 +683,29 @@ describe('Promotion reviews in the Inbox', () => {
 				preferences.sourceControlPreferences = { environmentsVersion: 'v2' };
 			}
 			expect(writes).toEqual([]);
+		});
+
+		it('refuses a project admin who made a run in the review, and lets an instance owner approve their own promotion', async () => {
+			const project = await createTeamProject('A', owner);
+			const projectAdmin = await makeProjectAdmin(await createMember(), project, 'whoCanApprove');
+			const ownReview = await insertReview(1, { projectId: project.id, createdBy: projectAdmin });
+			const ownerReview = await insertReview(2);
+			gitlab({ 1: { state: 'opened' }, 2: { state: 'opened' } });
+			const refusedWrites = gitlabWrites(1);
+			gitlabWrites(2);
+
+			expect((await inbox(projectAdmin, { state: 'open' })).body.data.data).toEqual([
+				expect.objectContaining({ id: ownReview, viewerApproval: 'madeRun', viewerCanClose: true }),
+			]);
+			expect((await approve(projectAdmin, ownReview)).status).toBe(403);
+			expect(refusedWrites).toEqual([]);
+			expect(await approvedById(ownReview)).toBeNull();
+
+			const response = await approve(owner, ownerReview);
+			expect(response.status, response.text).toBe(200);
+			expect(response.body.data).toEqual(
+				expect.objectContaining({ id: ownerReview, reviewState: 'merged' }),
+			);
 		});
 
 		it.each([
@@ -775,14 +855,16 @@ describe('Promotion reviews in the Inbox', () => {
 		const stateOf = async (reviewId: string) =>
 			(await reviewRepository.findOneByOrFail({ id: reviewId })).state;
 
-		it('closes a review in n8n only, and a later Inbox sync does not open it again', async () => {
-			const reviewId = await insertReview(1);
+		it('lets the requester close their review in n8n only, and a later Inbox sync does not open it again', async () => {
+			const project = await createTeamProject('A', owner);
+			// "Who can promote" lets the requester read the reviews of the project, not approve them.
+			const requester = await makeProjectAdmin(await createMember(), project, 'whoCanPromote');
+			const reviewId = await insertReview(1, { projectId: project.id, createdBy: requester });
 			// GitLab keeps answering that the merge request is open.
 			gitlab({ 1: { state: 'opened' } });
 			const writes = gitlabWrites(1);
-			const admin = await createAdmin();
 
-			const response = await close(admin, reviewId);
+			const response = await close(requester, reviewId);
 
 			expect(response.status, JSON.stringify(response.body)).toBe(200);
 			expect(response.body.data).toMatchObject({
@@ -793,11 +875,11 @@ describe('Promotion reviews in the Inbox', () => {
 			expect(writes).toEqual([]);
 
 			// The list and the counters sync every open review with the host. A closed one is not open.
-			const closed = (await inbox(admin, { state: 'closed' })).body.data;
+			const closed = (await inbox(requester, { state: 'closed' })).body.data;
 			expect(closed.data).toEqual([
 				expect.objectContaining({ id: reviewId, reviewState: 'closed' }),
 			]);
-			expect((await inbox(admin, { state: 'open' })).body.data.data).toEqual([]);
+			expect((await inbox(requester, { state: 'open' })).body.data.data).toEqual([]);
 			expect(await stateOf(reviewId)).toBe('closed');
 			expect(emitSpy).toHaveBeenCalledWith(
 				'promotion-review-closed',
@@ -819,11 +901,17 @@ describe('Promotion reviews in the Inbox', () => {
 			expect(await stateOf(reviewId)).toBe('closed');
 		});
 
-		it('refuses a member and answers 404 for an unknown review', async () => {
-			const reviewId = await insertReview(1);
+		it('refuses to let a project reader who is not the requester close or approve, hides the review from a member, and answers 404 for an unknown review', async () => {
+			const project = await createTeamProject('A', owner);
+			const reviewId = await insertReview(1, { projectId: project.id });
 			gitlab({ 1: { state: 'opened' } });
+			const writes = gitlabWrites(1);
+			const reader = await makeProjectAdmin(await createMember(), project, 'whoCanPromote');
 
-			expect((await close(await createMember(), reviewId)).status).toBe(403);
+			expect((await close(reader, reviewId)).status).toBe(403);
+			expect((await approve(reader, reviewId)).status).toBe(403);
+			expect(writes).toEqual([]);
+			expect((await close(await createMember(), reviewId)).status).toBe(404);
 			expect(await stateOf(reviewId)).toBe('open');
 			expect((await close(await createAdmin(), uuidv7())).status).toBe(404);
 		});

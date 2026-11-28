@@ -1196,6 +1196,7 @@ describe('PromotionsService', () => {
 					input,
 					actor,
 					{
+						projectId: null,
 						branchName: result.git.branchName,
 						baseBranchName: 'staging',
 						commitSha: 'newsha',
@@ -1233,6 +1234,7 @@ describe('PromotionsService', () => {
 					input,
 					actor,
 					{
+						projectId: null,
 						branchName: result.git.branchName,
 						baseBranchName: 'staging',
 						commitSha: 'newsha',
@@ -1615,6 +1617,7 @@ describe('PromotionsService', () => {
 				input,
 				actor,
 				{
+					projectId: 'p1',
 					branchName: result.git.branchName,
 					baseBranchName: 'staging',
 					commitSha: 'selsha',
@@ -1659,6 +1662,7 @@ describe('PromotionsService', () => {
 				input,
 				actor,
 				{
+					projectId: 'p1',
 					branchName: result.git.branchName,
 					baseBranchName: 'staging',
 					commitSha: 'selsha',

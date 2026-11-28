@@ -23,6 +23,8 @@ import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
 import type { PromotionOperationInput } from './promotions.types';
 
 export type PromotionPush = Readonly<{
+	/** The team project of a project promotion. NULL for a promotion of the whole instance. */
+	projectId: string | null;
 	branchName: string;
 	baseBranchName: string;
 	commitSha: string;
@@ -55,7 +57,7 @@ export class PromotionReviewsService {
 	async openMergeRequest(
 		input: PromotionOperationInput,
 		actor: User,
-		{ branchName, baseBranchName, commitSha, title, body }: PromotionPush,
+		{ projectId, branchName, baseBranchName, commitSha, title, body }: PromotionPush,
 		runId: string,
 	): Promise<OpenReviewResult> {
 		const host = await settle(async () => await this.hostResolver.resolve(input));
@@ -82,7 +84,7 @@ export class PromotionReviewsService {
 		}
 		const {
 			iid,
-			project_id: projectId,
+			project_id: gitLabProjectId,
 			web_url: webUrl,
 			has_conflicts: hasConflicts,
 		} = mergeRequest.result;
@@ -96,8 +98,12 @@ export class PromotionReviewsService {
 						{
 							id: reviewId,
 							environmentId: input.environmentId,
+							projectId,
 							type,
-							remoteReviewId: parseRemoteReviewId(type, toGitLabReviewId({ projectId, iid })),
+							remoteReviewId: parseRemoteReviewId(
+								type,
+								toGitLabReviewId({ projectId: gitLabProjectId, iid }),
+							),
 							createdById: actor.id,
 						},
 						ctx,

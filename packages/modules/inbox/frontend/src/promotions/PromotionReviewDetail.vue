@@ -20,7 +20,6 @@ import {
 } from '@n8n/design-system';
 import { componentRegistry, type PromotionChangesState } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, useId, watch } from 'vue';
 
@@ -35,7 +34,6 @@ const props = defineProps<{
 const i18n = useI18n();
 const { showError } = useToast();
 const rootStore = useRootStore();
-const rbacStore = useRBACStore();
 const disabledReasonId = useId();
 const newCommitsId = useId();
 
@@ -78,6 +76,9 @@ const approving = ref(false);
 
 const disabledReason = computed(() => {
 	const { item } = props;
+	if (item.viewerApproval === 'madeRun') {
+		return i18n.baseText('inbox.promotionReview.approve.disabled.madeRun');
+	}
 	if (item.reviewState === 'changes_requested') {
 		return i18n.baseText('inbox.promotionReview.approve.disabled.changesRequested');
 	}
@@ -103,7 +104,9 @@ const approveDescribedBy = computed(() => {
 	return hasNewCommits.value ? newCommitsId : undefined;
 });
 
-const canClose = computed(() => rbacStore.hasScope('promotions:approveReviews'));
+// The server decides. A viewer who made a run sees Approve disabled, with the reason.
+const showApprove = computed(() => props.item.viewerApproval !== 'notAllowed');
+const canClose = computed(() => props.item.viewerCanClose);
 /** The review the user confirms. A later change of the selected row does not change it. */
 const pendingClose = ref<{ id: string; title: string | null } | null>(null);
 const closing = ref(false);
@@ -249,10 +252,10 @@ async function onApprove() {
 				data-test-id="inbox-promotion-review-tab-bar"
 			/>
 			<!-- In the tab row, like the Review button of workflow reviews. -->
-			<div v-if="item.state === 'open'" :class="$style.approve">
+			<div v-if="item.state === 'open' && (showApprove || canClose)" :class="$style.approve">
 				<!-- Visible text, not a tooltip: a disabled button cannot take keyboard focus. -->
 				<N8nText
-					v-if="disabledReason"
+					v-if="showApprove && disabledReason"
 					:id="disabledReasonId"
 					size="small"
 					color="text-light"
@@ -272,6 +275,7 @@ async function onApprove() {
 					{{ i18n.baseText('inbox.promotionReview.close.button') }}
 				</N8nButton>
 				<N8nButton
+					v-if="showApprove"
 					size="small"
 					:disabled="approveDisabled || closing"
 					:loading="approving"

@@ -51,6 +51,7 @@ describe('PromotionReviewsService', () => {
 		projectPath: 'platform/api',
 	};
 	const push = {
+		projectId: 'project-1',
 		branchName: 'n8n-promotion/2026-10-05T10-00-00-000Z',
 		baseBranchName: 'staging',
 		commitSha: 'b'.repeat(40),
@@ -111,6 +112,7 @@ describe('PromotionReviewsService', () => {
 			{
 				id: reviewId,
 				environmentId: 'env-1',
+				projectId: 'project-1',
 				type: 'gitlab',
 				remoteReviewId: '7!3',
 				createdById: 'actor',

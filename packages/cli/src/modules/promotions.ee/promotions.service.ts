@@ -344,6 +344,7 @@ export class PromotionsService {
 				commitSha: pushed.commitSha,
 				commitMessage: pushed.commitMessage,
 				promotionRunContents: { projectIds },
+				reviewProjectId: null,
 			})),
 		};
 	}
@@ -357,6 +358,8 @@ export class PromotionsService {
 			commitSha: string;
 			commitMessage: string;
 			promotionRunContents: PromotionRunContents;
+			/** The project whose approvers can approve the review. NULL for the whole instance. */
+			reviewProjectId: string | null;
 		},
 	): Promise<Pick<PromotePackageResultDto, 'review' | 'warnings'>> {
 		const recorded = await this.recordPromoteRun(input, actor, {
@@ -395,6 +398,7 @@ export class PromotionsService {
 			input,
 			actor,
 			{
+				projectId: push.reviewProjectId,
 				branchName: push.promotionBranchName,
 				baseBranchName: checkoutBranchName(input.config),
 				commitSha: push.commitSha,
@@ -630,6 +634,7 @@ export class PromotionsService {
 				commitSha: pushed.commitSha,
 				commitMessage: pushed.commitMessage,
 				promotionRunContents: { projectIds: [selection.projectId] },
+				reviewProjectId: selection.projectId,
 			})),
 		};
 	}

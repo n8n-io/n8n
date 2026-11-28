@@ -68,7 +68,11 @@ describe('PromotionChangeService.getPreview review gate', () => {
 	});
 
 	it('returns an empty preview with the blocker and skips the git work', async () => {
-		reviewGate.findPromoteBlocker.mockResolvedValue({ code: 'reviewOpen', reviewId: 'review-1' });
+		reviewGate.findPromoteBlocker.mockResolvedValue({
+			code: 'reviewOpen',
+			reviewId: 'review-1',
+			viewerCanRead: true,
+		});
 
 		const preview = await service.getPreview(user, 'project-1', 'promote');
 
@@ -78,10 +82,10 @@ describe('PromotionChangeService.getPreview review gate', () => {
 			environment: { name: 'Staging', providerType: 'gitlab', createBranchOnPromotion: true },
 			resources: [],
 			dependencies: [],
-			blocker: { code: 'reviewOpen', reviewId: 'review-1' },
+			blocker: { code: 'reviewOpen', reviewId: 'review-1', viewerCanRead: true },
 			revision: expect.any(String),
 		});
-		expect(reviewGate.findPromoteBlocker).toHaveBeenCalledWith('project-1', 'env-1');
+		expect(reviewGate.findPromoteBlocker).toHaveBeenCalledWith(user, 'project-1', 'env-1');
 		expect(promotionsService.readBranchPackage).not.toHaveBeenCalled();
 	});
 

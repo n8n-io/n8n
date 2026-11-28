@@ -7,12 +7,16 @@ import {
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, GlobalScope, Licensed, Param, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Licensed, Param, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { PromotionReviewChangesService } from './promotion-review-changes.service';
 import { PromotionReviewInboxService } from './promotion-review-inbox.service';
 
+/**
+ * No route has a scope decorator. The services check the role of the user for each review,
+ * because `@ProjectScope` cannot resolve a review id and a review of the whole instance has no project.
+ */
 @RestController('/promotions/reviews')
 export class PromotionReviewsController {
 	constructor(
@@ -21,7 +25,6 @@ export class PromotionReviewsController {
 	) {}
 
 	@Post('/:reviewId/approve')
-	@GlobalScope('promotions:approveReviews')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	async approve(
 		req: AuthenticatedRequest,
@@ -33,7 +36,6 @@ export class PromotionReviewsController {
 	}
 
 	@Post('/:reviewId/close')
-	@GlobalScope('promotions:approveReviews')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	async close(
 		req: AuthenticatedRequest,
@@ -44,18 +46,16 @@ export class PromotionReviewsController {
 	}
 
 	@Get('/:reviewId/changes')
-	@GlobalScope('promotions:readReviews')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	async getChanges(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('reviewId') reviewId: string,
 	): Promise<PromotionReviewChanges> {
-		return await this.changes.getChanges(reviewId);
+		return await this.changes.getChanges(req.user, reviewId);
 	}
 
 	@Post('/:reviewId/changes/details')
-	@GlobalScope('promotions:readReviews')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	async getDetails(
 		req: AuthenticatedRequest,

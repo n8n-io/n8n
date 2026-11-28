@@ -2,20 +2,22 @@
 import { INBOX_VIEW } from '@n8n/frontend-constants/inbox';
 import { N8nEmptyState } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
+const props = defineProps<{
+	/** From the server. A review of a whole-instance promotion can block a project reader. */
+	canReadReview: boolean;
+}>();
+
 const i18n = useI18n();
 const router = useRouter();
-const rbacStore = useRBACStore();
 const settingsStore = useSettingsStore();
 
 // The link opens the Inbox list. Opening the Inbox also refreshes a stale review state.
 const canOpenInbox = computed(
-	() =>
-		settingsStore.settings.inbox?.enabled === true && rbacStore.hasScope('promotions:readReviews'),
+	() => settingsStore.settings.inbox?.enabled === true && props.canReadReview,
 );
 
 async function openInbox() {

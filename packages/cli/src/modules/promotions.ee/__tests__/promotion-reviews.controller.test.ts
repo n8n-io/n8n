@@ -13,16 +13,14 @@ const { routes } = Container.get(ControllerRegistryMetadata).getControllerMetada
 	PromotionReviewsController as Controller,
 );
 
-// A route added later without a scope here fails.
-const expectedScopes: Record<string, string> = {
-	approve: 'promotions:approveReviews',
-	close: 'promotions:approveReviews',
-	getChanges: 'promotions:readReviews',
-	getDetails: 'promotions:readReviews',
-};
+// No route has a scope decorator: the services check the role for each review, and the Inbox
+// integration tests prove those checks. A new route fails here until it gets the same checks.
+it('has only the routes whose services check the role for each review', () => {
+	expect([...routes.keys()].sort()).toEqual(['approve', 'close', 'getChanges', 'getDetails']);
+});
 
-it.each([...routes])('%s needs a signed-in user with its global scope', (handlerName, route) => {
+it.each([...routes])('%s needs a signed-in user and the license', (_handlerName, route) => {
 	expect(route.skipAuth).toBe(false);
-	expect(route.accessScope).toEqual({ scope: expectedScopes[handlerName], globalOnly: true });
+	expect(route.accessScope).toBeUndefined();
 	expect(route.licenseFeature).toBe(LICENSE_FEATURES.PROMOTIONS);
 });

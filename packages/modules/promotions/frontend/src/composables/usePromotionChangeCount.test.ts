@@ -38,7 +38,7 @@ describe('usePromotionChangeCount blocker', () => {
 	});
 
 	it('should keep the blocker of the preview and clear it on the next check', async () => {
-		const blocker = { code: 'reviewOpen' as const, reviewId: 'review-1' };
+		const blocker = { code: 'reviewOpen' as const, reviewId: 'review-1', viewerCanRead: true };
 		vi.mocked(api.getPromotionPreview)
 			.mockResolvedValueOnce({ ...preview(0), blocker })
 			.mockResolvedValueOnce(preview(1));
