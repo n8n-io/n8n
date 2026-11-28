@@ -397,10 +397,9 @@ async function handleAddTools(
 		},
 		async () => {
 			const tools = (await service.addTools(toRef(input), input.workflowIds)).map(toolSummary);
-			await reportServerArtifact(context, {
-				id: input.serverId,
-				projectId: input.projectId ?? context.projectId,
-			});
+			if (context.onArtifactChanged) {
+				await reportServerArtifact(context, await service.getServer(toRef(input)));
+			}
 			return { tools };
 		},
 	);

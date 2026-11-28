@@ -777,6 +777,7 @@ describe('custom-mcp-servers tool', () => {
 			expect(onArtifactChanged).toHaveBeenLastCalledWith({
 				type: 'mcp-server',
 				id: SERVER_ID,
+				name: 'Marketing Tools',
 				projectId: 'project-1',
 			});
 
@@ -816,6 +817,30 @@ describe('custom-mcp-servers tool', () => {
 				projectId: 'project-1',
 			});
 			expect(onArtifactChanged).toHaveBeenCalledTimes(6);
+		});
+
+		it('reports the resolved server projectId and name on add-tools when the thread is unbound', async () => {
+			const service = createService();
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createContext(service, { onArtifactChanged });
+			const customTool = createCustomMcpServersTool(context);
+
+			await executeTool(
+				customTool,
+				{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['wf-1'] },
+				resumeCtx(true),
+			);
+
+			expect(service.getServer).toHaveBeenCalledWith({
+				serverId: SERVER_ID,
+				projectId: undefined,
+			});
+			expect(onArtifactChanged).toHaveBeenCalledExactlyOnceWith({
+				type: 'mcp-server',
+				id: SERVER_ID,
+				name: 'Marketing Tools',
+				projectId: 'project-1',
+			});
 		});
 
 		it('does not report on list, get, delete, or denied calls', async () => {

@@ -108,7 +108,7 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		e.preventDefault();
 		openAppPreview(artifact.id);
 	} else if (artifact.type === 'mcp-server' && artifact.id) {
-		if (!openMcpServerPreview) return;
+		if (!artifact.projectId || !openMcpServerPreview) return;
 		e.preventDefault();
 		openMcpServerPreview(artifact.id, artifact.projectId);
 	}

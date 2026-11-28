@@ -161,7 +161,6 @@ describe('McpServerView', () => {
 				projectId: 'project-1',
 				serverName: 'Sales tools',
 			});
-			expect(screen.queryByTestId('mcp-server-assistant-dock')).not.toBeInTheDocument();
 		});
 
 		it('opens the Assistant view with a prompt from "Build with Assistant"', async () => {

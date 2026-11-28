@@ -75,6 +75,8 @@ interface Collections {
 	agentNames: Map<string, Set<string>>;
 	/** Custom MCP servers seen in list/get results, so later tool mutations resolve name and projectId. */
 	mcpServersById: Map<string, ResourceEntry>;
+	/** Custom MCP servers deleted in this thread; kept out of produced artifacts and name links. */
+	deletedMcpServerIds: Set<string>;
 }
 
 /**
@@ -255,9 +257,25 @@ function extractFromAppsResult(tc: ArtifactToolCall, col: Collections): void {
 	recordProduced(col, { type: 'app', id: app.appId, name: app.name, projectId: app.projectId });
 }
 
-/** Custom MCP server results: list/get index by name; create and mutations produce the server artifact. */
+function removeDeletedMcpServer(col: Collections, serverId: string): void {
+	col.deletedMcpServerIds.add(serverId);
+	if (col.produced.get(serverId)?.type === 'mcp-server') {
+		col.produced.delete(serverId);
+		col.origins.delete(serverId);
+	}
+	col.mcpServersById.delete(serverId);
+	for (const [key, entry] of col.byName) {
+		if (entry.type === 'mcp-server' && entry.id === serverId) col.byName.delete(key);
+	}
+	for (const [key, entry] of col.linkableByName) {
+		if (entry.type === 'mcp-server' && entry.id === serverId) col.linkableByName.delete(key);
+	}
+}
+
+/** Custom MCP server results: list/get index by name; create and mutations produce the server artifact; deletes remove it. */
 function extractFromCustomMcpServersResult(tc: ArtifactToolCall, col: Collections): void {
 	for (const server of getMcpServerLookupEntriesFromToolCall(tc)) {
+		if (col.deletedMcpServerIds.has(server.id)) continue;
 		const entry: ResourceEntry = {
 			type: 'mcp-server',
 			id: server.id,
@@ -268,7 +286,12 @@ function extractFromCustomMcpServersResult(tc: ArtifactToolCall, col: Collection
 		col.mcpServersById.set(server.id, entry);
 	}
 	const event = getMcpServerMutationEventFromToolCall(tc);
-	if (!event || event.kind === 'deleted') return;
+	if (!event) return;
+	if (event.kind === 'deleted') {
+		removeDeletedMcpServer(col, event.serverId);
+		return;
+	}
+	if (col.deletedMcpServerIds.has(event.serverId)) return;
 	const existing = col.produced.get(event.serverId);
 	const known = col.mcpServersById.get(event.serverId);
 	const resolvedName = event.name ?? existing?.name ?? known?.name;
@@ -491,6 +514,7 @@ export function turnHasArtifact(turn: ArtifactTurn): boolean {
 		intake: 'attached',
 		agentNames: new Map(),
 		mcpServersById: new Map(),
+		deletedMcpServerIds: new Set(),
 	};
 	collectFromToolCalls(turn, col);
 	return col.produced.size > 0;
@@ -625,7 +649,7 @@ function enrichMcpServerFromTarget(
 	col: Collections,
 	target: InstanceAiMcpServerTarget | undefined,
 ): void {
-	if (!target) return;
+	if (!target || col.deletedMcpServerIds.has(target.serverId)) return;
 	const existing = col.produced.get(target.serverId);
 	if (existing && existing.type !== 'mcp-server') return;
 	const known = col.mcpServersById.get(target.serverId);
@@ -750,6 +774,7 @@ export function useResourceRegistry(
 				intake: 'attached',
 				agentNames: new Map<string, Set<string>>(),
 				mcpServersById: new Map<string, ResourceEntry>(),
+				deletedMcpServerIds: new Set<string>(),
 			};
 
 			// Turns run in order, and the user's attachments precede the agent's

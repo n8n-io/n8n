@@ -680,4 +680,30 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(event.defaultPrevented).toBe(true);
 		expect(openMcpServerPreview).toHaveBeenCalledExactlyOnceWith('srv-1', 'project-1');
 	});
+
+	it('lets a projectless custom MCP server artifact fall through to its list link', () => {
+		const openMcpServerPreview = vi.fn();
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			['srv-1', { type: 'mcp-server', id: 'srv-1', name: 'Marketing tools' }],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: {
+				plugins: [createArtifactTestRouter('/')],
+				provide: { openMcpServerPreview },
+			},
+		});
+
+		const link = getByRole('link', { name: 'Open Marketing tools' });
+		expect(link.getAttribute('href')).toBe('/home/mcp-servers');
+		let wasDefaultPreventedByComponent: boolean | undefined;
+		link.addEventListener('click', (event) => {
+			wasDefaultPreventedByComponent = event.defaultPrevented;
+			event.preventDefault();
+		});
+		link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+		expect(wasDefaultPreventedByComponent).toBe(false);
+		expect(openMcpServerPreview).not.toHaveBeenCalled();
+	});
 });

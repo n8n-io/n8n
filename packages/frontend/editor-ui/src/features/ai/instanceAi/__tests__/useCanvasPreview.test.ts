@@ -1800,6 +1800,14 @@ describe('useCanvasPreview', () => {
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 
+		test('does not select initialMcpServerId when the server is absent from producedArtifacts', async () => {
+			const ctx = setup({ initialMcpServerId: () => 'srv-1' });
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
 		test('openMcpServerPreview switches to an existing tab or opens a known server by id', () => {
 			const ctx = setup();
 			ctx.thread.resourceNameIndex.set('marketing tools', {

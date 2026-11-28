@@ -1244,7 +1244,7 @@ describe('useResourceRegistry', () => {
 		});
 
 		test('registers created and mutated servers, indexes listed servers, and ignores reads/denials', async () => {
-			const { messages, producedArtifacts, resourceNameIndex } = setup();
+			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
 			const server = { id: 'srv-1', name: 'Marketing tools', projectId: 'project-1' };
 
 			messages.value = [
@@ -1269,6 +1269,15 @@ describe('useResourceRegistry', () => {
 								result: untrusted({ success: false, denied: true }),
 							}),
 							makeToolCall({
+								toolCallId: 'tc-create',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'create', name: 'Support tools', projectId: 'project-2' },
+								result: untrusted({
+									success: true,
+									server: { id: 'srv-3', name: 'Support tools', projectId: 'project-2' },
+								}),
+							}),
+							makeToolCall({
 								toolCallId: 'tc-add',
 								toolName: 'custom-mcp-servers',
 								args: { action: 'add-tools', serverId: 'srv-1', workflowIds: ['wf-1'] },
@@ -1282,12 +1291,70 @@ describe('useResourceRegistry', () => {
 
 			expect(resourceNameIndex.get('read only server')?.id).toBe('srv-2');
 			expect(producedArtifacts.has('srv-2')).toBe(false);
+			expect(producedArtifacts.get('srv-3')).toEqual({
+				type: 'mcp-server',
+				id: 'srv-3',
+				name: 'Support tools',
+				projectId: 'project-2',
+			});
+			expect(linkableResourceNameIndex.get('support tools')?.id).toBe('srv-3');
 			expect(producedArtifacts.get('srv-1')).toEqual({
 				type: 'mcp-server',
 				id: 'srv-1',
 				name: 'Marketing tools',
 				projectId: 'project-1',
 			});
+		});
+
+		test('removes a deleted server from the registry and does not re-add it from thread metadata', async () => {
+			const target = ref({ serverId: 'srv-1', projectId: 'project-1', name: 'Marketing tools' });
+			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => target.value,
+			);
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-create',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'create', name: 'Support tools', projectId: 'project-2' },
+								result: untrusted({
+									success: true,
+									server: { id: 'srv-2', name: 'Support tools', projectId: 'project-2' },
+								}),
+							}),
+							makeToolCall({
+								toolCallId: 'tc-delete-target',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'delete', serverId: 'srv-1' },
+								result: untrusted({ success: true, serverMutated: true, serverId: 'srv-1' }),
+							}),
+							makeToolCall({
+								toolCallId: 'tc-delete-created',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'delete', serverId: 'srv-2' },
+								result: untrusted({ success: true, serverMutated: true, serverId: 'srv-2' }),
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.has('srv-1')).toBe(false);
+			expect(producedArtifacts.has('srv-2')).toBe(false);
+			expect(resourceNameIndex.has('marketing tools')).toBe(false);
+			expect(resourceNameIndex.has('support tools')).toBe(false);
+			expect(linkableResourceNameIndex.has('marketing tools')).toBe(false);
+			expect(linkableResourceNameIndex.has('support tools')).toBe(false);
 		});
 
 		test('prefers the latest name from an update tool call over thread metadata', async () => {

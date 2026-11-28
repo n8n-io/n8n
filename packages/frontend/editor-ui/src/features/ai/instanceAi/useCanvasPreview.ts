@@ -439,13 +439,19 @@ export function useCanvasPreview({
 		return artifactTabs.value.find((tab) => tab.type === 'agent' && tab.id === agentId)?.id;
 	});
 
+	const initialMcpServerTabId = computed(() => {
+		const serverId = initialMcpServerId?.();
+		if (!serverId) return undefined;
+		return artifactTabs.value.find((tab) => tab.type === 'mcp-server' && tab.id === serverId)?.id;
+	});
+
 	const initialArtifactId = computed(
 		() =>
 			firstAttachedArtifactId.value ??
 			pendingAgentTabId.value ??
 			initialAgentTabId.value ??
 			initialAppId?.() ??
-			initialMcpServerId?.() ??
+			initialMcpServerTabId.value ??
 			thread.pendingWorkflowAttachment?.id,
 	);
 
