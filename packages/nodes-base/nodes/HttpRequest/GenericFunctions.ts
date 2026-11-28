@@ -36,6 +36,13 @@ export const replaceNullValues = (item: INodeExecutionData) => {
 	return item;
 };
 
+export const wrapNonObjectJson = (item: INodeExecutionData) => {
+	if (!isObject(item.json)) {
+		item.json = { data: item.json };
+	}
+	return item;
+};
+
 export function removeRequestOptions(error: unknown) {
 	if (typeof error !== 'object' || error === null) return;
 

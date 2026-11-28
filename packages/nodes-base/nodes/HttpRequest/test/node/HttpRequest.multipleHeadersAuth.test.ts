@@ -18,7 +18,7 @@ describe('HTTP Request with Multiple Headers Auth', () => {
 		{ name: 'X-Service-Token', value: 'overridden-value' },
 	];
 
-	for (const typeVersion of [2, 3, 4.5]) {
+	for (const typeVersion of [2, 3, 4.6]) {
 		for (const authentication of ['genericCredentialType', 'predefinedCredentialType']) {
 			harness.setupTest({
 				description: `sends both credential headers with ${authentication} in version ${typeVersion}`,

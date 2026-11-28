@@ -48,6 +48,7 @@ import {
 	sanitizeUiMessage,
 	setAgentOptions,
 	updadeQueryParameterConfig,
+	wrapNonObjectJson,
 } from '../GenericFunctions';
 import { setFilename } from './utils/binaryData';
 import { mimeTypeFromResponse } from './utils/parse';
@@ -68,6 +69,21 @@ function isEmptyResponseBody(body: unknown): body is string {
 	return typeof body === 'string' && body.trim().length === 0;
 }
 
+function parseJsonBody(body: unknown, node: INode, itemIndex: number): unknown {
+	if (typeof body !== 'string') return body;
+	if (isEmptyResponseBody(body)) return {};
+
+	try {
+		return JSON.parse(body);
+	} catch {
+		throw new NodeOperationError(
+			node,
+			'Response body is not valid JSON. Change "Response Format" to "Text"',
+			{ itemIndex },
+		);
+	}
+}
+
 function isPaginationRequestType(value: string): value is 'body' | 'headers' | 'qs' {
 	return value === 'body' || value === 'headers' || value === 'qs';
 }
@@ -81,7 +97,7 @@ export class HttpRequestV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
-			version: [3, 4, 4.1, 4.2, 4.3, 4.4, 4.5],
+			version: [3, 4, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6],
 			defaults: {
 				name: 'HTTP Request',
 				color: '#0004F5',
@@ -115,6 +131,8 @@ export class HttpRequestV3 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const nodeVersion = this.getNode().typeVersion;
+		const keepsAutodetectedJsonValue = nodeVersion >= 4.6;
+		const outputsObjectItemsOnly = nodeVersion >= 4.6;
 
 		const fullResponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
 
@@ -967,6 +985,7 @@ export class HttpRequestV3 implements INodeType {
 					if (response?.request?.constructor.name === 'ClientRequest') delete response.request;
 
 					const responseContentType = response.headers['content-type'] ?? '';
+					let isJsonParsedByAutodetect = false;
 					if (autoDetectResponseFormat) {
 						if (responseContentType.includes('application/json')) {
 							responseFormat = 'json';
@@ -989,6 +1008,7 @@ export class HttpRequestV3 implements INodeType {
 												? { fallbackValue: {} }
 												: { errorMessage: 'Invalid JSON in response body' }),
 										});
+								isJsonParsedByAutodetect = true;
 							}
 						} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 							responseFormat = 'file';
@@ -1124,26 +1144,18 @@ export class HttpRequestV3 implements INodeType {
 						}
 					} else {
 						// responseFormat: 'json'
+						const bodyNeedsJsonParsing =
+							responseFormat === 'json' &&
+							!(keepsAutodetectedJsonValue && isJsonParsedByAutodetect);
+
 						if (fullResponse) {
+							if (bodyNeedsJsonParsing) {
+								response.body = parseJsonBody(response.body, this.getNode(), itemIndex);
+							}
+
 							const returnItem: IDataObject = {};
 							for (const property of fullResponseProperties) {
 								returnItem[property] = response[property];
-							}
-
-							if (responseFormat === 'json' && typeof returnItem.body === 'string') {
-								if (isEmptyResponseBody(returnItem.body)) {
-									returnItem.body = {};
-								} else {
-									try {
-										returnItem.body = JSON.parse(returnItem.body);
-									} catch (error) {
-										throw new NodeOperationError(
-											this.getNode(),
-											'Response body is not valid JSON. Change "Response Format" to "Text"',
-											{ itemIndex },
-										);
-									}
-								}
 							}
 
 							returnItems.push({
@@ -1153,22 +1165,8 @@ export class HttpRequestV3 implements INodeType {
 								},
 							});
 						} else {
-							if (responseFormat === 'json' && typeof response === 'string') {
-								if (isEmptyResponseBody(response)) {
-									response = {};
-								} else {
-									try {
-										if (typeof response !== 'object') {
-											response = JSON.parse(response);
-										}
-									} catch (error) {
-										throw new NodeOperationError(
-											this.getNode(),
-											'Response body is not valid JSON. Change "Response Format" to "Text"',
-											{ itemIndex },
-										);
-									}
-								}
+							if (bodyNeedsJsonParsing) {
+								response = parseJsonBody(response, this.getNode(), itemIndex);
 							}
 
 							if (Array.isArray(response)) {
@@ -1204,6 +1202,9 @@ export class HttpRequestV3 implements INodeType {
 		}
 
 		returnItems = returnItems.map(replaceNullValues);
+		if (outputsObjectItemsOnly) {
+			returnItems = returnItems.map(wrapNonObjectJson);
+		}
 
 		// Only show the Split Out hint in regular workflow context, not when running as an AI Agent tool
 		// (users cannot add nodes after tools in an AI Agent context)
