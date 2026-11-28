@@ -48,7 +48,7 @@ const TWO_PAGES = [
 
 const renderTable = createComponentRenderer(InstancePolicyTable);
 
-const setup = (rows = ROWS) =>
+const setup = (rows = ROWS, props: { showSource?: boolean } = {}) =>
 	renderTable({
 		pinia: createTestingPinia(),
 		props: {
@@ -56,6 +56,7 @@ const setup = (rows = ROWS) =>
 			loading: false,
 			searchPlaceholder: 'Search credentials',
 			noMatchText: 'No credentials match your search or filter',
+			...props,
 		},
 	});
 
@@ -69,6 +70,95 @@ const rowNames = (container: HTMLElement) =>
 	Array.from(container.querySelectorAll<HTMLTableRowElement>('tbody tr'), (tableRow) =>
 		tableRow.cells[1]?.textContent?.trim(),
 	);
+
+describe('InstancePolicyTable source filter', () => {
+	const COMMUNITY_ROWS = [
+		row('n8n-nodes-base.slack', 'Slack'),
+		{ ...row('n8n-nodes-mcp.mcpClient', 'MCP Client', 'deny'), community: { installed: true } },
+		{
+			...row('n8n-nodes-browserless.browserless', 'Browserless', 'deny'),
+			community: { installed: false, displayName: 'Browserless' },
+		},
+	] satisfies InstancePolicyTableRow[];
+
+	const setupSource = (showSource = true) => setup(COMMUNITY_ROWS, { showSource });
+
+	const pick = async (
+		getByRole: (role: string, options?: object) => HTMLElement,
+		label: string,
+	) => {
+		await openFilter(getByRole);
+		await userEvent.click(await findPopupItem(MENU_ITEM, label));
+	};
+
+	it('shows the installed rows only, with a subtitle on the community row', () => {
+		const { getByTestId, queryByTestId } = setupSource();
+
+		expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+			'MCP ClientCommunity node',
+			'Slack',
+		]);
+		expect(queryByTestId('instance-policy-community-n8n-nodes-base.slack')).not.toBeInTheDocument();
+	});
+
+	it('counts the options of each section with the choice in the other section', async () => {
+		const { getByRole } = setupSource();
+
+		await openFilter(getByRole);
+		expect(popupLabels(MENU_ITEM)).toEqual([
+			'All (2)',
+			'Allowed (1)',
+			'Restricted (1)',
+			'All (2)',
+			'Built-in (1)',
+			'Community (1)',
+		]);
+
+		await userEvent.click(await findPopupItem(MENU_ITEM, 'Community (1)'));
+		await openFilter(getByRole);
+
+		expect(popupLabels(MENU_ITEM).slice(0, 3)).toEqual([
+			'All (1)',
+			'Allowed (0)',
+			'Restricted (1)',
+		]);
+	});
+
+	it('combines the access and the source, and names both on the filter button', async () => {
+		const { getByTestId, getByRole } = setupSource();
+
+		await pick(getByRole, 'Restricted (1)');
+		await pick(getByRole, 'Community (1)');
+
+		await waitFor(() =>
+			expect(rowNames(getByTestId('instance-policy-table'))).toEqual(['MCP ClientCommunity node']),
+		);
+		expect(accessFilter(getByRole)).toHaveTextContent('Restricted · Community (1)');
+	});
+
+	it('shows a node that is not installed only when a search names it, outside Built-in', async () => {
+		const { getByTestId, getByRole, getByPlaceholderText, queryByTestId } = setupSource();
+
+		await userEvent.type(getByPlaceholderText('Search credentials'), 'browserless');
+
+		await waitFor(() =>
+			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+				'BrowserlessCommunity node · Not installed',
+			]),
+		);
+		await pick(getByRole, 'Built-in (0)');
+		await waitFor(() => expect(queryByTestId('instance-policy-no-match')).toBeInTheDocument());
+	});
+
+	it('has no Source section without the prop', async () => {
+		const { getByRole } = setupSource(false);
+
+		await openFilter(getByRole);
+
+		expect(popupLabels(MENU_ITEM)).toEqual(['All (2)', 'Allowed (1)', 'Restricted (1)']);
+		expect(accessFilter(getByRole)).toHaveAccessibleName('Filter by access');
+	});
+});
 
 describe('InstancePolicyTable', () => {
 	it('lists the rows sorted by name', () => {
@@ -96,17 +186,17 @@ describe('InstancePolicyTable', () => {
 
 		await openFilter(getByRole);
 
-		expect(await findPopupItem(OPTION, 'All (3)')).toBeInTheDocument();
-		expect(await findPopupItem(OPTION, 'Allowed (2)')).toBeInTheDocument();
-		expect(await findPopupItem(OPTION, 'Restricted (1)')).toBeInTheDocument();
-		expect(popupLabels(OPTION)).not.toContain('Open to project opt-in (0)');
+		expect(await findPopupItem(MENU_ITEM, 'All (3)')).toBeInTheDocument();
+		expect(await findPopupItem(MENU_ITEM, 'Allowed (2)')).toBeInTheDocument();
+		expect(await findPopupItem(MENU_ITEM, 'Restricted (1)')).toBeInTheDocument();
+		expect(popupLabels(MENU_ITEM)).not.toContain('Open to project opt-in (0)');
 	});
 
 	it('shows only the rows with the chosen access value', async () => {
 		const { getByTestId, getByRole } = setup();
 
 		await openFilter(getByRole);
-		await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+		await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted (1)'));
 
 		await waitFor(() =>
 			expect(rowNames(getByTestId('instance-policy-table'))).toEqual(['Bitly API']),
@@ -145,13 +235,12 @@ describe('InstancePolicyTable', () => {
 
 	it('sorts from the keyboard, from the column headers that follow the access filter', async () => {
 		const { container, getByTestId, getByRole } = setup();
-		const filter = getByRole('combobox', { name: 'Filter by access' });
+		const filter = accessFilter(getByRole);
 		const firstRow = getByTestId('instance-policy-open-airtableApi');
 		const follows = (a: Node, b: Node) =>
 			Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
 
-		// The tab order is the DOM order. jsdom cannot tab from the filter: the select sets a disabled
-		// attribute on its trigger, which user-event skips. So the test lists what Tab reaches between.
+		// The tab order is the DOM order, so the test lists what Tab reaches between.
 		const reachedBetween = Array.from(
 			container.querySelectorAll<HTMLElement>(
 				'button, input, select, textarea, a[href], [tabindex]',
@@ -328,7 +417,7 @@ describe('InstancePolicyTable', () => {
 
 		await openFilter(getByRole);
 
-		expect(await findPopupItem(OPTION, 'Open to project opt-in (1)')).toBeInTheDocument();
+		expect(await findPopupItem(MENU_ITEM, 'Open to project opt-in (1)')).toBeInTheDocument();
 	});
 
 	it('goes back to the first page when the search changes', async () => {
@@ -414,7 +503,7 @@ describe('InstancePolicyTable', () => {
 		it('moves the focus to the access filter when the focused row leaves the filter', async () => {
 			const { getByTestId, queryByTestId, getByRole, rerender } = setup();
 			await openFilter(getByRole);
-			await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+			await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted (1)'));
 			getByTestId('instance-policy-open-bitlyApi').focus();
 
 			await rerender({ rows: [row('bitlyApi', 'Bitly API', 'allow'), ...ROWS.slice(1)] });
@@ -525,7 +614,7 @@ describe('InstancePolicyTable', () => {
 		it('shows the message when an access change takes the last row out of the filter', async () => {
 			const { getByRole, getByTestId, rerender } = setup();
 			await openFilter(getByRole);
-			await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+			await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted (1)'));
 
 			await rerender({ rows: ROWS.map((typeRow) => ({ ...typeRow, access: 'allow' })) });
 
@@ -554,7 +643,7 @@ describe('InstancePolicyTable', () => {
 			const { getByPlaceholderText, getByRole, getByTestId, queryByTestId } = setup();
 			const searchBox = getByPlaceholderText('Search credentials');
 			await openFilter(getByRole);
-			await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+			await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted (1)'));
 			await fireEvent.update(searchBox, 'Notion');
 
 			getByRole('button', { name: 'Clear search and filter' }).focus();
@@ -562,7 +651,7 @@ describe('InstancePolicyTable', () => {
 
 			expect(noMatch(queryByTestId)).not.toBeInTheDocument();
 			expect(searchBox).toHaveValue('');
-			expect(getByRole('combobox', { name: 'Filter by access' })).toHaveTextContent('All (3)');
+			expect(accessFilter(getByRole)).toHaveTextContent('All (3)');
 			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
 				'Airtable API',
 				'Bitly API',
@@ -640,7 +729,7 @@ describe('InstancePolicyTable', () => {
 			await userEvent.click(rowCheckbox(getByRole, 'Type 25'));
 			await fireEvent.update(getByPlaceholderText('Search credentials'), 'Type 25');
 			await openFilter(getByRole);
-			await userEvent.click(await findPopupItem(OPTION, 'Allowed (1)'));
+			await userEvent.click(await findPopupItem(MENU_ITEM, 'Allowed (1)'));
 
 			expect(within(getByTestId('selected-items-info')).getByText('2 rows selected')).toBeVisible();
 			expect(rowCheckbox(getByRole, 'Type 25')).toHaveAttribute('aria-checked', 'true');
@@ -670,7 +759,7 @@ describe('InstancePolicyTable', () => {
 			const { getByRole, getByTestId, emitted } = setup();
 
 			await openFilter(getByRole);
-			await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+			await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted (1)'));
 			await userEvent.click(getByRole('checkbox', { name: 'Select all rows on this page' }));
 			expect(within(getByTestId('selected-items-info')).getByText('1 row selected')).toBeVisible();
 
@@ -700,7 +789,7 @@ describe('InstancePolicyTable', () => {
 				await userEvent.click(rowCheckbox(getByRole, 'Type 00'));
 				await fireEvent.update(getByPlaceholderText('Search credentials'), 'type');
 				await openFilter(getByRole);
-				await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+				await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted (1)'));
 				await userEvent.click(getByRole('button', { name: 'Select all 1 row' }));
 
 				expect(

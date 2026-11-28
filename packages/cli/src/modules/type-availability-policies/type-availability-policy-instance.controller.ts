@@ -27,6 +27,7 @@ import { NotFoundError } from '@n8n/errors';
 
 import { NodeTypes } from '@/node-types';
 
+import { UninstalledCommunityNodes, withUninstalledCommunityTypes } from './community-node-types';
 import { NODE_TYPES_KIND } from './constants';
 import { ListedNodeTypes } from './listed-node-types';
 import { NodeTypeUsageService } from './node-type-usage.service';
@@ -45,6 +46,7 @@ export class TypeAvailabilityPolicyInstanceController {
 		private readonly nodeTypes: NodeTypes,
 		private readonly nodeTypeUsageService: NodeTypeUsageService,
 		private readonly listedNodeTypes: ListedNodeTypes,
+		private readonly uninstalledCommunityNodes: UninstalledCommunityNodes,
 	) {}
 
 	@Get('/instance')
@@ -65,11 +67,19 @@ export class TypeAvailabilityPolicyInstanceController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async getInstanceAccess(): Promise<InstanceTypeAccessResponse> {
-		return await this.service.getInstanceAccess(
+		const installedNames = Object.keys(this.nodeTypes.getKnownTypes());
+		const [catalogNodes, listTypes] = await Promise.all([
+			this.uninstalledCommunityNodes.list(new Set(installedNames)),
+			this.listedNodeTypes.filter(),
+		]);
+		// One evaluation for both lists, so that the `version` of the response holds for each row.
+		const access = await this.service.getInstanceAccess(
 			NODE_TYPES_KIND,
-			Object.keys(this.nodeTypes.getKnownTypes()),
-			await this.listedNodeTypes.filter(),
+			[...installedNames, ...catalogNodes.map((node) => node.name)],
+			listTypes,
 		);
+
+		return withUninstalledCommunityTypes(access, catalogNodes);
 	}
 
 	@Patch('/instance/access')

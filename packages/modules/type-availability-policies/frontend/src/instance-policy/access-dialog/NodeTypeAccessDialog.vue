@@ -24,7 +24,8 @@ const open = defineModel<boolean>('open', { default: false });
 const RELATED_TAB = 'related';
 
 const i18n = useI18n();
-const { typesLoaded, index, nodeTypeOf, nodeLabel, toSections } = useRelatedTypeIndex();
+const { typesLoaded, index, nodeTypeOf, catalogIconOf, nodeLabel, toSections } =
+	useRelatedTypeIndex();
 const { canManage } = useTypeAccessEdits();
 
 const nodeName = computed(() => nodeLabel(nodeType));
@@ -59,7 +60,7 @@ const tabs = computed(() => [
 			<TypeAccessSection
 				kind="node"
 				:heading="i18n.baseText('typeAvailabilityPolicies.nodeDialog.node')"
-				:items="[{ name: nodeType, label: nodeName }]"
+				:items="[{ name: nodeType, label: nodeName, icon: catalogIconOf(nodeType) }]"
 				:node-type-of="nodeTypeOf"
 				:icon-size="24"
 				data-test-id="node-type-access-node"

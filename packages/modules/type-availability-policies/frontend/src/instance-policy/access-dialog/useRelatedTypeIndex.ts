@@ -11,9 +11,13 @@ import {
 	type RelatedTypes,
 } from '../../related-types/relatedTypes';
 import type { RestrictedTypeKind } from '../../type-availability-policies.constants';
+import { useAppliedTheme } from '../../composables/useAppliedTheme';
+import { catalogNodeIcon, catalogNodeOf } from '../communityNode';
+import type { TypeIcon } from '../instancePolicyTable.types';
 import { useInstancePolicy } from '../useInstancePolicy';
 
-export type RelatedTypeItem = { name: string; label: string };
+/** `icon` replaces the icon of the shell, which knows only the installed node types. */
+export type RelatedTypeItem = { name: string; label: string; icon?: TypeIcon };
 
 export type RelatedTypeSection = {
 	kind: RestrictedTypeKind;
@@ -42,6 +46,7 @@ export function useRelatedTypeIndex() {
 	const toast = useToast();
 	const typeDescriptions = capabilityRegistry.use(capabilities.typeDescriptions);
 	const instancePolicy = useInstancePolicy();
+	const theme = useAppliedTheme();
 
 	// Until the types load, the index is empty and every type would look unrelated.
 	const typesLoaded = ref(false);
@@ -59,7 +64,14 @@ export function useRelatedTypeIndex() {
 
 	const index = computed(() => indexOf(typeDescriptions.nodeTypes()));
 	const nodeTypeOf = (name: string) => index.value.latestNodeTypes.get(name);
-	const nodeLabel = (name: string) => nodeTypeOf(name)?.displayName ?? name;
+	const catalogNodeOfName = (name: string) =>
+		catalogNodeOf(instancePolicy.typeAccess.node?.types.get(name));
+	const nodeLabel = (name: string) =>
+		nodeTypeOf(name)?.displayName ?? catalogNodeOfName(name)?.displayName ?? name;
+	const catalogIconOf = (name: string) => {
+		const catalogNode = catalogNodeOfName(name);
+		return catalogNode ? catalogNodeIcon(catalogNode, theme.value) : undefined;
+	};
 	const credentialLabel = (name: string) =>
 		typeDescriptions.credentialTypeDisplayName(name) ?? name;
 
@@ -86,5 +98,13 @@ export function useRelatedTypeIndex() {
 		return sections.filter((section) => section.items.length > 0);
 	}
 
-	return { typesLoaded, index, nodeTypeOf, nodeLabel, credentialLabel, toSections };
+	return {
+		typesLoaded,
+		index,
+		nodeTypeOf,
+		catalogIconOf,
+		nodeLabel,
+		credentialLabel,
+		toSections,
+	};
 }

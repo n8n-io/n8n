@@ -10,7 +10,6 @@ import {
 	N8nInput,
 	N8nNodeIcon,
 	N8nPagination,
-	N8nSelect2,
 	N8nText,
 	type DropdownMenuItemProps,
 	type IconName,
@@ -34,11 +33,15 @@ export type InstancePolicyTableRow = InstanceTypeAccessRow & {
 
 type AccessFilter = 'all' | PolicyAction;
 
+type SourceFilter = 'all' | 'builtIn' | 'community';
+
 const props = defineProps<{
 	rows: InstancePolicyTableRow[];
 	loading: boolean;
 	searchPlaceholder: string;
 	noMatchText: string;
+	/** Adds the Source section to the filter, for the rows that carry `community`. */
+	showSource?: boolean;
 	/** A bulk change of the selection is in progress. */
 	bulkBusy?: boolean;
 }>();
@@ -84,6 +87,7 @@ const ACCESS_ORDER: PolicyAction[] = ['allow', 'delegate', 'deny'];
 
 const search = ref('');
 const accessFilter = ref<AccessFilter>('all');
+const sourceFilter = ref<SourceFilter>('all');
 const sortBy = ref<TableOptions['sortBy']>([{ id: 'displayName', desc: false }]);
 const page = ref(0);
 const PAGE_SIZES = [10, 25, 50, 100];
@@ -167,46 +171,114 @@ const searchedRows = computed(() => {
 	);
 });
 
-const filterOptions = computed(() => {
-	const count = (access: PolicyAction) =>
-		searchedRows.value.filter((row) => row.access === access).length;
-	const options: Array<{ value: AccessFilter; label: string }> = [
-		{
-			value: 'all',
-			label: i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.filter.all', {
-				interpolate: { count: searchedRows.value.length },
-			}),
-		},
-	];
+// The catalog lists thousands of community nodes that are not installed, so one shows only when a
+// search names it.
+const listedRows = computed(() =>
+	search.value.trim()
+		? searchedRows.value
+		: searchedRows.value.filter((row) => row.community?.installed !== false),
+);
 
-	for (const access of ACCESS_ORDER) {
-		const accessCount = count(access);
-		// Open to project opt-in is rare, so it shows only when a row has it or it is the filter.
-		if (access === 'delegate' && accessCount === 0 && accessFilter.value !== 'delegate') continue;
-		options.push({
-			value: access,
-			label: i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.filter.option', {
-				interpolate: { label: i18n.baseText(ACCESS_LABEL_KEY[access]), count: accessCount },
-			}),
-		});
-	}
+const ACCESS_OPTIONS: AccessFilter[] = ['all', ...ACCESS_ORDER];
 
-	return options;
-});
+const SOURCE_ORDER: SourceFilter[] = ['all', 'builtIn', 'community'];
 
-function isAccessFilter(value: unknown): value is AccessFilter {
-	return value === 'all' || ACCESS_ORDER.some((access) => access === value);
-}
+const SOURCE_LABEL_KEY: Record<Exclude<SourceFilter, 'all'>, BaseTextKey> = {
+	builtIn: 'typeAvailabilityPolicies.instancePolicy.table.filter.source.builtIn',
+	community: 'typeAvailabilityPolicies.instancePolicy.table.filter.source.community',
+};
 
-function onFilterChange(value: unknown) {
-	if (isAccessFilter(value)) accessFilter.value = value;
-}
+const matchesAccess = (row: InstancePolicyTableRow, access: AccessFilter) =>
+	access === 'all' || row.access === access;
+
+const matchesSource = (row: InstancePolicyTableRow, source: SourceFilter) =>
+	source === 'all' || (source === 'community') === (row.community !== undefined);
+
+// Each option counts the rows that it shows together with the choice in the other section.
+const countRows = (access: AccessFilter, source: SourceFilter) =>
+	listedRows.value.filter((row) => matchesAccess(row, access) && matchesSource(row, source)).length;
 
 const filteredRows = computed(() =>
-	accessFilter.value === 'all'
-		? searchedRows.value
-		: searchedRows.value.filter((row) => row.access === accessFilter.value),
+	listedRows.value.filter(
+		(row) => matchesAccess(row, accessFilter.value) && matchesSource(row, sourceFilter.value),
+	),
 );
+
+function optionLabel(label: string, count: number) {
+	return i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.filter.option', {
+		interpolate: { label, count },
+	});
+}
+
+const allLabel = () => i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.filter.all');
+
+const filterItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
+	const accessItems: Array<DropdownMenuItemProps<string>> = [];
+	for (const access of ACCESS_OPTIONS) {
+		const count = countRows(access, sourceFilter.value);
+		// Open to project opt-in is rare, so it shows only when a row has it or it is the filter.
+		if (access === 'delegate' && count === 0 && accessFilter.value !== 'delegate') continue;
+		accessItems.push({
+			id: `access:${access}`,
+			label: optionLabel(
+				access === 'all' ? allLabel() : i18n.baseText(ACCESS_LABEL_KEY[access]),
+				count,
+			),
+			checked: accessFilter.value === access,
+		});
+	}
+	if (!props.showSource) return accessItems;
+
+	return [
+		{
+			id: 'header:access',
+			label: i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.filter.section.access'),
+			header: true,
+		},
+		...accessItems,
+		{
+			id: 'header:source',
+			label: i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.filter.section.source'),
+			header: true,
+			divided: true,
+		},
+		...SOURCE_ORDER.map((source) => ({
+			id: `source:${source}`,
+			label: optionLabel(
+				source === 'all' ? allLabel() : i18n.baseText(SOURCE_LABEL_KEY[source]),
+				countRows(accessFilter.value, source),
+			),
+			checked: sourceFilter.value === source,
+		})),
+	];
+});
+
+const filterSummary = computed(() => {
+	const choices = [
+		accessFilter.value === 'all' ? undefined : i18n.baseText(ACCESS_LABEL_KEY[accessFilter.value]),
+		sourceFilter.value === 'all' ? undefined : i18n.baseText(SOURCE_LABEL_KEY[sourceFilter.value]),
+	].filter((choice) => choice !== undefined);
+	return optionLabel(
+		choices.length > 0 ? choices.join(' · ') : allLabel(),
+		filteredRows.value.length,
+	);
+});
+
+function isAccessFilter(value: string): value is AccessFilter {
+	return ACCESS_OPTIONS.some((access) => access === value);
+}
+
+function isSourceFilter(value: string): value is SourceFilter {
+	return SOURCE_ORDER.some((source) => source === value);
+}
+
+function onFilterSelect(id: string) {
+	const [section, value] = id.split(':');
+	if (section === 'access' && isAccessFilter(value)) accessFilter.value = value;
+	if (section === 'source' && props.showSource && isSourceFilter(value)) {
+		sourceFilter.value = value;
+	}
+}
 
 // With rows to show, an empty result means that the search or the filter removed all of them. The
 // first load has no rows, so the message never replaces it.
@@ -218,6 +290,7 @@ const searchInput = useTemplateRef<InstanceType<typeof N8nInput>>('searchInput')
 function clearSearchAndFilter() {
 	search.value = '';
 	accessFilter.value = 'all';
+	sourceFilter.value = 'all';
 	searchInput.value?.focus();
 }
 
@@ -225,7 +298,7 @@ const pageRows = computed(() =>
 	filteredRows.value.slice(page.value * itemsPerPage.value, (page.value + 1) * itemsPerPage.value),
 );
 
-watch([search, accessFilter, sortBy, itemsPerPage], () => {
+watch([search, accessFilter, sourceFilter, sortBy, itemsPerPage], () => {
 	page.value = 0;
 });
 
@@ -237,7 +310,6 @@ watch(
 	},
 );
 
-const filter = useTemplateRef<{ focus: () => void }>('filter');
 const root = useTemplateRef<HTMLElement>('root');
 
 /**
@@ -252,7 +324,7 @@ function returnFocus(name: string | undefined) {
 }
 
 function focusFilter() {
-	filter.value?.focus();
+	root.value?.querySelector<HTMLElement>('[data-filter-trigger]')?.focus();
 }
 
 // A change of access can take the focused row out of the table, or move it when the table is sorted
@@ -412,18 +484,33 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 					<N8nIcon icon="search" />
 				</template>
 			</N8nInput>
-			<N8nSelect2
-				ref="filter"
-				:model-value="accessFilter"
-				:items="filterOptions"
-				size="large"
-				icon="funnel"
-				align="end"
+			<N8nDropdownMenu
+				:items="filterItems"
+				placement="bottom-end"
 				:class="$style.filter"
-				:aria-label="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.filter.label')"
-				data-test-id="instance-policy-access-filter"
-				@update:model-value="onFilterChange"
-			/>
+				@select="onFilterSelect"
+			>
+				<template #trigger>
+					<N8nButton
+						variant="outline"
+						size="large"
+						:class="$style.filterTrigger"
+						:aria-label="
+							i18n.baseText(
+								showSource
+									? 'typeAvailabilityPolicies.instancePolicy.table.filter.labelWithSource'
+									: 'typeAvailabilityPolicies.instancePolicy.table.filter.label',
+							)
+						"
+						data-filter-trigger
+						data-test-id="instance-policy-access-filter"
+					>
+						<N8nIcon icon="funnel" size="small" />
+						<span :class="$style.filterSummary">{{ filterSummary }}</span>
+						<N8nIcon icon="chevron-down" size="small" />
+					</N8nButton>
+				</template>
+			</N8nDropdownMenu>
 		</div>
 		<!-- Focusable when disabled: a click that selects everything must not lose the focus. -->
 		<N8nButton
@@ -499,7 +586,26 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 					@click.stop="emit('open', item.name)"
 				>
 					<N8nNodeIcon v-bind="item.icon" :size="20" :class="$style.nameIcon" />
-					<N8nText color="text-dark" bold :class="$style.nameText">{{ item.displayName }}</N8nText>
+					<span :class="$style.nameLabel">
+						<N8nText color="text-dark" bold :class="$style.nameText">{{
+							item.displayName
+						}}</N8nText>
+						<N8nText
+							v-if="item.community"
+							size="xsmall"
+							color="text-light"
+							:class="$style.nameText"
+							:data-test-id="`instance-policy-community-${item.name}`"
+						>
+							{{
+								i18n.baseText(
+									item.community.installed
+										? 'typeAvailabilityPolicies.instancePolicy.table.communityNode'
+										: 'typeAvailabilityPolicies.instancePolicy.table.communityNode.notInstalled',
+								)
+							}}
+						</N8nText>
+					</span>
 				</button>
 			</template>
 			<template #[`item.access`]="{ item }">
@@ -590,9 +696,22 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 }
 
 .filter {
+	margin-inline-start: auto;
+}
+
+.filterTrigger {
 	/* No width token fits; this matches the filter of the design. */
 	width: 232px;
-	margin-inline-start: auto;
+	justify-content: flex-start;
+}
+
+.filterSummary {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-align: start;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .selectAllButton {
@@ -636,6 +755,12 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 
 .nameIcon {
 	flex-shrink: 0;
+}
+
+.nameLabel {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
 }
 
 .nameText {

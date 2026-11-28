@@ -1,6 +1,7 @@
 import type { PolicyAction } from '@n8n/api-types';
 import { computed, onMounted, ref, shallowReactive, watch } from 'vue';
 
+import type { CommunityNodeInfo } from './communityNode';
 import { useRestrictReviewStore } from './restrict-review/restrict-review.store';
 import { isTypeAccessEditable } from './typeAccessRule';
 import type { InstancePolicySaveResult } from './instance-policy.store';
@@ -16,6 +17,8 @@ export type InstanceTypeAccessRow = {
 	editable: boolean;
 	/** A restriction of the type waits for its usage counts before it applies or asks. */
 	checking: boolean;
+	/** Set only for a node type from a community package. */
+	community?: CommunityNodeInfo;
 };
 
 type PendingChange = { access: PolicyAction; savedVersion?: number };
@@ -35,6 +38,7 @@ export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
 			matchedRuleId: type.matchedRuleId,
 			editable: isTypeAccessEditable(type),
 			checking: restrictReview.isChecking(kind, type.name),
+			community: type.community,
 		})),
 	);
 

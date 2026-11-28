@@ -188,6 +188,39 @@ describe('NodeTypeAccessDialog', () => {
 		).toEqual(['notionApi', 'notionOAuth2Api']);
 	});
 
+	it('names a community node that is not installed and shows its catalog icon', async () => {
+		const BROWSERLESS = 'n8n-nodes-browserless.browserless';
+		mocks.fetchInstanceAccess.mockImplementation(async (_context, kind: string) =>
+			kind === 'node'
+				? {
+						...access(kind, { 'n8n-nodes-base.notion': 'allow' }),
+						uninstalledCommunityTypes: [
+							{
+								name: BROWSERLESS,
+								access: 'deny',
+								matchedRuleId: null,
+								displayName: 'Browserless',
+								iconUrl: 'https://cdn.example.com/browserless.svg',
+							},
+						],
+					}
+				: access(kind, { notionApi: 'deny' }),
+		);
+
+		const { getByText, getByTestId } = await setup(BROWSERLESS);
+
+		expect(getByText('Browserless node access')).toBeInTheDocument();
+		const node = getByTestId('node-type-access-node');
+		expect(node.querySelector('img')).toHaveAttribute(
+			'src',
+			'https://cdn.example.com/browserless.svg',
+		);
+		expect(within(node).queryByTestId('node-icon')).not.toBeInTheDocument();
+		expect(within(node).getByTestId('type-access-select')).toHaveAttribute('data-value', 'deny');
+		expect(usageIn(node)).toEqual(['Not used in any workflow']);
+		expect(getByTestId('node-type-access-empty')).toBeInTheDocument();
+	});
+
 	it('shows the node with its access, and its related nodes and credentials', async () => {
 		const { getByText, getByTestId } = await setup('n8n-nodes-base.notion');
 

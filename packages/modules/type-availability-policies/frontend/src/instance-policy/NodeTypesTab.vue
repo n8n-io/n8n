@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, shallowRef, useTemplateRef } from 'vue';
 
+import { catalogNodeIcon, catalogNodeOf } from './communityNode';
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
 import { FALLBACK_NODE_TYPE_ICON, nodeTypeIcon } from './nodeTypeIcon';
 import { useInstancePolicy } from './useInstancePolicy';
@@ -34,22 +35,39 @@ const decorations = computed(() => {
 	return byName;
 });
 
+// Changes only with a new read of the access, not with each change of access.
+const catalogDecorations = computed(() => {
+	const byName = new Map<string, Pick<InstancePolicyTableRow, 'displayName' | 'icon'>>();
+	for (const type of instancePolicy.typeAccess.node?.types.values() ?? []) {
+		const catalogNode = catalogNodeOf(type);
+		if (!catalogNode) continue;
+		byName.set(type.name, {
+			displayName: catalogNode.displayName,
+			icon: catalogNodeIcon(catalogNode, theme.value),
+		});
+	}
+	return byName;
+});
+
 const rows = computed<InstancePolicyTableRow[]>(() => {
 	const summaries = typeSummaries.value;
 	if (!summaries) return [];
 
-	return (
-		types.value
-			// An unknown one shows its name, as the Credential types tab does.
-			.map((type) => ({
-				...type,
-				...(decorations.value.get(type.name) ?? {
-					displayName: type.name,
-					icon: FALLBACK_NODE_TYPE_ICON,
-				}),
-				usage: instancePolicy.usageOf('node', type.name),
-			}))
-	);
+	return types.value.map((type) => {
+		const catalogDecoration = catalogDecorations.value.get(type.name);
+		// A node that is not installed has no usage of its own to count.
+		if (catalogDecoration) return { ...type, ...catalogDecoration, usage: null };
+
+		// An unknown one shows its name, as the Credential types tab does.
+		return {
+			...type,
+			...(decorations.value.get(type.name) ?? {
+				displayName: type.name,
+				icon: FALLBACK_NODE_TYPE_ICON,
+			}),
+			usage: instancePolicy.usageOf('node', type.name),
+		};
+	});
 });
 
 async function loadSummaries() {
@@ -79,6 +97,7 @@ defineExpose({ returnFocus: (name: string | undefined) => table.value?.returnFoc
 		:loading="loading || typeSummaries === null"
 		:search-placeholder="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.search.node')"
 		:no-match-text="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noMatch.node')"
+		show-source
 		data-test-id="node-types-tab"
 		@change="changeAccess"
 		@bulk-change="bulkChange"

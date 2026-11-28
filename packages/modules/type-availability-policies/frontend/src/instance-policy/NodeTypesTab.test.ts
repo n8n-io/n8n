@@ -118,6 +118,98 @@ describe('NodeTypesTab', () => {
 		expect(accessCell(getByTestId, NOT_LOADED)).toHaveTextContent('Restricted');
 	});
 
+	describe('community nodes', () => {
+		const MCP_CLIENT = 'n8n-nodes-mcp.mcpClient';
+		const BROWSERLESS = 'n8n-nodes-browserless.browserless';
+
+		const communityAccess = (version: number, browserlessAccess: 'allow' | 'deny') => ({
+			...access(version, [
+				{ name: SLACK, access: 'allow', matchedRuleId: null },
+				{ name: MCP_CLIENT, access: 'allow', matchedRuleId: null },
+			]),
+			uninstalledCommunityTypes: [
+				{
+					name: BROWSERLESS,
+					access: browserlessAccess,
+					matchedRuleId: browserlessAccess === 'deny' ? 'new-rule' : null,
+					displayName: 'Browserless',
+					iconUrl: 'https://cdn.example.com/browserless.svg',
+				},
+			],
+		});
+
+		const searchFor = async (getByPlaceholderText: (text: string) => HTMLElement, text: string) =>
+			await userEvent.type(getByPlaceholderText('Search nodes'), text);
+
+		beforeEach(() => {
+			mocks.fetchNodeTypeSummaries.mockResolvedValue(
+				new Map([...SUMMARIES, [MCP_CLIENT, summary('MCP Client')]]),
+			);
+			mocks.fetchNodeTypeUsage.mockResolvedValue({
+				[MCP_CLIENT]: { uses: 4, workflows: 2, activeWorkflows: 1, projects: 1 },
+			} satisfies NodeTypeUsageResponse);
+		});
+
+		it('shows an installed community node with its subtitle and usage', async () => {
+			const { findByText, getByTestId, queryByText } = await setup(() =>
+				mocks.fetchInstanceAccess.mockResolvedValue(communityAccess(1, 'allow')),
+			);
+
+			await findByText('MCP Client');
+
+			expect(getByTestId(`instance-policy-community-${MCP_CLIENT}`)).toHaveTextContent(
+				/^Community node$/,
+			);
+			expect(usageCells(getByTestId, MCP_CLIENT)).toEqual(['1', '4', '2', '1']);
+			expect(queryByText('Browserless')).not.toBeInTheDocument();
+		});
+
+		it('shows a node that is not installed when a search names it, with its catalog name and icon and no usage', async () => {
+			const { findByText, getByTestId, getByPlaceholderText } = await setup(() =>
+				mocks.fetchInstanceAccess.mockResolvedValue(communityAccess(1, 'allow')),
+			);
+			await findByText('MCP Client');
+
+			await searchFor(getByPlaceholderText, 'browserless');
+
+			expect(await findByText('Browserless')).toBeInTheDocument();
+			expect(getByTestId(`instance-policy-community-${BROWSERLESS}`)).toHaveTextContent(
+				'Community node · Not installed',
+			);
+			const browserlessRow = accessCell(getByTestId, BROWSERLESS).closest('tr') as HTMLElement;
+			expect(browserlessRow.querySelector('img')).toHaveAttribute(
+				'src',
+				'https://cdn.example.com/browserless.svg',
+			);
+			expect(usageCells(getByTestId, BROWSERLESS)).toEqual(['—', '—', '—', '—']);
+		});
+
+		it('restricts a node that is not installed by its name', async () => {
+			mocks.fetchNodeTypeUsage.mockResolvedValue({});
+			mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
+			const { findByText, getByTestId, getByPlaceholderText } = await setup(() =>
+				mocks.fetchInstanceAccess
+					.mockResolvedValueOnce(communityAccess(1, 'allow'))
+					.mockResolvedValue(communityAccess(2, 'deny')),
+			);
+			await findByText('MCP Client');
+			await searchFor(getByPlaceholderText, 'browserless');
+			await findByText('Browserless');
+
+			await restrict(getByTestId, BROWSERLESS);
+
+			await waitFor(() =>
+				expect(mocks.setInstanceTypeAccess).toHaveBeenCalledWith(expect.anything(), 'node', {
+					changes: [{ type: BROWSERLESS, access: 'deny' }],
+					version: 1,
+				}),
+			);
+			await waitFor(() =>
+				expect(accessCell(getByTestId, BROWSERLESS)).toHaveTextContent('Restricted'),
+			);
+		});
+	});
+
 	it('shows no rows until the node types load', async () => {
 		const summaries = createDeferredPromise<Map<string, NodeTypeSummary>>();
 		mocks.fetchNodeTypeSummaries.mockReturnValue(summaries.promise);

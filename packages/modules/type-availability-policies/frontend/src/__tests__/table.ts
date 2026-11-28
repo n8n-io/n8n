@@ -3,9 +3,9 @@ import { within } from '@testing-library/vue';
 type GetByTestId = (id: string) => HTMLElement;
 export type GetByRole = (role: string, options?: object) => HTMLElement;
 
-/** The trigger of the access filter of the instance policy table. */
+/** The trigger of the filter menu of the instance policy table. */
 export const accessFilter = (getByRole: GetByRole) =>
-	getByRole('combobox', { name: 'Filter by access' });
+	getByRole('button', { name: /^Filter by access/ });
 
 /** The select checkbox of a row of the instance policy table, found by the display name. */
 export const rowCheckbox = (getByRole: GetByRole, name: string) =>

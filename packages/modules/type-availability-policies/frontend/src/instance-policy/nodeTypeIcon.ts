@@ -6,7 +6,7 @@ import type { NodeTypeSummary } from '../type-availability-policies.api';
 export const FALLBACK_NODE_TYPE_ICON: TypeIcon = { type: 'icon', name: 'box' };
 
 export function nodeTypeIcon(
-	summary: NodeTypeSummary,
+	summary: Pick<NodeTypeSummary, 'icon' | 'iconUrl' | 'iconColor'>,
 	theme: AppliedTheme,
 	baseUrl: string,
 ): TypeIcon {

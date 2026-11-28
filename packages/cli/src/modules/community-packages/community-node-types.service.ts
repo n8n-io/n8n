@@ -4,6 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import cloneDeep from 'lodash/cloneDeep';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { singleFlight } from '@n8n/utils/promise/single-flight';
 import { isToolType, NodeConnectionTypes } from 'n8n-workflow';
 
 import { buildStrapiUpdateQuery } from '@/utils/strapi-utils';
@@ -29,6 +30,9 @@ export class CommunityNodeTypesService {
 
 	private lastUpdateTimestamp = 0;
 
+	// Shared, so a background refresh and a caller that awaits one never fetch at the same time.
+	private readonly refreshNodeTypes = singleFlight(async () => await this.fetchNodeTypes());
+
 	constructor(
 		private readonly logger: Logger,
 		private config: CommunityPackagesConfig,
@@ -41,15 +45,23 @@ export class CommunityNodeTypesService {
 	 * The loader builds AI tool copies from loaded base nodes, so a copy follows its base node.
 	 */
 	private isLoadable(nodeTypeName: string) {
-		const baseName = nodeTypeName.slice(0, -'Tool'.length);
-		const isToolCopy =
-			nodeTypeName.endsWith('Tool') &&
-			this.communityNodeTypes.get(baseName)?.nodeDescription.usableAsTool === true;
-		const loaderName = isToolCopy ? baseName : nodeTypeName;
+		const loaderName = this.toolCopyBase(nodeTypeName) ?? nodeTypeName;
 
 		const { exclude, include } = this.globalConfig.nodes;
 		if (exclude.includes(loaderName)) return false;
 		return include.length === 0 || include.includes(loaderName);
+	}
+
+	/**
+	 * The base entry name of an AI tool copy that `createAiTools` made, or `undefined` for an entry
+	 * of the catalog.
+	 */
+	private toolCopyBase(nodeTypeName: string): string | undefined {
+		if (!nodeTypeName.endsWith('Tool')) return undefined;
+		const baseName = nodeTypeName.slice(0, -'Tool'.length);
+		return this.communityNodeTypes.get(baseName)?.nodeDescription.usableAsTool === true
+			? baseName
+			: undefined;
 	}
 
 	private async detectUpdates(
@@ -240,7 +252,7 @@ export class CommunityNodeTypesService {
 
 	async getCommunityNodeTypes(): Promise<CommunityNodeType[]> {
 		if (this.updateRequired()) {
-			await this.fetchNodeTypes();
+			await this.refreshNodeTypes();
 		}
 
 		const isInstalled = await this.createIsInstalled();
@@ -251,6 +263,19 @@ export class CommunityNodeTypesService {
 				...nodeType,
 				isInstalled: isInstalled(nodeType),
 			}));
+	}
+
+	/**
+	 * The catalog entries fetched so far, without the AI tool copies. Never waits for the network:
+	 * a stale catalog refreshes in the background, so a later call sees the new entries.
+	 */
+	getCachedCommunityNodeTypes(): StrapiCommunityNodeType[] {
+		if (this.updateRequired()) void this.refreshNodeTypes();
+
+		return Array.from(this.communityNodeTypes.values()).filter(
+			(nodeType) =>
+				this.toolCopyBase(nodeType.name) === undefined && this.isLoadable(nodeType.name),
+		);
 	}
 
 	async getCommunityNodeType(type: string): Promise<CommunityNodeType | null> {
@@ -270,14 +295,14 @@ export class CommunityNodeTypesService {
 	 */
 	async findVettedNodeType(nodeType: string) {
 		if (this.updateRequired()) {
-			await this.fetchNodeTypes();
+			await this.refreshNodeTypes();
 		}
 		return await this.getCommunityNodeType(nodeType);
 	}
 
 	async findVetted(packageName: string) {
 		if (this.updateRequired()) {
-			await this.fetchNodeTypes();
+			await this.refreshNodeTypes();
 		}
 		const vettedTypes = Array.from(this.communityNodeTypes.values());
 		return vettedTypes.find((nodeType) => nodeType.packageName === packageName);

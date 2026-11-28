@@ -1,10 +1,16 @@
-import type { InstanceTypeAccessResponse, TypeAccessChange } from '@n8n/api-types';
+import type {
+	InstanceTypeAccess,
+	InstanceTypeAccessResponse,
+	TypeAccessChange,
+} from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { isCommunityPackageName } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { shallowReactive } from 'vue';
 
+import type { CommunityNodeInfo } from './communityNode';
 import { useTypeUsage } from './useTypeUsage';
 import {
 	fetchCredentialTypeUsage,
@@ -46,16 +52,36 @@ type LoadKindResult = { error: unknown; accessError: unknown };
 
 type PolicyByKind = { [K in RestrictedTypeKind]: InstancePolicy<K> | null };
 
-type TypeAccessEntry = InstanceTypeAccessResponse['types'][number];
+type TypeAccessEntry = InstanceTypeAccess & { community?: CommunityNodeInfo };
 
 /** The access of each type, read from the server for one policy version. */
 type TypeAccessSnapshot = { version: number; types: ReadonlyMap<string, TypeAccessEntry> };
 
+// One map for installed and uninstalled types, so that the table and the details dialog find both.
 function toTypeAccess(response: InstanceTypeAccessResponse): TypeAccessSnapshot {
-	return {
-		version: response.version,
-		types: new Map(response.types.map((type) => [type.name, type])),
-	};
+	const types = new Map<string, TypeAccessEntry>();
+
+	for (const type of response.types) {
+		// A generated tool variant has the name of its package too.
+		types.set(
+			type.name,
+			isCommunityPackageName(type.name) ? { ...type, community: { installed: true } } : type,
+		);
+	}
+	for (const {
+		displayName,
+		icon,
+		iconUrl,
+		iconColor,
+		...type
+	} of response.uninstalledCommunityTypes ?? []) {
+		types.set(type.name, {
+			...type,
+			community: { installed: false, displayName, icon, iconUrl, iconColor },
+		});
+	}
+
+	return { version: response.version, types };
 }
 
 const isConflict = (error: unknown) =>
