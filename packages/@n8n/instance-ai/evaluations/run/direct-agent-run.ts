@@ -1,0 +1,285 @@
+// ---------------------------------------------------------------------------
+// Direct Agent runs (AGENT-1665). A case with `agentRun.mode: direct` has no
+// assistant turn: the harness restores the seeded Agent into a fresh build
+// project, the restore binds each model to the case's declared credential of
+// its provider (TRUST-608), and the scenarios run straight against the Agent.
+// The result is shaped like an agent-anchored build, so the case pipeline runs
+// it through its usual agent scenario path.
+// ---------------------------------------------------------------------------
+
+import type { InstanceAiEvalSeedDataTable } from '@n8n/api-types';
+import { randomUUID } from 'node:crypto';
+
+import type { Lane } from './build-orchestrator';
+import { buildProjectProvider, type BuildProject } from './lane-users';
+import { createScenarioTables } from './mcp-seed';
+import { createDeclaredCredentials } from '../credentials/seeder';
+import { agentUnderTestIndex, isDirectAgentRun } from '../harness/agent-run-schema';
+import type { BuildResult } from '../harness/build-workflow';
+import { remapSeedArtifactIds, type ConversationSeed } from '../harness/conversation-seed';
+import type { EvalLogger } from '../harness/logger';
+import { dedupeScenarioSeedTables } from '../harness/seed-tables';
+import { extractErrorMessage } from '../harness/transient-error';
+import type { ExecutionScenario, WorkflowTestCase } from '../types';
+
+function inlineSeedTables(testCase: WorkflowTestCase): InstanceAiEvalSeedDataTable[] {
+	return testCase.seed?.mode === 'inline' ? testCase.seed.dataTables : [];
+}
+
+/**
+ * The scenario as a direct run executes it: every seed table reset to its seed
+ * rows (none = emptied), with the scenario's own `seedDataTables` laid over the
+ * top by name. Without this, one scenario's override, or rows the Agent wrote,
+ * would leak into the next scenario.
+ */
+export function withSeedTableResets(
+	testCase: WorkflowTestCase,
+	scenario: ExecutionScenario,
+): ExecutionScenario {
+	const seedTables = inlineSeedTables(testCase);
+	if (seedTables.length === 0) return scenario;
+	const overrides = scenario.seedDataTables ?? [];
+	const resets = seedTables
+		.filter((table) => !overrides.some((override) => override.name === table.name))
+		.map((table) => ({ ...table, rows: table.rows ?? [] }));
+	return { ...scenario, seedDataTables: [...resets, ...overrides] };
+}
+
+/** Each scenario resets the seed tables, and the Agent may write to them, so the
+ *  scenarios of a direct run with seed tables must not interleave. */
+export function directRunNeedsSerialScenarios(testCase: WorkflowTestCase): boolean {
+	return isDirectAgentRun(testCase) && inlineSeedTables(testCase).length > 0;
+}
+
+export interface DirectAgentRunConfig {
+	lane: Lane;
+	testCase: WorkflowTestCase;
+	/** Recorded on the seed thread, as for an assistant build. */
+	caseIdentity: { fileSlug: string; iteration: number };
+	logger: EvalLogger;
+}
+
+/** What the setup made so far. Kept on failure too, so cleanup finds it. */
+interface DirectRunState {
+	/** A project made for this run, which cleanup deletes. Absent when the lane
+	 *  cannot make one and the run uses the owner's personal project. */
+	buildProject?: BuildProject;
+	/** Where the run lives: the build project, else the personal project. */
+	projectId?: string;
+	threadId?: string;
+	workflowIds: string[];
+	dataTableIds: string[];
+	agentIds: string[];
+	folderIds: string[];
+	/** Seed table name → the table as restored, so a scenario table of that name
+	 *  fills the table the Agent's tools point at. */
+	seedTablesByName: Map<string, { id: string; name: string }>;
+}
+
+/**
+ * Restore the case's seeded Agent and return it as an agent-anchored build.
+ * Never throws: a setup failure resolves to an unsuccessful build marked
+ * `seedingFailed`, which the pipeline owns as a framework issue.
+ */
+export async function prepareDirectAgentRun(config: DirectAgentRunConfig): Promise<BuildResult> {
+	const state: DirectRunState = {
+		workflowIds: [],
+		dataTableIds: [],
+		agentIds: [],
+		folderIds: [],
+		seedTablesByName: new Map(),
+	};
+	try {
+		return await runSetup(config, state);
+	} catch (error: unknown) {
+		return {
+			...artifactFields(state),
+			success: false,
+			error: `Direct Agent setup failed: ${extractErrorMessage(error)}`,
+			seedingFailed: true,
+		};
+	}
+}
+
+async function runSetup(config: DirectAgentRunConfig, state: DirectRunState): Promise<BuildResult> {
+	const seed = inlineSeedOf(config.testCase);
+	state.buildProject = await createBuildProject(config.lane);
+	const projectId =
+		state.buildProject?.projectId ?? (await config.lane.client.getPersonalProjectId());
+	state.projectId = projectId;
+	state.threadId = await createSeedThread(config, projectId);
+	await pinDeclaredCredentials(config, state.threadId, projectId);
+	await restoreSeed(config.lane, state.threadId, state, seed);
+	const tableIdsByName = await createDirectScenarioTables(
+		config,
+		state.threadId,
+		state.seedTablesByName,
+	);
+	addNew(state.dataTableIds, Object.values(tableIdsByName));
+	config.logger.info(`  Direct Agent run: restored ${String(state.agentIds.length)} Agent(s)`);
+	// Every seed table is reset before each scenario (`withSeedTableResets`), so
+	// the reset needs all of them by name, not only the scenario tables.
+	const seedTableIds = Object.fromEntries(
+		[...state.seedTablesByName].map(([name, table]) => [name, table.id]),
+	);
+	return successfulRun(config.testCase, state, { ...seedTableIds, ...tableIdsByName });
+}
+
+function successfulRun(
+	testCase: WorkflowTestCase,
+	state: DirectRunState,
+	tableIdsByName: Record<string, string>,
+): BuildResult {
+	return {
+		...artifactFields(state),
+		success: true,
+		artifactRefs: [agentUnderTest(testCase, state)],
+		seededScenarioTableIdsByName: tableIdsByName,
+		// No assistant turn, so nothing was said. Defined (not absent) because the
+		// pipeline reads a transcript as "the build ran", which makes the Agent runnable.
+		transcript: [],
+	};
+}
+
+/** Scenario tables are created empty here and row-seeded per scenario. */
+async function createDirectScenarioTables(
+	config: DirectAgentRunConfig,
+	threadId: string,
+	seedTablesByName: DirectRunState['seedTablesByName'],
+): Promise<Record<string, string>> {
+	const declared = dedupeScenarioSeedTables(
+		config.testCase.executionScenarios ?? [],
+		config.logger,
+	);
+	const tables = await createScenarioTables(
+		config.lane.client,
+		threadId,
+		declared,
+		seedTablesByName,
+	);
+	return tables.idsByName;
+}
+
+function addNew(target: string[], ids: string[]): void {
+	for (const id of ids) if (!target.includes(id)) target.push(id);
+}
+
+/** The schema guarantees an inline seed with Agents; this narrows for TS. */
+function inlineSeedOf(testCase: WorkflowTestCase): ConversationSeed {
+	const seed = testCase.seed;
+	if (seed?.mode !== 'inline' || seed.agents.length === 0) {
+		throw new Error('agentRun.mode direct needs an inline seed with at least one Agent');
+	}
+	return seed;
+}
+
+/** Undefined when the lane cannot make one. The run then uses the personal
+ *  project, which cleanup must never delete (as in build-workflow.ts). */
+async function createBuildProject(lane: Lane): Promise<BuildProject | undefined> {
+	const provide = buildProjectProvider(lane);
+	return provide ? await provide() : undefined;
+}
+
+/** The restore, the credential pin and the scenario tables are all scoped to a thread. */
+async function createSeedThread(config: DirectAgentRunConfig, projectId: string): Promise<string> {
+	const threadId = randomUUID();
+	await config.lane.client.ensureThread(threadId, projectId, {
+		evalCase: config.caseIdentity.fileSlug,
+		evalIteration: config.caseIdentity.iteration,
+	});
+	return threadId;
+}
+
+/** The restore binds each model only to a pinned credential of its provider's
+ *  type, so the pin has to land first. A credential the case marks broken or
+ *  blank keeps its real connection test, as on an assistant build. */
+async function pinDeclaredCredentials(
+	config: DirectAgentRunConfig,
+	threadId: string,
+	projectId: string,
+): Promise<void> {
+	const declared = config.testCase.credentials ?? [];
+	const created = await createDeclaredCredentials(config.lane.client, declared, {
+		onCreated: (id) => config.lane.createdCredentialIds.add(id),
+		logger: config.logger,
+		projectId,
+	});
+	const bypass = created.filter((_, i) => declared[i]?.valid !== false && !declared[i]?.blank);
+	await config.lane.client.setThreadCredentialAllowlist(
+		threadId,
+		created.map((credential) => credential.id),
+		bypass.map((credential) => credential.id),
+	);
+}
+
+/** Restore the Agents and what their tools use. No messages: there is no
+ *  conversation to continue. The restore rewrites the seed table ids inside the
+ *  Agents' tools to the restored tables' ids (server-side, same request). Table
+ *  names stay as authored: the build project is fresh, so nothing can collide,
+ *  and a tool that names its table still finds it. */
+async function restoreSeed(
+	lane: Lane,
+	threadId: string,
+	state: DirectRunState,
+	seed: ConversationSeed,
+): Promise<void> {
+	const remapped = remapSeedArtifactIds(seed);
+	const result = await lane.client.restoreThread(
+		threadId,
+		[],
+		remapped.workflows,
+		remapped.dataTables,
+		remapped.agents,
+		{ folders: remapped.folders, uniquifyNames: false },
+	);
+	recordRestored(state, remapped, result);
+}
+
+type RestoreResult = Awaited<ReturnType<Lane['client']['restoreThread']>>;
+
+/** Restored ids are positional to the seed's arrays. */
+function recordRestored(
+	state: DirectRunState,
+	remapped: ConversationSeed,
+	result: RestoreResult,
+): void {
+	state.workflowIds.push(...result.workflowIds);
+	state.dataTableIds.push(...result.dataTableIds);
+	state.agentIds.push(...result.agentIds);
+	state.folderIds.push(...rootFolderIds(remapped, result.folderIds));
+	remapped.dataTables.forEach((table, index) => {
+		const id = result.dataTableIds[index];
+		if (id !== undefined) state.seedTablesByName.set(table.name, { id, name: table.name });
+	});
+}
+
+/** A folder delete cascades to its subfolders, so cleanup needs the roots only. */
+function rootFolderIds(seed: ConversationSeed, folderIds: string[]): string[] {
+	return seed.folders.flatMap((folder, index) =>
+		folder.parentFolderId === undefined && folderIds[index] ? [folderIds[index]] : [],
+	);
+}
+
+/** Restored ids are positional to `seed.agents`. */
+function agentUnderTest(testCase: WorkflowTestCase, state: DirectRunState) {
+	const seedAgents = testCase.seed?.mode === 'inline' ? testCase.seed.agents : [];
+	const index = agentUnderTestIndex(testCase.agentRun, seedAgents);
+	const id = state.agentIds[index];
+	if (id === undefined) {
+		throw new Error(`The restore produced no Agent for seed index ${String(index)}`);
+	}
+	return { type: 'agent' as const, id, projectId: state.projectId };
+}
+
+function artifactFields(state: DirectRunState) {
+	return {
+		workflowJsons: [],
+		createdWorkflowIds: state.workflowIds,
+		createdDataTableIds: state.dataTableIds,
+		createdAgentIds: state.agentIds,
+		createdFolderIds: state.folderIds,
+		...(state.threadId ? { seedThreadId: state.threadId } : {}),
+		...(state.buildProject ? { buildProjectId: state.buildProject.projectId } : {}),
+		...(state.buildProject?.userId ? { buildUserId: state.buildProject.userId } : {}),
+	};
+}

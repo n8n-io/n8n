@@ -193,6 +193,43 @@ describe('caseDisplayPrompt', () => {
 			}),
 		).toBe('[attached workflow: Batch loop]');
 	});
+
+	describe('a direct Agent run, which has no conversation', () => {
+		const directRun = { agentRun: { mode: 'direct' as const } };
+
+		it('uses the case description', () => {
+			expect(
+				caseDisplayPrompt({
+					...directRun,
+					description: 'Quotes the trial price',
+					seed: seedDeclaringAgent(),
+				}),
+			).toBe('Quotes the trial price');
+		});
+
+		it('falls back to the name of the Agent under test', () => {
+			expect(caseDisplayPrompt({ ...directRun, seed: seedDeclaringAgent() })).toBe(
+				'[agent: Notion research]',
+			);
+		});
+
+		it('names the Agent agentRun.agent picks', () => {
+			const seed = seedDeclaringAgent();
+			if (seed.mode !== 'inline') throw new Error('inline seed expected');
+			const second = {
+				...seed.agents[0],
+				id: 'AgentBillingSeed0002',
+				config: { ...seed.agents[0].config, name: 'Billing' },
+			};
+
+			expect(
+				caseDisplayPrompt({
+					agentRun: { mode: 'direct', agent: 'AgentBillingSeed0002' },
+					seed: { ...seed, agents: [...seed.agents, second] },
+				}),
+			).toBe('[agent: Billing]');
+		});
+	});
 });
 
 describe('transcriptAsText', () => {

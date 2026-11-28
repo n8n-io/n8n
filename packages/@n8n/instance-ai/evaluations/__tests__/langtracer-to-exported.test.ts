@@ -423,3 +423,57 @@ describe('attach round-trip: write → export → reparse', () => {
 		);
 	});
 });
+
+// lang-tracer's case-write contract has none of the agent runtime fields yet
+// (L2/L3). Pushing would strip them and land a broken assistant case, so the
+// push refuses with a reason that names the field.
+describe('unsupportedPushReason for the agent runtime contract', () => {
+	const scenario = { name: 's', description: 'd', dataSetup: 'x', successCriteria: 'y' };
+	const inlineSeed = (dataTables: unknown[] = []) =>
+		({
+			mode: 'inline',
+			messages: [],
+			workflows: [],
+			dataTables,
+			agents: [],
+			folders: [],
+			projects: [],
+		}) as unknown as EvalTestCaseInput['seed'];
+
+	it.each([
+		['agentRun', diskCase({ agentRun: { mode: 'direct' } })],
+		[
+			'userTurns',
+			diskCase({ executionScenarios: [{ ...scenario, userTurns: { goal: 'g', maxTurns: 6 } }] }),
+		],
+		[
+			'sessions',
+			diskCase({ executionScenarios: [{ ...scenario, sessions: [{ goal: 'g', maxTurns: 6 }] }] }),
+		],
+		['expectations', diskCase({ executionScenarios: [{ ...scenario, expectations: ['e'] }] })],
+		[
+			'expectations',
+			diskCase({
+				executionScenarios: [
+					{ ...scenario, sessions: [{ goal: 'g', maxTurns: 6, expectations: ['e'] }] },
+				],
+			}),
+		],
+		[
+			'rows',
+			diskCase({
+				seed: inlineSeed([{ id: 'dt-price-list-0001', name: 'prices', columns: [], rows: [{}] }]),
+			}),
+		],
+	])('refuses a case that uses %s', (field, input) => {
+		expect(unsupportedPushReason(input)).toContain(field);
+	});
+
+	it('still allows a seed table without rows', () => {
+		const input = diskCase({
+			seed: inlineSeed([{ id: 'dt-price-list-0001', name: 'prices', columns: [] }]),
+		});
+
+		expect(unsupportedPushReason(input)).toBeNull();
+	});
+});

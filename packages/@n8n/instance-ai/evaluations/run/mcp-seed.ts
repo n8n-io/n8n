@@ -256,8 +256,9 @@ async function restoreArtifacts(
 }
 
 /** Create the scenario tables empty, reusing a seed table of the same name, as the
- *  orchestrator path does: the seeded workflow is bound to that one. */
-async function createScenarioTables(
+ *  orchestrator path does: the seeded workflow is bound to that one. Shared with
+ *  the direct Agent run (run/direct-agent-run.ts). */
+export async function createScenarioTables(
 	ownerClient: N8nClient,
 	threadId: string,
 	declared: InstanceAiEvalSeedDataTable[],

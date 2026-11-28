@@ -2,6 +2,7 @@ import type { InstanceAiEvalAgentExecutionResult } from '@n8n/api-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { N8nClient } from '../clients/n8n-client';
+import { verifyChecklist } from '../checklist/verifier';
 import { executeAgentScenario } from '../harness/agent-execution';
 import type { EvalLogger } from '../harness/logger';
 import { reseedScenarioTables } from '../harness/seed-tables';
@@ -144,5 +145,23 @@ describe('executeAgentScenario', () => {
 			10_000,
 		);
 		expect(client.getPersonalProjectId).not.toHaveBeenCalled();
+	});
+
+	it('hands the judge the expectations with the success criteria', async () => {
+		const client = clientRecording([]);
+
+		await executeAgentScenario(
+			client,
+			'agent-1',
+			{ ...scenario, expectations: ['Names Ada', 'Shows her email'] },
+			'AGENT CONTEXT',
+			silentLogger,
+			10_000,
+		);
+
+		const [checklist] = vi.mocked(verifyChecklist).mock.calls.at(-1) ?? [];
+		expect(checklist?.[0].description).toBe(
+			'The agent finds Ada.\n\nAll of these must hold:\n- Names Ada\n- Shows her email',
+		);
 	});
 });
