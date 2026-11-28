@@ -47,6 +47,7 @@ import { useSetupPageViewTelemetry } from '../instanceAiSetup.telemetry';
 import type { InstanceAiConnectionKind } from '../constants';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 import SandboxSettingsRow from '../components/settings/SandboxSettingsRow.vue';
+import SavedLoginsSettingsRows from '@/features/ai/instanceAi/components/settings/SavedLoginsSettingsRows.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -83,6 +84,9 @@ const showCloudBrowserRow = computed(
 		settingsStore.isAiGatewayEnabled &&
 		settingsStore.isAiGatewayCloudUbbEnabled &&
 		!settingsStore.isMultiMain,
+);
+const isCloudBrowserOn = computed(
+	() => !isOff.value && (store.settings?.cloudBrowserEnabled ?? true),
 );
 const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
 const isSelfManaged = computed(() => !store.isProxyEnabled && !store.isCloudManaged);
@@ -675,6 +679,8 @@ const { isLoading: isSavingModelTraining, executeImmediate: handleModelTrainingT
 							/>
 						</template>
 					</N8nSettingsRow>
+
+					<SavedLoginsSettingsRows v-if="showCloudBrowserRow" :disabled="!isCloudBrowserOn" />
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 

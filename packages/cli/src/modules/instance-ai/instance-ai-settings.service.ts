@@ -18,6 +18,7 @@ import type {
 	InstanceAiPermissions,
 	McpToolPermissions,
 	InstanceAiSandboxProvider,
+	InstanceAiSavedLoginsMode,
 	InstanceAiSetupState,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -59,6 +60,10 @@ import {
 export { INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY, INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY };
 
 import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
+import {
+	type SavedLoginPolicy,
+	toSavedLoginSite,
+} from './browser/cloud-browser-saved-login-policy';
 import { withModelName } from './model-config-name';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import {
@@ -252,6 +257,8 @@ interface PersistedAdminSettings {
 	n8nSandboxServiceUrl?: string | null;
 	browserUseEnabled?: boolean;
 	cloudBrowserEnabled?: boolean;
+	cloudBrowserSavedLoginsMode?: InstanceAiSavedLoginsMode;
+	cloudBrowserSavedLoginSites?: string[];
 }
 
 interface PreparedConnection {
@@ -302,6 +309,12 @@ export class InstanceAiSettingsService {
 	private adminModelName: string | null = null;
 
 	private searchDisabled = false;
+
+	/** Off until an admin turns saved logins on. */
+	private cloudBrowserSavedLoginsMode: InstanceAiSavedLoginsMode = 'off';
+
+	/** Registrable domains, for example "github.com". */
+	private cloudBrowserSavedLoginSites: string[] = [];
 
 	private adminN8nSandboxServiceUrl: string | null = null;
 
@@ -511,6 +524,8 @@ export class InstanceAiSettingsService {
 			},
 			browserUseEnabled: this.isBrowserUseEnabled(),
 			cloudBrowserEnabled: this.isCloudBrowserEnabled(),
+			cloudBrowserSavedLoginsMode: this.cloudBrowserSavedLoginsMode,
+			cloudBrowserSavedLoginSites: [...this.cloudBrowserSavedLoginSites],
 		};
 	}
 
@@ -562,6 +577,12 @@ export class InstanceAiSettingsService {
 		if (update.cloudBrowserEnabled === true && !(await this.cloudBrowserService.isAvailable())) {
 			throw new UnprocessableRequestError('The cloud browser is not available on this instance');
 		}
+		if (update.cloudBrowserSavedLoginSites) {
+			update.cloudBrowserSavedLoginSites = await toSavedLoginSites(
+				update.cloudBrowserSavedLoginSites,
+			);
+		}
+
 		const {
 			modelCredentialId: initialModelCredentialId,
 			daytonaCredentialId: initialDaytonaCredentialId,
@@ -736,6 +757,7 @@ export class InstanceAiSettingsService {
 				const previous = this.snapshotAdminSettings();
 				const next = this.mergeAdminSettings(current, settingsUpdate);
 				if (clearsSandboxConnection) delete next.sandboxProvider;
+				if (clearsSavedLoginSites(current, settingsUpdate)) next.cloudBrowserSavedLoginSites = [];
 
 				const nextModelCredentialId =
 					modelCredentialId === undefined ? currentModelCredentialId : modelCredentialId;
@@ -1262,6 +1284,21 @@ export class InstanceAiSettingsService {
 		return this.config.cloudBrowserEnabled;
 	}
 
+	/** Whether the admin lets users save cloud browser logins on at least one site. */
+	isCloudBrowserSavedLoginsEnabled(): boolean {
+		const mode = this.cloudBrowserSavedLoginsMode;
+		// "Listed sites only" with no sites allows no site.
+		return mode !== 'off' && !(mode === 'only' && this.cloudBrowserSavedLoginSites.length === 0);
+	}
+
+	/** The admin's current rules for saved cloud browser logins. */
+	getCloudBrowserSavedLoginPolicy(): SavedLoginPolicy {
+		return {
+			mode: this.cloudBrowserSavedLoginsMode,
+			sites: [...this.cloudBrowserSavedLoginSites],
+		};
+	}
+
 	/** Whether workflow building can use the required sandbox workspace. */
 	getSandboxStatus(): InstanceAiSandboxStatus {
 		const provider = this.sandboxSettingsService.getProvider();
@@ -1746,6 +1783,10 @@ export class InstanceAiSettingsService {
 			c.browserUseEnabled = persisted.browserUseEnabled;
 		if (persisted.cloudBrowserEnabled !== undefined)
 			c.cloudBrowserEnabled = persisted.cloudBrowserEnabled;
+		if (persisted.cloudBrowserSavedLoginsMode !== undefined)
+			this.cloudBrowserSavedLoginsMode = persisted.cloudBrowserSavedLoginsMode;
+		if (persisted.cloudBrowserSavedLoginSites !== undefined)
+			this.cloudBrowserSavedLoginSites = persisted.cloudBrowserSavedLoginSites;
 	}
 
 	private readUserPreferences(user: User): UserInstanceAiPreferences {
@@ -1768,6 +1809,8 @@ export class InstanceAiSettingsService {
 			n8nSandboxServiceUrl: this.adminN8nSandboxServiceUrl,
 			browserUseEnabled: c.browserUseEnabled,
 			cloudBrowserEnabled: c.cloudBrowserEnabled,
+			cloudBrowserSavedLoginsMode: this.cloudBrowserSavedLoginsMode,
+			cloudBrowserSavedLoginSites: [...this.cloudBrowserSavedLoginSites],
 		};
 	}
 
@@ -1851,4 +1894,43 @@ export class InstanceAiSettingsService {
 				});
 		}
 	}
+}
+
+/**
+ * Whether the update changes the saved login mode without sending sites. The list belongs to its
+ * mode, so an allow list never becomes a block list, and a list does not come back after saved
+ * logins were off. Compared with the stored settings, so a main with old settings applies it too.
+ */
+function clearsSavedLoginSites(
+	current: PersistedAdminSettings,
+	update: Pick<
+		PersistedAdminSettings,
+		'cloudBrowserSavedLoginsMode' | 'cloudBrowserSavedLoginSites'
+	>,
+): boolean {
+	const newMode = update.cloudBrowserSavedLoginsMode;
+	if (newMode === undefined || newMode === current.cloudBrowserSavedLoginsMode) return false;
+	return update.cloudBrowserSavedLoginSites === undefined;
+}
+
+/**
+ * The registrable domains of the sites an admin entered, without duplicates. Rejects an entry
+ * without one, so the admin sees the mistake instead of a site that never matches.
+ */
+async function toSavedLoginSites(sites: string[]): Promise<string[]> {
+	const domains = new Set<string>();
+	const invalidSites: string[] = [];
+	for (const site of sites) {
+		const domain = await toSavedLoginSite(site);
+		if (domain) domains.add(domain);
+		else invalidSites.push(site);
+	}
+	// All of them at once, so the admin can fix every site before the next save. The settings
+	// page builds its own message from `invalidSites`.
+	if (invalidSites.length > 0) {
+		throw new UnprocessableRequestError('Some saved login sites are not valid', undefined, {
+			invalidSites,
+		});
+	}
+	return [...domains];
 }

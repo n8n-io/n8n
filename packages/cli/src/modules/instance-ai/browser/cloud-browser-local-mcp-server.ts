@@ -21,7 +21,6 @@ import type {
 import { BaseError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { isIP } from 'node:net';
 import { z } from 'zod';
 
 import {
@@ -42,6 +41,11 @@ import type {
 	CloudBrowserSessionScope,
 	CloudBrowserSessionProvider,
 } from './cloud-browser-session-provider';
+import {
+	isSavedLoginAllowed,
+	registrableDomainOf,
+	type SavedLoginPolicy,
+} from './cloud-browser-saved-login-policy';
 
 /**
  * Toolkit tools the model gets in the cloud browser. A tool that is not in this list stays
@@ -200,10 +204,11 @@ export interface CloudBrowserLocalMcpServerOptions {
 	scope: CloudBrowserSessionScope;
 	sessionProvider: CloudBrowserSessionProvider;
 	/**
-	 * Gives each session a login profile, so the user can save the logins they make in it. Without
-	 * it, sessions open without a login profile.
+	 * Returns the admin's current rules for saved logins. Each session on an allowed site gets a
+	 * login profile, so the user can save the logins they make in it. Read at each check, so a
+	 * change applies to a running task. Without it, sessions open without a login profile.
 	 */
-	enableLoginProfiles?: boolean;
+	getSavedLoginPolicy?: () => SavedLoginPolicy;
 	createToolkit: (connectUrl?: string) => BrowserToolkit;
 	toolContext: ToolContext;
 	/**
@@ -524,6 +529,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		}
 		// The agent did not ask the user to sign in.
 		if (!this.userControl?.isLoginRequest) return false;
+		// The admin can turn saved logins off for the site while the session runs.
+		if (!this.isSavedLoginAllowedNow(loginProfile.domain)) return false;
 		// The user must be on the site of the login profile. Otherwise we cannot tell where they
 		// signed in. SSO sign-ins redirect back to this site, so this check still holds.
 		const currentDomain = await registrableDomainOf(currentHostOf(session));
@@ -914,34 +921,48 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	}
 
 	/**
-	 * The user's saved login for the site of `host`. Returns nothing without login profiles, or when
-	 * the host has no registrable domain, for example an IP address.
+	 * The site of `host` when its sessions get a login profile: the admin's saved login rules allow
+	 * it. Returns nothing without rules, or when the host has no registrable domain, for example an
+	 * IP address.
 	 */
+	private async loginProfileDomainOf(host: string): Promise<string | undefined> {
+		const domain = await registrableDomainOf(host);
+		if (!domain) return undefined;
+		if (!this.isSavedLoginAllowedNow(domain)) return undefined;
+		return domain;
+	}
+
+	/** Whether the admin's current rules allow saved logins for `domain`. False without rules. */
+	private isSavedLoginAllowedNow(domain: string): boolean {
+		const policy = this.options.getSavedLoginPolicy?.();
+		if (!policy) return false;
+		return isSavedLoginAllowed(policy, domain);
+	}
+
+	/** The user's saved login for the site of `host`, when the site gets a login profile. */
 	private async findSavedLoginProfileForHost(
 		host: string,
 	): Promise<CloudBrowserLoginProfile | undefined> {
-		if (!this.options.enableLoginProfiles) return undefined;
-		const domain = await registrableDomainOf(host);
+		const domain = await this.loginProfileDomainOf(host);
 		if (!domain) return undefined;
 		return await this.findSavedLoginProfileForDomain(domain);
 	}
 
 	/**
 	 * The login profile for a new session on `host`: the saved login when the user chose to use it,
-	 * or else a new login profile. Returns nothing without login profiles, when the host has no
-	 * registrable domain, or when no login profile could be created. The session then opens without
-	 * one: a failure here must not stop the task from browsing.
+	 * or else a new login profile. Returns nothing when the site gets no login profile, or when no
+	 * login profile could be created. The session then opens without one: a failure here must not
+	 * stop the task from browsing.
 	 */
 	private async chooseLoginProfile(
 		host: string,
 		savedLoginProfile: CloudBrowserLoginProfile | undefined,
 		savedLoginDecision: SavedLoginDecision | undefined,
 	): Promise<CloudBrowserLoginProfile | undefined> {
-		if (!this.options.enableLoginProfiles) return undefined;
 		if (savedLoginProfile && savedLoginDecision === 'allowWithSavedLogin') {
 			return savedLoginProfile;
 		}
-		const domain = await registrableDomainOf(host);
+		const domain = await this.loginProfileDomainOf(host);
 		if (!domain) return undefined;
 		return await this.createLoginProfile(domain);
 	}
@@ -1120,6 +1141,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		location: SessionLocation,
 	): Promise<boolean> {
 		if (loginProfile.savedAt) return true;
+		// The admin can turn saved logins off for the site after the user chose to save.
+		if (!this.isSavedLoginAllowedNow(loginProfile.domain)) return false;
 		return await this.saveLoginProfile(loginProfile, location);
 	}
 
@@ -1348,16 +1371,6 @@ function withWindowChangeNote(
 /** The host of the current window, or nothing when the connection is gone or it has none. */
 function currentHostOf(session: ActiveSession): string | undefined {
 	return hostOfWindow(session, session.windows.at(-1));
-}
-
-/**
- * The registrable domain of a host, for example "linkedin.com" for "accounts.linkedin.com".
- * Nothing for an IP address or a host without one, such as "localhost".
- */
-async function registrableDomainOf(host: string | undefined): Promise<string | undefined> {
-	if (!host || isIP(host)) return undefined;
-	const { get: getRegistrableDomain } = await import('psl');
-	return getRegistrableDomain(host) ?? undefined;
 }
 
 /**

@@ -35,6 +35,29 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError, showMessage }),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({ useRootStore: () => ({ restApiContext: {} }) }));
+const { instanceAiSettings, dismissedCallouts, dismissCallout } = vi.hoisted(() => ({
+	instanceAiSettings: { cloudBrowserSavedLoginsEnabled: true, canManage: false },
+	dismissedCallouts: new Set<string>(),
+	dismissCallout: vi.fn(),
+}));
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({
+		moduleSettings: {
+			'instance-ai': {
+				cloudBrowserSavedLoginsEnabled: instanceAiSettings.cloudBrowserSavedLoginsEnabled,
+			},
+		},
+	}),
+}));
+vi.mock('@/features/ai/instanceAi/instanceAiSettings.store', () => ({
+	useInstanceAiSettingsStore: () => ({ canManage: instanceAiSettings.canManage }),
+}));
+vi.mock('@/app/composables/useCalloutHelpers', () => ({
+	useCalloutHelpers: () => ({
+		isCalloutDismissed: (callout: string) => dismissedCallouts.has(callout),
+		dismissCallout,
+	}),
+}));
 
 const renderComponent = createComponentRenderer(InstanceAiBrowserPreview);
 
@@ -97,6 +120,10 @@ describe('InstanceAiBrowserPreview', () => {
 			.mockResolvedValue({ domain: 'shop.example.com' });
 		showError.mockReset();
 		showMessage.mockReset();
+		instanceAiSettings.cloudBrowserSavedLoginsEnabled = true;
+		instanceAiSettings.canManage = false;
+		dismissedCallouts.clear();
+		dismissCallout.mockReset();
 	});
 
 	describe('placeholder', () => {
@@ -571,6 +598,66 @@ describe('InstanceAiBrowserPreview', () => {
 			await flushPromises();
 			return rendered;
 		}
+
+		describe('when saved logins are off', () => {
+			const callout = 'instance-ai-browser-preview-saved-logins-off';
+
+			beforeEach(() => {
+				instanceAiSettings.cloudBrowserSavedLoginsEnabled = false;
+				vi.mocked(fetchCloudBrowserLoginToSave).mockResolvedValue({});
+			});
+
+			it('gives control back and tells an admin where to turn them on', async () => {
+				instanceAiSettings.canManage = true;
+
+				const { getByTestId } = await takeOverAndFinish(live, loginRequest);
+
+				expect(postCloudBrowserReturnControl).toHaveBeenCalledTimes(1);
+				expect(getByTestId(callout)).toHaveTextContent(
+					"n8n Assistant can save your logins, so you don't have to sign in next time.",
+				);
+				expect(getByTestId(`${callout}-settings`)).toHaveTextContent('Turn on saved logins');
+			});
+
+			it('tells a member to ask an admin', async () => {
+				const { getByTestId, queryByTestId } = await takeOverAndFinish(live, loginRequest);
+
+				expect(getByTestId(callout)).toHaveTextContent(
+					'Ask an instance owner or admin to turn it on.',
+				);
+				expect(queryByTestId(`${callout}-settings`)).not.toBeInTheDocument();
+			});
+
+			it('dismisses it for good', async () => {
+				const { getByTestId } = await takeOverAndFinish(live, loginRequest);
+
+				await fireEvent.click(getByTestId(`${callout}-dismiss`));
+
+				expect(dismissCallout).toHaveBeenCalledWith('instance-ai-saved-logins-off');
+			});
+
+			it('does not show it once the user dismissed it', async () => {
+				dismissedCallouts.add('instance-ai-saved-logins-off');
+
+				const { queryByTestId } = await takeOverAndFinish(live, loginRequest);
+
+				expect(queryByTestId(callout)).not.toBeInTheDocument();
+			});
+
+			it('does not show it when the agent did not ask the user to sign in', async () => {
+				const { queryByTestId } = await takeOverAndFinish(live, { reason: 'Solve the puzzle' });
+
+				expect(queryByTestId(callout)).not.toBeInTheDocument();
+			});
+
+			it('does not show it when saved logins are on', async () => {
+				instanceAiSettings.cloudBrowserSavedLoginsEnabled = true;
+
+				const { queryByTestId } = await takeOverAndFinish(live, loginRequest);
+
+				expect(queryByTestId(callout)).not.toBeInTheDocument();
+			});
+		});
 
 		it('asks to save the login after a sign-in the agent asked for', async () => {
 			const { getByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);

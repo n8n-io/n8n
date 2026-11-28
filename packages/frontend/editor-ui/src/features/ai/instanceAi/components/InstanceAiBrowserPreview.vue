@@ -7,15 +7,26 @@
  * control back. After a takeover the agent did not ask for, it first asks what the user changed.
  */
 import type { InstanceAiCloudBrowserLoginToSaveResponse } from '@n8n/api-types';
-import { FocusScope, N8nButton, N8nIcon, N8nInput, N8nLink, N8nText } from '@n8n/design-system';
+import {
+	FocusScope,
+	N8nButton,
+	N8nCallout,
+	N8nIcon,
+	N8nIconButton,
+	N8nInput,
+	N8nLink,
+	N8nText,
+} from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { withTimeout } from '@n8n/utils/promise/with-timeout';
 import { computed, inject, ref, watch } from 'vue';
 
 import { VIEWS } from '@/app/constants';
 import { CLOUD_BROWSER_LOGIN_TO_SAVE_TIMEOUT } from '@/app/constants/durations';
+import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import {
 	fetchCloudBrowserLoginToSave,
 	postCloudBrowserReturnControl,
@@ -27,7 +38,8 @@ import {
 	CloudBrowserLiveViewsKey,
 	embeddedLiveViewUrl,
 } from '../composables/useCloudBrowserLiveViews';
-import { SAVED_LOGINS_QUERY } from '../constants';
+import { INSTANCE_AI_SETTINGS_VIEW, SAVED_LOGINS_QUERY } from '@/features/ai/instanceAi/constants';
+import { useInstanceAiSettingsStore } from '@/features/ai/instanceAi/instanceAiSettings.store';
 import { formatSavedLoginDate } from '@/features/ai/instanceAi/cloudBrowserAgents';
 import { useThread } from '../instanceAi.store';
 
@@ -40,6 +52,9 @@ const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
 const thread = useThread();
+const settingsStore = useSettingsStore();
+const instanceAiSettingsStore = useInstanceAiSettingsStore();
+const { isCalloutDismissed, dismissCallout } = useCalloutHelpers();
 const liveViews = inject(CloudBrowserLiveViewsKey, undefined);
 const refreshLiveView = inject(CloudBrowserLiveViewRefreshKey, undefined);
 
@@ -196,7 +211,29 @@ async function onDone() {
 		isSaveLoginDialogOpen.value = true;
 		return;
 	}
+	if (props.userAction?.isLoginRequest && !isSavedLoginsEnabled.value) {
+		hasSignedInWithSavedLoginsOff.value = true;
+	}
 	void returnControl();
+}
+
+const SAVED_LOGINS_OFF_CALLOUT = 'instance-ai-saved-logins-off';
+
+/** Whether the admin lets users save logins. When it is off, no save is offered after a sign-in. */
+const isSavedLoginsEnabled = computed(
+	() => settingsStore.moduleSettings?.['instance-ai']?.cloudBrowserSavedLoginsEnabled ?? false,
+);
+
+/** The user signed in for the agent while saved logins are off. */
+const hasSignedInWithSavedLoginsOff = ref(false);
+
+/** Tells the user that saved logins exist, once, until they dismiss it. */
+const showsSavedLoginsOffCallout = computed(
+	() => hasSignedInWithSavedLoginsOff.value && !isCalloutDismissed(SAVED_LOGINS_OFF_CALLOUT),
+);
+
+async function dismissSavedLoginsOffCallout() {
+	await dismissCallout(SAVED_LOGINS_OFF_CALLOUT);
 }
 
 /** Asks the server which login the user can save now. No domain when they cannot save one. */
@@ -311,6 +348,34 @@ function showSaveLoginResult(loginWillBeSaved: boolean, domain: string | undefin
 				{{ i18n.baseText('instanceAi.cloudBrowser.done') }}
 			</N8nButton>
 		</div>
+		<N8nCallout
+			v-if="showsSavedLoginsOffCallout"
+			theme="info"
+			:class="$style.savedLoginsOffCallout"
+			data-test-id="instance-ai-browser-preview-saved-logins-off"
+		>
+			{{ i18n.baseText('instanceAi.cloudBrowser.savedLoginsOff') }}
+			<N8nLink
+				v-if="instanceAiSettingsStore.canManage"
+				:to="{ name: INSTANCE_AI_SETTINGS_VIEW }"
+				size="small"
+				data-test-id="instance-ai-browser-preview-saved-logins-off-settings"
+			>
+				{{ i18n.baseText('instanceAi.cloudBrowser.savedLoginsOffSettingsLink') }}
+			</N8nLink>
+			<span v-else>{{ i18n.baseText('instanceAi.cloudBrowser.savedLoginsOffAskAdmin') }}</span>
+			<template #trailingContent>
+				<N8nIconButton
+					icon="x"
+					variant="ghost"
+					size="small"
+					:aria-label="i18n.baseText('generic.dismiss')"
+					:title="i18n.baseText('generic.dismiss')"
+					data-test-id="instance-ai-browser-preview-saved-logins-off-dismiss"
+					@click="dismissSavedLoginsOffCallout"
+				/>
+			</template>
+		</N8nCallout>
 		<div :class="$style.stage">
 			<div :class="$style.window">
 				<div
@@ -515,6 +580,10 @@ function showSaveLoginResult(loginWillBeSaved: boolean, domain: string | undefin
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	min-width: 0;
+}
+
+.savedLoginsOffCallout {
+	margin: var(--spacing--2xs) var(--spacing--sm) 0;
 }
 
 .bannerTitle {

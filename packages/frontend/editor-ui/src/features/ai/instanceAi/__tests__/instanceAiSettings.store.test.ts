@@ -358,6 +358,19 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
 		});
 
+		it('keeps the error of a failed save until the next save works', async () => {
+			const error = new Error('Some saved login sites are not valid');
+			mockUpdateSettings.mockRejectedValueOnce(error);
+			store.setField('cloudBrowserSavedLoginSites', ['localhost']);
+
+			await expect(store.save()).resolves.toBe(false);
+			expect(store.lastSaveError).toBe(error);
+
+			store.setField('cloudBrowserSavedLoginSites', ['github.com']);
+			await expect(store.save()).resolves.toBe(true);
+			expect(store.lastSaveError).toBeUndefined();
+		});
+
 		it('keeps an enablement save successful when the module refresh fails', async () => {
 			await expect(store.persistEnabled(true)).resolves.toBe(true);
 

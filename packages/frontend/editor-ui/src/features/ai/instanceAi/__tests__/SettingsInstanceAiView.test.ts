@@ -3,9 +3,10 @@ import { ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
+import { ResponseError } from '@n8n/rest-api-client';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM } from '@/app/constants';
 import SettingsInstanceAiView from '../views/SettingsInstanceAiView.vue';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -15,6 +16,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { fetchSettings } from '../instanceAi.settings.api';
 import type { FrontendModuleSettings } from '@n8n/api-types';
 import type { ICredentialType } from 'n8n-workflow';
+import type { NavigationGuard } from 'vue-router';
 import { defaultModuleSettings } from './createThreadComponentRenderer';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { MODEL_TRAINING_OPT_OUT_EXPERIMENT } from '@/app/constants/experiments';
@@ -84,6 +86,14 @@ vi.mock('../composables/useInstanceCredentialTest', async (importOriginal) => {
 	};
 });
 
+let routeLeaveGuard: NavigationGuard | undefined;
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	onBeforeRouteLeave: (guard: NavigationGuard) => {
+		routeLeaveGuard = guard;
+	},
+}));
+
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: confirmMock }),
 }));
@@ -129,6 +139,14 @@ function setModuleSettings(
 	instanceAi: FrontendModuleSettings['instance-ai'],
 ) {
 	settingsStore.moduleSettings = { 'instance-ai': instanceAi };
+}
+
+/** The error the server sends when it rejects saved login sites. */
+function invalidSitesError(invalidSites: string[]) {
+	return new ResponseError('Some saved login sites are not valid', {
+		httpStatusCode: 422,
+		meta: { invalidSites },
+	});
 }
 
 describe('SettingsInstanceAiView', () => {
@@ -1099,6 +1117,404 @@ describe('SettingsInstanceAiView', () => {
 
 			expect(setField).toHaveBeenCalledWith('cloudBrowserEnabled', false);
 			expect(save).toHaveBeenCalled();
+		});
+
+		describe('saved logins', () => {
+			const setSavedLogins = (
+				settings: Partial<{
+					cloudBrowserEnabled: boolean;
+					cloudBrowserSavedLoginsMode: 'off' | 'all' | 'only' | 'except';
+					cloudBrowserSavedLoginSites: string[];
+				}>,
+			) => {
+				store.$patch({ settings: { ...store.settings, ...settings } });
+				// The view loads the settings when it mounts, so the load returns the same ones.
+				vi.mocked(fetchSettings).mockResolvedValue(store.settings as never);
+			};
+
+			beforeEach(() => {
+				enableGatewayCredits();
+			});
+
+			it('saves the mode the admin picks', async () => {
+				const setField = vi.spyOn(store, 'setField');
+				const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+				const { getByTestId } = renderComponent();
+
+				await selectOption(
+					getByTestId('n8n-agent-saved-logins-mode'),
+					'settings.n8nAgent.savedLogins.mode.off',
+				);
+
+				expect(setField).toHaveBeenCalledWith('cloudBrowserSavedLoginsMode', 'off');
+				expect(save).toHaveBeenCalled();
+			});
+
+			describe('a mode change with sites in the list', () => {
+				beforeEach(() => {
+					setSavedLogins({
+						cloudBrowserSavedLoginsMode: 'only',
+						cloudBrowserSavedLoginSites: ['github.com', 'gitlab.com'],
+					});
+				});
+
+				it('asks before it clears the sites, then saves the mode', async () => {
+					confirmMock.mockResolvedValue(MODAL_CONFIRM);
+					const setField = vi.spyOn(store, 'setField');
+					const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+					const { getByTestId } = renderComponent();
+					await flushPromises();
+
+					await selectOption(
+						getByTestId('n8n-agent-saved-logins-mode'),
+						'settings.n8nAgent.savedLogins.mode.except',
+					);
+					await flushPromises();
+
+					expect(confirmMock).toHaveBeenCalledWith(
+						'settings.n8nAgent.savedLogins.clearSites.allowedDescription',
+						expect.objectContaining({
+							title: 'settings.n8nAgent.savedLogins.clearSites.title',
+						}),
+					);
+					expect(setField).toHaveBeenCalledWith('cloudBrowserSavedLoginsMode', 'except');
+					expect(save).toHaveBeenCalled();
+				});
+
+				it('keeps the mode and the sites when the admin cancels', async () => {
+					confirmMock.mockResolvedValue(MODAL_CANCEL);
+					const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+					const { getByTestId } = renderComponent();
+					await flushPromises();
+
+					await selectOption(
+						getByTestId('n8n-agent-saved-logins-mode'),
+						'settings.n8nAgent.savedLogins.mode.except',
+					);
+					await flushPromises();
+
+					expect(save).not.toHaveBeenCalled();
+					expect(getByTestId('n8n-agent-saved-login-sites')).toHaveValue('github.com\ngitlab.com');
+				});
+			});
+
+			it('says that the blocked sites will be deleted when the list blocks sites', async () => {
+				setSavedLogins({
+					cloudBrowserSavedLoginsMode: 'except',
+					cloudBrowserSavedLoginSites: ['bank.com'],
+				});
+				confirmMock.mockResolvedValue(MODAL_CANCEL);
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+
+				await selectOption(
+					getByTestId('n8n-agent-saved-logins-mode'),
+					'settings.n8nAgent.savedLogins.mode.all',
+				);
+				await flushPromises();
+
+				expect(confirmMock).toHaveBeenCalledWith(
+					'settings.n8nAgent.savedLogins.clearSites.blockedDescription',
+					expect.anything(),
+				);
+			});
+
+			it('empties the box when the mode changes, also of sites that were not saved', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				confirmMock.mockResolvedValue(MODAL_CONFIRM);
+				vi.spyOn(store, 'save').mockResolvedValue(true);
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+				await fireEvent.update(sites, 'bank.com');
+
+				await selectOption(
+					getByTestId('n8n-agent-saved-logins-mode'),
+					'settings.n8nAgent.savedLogins.mode.except',
+				);
+				await flushPromises();
+
+				expect(sites).toHaveValue('');
+			});
+
+			it('keeps the box when the mode change is not saved', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				confirmMock.mockResolvedValue(MODAL_CONFIRM);
+				vi.spyOn(store, 'save').mockResolvedValue(false);
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+				await fireEvent.update(sites, 'bank.com');
+
+				await selectOption(
+					getByTestId('n8n-agent-saved-logins-mode'),
+					'settings.n8nAgent.savedLogins.mode.except',
+				);
+				await flushPromises();
+
+				expect(sites).toHaveValue('bank.com');
+			});
+
+			it('changes the mode without asking when the list is empty', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+
+				await selectOption(
+					getByTestId('n8n-agent-saved-logins-mode'),
+					'settings.n8nAgent.savedLogins.mode.all',
+				);
+				await flushPromises();
+
+				expect(confirmMock).not.toHaveBeenCalled();
+				expect(save).toHaveBeenCalled();
+			});
+
+			it('locks the mode when the virtual browser is off', () => {
+				setSavedLogins({ cloudBrowserEnabled: false });
+
+				const { getByTestId } = renderComponent();
+
+				expect(getByTestId('n8n-agent-saved-logins-mode').querySelector('input')).toBeDisabled();
+			});
+
+			it.each(['off', 'all'] as const)('hides the site list in the %s mode', (mode) => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: mode });
+
+				const { queryByTestId } = renderComponent();
+
+				expect(queryByTestId('n8n-agent-saved-login-sites')).toBeNull();
+			});
+
+			it.each([
+				{ mode: 'only' as const, label: 'settings.n8nAgent.savedLogins.sites.allowedLabel' },
+				{ mode: 'except' as const, label: 'settings.n8nAgent.savedLogins.sites.blockedLabel' },
+			])('shows the site list with the $mode label', ({ mode, label }) => {
+				setSavedLogins({
+					cloudBrowserSavedLoginsMode: mode,
+					cloudBrowserSavedLoginSites: ['github.com', 'linkedin.com'],
+				});
+
+				const { getByLabelText } = renderComponent();
+
+				expect(getByLabelText(label)).toHaveValue('github.com\nlinkedin.com');
+			});
+
+			it('saves the sites from lines, commas and spaces with the Save button', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				const setField = vi.spyOn(store, 'setField');
+				const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+
+				await fireEvent.update(sites, 'github.com\nlinkedin.com, example.com  gitlab.com');
+				await fireEvent.click(getByTestId('n8n-agent-saved-login-sites-save'));
+
+				expect(setField).toHaveBeenCalledWith('cloudBrowserSavedLoginSites', [
+					'github.com',
+					'linkedin.com',
+					'example.com',
+					'gitlab.com',
+				]);
+				expect(save).toHaveBeenCalled();
+			});
+
+			it('shows the Save button only while the list has unsaved changes', async () => {
+				setSavedLogins({
+					cloudBrowserSavedLoginsMode: 'only',
+					cloudBrowserSavedLoginSites: ['github.com'],
+				});
+				const { getByTestId, queryByTestId } = renderComponent();
+				await flushPromises();
+
+				expect(queryByTestId('n8n-agent-saved-login-sites-save')).toBeNull();
+
+				await fireEvent.update(
+					getByTestId('n8n-agent-saved-login-sites'),
+					'github.com\ngitlab.com',
+				);
+
+				expect(getByTestId('n8n-agent-saved-login-sites-save')).toBeVisible();
+			});
+
+			it('does not save when the list loses focus', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+
+				await fireEvent.update(sites, 'github.com');
+				await fireEvent.blur(sites);
+
+				expect(save).not.toHaveBeenCalled();
+			});
+
+			it('keeps the typed list and shows the error when the server rejects a site', async () => {
+				setSavedLogins({
+					cloudBrowserSavedLoginsMode: 'only',
+					cloudBrowserSavedLoginSites: ['github.com'],
+				});
+				vi.spyOn(store, 'save').mockImplementation(async () => {
+					store.lastSaveError = invalidSitesError(['localhost', 'notion']);
+					return false;
+				});
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+
+				await fireEvent.update(sites, 'github.com\nlinkedin.com\nlocalhost');
+				await fireEvent.click(getByTestId('n8n-agent-saved-login-sites-save'));
+				await flushPromises();
+
+				expect(sites).toHaveValue('github.com\nlinkedin.com\nlocalhost');
+				// This file's i18n mock returns the key.
+				expect(getByTestId('n8n-agent-saved-login-sites-error')).toHaveTextContent(
+					'settings.n8nAgent.savedLogins.sites.invalid',
+				);
+			});
+
+			it('keeps the typed list without a message when the save fails for another reason', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				vi.spyOn(store, 'save').mockImplementation(async () => {
+					store.lastSaveError = new Error('Network error');
+					return false;
+				});
+				const { getByTestId, queryByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+
+				await fireEvent.update(sites, 'github.com');
+				await fireEvent.click(getByTestId('n8n-agent-saved-login-sites-save'));
+				await flushPromises();
+
+				expect(sites).toHaveValue('github.com');
+				expect(queryByTestId('n8n-agent-saved-login-sites-error')).toBeNull();
+			});
+
+			describe('leaving the page', () => {
+				async function leave() {
+					const next = vi.fn();
+					await routeLeaveGuard?.({} as never, {} as never, next);
+					await flushPromises();
+					return next;
+				}
+
+				async function renderWithUnsavedSites() {
+					setSavedLogins({ cloudBrowserSavedLoginsMode: 'except' });
+					const rendered = renderComponent();
+					await flushPromises();
+					await fireEvent.update(rendered.getByTestId('n8n-agent-saved-login-sites'), 'bank.com');
+					return rendered;
+				}
+
+				it('leaves without asking when the list has no unsaved changes', async () => {
+					setSavedLogins({ cloudBrowserSavedLoginsMode: 'except' });
+					renderComponent();
+					await flushPromises();
+
+					const next = await leave();
+
+					expect(confirmMock).not.toHaveBeenCalled();
+					expect(next).toHaveBeenCalledWith();
+				});
+
+				it('saves the list and leaves when the admin chooses Save', async () => {
+					await renderWithUnsavedSites();
+					confirmMock.mockResolvedValue(MODAL_CONFIRM);
+					vi.spyOn(store, 'save').mockImplementation(async () => {
+						store.settings = { ...store.settings!, cloudBrowserSavedLoginSites: ['bank.com'] };
+						return true;
+					});
+
+					const next = await leave();
+
+					expect(store.save).toHaveBeenCalledTimes(1);
+					expect(next).toHaveBeenCalledWith(true);
+				});
+
+				it('stays on the page when the save fails', async () => {
+					await renderWithUnsavedSites();
+					confirmMock.mockResolvedValue(MODAL_CONFIRM);
+					const save = vi.spyOn(store, 'save').mockResolvedValue(false);
+
+					const next = await leave();
+
+					expect(save).toHaveBeenCalledTimes(1);
+					expect(next).toHaveBeenCalledWith(false);
+				});
+
+				it('leaves without saving when the admin chooses that', async () => {
+					await renderWithUnsavedSites();
+					confirmMock.mockResolvedValue(MODAL_CANCEL);
+					const save = vi.spyOn(store, 'save');
+
+					const next = await leave();
+
+					expect(save).not.toHaveBeenCalled();
+					expect(next).toHaveBeenCalledWith();
+				});
+
+				it('stays on the page when the admin closes the dialog', async () => {
+					await renderWithUnsavedSites();
+					confirmMock.mockResolvedValue(MODAL_CLOSE);
+
+					const next = await leave();
+
+					expect(next).toHaveBeenCalledWith(false);
+				});
+			});
+
+			it('keeps the typed list when another setting is saved', async () => {
+				setSavedLogins({
+					cloudBrowserSavedLoginsMode: 'only',
+					cloudBrowserSavedLoginSites: ['github.com'],
+				});
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+				await fireEvent.update(sites, 'github.com\ngitlab.com');
+
+				// A save of another setting replaces the settings, with the same stored sites.
+				store.settings = { ...store.settings!, cloudBrowserSavedLoginSites: ['github.com'] };
+				await flushPromises();
+
+				expect(sites).toHaveValue('github.com\ngitlab.com');
+			});
+
+			it('shows the stored list when the stored sites change', async () => {
+				setSavedLogins({
+					cloudBrowserSavedLoginsMode: 'only',
+					cloudBrowserSavedLoginSites: ['github.com'],
+				});
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+
+				store.settings = { ...store.settings!, cloudBrowserSavedLoginSites: ['gitlab.com'] };
+				await flushPromises();
+
+				expect(getByTestId('n8n-agent-saved-login-sites')).toHaveValue('gitlab.com');
+			});
+
+			it('hides the error when the admin edits the list', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				vi.spyOn(store, 'save').mockImplementation(async () => {
+					store.lastSaveError = invalidSitesError(['localhost']);
+					return false;
+				});
+				const { getByTestId, queryByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+				await fireEvent.update(sites, 'localhost');
+				await fireEvent.click(getByTestId('n8n-agent-saved-login-sites-save'));
+				await flushPromises();
+
+				await fireEvent.update(sites, 'github.com');
+
+				expect(queryByTestId('n8n-agent-saved-login-sites-error')).toBeNull();
+			});
 		});
 	});
 

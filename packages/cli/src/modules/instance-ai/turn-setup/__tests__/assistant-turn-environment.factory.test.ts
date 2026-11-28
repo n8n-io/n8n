@@ -70,6 +70,7 @@ function createSetupFactory() {
 				cloudBrowserEnabled: false,
 			})),
 			getPermissions: vi.fn(() => ({})),
+			getCloudBrowserSavedLoginPolicy: vi.fn(() => ({ mode: 'all', sites: [] as string[] })),
 			getSandboxStatus: vi.fn(() => ({ workflowBuilderAvailable: true })),
 			isMcpAccessEnabled: vi.fn(() => false),
 		},
@@ -296,6 +297,35 @@ describe('AssistantTurnEnvironmentFactory', () => {
 				);
 			},
 		);
+
+		it("passes the cloud browser task a way to read the admin's current saved login rules", async () => {
+			const { factory, fields } = createSetupFactory();
+			fields.settingsService.getAdminSettings.mockResolvedValue({
+				browserUseEnabled: false,
+				cloudBrowserEnabled: true,
+			});
+			const cloudBrowser = {
+				isAvailable: vi.fn(async () => true),
+				startTask: vi.fn(async () => ({ status: 'started' as const, taskId: 'task-1' })),
+			};
+
+			const { orchestrationContext } = await factory.create(
+				params,
+				createRuntime({ cloudBrowser }),
+			);
+			await orchestrationContext.startCloudBrowserTask?.({ title: 'Sign in', goal: 'Sign in' });
+			const [, runOptions] = cloudBrowser.startTask.mock.calls[0] as unknown as [
+				unknown,
+				{ getSavedLoginPolicy: () => unknown },
+			];
+			// The admin changes the rules while the task runs.
+			fields.settingsService.getCloudBrowserSavedLoginPolicy.mockReturnValue({
+				mode: 'except',
+				sites: ['github.com'],
+			});
+
+			expect(runOptions.getSavedLoginPolicy()).toEqual({ mode: 'except', sites: ['github.com'] });
+		});
 
 		it('creates no workflow draft publisher when the draft preview gate is off', async () => {
 			const { factory } = createSetupFactory();

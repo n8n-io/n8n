@@ -12,6 +12,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AiGatewayBrowserUseService } from '@/services/ai-gateway-browser-use.service';
 
 import type { BrowserDomainGate } from '../browser/browser.helpers';
+import type { SavedLoginPolicy } from '../browser/cloud-browser-saved-login-policy';
 import { CloudBrowserLocalMcpServer } from '../browser/cloud-browser-local-mcp-server';
 import { InstanceAiCloudBrowserService } from '../browser/instance-ai-cloud-browser.service';
 
@@ -31,6 +32,7 @@ describe('InstanceAiCloudBrowserService', () => {
 	const credentialsService = mock<CredentialsService>();
 	const postHogClient = mock<PostHogClient>();
 	const domainGate: BrowserDomainGate = { tracker: mock<DomainAccessTracker>(), runId: 'run-1' };
+	const getSavedLoginPolicy = (): SavedLoginPolicy => ({ mode: 'all', sites: [] });
 	let release: ReturnType<typeof vi.spyOn>;
 	let aiGatewayBrowserUseService: ReturnType<typeof mock<AiGatewayBrowserUseService>>;
 	let logger: ReturnType<typeof mock<Logger>>;
@@ -58,10 +60,24 @@ describe('InstanceAiCloudBrowserService', () => {
 	afterEach(() => vi.restoreAllMocks());
 
 	it('creates one server per task and finds it by task id', async () => {
-		const first = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
-		const other = await service.createServer('user-1', 'thread-1', 'task-2', domainGate);
+		const first = await service.createServer(
+			'user-1',
+			'thread-1',
+			'task-1',
+			domainGate,
+			getSavedLoginPolicy,
+		);
+		const other = await service.createServer(
+			'user-1',
+			'thread-1',
+			'task-2',
+			domainGate,
+			getSavedLoginPolicy,
+		);
 
-		expect(await service.createServer('user-1', 'thread-1', 'task-1', domainGate)).toBe(first);
+		expect(
+			await service.createServer('user-1', 'thread-1', 'task-1', domainGate, getSavedLoginPolicy),
+		).toBe(first);
 		expect(other).not.toBe(first);
 		expect(service.findServer('task-1')).toBe(first);
 		expect(service.findServer('task-3')).toBeUndefined();
@@ -69,23 +85,23 @@ describe('InstanceAiCloudBrowserService', () => {
 
 	it('creates a single server when two calls for a task overlap', async () => {
 		const [first, second] = await Promise.all([
-			service.createServer('user-1', 'thread-1', 'task-1', domainGate),
-			service.createServer('user-1', 'thread-1', 'task-1', domainGate),
+			service.createServer('user-1', 'thread-1', 'task-1', domainGate, getSavedLoginPolicy),
+			service.createServer('user-1', 'thread-1', 'task-1', domainGate, getSavedLoginPolicy),
 		]);
 
 		expect(second).toBe(first);
 	});
 
 	it('refuses to return a task server to another user', async () => {
-		await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		await service.createServer('user-1', 'thread-1', 'task-1', domainGate, getSavedLoginPolicy);
 
-		await expect(service.createServer('user-2', 'thread-2', 'task-1', domainGate)).rejects.toThrow(
-			'Cloud browser task belongs to another user',
-		);
+		await expect(
+			service.createServer('user-2', 'thread-2', 'task-1', domainGate, getSavedLoginPolicy),
+		).rejects.toThrow('Cloud browser task belongs to another user');
 	});
 
 	it('releases the task server and forgets it', async () => {
-		await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		await service.createServer('user-1', 'thread-1', 'task-1', domainGate, getSavedLoginPolicy);
 
 		await service.release('task-1');
 
@@ -100,8 +116,8 @@ describe('InstanceAiCloudBrowserService', () => {
 	});
 
 	it('releases every server on shutdown', async () => {
-		await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
-		await service.createServer('user-2', 'thread-2', 'task-2', domainGate);
+		await service.createServer('user-1', 'thread-1', 'task-1', domainGate, getSavedLoginPolicy);
+		await service.createServer('user-2', 'thread-2', 'task-2', domainGate, getSavedLoginPolicy);
 
 		await service.shutdown();
 
@@ -111,7 +127,13 @@ describe('InstanceAiCloudBrowserService', () => {
 	});
 
 	it('gives the server the real browser tools, without the hidden ones', async () => {
-		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		const server = await service.createServer(
+			'user-1',
+			'thread-1',
+			'task-1',
+			domainGate,
+			getSavedLoginPolicy,
+		);
 
 		const names = server.getAvailableTools().map((tool) => tool.name);
 
@@ -131,7 +153,7 @@ describe('InstanceAiCloudBrowserService', () => {
 	});
 
 	it('limits the page events that each page keeps and releases console handles', async () => {
-		await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		await service.createServer('user-1', 'thread-1', 'task-1', domainGate, getSavedLoginPolicy);
 
 		expect(createBrowserTools).toHaveBeenCalledWith(
 			{ mode: 'remote' },
@@ -140,20 +162,34 @@ describe('InstanceAiCloudBrowserService', () => {
 	});
 
 	it('gives the server the domain gate', async () => {
-		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		const server = await service.createServer(
+			'user-1',
+			'thread-1',
+			'task-1',
+			domainGate,
+			getSavedLoginPolicy,
+		);
 
 		expect(server['domainGate']).toBe(domainGate);
 	});
 
 	it('gives the server the newest domain gate when a task asks for it again', async () => {
-		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		const server = await service.createServer(
+			'user-1',
+			'thread-1',
+			'task-1',
+			domainGate,
+			getSavedLoginPolicy,
+		);
 		const newGate: BrowserDomainGate = {
 			tracker: mock<DomainAccessTracker>(),
 			runId: 'run-2',
 			permissionMode: 'blocked',
 		};
 
-		expect(await service.createServer('user-1', 'thread-1', 'task-1', newGate)).toBe(server);
+		expect(
+			await service.createServer('user-1', 'thread-1', 'task-1', newGate, getSavedLoginPolicy),
+		).toBe(server);
 		expect(server['domainGate']).toBe(newGate);
 	});
 
@@ -161,7 +197,13 @@ describe('InstanceAiCloudBrowserService', () => {
 		const user = mock<User>({ id: 'user-1' });
 		userRepository.findOne.mockResolvedValue(user);
 		credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-1' } as never);
-		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		const server = await service.createServer(
+			'user-1',
+			'thread-1',
+			'task-1',
+			domainGate,
+			getSavedLoginPolicy,
+		);
 		const payload = { name: 'Acme API', type: 'httpHeaderAuth', data: {} };
 
 		const result = await server['options'].toolContext.createCredential?.(payload);
@@ -174,8 +216,20 @@ describe('InstanceAiCloudBrowserService', () => {
 	});
 
 	it('gives each task its own secrets buffer', async () => {
-		const first = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
-		const second = await service.createServer('user-1', 'thread-1', 'task-2', domainGate);
+		const first = await service.createServer(
+			'user-1',
+			'thread-1',
+			'task-1',
+			domainGate,
+			getSavedLoginPolicy,
+		);
+		const second = await service.createServer(
+			'user-1',
+			'thread-1',
+			'task-2',
+			domainGate,
+			getSavedLoginPolicy,
+		);
 
 		first['options'].toolContext.secretsBuffer?.capture('acme', 'apiKey', 'secret');
 
@@ -183,7 +237,13 @@ describe('InstanceAiCloudBrowserService', () => {
 	});
 
 	it('gives the tools the system temp folder, without creating a folder', async () => {
-		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		const server = await service.createServer(
+			'user-1',
+			'thread-1',
+			'task-1',
+			domainGate,
+			getSavedLoginPolicy,
+		);
 
 		expect(server['options'].toolContext.dir).toBe(tmpdir());
 		expect(mkdir).not.toHaveBeenCalled();
@@ -191,7 +251,13 @@ describe('InstanceAiCloudBrowserService', () => {
 
 	describe('getLiveView', () => {
 		it("passes on the server's live view to its owner", async () => {
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			vi.spyOn(server, 'getLiveView').mockResolvedValue({
 				status: 'live',
 				liveViewUrl: 'https://live.example.com/1',
@@ -209,7 +275,13 @@ describe('InstanceAiCloudBrowserService', () => {
 			['another user', 'user-2', 'thread-1'],
 			['another thread', 'user-1', 'thread-2'],
 		])('reads as not found for %s', async (_, userId, threadId) => {
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			const getLiveView = vi.spyOn(server, 'getLiveView');
 
 			expect(await service.getLiveView(userId, threadId, 'task-1')).toEqual({
@@ -227,7 +299,13 @@ describe('InstanceAiCloudBrowserService', () => {
 
 	describe('giveControlToUser', () => {
 		it("passes on the server's answer to its owner", async () => {
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			const giveControlToUser = vi
 				.spyOn(server, 'giveControlToUser')
 				.mockReturnValue('No browser session is open.');
@@ -242,7 +320,13 @@ describe('InstanceAiCloudBrowserService', () => {
 			['another user', 'user-2', 'thread-1'],
 			['another thread', 'user-1', 'thread-2'],
 		])('says the task is not running for %s', async (_, userId, threadId) => {
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			const giveControlToUser = vi.spyOn(server, 'giveControlToUser');
 
 			expect(service.giveControlToUser(userId, threadId, 'task-1')).toBe(
@@ -260,7 +344,13 @@ describe('InstanceAiCloudBrowserService', () => {
 
 	describe('getLoginToSave', () => {
 		it("passes on the server's answer to its owner, with ISO dates", async () => {
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			const getLoginToSave = vi.spyOn(server, 'getLoginToSave').mockResolvedValue({
 				domain: 'example.com',
 				replacesSavedLoginFrom: new Date('2026-11-12T10:00:00.000Z'),
@@ -274,7 +364,13 @@ describe('InstanceAiCloudBrowserService', () => {
 		});
 
 		it('returns only the site when the save replaces no saved login', async () => {
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			vi.spyOn(server, 'getLoginToSave').mockResolvedValue({ domain: 'example.com' });
 
 			expect(await service.getLoginToSave('user-1', 'thread-1', 'task-1')).toEqual({
@@ -286,7 +382,13 @@ describe('InstanceAiCloudBrowserService', () => {
 			['another user', 'user-2', 'thread-1'],
 			['another thread', 'user-1', 'thread-2'],
 		])('returns no site for %s', async (_, userId, threadId) => {
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			const getLoginToSave = vi.spyOn(server, 'getLoginToSave');
 
 			expect(await service.getLoginToSave(userId, threadId, 'task-1')).toEqual({});
@@ -300,7 +402,13 @@ describe('InstanceAiCloudBrowserService', () => {
 
 	describe('returnControlToAgent', () => {
 		it('passes the note to the server of its owner', async () => {
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			const returnControlToAgent = vi
 				.spyOn(server, 'returnControlToAgent')
 				.mockResolvedValue({ returned: true, loginWillBeSaved: false });
@@ -315,7 +423,13 @@ describe('InstanceAiCloudBrowserService', () => {
 			['another user', 'user-2', 'thread-1'],
 			['another thread', 'user-1', 'thread-2'],
 		])('says the task is not running for %s', async (_, userId, threadId) => {
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			const returnControlToAgent = vi.spyOn(server, 'returnControlToAgent');
 
 			expect(await service.returnControlToAgent(userId, threadId, 'task-1')).toEqual({
@@ -374,28 +488,34 @@ describe('InstanceAiCloudBrowserService', () => {
 	it('refuses to create a server when the gateway cannot create browser sessions', async () => {
 		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(false);
 
-		await expect(service.createServer('user-1', 'thread-1', 'task-1', domainGate)).rejects.toThrow(
-			'The cloud browser is not available on this instance',
-		);
+		await expect(
+			service.createServer('user-1', 'thread-1', 'task-1', domainGate, getSavedLoginPolicy),
+		).rejects.toThrow('The cloud browser is not available on this instance');
 		expect(service.findServer('task-1')).toBeUndefined();
 	});
 
 	it('refuses to create a server when the rollout flag is off', async () => {
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
 
-		await expect(service.createServer('user-1', 'thread-1', 'task-1', domainGate)).rejects.toThrow(
-			'The cloud browser is not available on this instance',
-		);
+		await expect(
+			service.createServer('user-1', 'thread-1', 'task-1', domainGate, getSavedLoginPolicy),
+		).rejects.toThrow('The cloud browser is not available on this instance');
 		expect(service.findServer('task-1')).toBeUndefined();
 	});
 
 	it('lets a later call create the server after a creation fails', async () => {
 		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValueOnce(false);
 		await expect(
-			service.createServer('user-1', 'thread-1', 'task-1', domainGate),
+			service.createServer('user-1', 'thread-1', 'task-1', domainGate, getSavedLoginPolicy),
 		).rejects.toThrow();
 
-		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		const server = await service.createServer(
+			'user-1',
+			'thread-1',
+			'task-1',
+			domainGate,
+			getSavedLoginPolicy,
+		);
 
 		expect(service.findServer('task-1')).toBe(server);
 	});
@@ -406,7 +526,13 @@ describe('InstanceAiCloudBrowserService', () => {
 			connectUrl: 'wss://connect',
 			region: 'us-west-2',
 		});
-		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		const server = await service.createServer(
+			'user-1',
+			'thread-1',
+			'task-1',
+			domainGate,
+			getSavedLoginPolicy,
+		);
 		const { sessionProvider, scope } = server['options'];
 
 		await expect(sessionProvider.createSession(scope, { proxyCountry: 'DE' })).resolves.toEqual({
@@ -436,7 +562,13 @@ describe('InstanceAiCloudBrowserService', () => {
 			connectUrl: 'wss://connect',
 			region: 'eu-central-1',
 		});
-		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		const server = await service.createServer(
+			'user-1',
+			'thread-1',
+			'task-1',
+			domainGate,
+			getSavedLoginPolicy,
+		);
 		const { sessionProvider, scope } = server['options'];
 
 		await expect(sessionProvider.createSession(scope)).resolves.toStrictEqual({
@@ -455,7 +587,13 @@ describe('InstanceAiCloudBrowserService', () => {
 				connectUrl: 'wss://connect',
 				region,
 			});
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			const { sessionProvider, scope } = server['options'];
 
 			await expect(sessionProvider.createSession(scope)).resolves.toStrictEqual({
@@ -471,7 +609,13 @@ describe('InstanceAiCloudBrowserService', () => {
 			debuggerFullscreenUrl: 'https://live.example.com/1',
 			pages: [],
 		});
-		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		const server = await service.createServer(
+			'user-1',
+			'thread-1',
+			'task-1',
+			domainGate,
+			getSavedLoginPolicy,
+		);
 		const { sessionProvider, scope } = server['options'];
 
 		await expect(sessionProvider.getSessionLiveViewUrl(scope, 'sess-1')).resolves.toBe(
@@ -498,7 +642,13 @@ describe('InstanceAiCloudBrowserService', () => {
 		});
 
 		it('gets the live view of the tab with the target id', async () => {
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			const { sessionProvider, scope } = server['options'];
 
 			await expect(
@@ -508,7 +658,13 @@ describe('InstanceAiCloudBrowserService', () => {
 		});
 
 		it('gets the first tab and logs a warning when no tab has the target id', async () => {
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			const { sessionProvider, scope } = server['options'];
 
 			await expect(
@@ -521,7 +677,13 @@ describe('InstanceAiCloudBrowserService', () => {
 		});
 
 		it('gets the first tab without a target id', async () => {
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			const { sessionProvider, scope } = server['options'];
 
 			await expect(sessionProvider.getSessionLiveViewUrl(scope, 'sess-1')).resolves.toBe(
@@ -605,7 +767,13 @@ describe('InstanceAiCloudBrowserService', () => {
 		const attribution = { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task-1' };
 
 		async function getSessionProvider() {
-			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const server = await service.createServer(
+				'user-1',
+				'thread-1',
+				'task-1',
+				domainGate,
+				getSavedLoginPolicy,
+			);
 			return server['options'];
 		}
 

@@ -1992,6 +1992,153 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
+	describe('cloud browser saved logins setting', () => {
+		const admin = mock<User>({ id: 'admin-1' });
+
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+		});
+
+		it('turns saved logins off by default', async () => {
+			const settings = await service.getAdminSettings();
+
+			expect(settings.cloudBrowserSavedLoginsMode).toBe('off');
+			expect(settings.cloudBrowserSavedLoginSites).toEqual([]);
+			expect(service.isCloudBrowserSavedLoginsEnabled()).toBe(false);
+		});
+
+		it.each([
+			{ mode: 'off' as const, enabled: false },
+			{ mode: 'all' as const, enabled: true },
+			// No sites are listed, so no site is allowed.
+			{ mode: 'only' as const, enabled: false },
+			{ mode: 'except' as const, enabled: true },
+		])('saves the $mode mode', async ({ mode, enabled }) => {
+			const result = await service.updateAdminSettings(
+				{ cloudBrowserSavedLoginsMode: mode },
+				admin,
+			);
+
+			expect(result.cloudBrowserSavedLoginsMode).toBe(mode);
+			expect(persistedSettingsValue).toContain(`"cloudBrowserSavedLoginsMode":"${mode}"`);
+			expect(service.isCloudBrowserSavedLoginsEnabled()).toBe(enabled);
+		});
+
+		it('allows saved logins in the "only" mode when a site is listed', async () => {
+			await service.updateAdminSettings(
+				{ cloudBrowserSavedLoginsMode: 'only', cloudBrowserSavedLoginSites: ['github.com'] },
+				admin,
+			);
+
+			expect(service.isCloudBrowserSavedLoginsEnabled()).toBe(true);
+			expect(service.getCloudBrowserSavedLoginPolicy()).toEqual({
+				mode: 'only',
+				sites: ['github.com'],
+			});
+		});
+
+		it('saves the registrable domain of each site once', async () => {
+			const result = await service.updateAdminSettings(
+				{
+					cloudBrowserSavedLoginSites: [
+						'https://www.github.com/login',
+						'GitHub.com',
+						'accounts.linkedin.com',
+					],
+				},
+				admin,
+			);
+
+			expect(result.cloudBrowserSavedLoginSites).toEqual(['github.com', 'linkedin.com']);
+			expect(jsonParse<Record<string, unknown>>(persistedSettingsValue ?? '{}')).toMatchObject({
+				cloudBrowserSavedLoginSites: ['github.com', 'linkedin.com'],
+			});
+		});
+
+		it('rejects the sites without a registrable domain, names all of them, and saves nothing', async () => {
+			const update = service.updateAdminSettings(
+				{ cloudBrowserSavedLoginSites: ['localhost', 'github.com', '10.0.0.1'] },
+				admin,
+			);
+
+			await expect(update).rejects.toThrow(UnprocessableRequestError);
+			await expect(update).rejects.toMatchObject({
+				meta: { invalidSites: ['localhost', '10.0.0.1'] },
+			});
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+			expect((await service.getAdminSettings()).cloudBrowserSavedLoginSites).toEqual([]);
+		});
+
+		describe('a mode change', () => {
+			beforeEach(async () => {
+				await service.updateAdminSettings(
+					{ cloudBrowserSavedLoginsMode: 'only', cloudBrowserSavedLoginSites: ['github.com'] },
+					admin,
+				);
+			});
+
+			it.each(['except', 'off', 'all'] as const)(
+				'clears the sites when the mode becomes %s',
+				async (mode) => {
+					const result = await service.updateAdminSettings(
+						{ cloudBrowserSavedLoginsMode: mode },
+						admin,
+					);
+
+					expect(result.cloudBrowserSavedLoginsMode).toBe(mode);
+					expect(result.cloudBrowserSavedLoginSites).toEqual([]);
+				},
+			);
+
+			it('keeps the sites that the same update sends', async () => {
+				const result = await service.updateAdminSettings(
+					{ cloudBrowserSavedLoginsMode: 'except', cloudBrowserSavedLoginSites: ['gitlab.com'] },
+					admin,
+				);
+
+				expect(result.cloudBrowserSavedLoginSites).toEqual(['gitlab.com']);
+			});
+
+			it('compares with the stored mode when this main still has an older one', async () => {
+				const staleService = createService();
+				// Another main stored "only" with a list. This main still has the default, "off".
+				persistedSettingsValue = JSON.stringify({
+					cloudBrowserSavedLoginsMode: 'only',
+					cloudBrowserSavedLoginSites: ['github.com'],
+				});
+
+				const result = await staleService.updateAdminSettings(
+					{ cloudBrowserSavedLoginsMode: 'off' },
+					admin,
+				);
+
+				expect(result.cloudBrowserSavedLoginSites).toEqual([]);
+			});
+
+			it('keeps the sites when the mode stays the same', async () => {
+				const result = await service.updateAdminSettings(
+					{ cloudBrowserSavedLoginsMode: 'only' },
+					admin,
+				);
+
+				expect(result.cloudBrowserSavedLoginSites).toEqual(['github.com']);
+			});
+		});
+
+		it('loads the saved mode and sites from the database', async () => {
+			persistedSettingsValue = JSON.stringify({
+				cloudBrowserSavedLoginsMode: 'except',
+				cloudBrowserSavedLoginSites: ['github.com'],
+			});
+
+			await service.loadFromDb();
+
+			const settings = await service.getAdminSettings();
+			expect(settings.cloudBrowserSavedLoginsMode).toBe('except');
+			expect(settings.cloudBrowserSavedLoginSites).toEqual(['github.com']);
+		});
+	});
+
 	describe('getAdminSettings env-configured flags', () => {
 		beforeEach(() => {
 			aiService.isProxyEnabled.mockReturnValue(false);

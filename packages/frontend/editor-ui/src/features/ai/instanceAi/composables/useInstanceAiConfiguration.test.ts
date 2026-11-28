@@ -28,6 +28,8 @@ function createSettings(
 		},
 		browserUseEnabled: true,
 		cloudBrowserEnabled: false,
+		cloudBrowserSavedLoginsMode: 'all',
+		cloudBrowserSavedLoginSites: [],
 		...overrides,
 	};
 }

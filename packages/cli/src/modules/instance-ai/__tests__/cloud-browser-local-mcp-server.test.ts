@@ -22,6 +22,7 @@ import {
 } from '../browser/cloud-browser-local-mcp-server';
 import type { BrowserDomainGate } from '../browser/browser.helpers';
 import type { CloudBrowserSessionProvider } from '../browser/cloud-browser-session-provider';
+import type { SavedLoginPolicy } from '../browser/cloud-browser-saved-login-policy';
 
 describe('CloudBrowserLocalMcpServer', () => {
 	const scope = { userId: 'user-1', threadId: 'thread-1', taskId: 'task-1' };
@@ -159,7 +160,14 @@ describe('CloudBrowserLocalMcpServer', () => {
 		};
 	}
 
-	function setup({ enableLoginProfiles = true }: { enableLoginProfiles?: boolean } = {}) {
+	function setup(options: { savedLoginPolicy?: SavedLoginPolicy } = {}) {
+		// A test can pass `savedLoginPolicy: undefined` to open the server without a policy.
+		let savedLoginPolicy: SavedLoginPolicy | undefined =
+			'savedLoginPolicy' in options ? options.savedLoginPolicy : { mode: 'all', sites: [] };
+		/** Changes the admin's rules while the server runs. */
+		const setSavedLoginPolicy = (policy: SavedLoginPolicy) => {
+			savedLoginPolicy = policy;
+		};
 		const sessionProvider = mock<CloudBrowserSessionProvider>();
 		// Sessions created and not yet released, so a test can check what is left open.
 		const openSessions = new Set<string>();
@@ -190,7 +198,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 		const server = new CloudBrowserLocalMcpServer({
 			scope,
 			sessionProvider,
-			enableLoginProfiles,
+			getSavedLoginPolicy: savedLoginPolicy && (() => savedLoginPolicy!),
 			createToolkit,
 			toolContext: { dir: '/tmp' },
 			domainGate,
@@ -208,6 +216,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			logger,
 			tracker,
 			domainGate,
+			setSavedLoginPolicy,
 		};
 	}
 
@@ -2266,8 +2275,10 @@ describe('CloudBrowserLocalMcpServer', () => {
 				},
 			);
 
-			it('opens a session without a login profile when login profiles are not enabled', async () => {
-				const { server, sessionProvider, start } = setup({ enableLoginProfiles: false });
+			it('opens a session without a login profile when saved logins are turned off', async () => {
+				const { server, sessionProvider, start } = setup({
+					savedLoginPolicy: { mode: 'off', sites: [] },
+				});
 				sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
 
 				const result = await start({ url: 'https://example.com' });
@@ -2284,8 +2295,10 @@ describe('CloudBrowserLocalMcpServer', () => {
 				expect(sessionProvider.deleteLoginProfile).not.toHaveBeenCalled();
 			});
 
-			it('does not save a login when login profiles are not enabled', async () => {
-				const { server, sessionProvider, toolkits, start } = setup({ enableLoginProfiles: false });
+			it('does not save a login when saved logins are turned off', async () => {
+				const { server, sessionProvider, toolkits, start } = setup({
+					savedLoginPolicy: { mode: 'off', sites: [] },
+				});
 				await start({ url: 'https://example.com' });
 				toolkits[0].adapter.getPageUrl.mockReturnValue('https://example.com/home');
 				await askToSignIn(server);
@@ -2299,6 +2312,59 @@ describe('CloudBrowserLocalMcpServer', () => {
 				expect(toolkits[0].adapter.clearSiteDataExcept).not.toHaveBeenCalled();
 				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
 			});
+
+			it('opens a session without a login profile when there is no saved login policy', async () => {
+				const { sessionProvider, start } = setup({ savedLoginPolicy: undefined });
+
+				await start({ url: 'https://example.com' });
+
+				expect(sessionProvider.listSavedLoginProfiles).not.toHaveBeenCalled();
+				expect(sessionProvider.createLoginProfile).not.toHaveBeenCalled();
+				expect(sessionProvider.createSession).toHaveBeenCalledWith(
+					scope,
+					expect.objectContaining({ loginProfileId: undefined }),
+				);
+			});
+
+			it.each([
+				{ mode: 'only' as const, sites: ['github.com'], url: 'https://example.com' },
+				{ mode: 'except' as const, sites: ['example.com'], url: 'https://accounts.example.com' },
+			])(
+				'opens a session without a login profile on a site the admin blocks ($mode)',
+				async ({ mode, sites, url }) => {
+					const { server, sessionProvider, start } = setup({ savedLoginPolicy: { mode, sites } });
+					sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+
+					const result = await start({ url });
+
+					expect(result.isError).toBeUndefined();
+					expect(sessionProvider.listSavedLoginProfiles).not.toHaveBeenCalled();
+					expect(sessionProvider.createLoginProfile).not.toHaveBeenCalled();
+					expect(sessionProvider.createSession).toHaveBeenCalledWith(
+						scope,
+						expect.objectContaining({ loginProfileId: undefined }),
+					);
+					expect(await server.getLiveView()).not.toHaveProperty('loginProfile');
+				},
+			);
+
+			it.each([
+				{ mode: 'only' as const, sites: ['example.com'], url: 'https://accounts.example.com' },
+				{ mode: 'except' as const, sites: ['github.com'], url: 'https://example.com' },
+			])(
+				'opens a session with a login profile on a site the admin allows ($mode)',
+				async ({ mode, sites, url }) => {
+					const { sessionProvider, start } = setup({ savedLoginPolicy: { mode, sites } });
+
+					await start({ url });
+
+					expect(sessionProvider.listSavedLoginProfiles).toHaveBeenCalledWith(scope, 'example.com');
+					expect(sessionProvider.createSession).toHaveBeenCalledWith(
+						scope,
+						expect.objectContaining({ loginProfileId: 'login-profile-1' }),
+					);
+				},
+			);
 
 			it('opens a session without a login profile when creating one fails', async () => {
 				const { sessionProvider, logger, start } = setup();
@@ -2578,6 +2644,44 @@ describe('CloudBrowserLocalMcpServer', () => {
 						{ domain: 'example.com', status: 'saved' },
 					]);
 				});
+			});
+		});
+
+		describe('when the admin changes the rules while the task runs', () => {
+			it('opens the next session without a saved login or a login profile', async () => {
+				const { sessionProvider, start, setSavedLoginPolicy } = setup();
+				await start({ url: 'https://example.com' });
+				sessionProvider.listSavedLoginProfiles.mockResolvedValue([savedResult]);
+				setSavedLoginPolicy({ mode: 'off', sites: [] });
+
+				const result = await start({ url: 'https://example.com' });
+
+				expect(result.isError).toBeUndefined();
+				expect(sessionProvider.createSession).toHaveBeenLastCalledWith(
+					scope,
+					expect.objectContaining({ loginProfileId: undefined }),
+				);
+			});
+
+			it('does not offer to save a login on a site that is no longer allowed', async () => {
+				const { server, setSavedLoginPolicy } = await setupSignIn();
+				await askToSignIn(server);
+				setSavedLoginPolicy({ mode: 'except', sites: ['example.com'] });
+
+				expect(await server.getLoginToSave()).toBeUndefined();
+			});
+
+			it('does not save a login that the user chose to save before the change', async () => {
+				const { server, sessionProvider, setSavedLoginPolicy } = await setupSavedLogin();
+				setSavedLoginPolicy({ mode: 'off', sites: [] });
+
+				await server.release();
+
+				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
+				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
+				expect(server.getLoginSaveResults()).toEqual([
+					{ domain: 'example.com', status: 'notSaved' },
+				]);
 			});
 		});
 
@@ -3103,14 +3207,24 @@ describe('CloudBrowserLocalMcpServer', () => {
 				});
 			});
 
-			it('does not ask when login profiles are not enabled', async () => {
-				const { sessionProvider, start } = setup({ enableLoginProfiles: false });
+			it.each([
+				['there are no saved login rules', undefined],
+				[
+					"the admin's rules do not allow the site",
+					{ mode: 'except' as const, sites: ['example.com'] },
+				],
+			])('does not ask when %s', async (_, savedLoginPolicy) => {
+				const { sessionProvider, start } = setup({ savedLoginPolicy });
 				sessionProvider.listSavedLoginProfiles.mockResolvedValue([savedLogin]);
 
 				const result = await start({ url: 'https://example.com' });
 
 				expect(result.isError).toBeUndefined();
 				expect(sessionProvider.listSavedLoginProfiles).not.toHaveBeenCalled();
+				expect(sessionProvider.createSession).toHaveBeenCalledWith(
+					scope,
+					expect.objectContaining({ loginProfileId: undefined }),
+				);
 			});
 		});
 

@@ -647,6 +647,8 @@ export class AssistantTurnEnvironmentFactory {
 						permissionMode: context.permissions?.fetchUrl,
 						createCredentialPermissionMode: context.permissions?.createCredential,
 					},
+					// Read at each check, so an admin change applies to a running task too.
+					getSavedLoginPolicy: () => this.settingsService.getCloudBrowserSavedLoginPolicy(),
 					getCredentialFields: context.credentialService.getCredentialFields,
 				});
 		}

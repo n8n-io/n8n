@@ -418,6 +418,8 @@ export type FrontendModuleSettings = {
 		browserUseEnabled: boolean;
 		/** Whether the admin turned on the cloud browser. It also needs the rollout flag and the gateway. */
 		cloudBrowserEnabled?: boolean;
+		/** Whether the admin lets users save cloud browser logins on at least some sites. */
+		cloudBrowserSavedLoginsEnabled?: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
 		/** Whether model, sandbox, and the explicit web-search decision are configured. */

@@ -29,6 +29,7 @@ import { nanoid } from 'nanoid';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 
 import type { BrowserDomainGate } from './browser.helpers';
+import type { SavedLoginPolicy } from './cloud-browser-saved-login-policy';
 import type { CloudBrowserLocalMcpServer } from './cloud-browser-local-mcp-server';
 import type { InstanceAiCloudBrowserService } from './instance-ai-cloud-browser.service';
 import type { InstanceAiCreditService } from '../instance-ai-credit.service';
@@ -114,6 +115,8 @@ export interface CloudBrowserRunOptions {
 	tracing?: InstanceAiTraceContext;
 	/** The run's site approvals and permissions. */
 	domainGate: BrowserDomainGate;
+	/** Returns the admin's current rules for saved logins. */
+	getSavedLoginPolicy: () => SavedLoginPolicy;
 	/**
 	 * The run's credential type lookup, for the credentials the task creates. Empty for an
 	 * unknown type. Absent when the host cannot look up credential types.
@@ -332,7 +335,13 @@ export class InstanceAiCloudBrowserTaskService {
 
 		let mcpServer: CloudBrowserLocalMcpServer | undefined;
 		try {
-			mcpServer = await cloudBrowserService.createServer(user.id, threadId, taskId, run.domainGate);
+			mcpServer = await cloudBrowserService.createServer(
+				user.id,
+				threadId,
+				taskId,
+				run.domainGate,
+				run.getSavedLoginPolicy,
+			);
 			mcpServer.setCurrentWindowListener(() =>
 				eventBus.publish(threadId, {
 					type: 'cloud-browser-window-changed',
