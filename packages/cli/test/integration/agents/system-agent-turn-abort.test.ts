@@ -89,6 +89,7 @@ describe('System agent turn abort', () => {
 	const provider: SystemAgentProvider = {
 		agentId: AGENT_ID,
 		name: 'Test System Agent',
+		authorizeUser: async () => true,
 		authorize: async () => true,
 		async prepareTurn(turn: SystemAgentTurn) {
 			probe.turnSignal = turn.abortSignal;

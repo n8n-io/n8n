@@ -205,23 +205,23 @@ function startTurn(
 }
 
 describe('AssistantAgentProvider', () => {
-	describe('authorize', () => {
+	describe('authorizeUser', () => {
 		it('requires the Assistant message scope and an enabled Assistant', async () => {
 			const { provider, settingsService } = setup();
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 
-			await expect(provider.authorize(user)).resolves.toBe(true);
+			await expect(provider.authorizeUser(user)).resolves.toBe(true);
 			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'instanceAi:message');
 
 			settingsService.isAgentEnabled.mockReturnValue(false);
-			await expect(provider.authorize(user)).resolves.toBe(false);
+			await expect(provider.authorizeUser(user)).resolves.toBe(false);
 		});
 
 		it('refuses a user without the Assistant message scope', async () => {
 			const { provider } = setup();
 			vi.mocked(hasGlobalScope).mockReturnValue(false);
 
-			await expect(provider.authorize(user)).resolves.toBe(false);
+			await expect(provider.authorizeUser(user)).resolves.toBe(false);
 		});
 	});
 

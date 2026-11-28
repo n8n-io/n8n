@@ -120,6 +120,7 @@ function setup(
 	const provider = {
 		agentId: AGENT_ID,
 		name: 'Test Assistant',
+		authorizeUser: vi.fn(async () => true),
 		authorize: vi.fn(async () => true),
 		prepareTurn: vi.fn(async () => handle),
 	} satisfies SystemAgentProvider;

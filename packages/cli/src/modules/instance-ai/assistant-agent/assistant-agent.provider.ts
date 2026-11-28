@@ -187,9 +187,17 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		this.aiConfig = globalConfig.ai;
 	}
 
-	/** The runtime already requires `project:read` on the working project. */
-	async authorize(user: User): Promise<boolean> {
+	/**
+	 * The checks do not depend on a project, so the thread list runs them too.
+	 * The runtime adds `project:read` on the working project for the other routes.
+	 */
+	async authorizeUser(user: User): Promise<boolean> {
 		return hasGlobalScope(user, 'instanceAi:message') && this.settingsService.isAgentEnabled();
+	}
+
+	/** The Assistant adds no project checks to the floor. */
+	async authorize(): Promise<boolean> {
+		return true;
 	}
 
 	async chatTurnOptions(

@@ -18,5 +18,6 @@ export async function canUseSystemAgent(
 	projectId: string,
 ): Promise<boolean> {
 	if (!(await userHasScopes(user, ['project:read'], false, { projectId }))) return false;
+	if (!(await provider.authorizeUser(user))) return false;
 	return await provider.authorize(user, projectId);
 }

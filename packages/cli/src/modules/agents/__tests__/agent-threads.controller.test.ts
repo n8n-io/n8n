@@ -183,6 +183,7 @@ describe('AgentThreadsController session details', () => {
 		registry.register({
 			agentId: 'system-agent',
 			name: 'System Agent',
+			authorizeUser: async () => true,
 			authorize: async () => true,
 			prepareTurn: vi.fn(),
 		});
@@ -214,6 +215,7 @@ describe('AgentThreadsController deleteThread', () => {
 		registry.register({
 			agentId: 'system-agent',
 			name: 'System Agent',
+			authorizeUser: async () => true,
 			authorize: async () => true,
 			prepareTurn: vi.fn(),
 		});

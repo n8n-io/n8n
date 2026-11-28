@@ -23,6 +23,7 @@ describe('System agent sessions', () => {
 	const provider: SystemAgentProvider = {
 		agentId: AGENT_ID,
 		name: 'Test System Agent',
+		authorizeUser: async () => true,
 		authorize: async () => true,
 		prepareTurn: async () => {
 			throw new Error('No turn runs in this test');

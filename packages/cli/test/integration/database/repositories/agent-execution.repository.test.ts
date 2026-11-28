@@ -2956,6 +2956,7 @@ describe('AgentExecutionRepository', () => {
 				registry.register({
 					agentId: systemAgentId,
 					name: 'Test System Agent',
+					authorizeUser: async () => true,
 					authorize: async () => true,
 					prepareTurn: vi.fn(),
 				});
@@ -3144,6 +3145,7 @@ describe('AgentExecutionRepository', () => {
 			registry.register({
 				agentId: systemAgentId,
 				name: 'Test System Agent',
+				authorizeUser: async () => true,
 				authorize: async () => true,
 				prepareTurn: vi.fn(),
 			});
