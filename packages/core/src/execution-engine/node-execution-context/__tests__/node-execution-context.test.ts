@@ -4,6 +4,7 @@ import type {
 	INodeType,
 	INodeTypes,
 	INodeExecutionData,
+	INodeProperties,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 	Workflow,
@@ -361,6 +362,105 @@ describe('NodeExecutionContext', () => {
 				'n8n-nodes-base.httpRequest',
 			);
 			expect(mockCredentialsHelper.getDecrypted).not.toHaveBeenCalled();
+		});
+
+		describe('in managed mode (spike)', () => {
+			const slackProperties = [
+				{
+					displayName: 'Access Token',
+					name: 'accessToken',
+					type: 'string',
+					typeOptions: { password: true },
+					default: '',
+				},
+			] as INodeProperties[];
+
+			const managedContext = ({
+				usable = true,
+				credentials = { platformManagedApi: { id: 'managed-1', name: 'Managed by platform' } },
+			}: { usable?: boolean; credentials?: INode['credentials'] } = {}) => {
+				const slackNode = mock<INode>({ type: 'n8n-nodes-base.slack' });
+				slackNode.credentials = credentials;
+				// At run time the node keeps its own description, which lists only its own types.
+				nodeTypes.getByNameAndVersion.mockReturnValue(
+					mock<INodeType>({
+						description: {
+							credentials: [
+								{
+									name: 'slackApi',
+									required: true,
+									displayOptions: { show: { authentication: ['accessToken'] } },
+								},
+							],
+						},
+					}),
+				);
+				const credentialsHelper = {
+					getDecrypted: vi.fn().mockResolvedValue({ notice: '' }),
+					getCredentialsProperties: vi.fn((type: string) =>
+						type === 'slackApi' ? slackProperties : [],
+					),
+					isCredentialUsableByNode: vi.fn().mockReturnValue(usable),
+				};
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+				additionalData.evalLlmMockHandler = undefined;
+				const ctx = new TestContext(workflow, slackNode, additionalData, mode);
+				return { ctx, credentialsHelper, additionalData };
+			};
+
+			beforeEach(() => {
+				process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
+			});
+
+			afterEach(() => {
+				delete process.env.N8N_MANAGED_CREDENTIAL_TYPE;
+			});
+
+			it("reads the stored managed credential and gives the node only its own type's fields, with no secret", async () => {
+				const { ctx, credentialsHelper, additionalData } = managedContext();
+				credentialsHelper.getDecrypted.mockResolvedValue({ accessToken: 'xoxb-stored' });
+
+				await expect(ctx['_getCredentials']('slackApi')).resolves.toEqual({ accessToken: '' });
+				expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+					additionalData,
+					{ id: 'managed-1', name: 'Managed by platform' },
+					'platformManagedApi',
+					mode,
+					undefined,
+					false,
+					undefined,
+					undefined,
+				);
+			});
+
+			it('returns the managed credential unchanged when the managed type is requested', async () => {
+				const { ctx } = managedContext();
+
+				await expect(ctx['_getCredentials']('platformManagedApi')).resolves.toEqual({
+					notice: '',
+				});
+			});
+
+			it('fails when the node has no managed credential selected', async () => {
+				const { ctx, credentialsHelper } = managedContext({ credentials: {} });
+
+				await expect(ctx['_getCredentials']('slackApi')).rejects.toThrow(
+					'Node does not have any credentials set for "platformManagedApi"',
+				);
+				expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+			});
+
+			it('still refuses a credential type restricted to other nodes', async () => {
+				const { ctx, credentialsHelper } = managedContext({ usable: false });
+
+				await expect(ctx['_getCredentials']('slackApi')).rejects.toThrow(
+					/restricted to specific nodes/i,
+				);
+				expect(credentialsHelper.isCredentialUsableByNode).toHaveBeenCalledWith(
+					'slackApi',
+					'n8n-nodes-base.slack',
+				);
+			});
 		});
 
 		it('proceeds with decryption when the credential is usable by the node', async () => {

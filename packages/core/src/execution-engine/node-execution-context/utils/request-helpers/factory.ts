@@ -22,6 +22,7 @@ import type {
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
 import { getNonWorkflowAdditionalKeys } from '../get-additional-keys';
+import { resolveManagedCredentialType } from '../managed-credential';
 import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
@@ -121,7 +122,7 @@ export const getRequestHelperFunctions = (
 		): Promise<any> {
 			return await httpRequestWithAuthentication.call(
 				this,
-				credentialsType,
+				resolveManagedCredentialType(credentialsType),
 				requestOptions,
 				workflow,
 				node,
@@ -177,7 +178,7 @@ export const getRequestHelperFunctions = (
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestWithAuthentication.call(
 				this,
-				credentialsType,
+				resolveManagedCredentialType(credentialsType),
 				requestOptions,
 				workflow,
 				node,
@@ -195,6 +196,19 @@ export const getRequestHelperFunctions = (
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
 			const requestOptions = toLegacyRequestOptions(requestOptionsWithTarget);
+			// requestWithAuthentication runs the eval mock itself.
+			const resolvedOAuth1Type = resolveManagedCredentialType(credentialsType);
+			if (resolvedOAuth1Type !== credentialsType) {
+				// oxlint-disable-next-line typescript/no-deprecated
+				return await requestWithAuthentication.call(
+					this,
+					resolvedOAuth1Type,
+					requestOptions,
+					workflow,
+					node,
+					additionalData,
+				);
+			}
 			if (evalLlmMock) {
 				const evalMockResponse = await callEvalMockHandler(
 					evalLlmMock,
@@ -218,6 +232,19 @@ export const getRequestHelperFunctions = (
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
 			const requestOptions = toLegacyRequestOptions(requestOptionsWithTarget);
+			// requestWithAuthentication runs the eval mock itself.
+			const resolvedOAuth2Type = resolveManagedCredentialType(credentialsType);
+			if (resolvedOAuth2Type !== credentialsType) {
+				// oxlint-disable-next-line typescript/no-deprecated
+				return await requestWithAuthentication.call(
+					this,
+					resolvedOAuth2Type,
+					requestOptions,
+					workflow,
+					node,
+					additionalData,
+				);
+			}
 			if (evalLlmMock) {
 				const evalMockResponse = await callEvalMockHandler(
 					evalLlmMock,
