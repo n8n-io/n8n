@@ -15,6 +15,7 @@ import type { McpServerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import type { CredentialCheckResult } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { createCallTool } from '../../McpClientTool/utils';
@@ -368,6 +369,235 @@ describe('McpServer', () => {
 			mcpServer.handleWorkerResponse(sessionId, requestId, { ok: true });
 
 			expect((await getHandlerResult())?.isError).toBeUndefined();
+		});
+	});
+
+	describe('Streamable HTTP queue mode with numeric JSON-RPC request IDs (NODE-5803)', () => {
+		const sessionId = 'streamable-queue-session';
+
+		interface SentJsonRpcResponse {
+			jsonrpc: string;
+			id: string | number;
+			result?: { isError?: boolean; content: Array<{ type: string; text: string }> };
+		}
+
+		// Registers a real SDK Server with a stub Streamable HTTP transport whose
+		// handleRequest stays pending until the Server writes the JSON-RPC response.
+		async function setupStreamableHttpQueueSession(
+			tool: ReturnType<typeof createMockTool>,
+			timeoutMs = 200,
+		) {
+			const sent: SentJsonRpcResponse[] = [];
+			const pendingStreams = new Map<string | number, () => void>();
+			const internals = mcpServer as unknown as {
+				sessionManager: SessionManager;
+				createServer(serverName: string): Server;
+				setupHandlers(server: Server): void;
+			};
+
+			const server = internals.createServer('test-server');
+			internals.setupHandlers(server);
+
+			const transport = {
+				transportType: 'streamableHttp' as const,
+				sessionId,
+				start: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
+				onmessage: undefined as ((message: unknown) => void) | undefined,
+				send: vi.fn().mockImplementation(async (message: SentJsonRpcResponse) => {
+					sent.push(message);
+					pendingStreams.get(message.id)?.();
+					pendingStreams.delete(message.id);
+				}),
+				handleRequest: vi
+					.fn()
+					.mockImplementation(async (_req: unknown, _resp: unknown, parsedBody: { id: number }) => {
+						await new Promise<void>((resolve) => {
+							pendingStreams.set(parsedBody.id, resolve);
+							transport.onmessage?.(parsedBody);
+						});
+					}),
+			};
+
+			await server.connect(transport as never);
+			await internals.sessionManager.registerSession(sessionId, server, transport as never, [tool]);
+			mcpServer.setExecutionStrategy(
+				new QueuedExecutionStrategy(mcpServer.getPendingCallsManager(), timeoutMs),
+			);
+
+			const postToolCall = async (id: number, gateResult?: CredentialCheckResult) =>
+				await mcpServer.handlePostMessage(
+					createMockRequestWithHeaderSessionId(
+						sessionId,
+						createValidToolCallMessage(tool.name, { city: 'London' }, id),
+					),
+					createMockResponse(),
+					[tool],
+					undefined,
+					gateResult,
+				);
+
+			const postListTools = async (id: number) =>
+				await mcpServer.handlePostMessage(
+					createMockRequestWithHeaderSessionId(sessionId, createListToolsMessage(id)),
+					createMockResponse(),
+					[tool],
+				);
+
+			return { sent, postToolCall, postListTools };
+		}
+
+		afterEach(() => {
+			mcpServer.getPendingCallsManager().cleanupBySessionId(sessionId);
+		});
+
+		it('should resolve handlePostMessage before worker execution for non-zero request ID', async () => {
+			const tool = createMockTool('get_weather', {
+				metadata: { sourceNodeName: 'Weather Tool' },
+			});
+			const { sent, postToolCall } = await setupStreamableHttpQueueSession(tool);
+
+			const postResult = await postToolCall(1);
+
+			expect(postResult.wasToolCall).toBe(true);
+			expect(postResult.messageId).toBe('1');
+			expect(sent).toEqual([]);
+			expect(mcpServer.getPendingCallsManager().has(`${sessionId}_1`)).toBe(true);
+
+			mcpServer.handleWorkerResponse(sessionId, '1', [{ weather: 'sunny' }], tool.name);
+
+			await vi.waitFor(() => expect(sent).toHaveLength(1));
+			expect(sent[0].id).toBe(1);
+			expect(sent[0].result?.isError).toBeUndefined();
+			expect(sent[0].result?.content[0].text).toBe(JSON.stringify([{ weather: 'sunny' }]));
+		});
+
+		// Regression test for NODE-5803: JSON-RPC request ID 0 is falsy in JS, so
+		// CallToolRequestSchema computes callId without `_0` and misses resolveFunctions[`${sessionId}_0`].
+		// handlePostMessage deadlocks instead of returning to enqueue the worker job, causing
+		// PendingCallsManager to reject with "Worker tool execution timeout".
+		it('should resolve handlePostMessage before worker execution for request ID 0', async () => {
+			const tool = createMockTool('get_weather', {
+				metadata: { sourceNodeName: 'Weather Tool' },
+			});
+			const { sent, postToolCall } = await setupStreamableHttpQueueSession(tool);
+
+			const postResult = await postToolCall(0);
+
+			expect(postResult.wasToolCall).toBe(true);
+			expect(postResult.messageId).toBe('0');
+			expect(sent).toEqual([]);
+			expect(mcpServer.getPendingCallsManager().has(`${sessionId}_0`)).toBe(true);
+
+			mcpServer.handleWorkerResponse(sessionId, '0', [{ weather: 'sunny' }], tool.name);
+
+			await vi.waitFor(() => expect(sent).toHaveLength(1));
+			expect(sent[0].id).toBe(0);
+			expect(sent[0].result?.isError).toBeUndefined();
+			expect(sent[0].result?.content[0].text).toBe(JSON.stringify([{ weather: 'sunny' }]));
+		});
+
+		it('should handle multi-step tools/list and repeated tools/call in the same session with request ID 0', async () => {
+			const tool = createMockTool('get_weather', {
+				metadata: { sourceNodeName: 'Weather Tool' },
+			});
+			const { sent, postListTools, postToolCall } = await setupStreamableHttpQueueSession(tool);
+
+			const listResult = await postListTools(0);
+			expect(listResult.wasToolCall).toBe(false);
+			expect(sent).toHaveLength(1);
+			expect(sent[0].id).toBe(0);
+
+			const firstCall = await postToolCall(0);
+			expect(firstCall.wasToolCall).toBe(true);
+			expect(firstCall.messageId).toBe('0');
+			expect(mcpServer.getPendingCallsManager().has(`${sessionId}_0`)).toBe(true);
+
+			mcpServer.handleWorkerResponse(sessionId, '0', [{ weather: 'cloudy' }], tool.name);
+			await vi.waitFor(() => expect(sent).toHaveLength(2));
+			expect(sent[1].id).toBe(0);
+			expect(sent[1].result?.content[0].text).toBe(JSON.stringify([{ weather: 'cloudy' }]));
+
+			const secondCall = await postToolCall(1);
+			expect(secondCall.wasToolCall).toBe(true);
+			expect(secondCall.messageId).toBe('1');
+			expect(mcpServer.getPendingCallsManager().has(`${sessionId}_1`)).toBe(true);
+
+			mcpServer.handleWorkerResponse(sessionId, '1', [{ weather: 'rainy' }], tool.name);
+			await vi.waitFor(() => expect(sent).toHaveLength(3));
+			expect(sent[2].id).toBe(1);
+			expect(sent[2].result?.content[0].text).toBe(JSON.stringify([{ weather: 'rainy' }]));
+		});
+
+		it('should apply the credential gate for numeric request ID 0', async () => {
+			const tool = createMockTool('get_weather', {
+				metadata: { sourceNodeName: 'Weather Tool' },
+			});
+			const { sent, postToolCall } = await setupStreamableHttpQueueSession(tool);
+			const gateResult: CredentialCheckResult = {
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						resolverId: 'n8n',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize',
+					},
+				],
+			};
+
+			const postResult = await postToolCall(0, gateResult);
+
+			expect(postResult.wasToolCall).toBe(false);
+			expect(mcpServer.getPendingCallsManager().has(`${sessionId}_0`)).toBe(false);
+			await vi.waitFor(() => expect(sent).toHaveLength(1));
+			expect(sent[0].id).toBe(0);
+			expect(sent[0].result?.isError).toBe(true);
+			expect(sent[0].result?.content[0].text).toContain('https://n8n.test/authorize');
+		});
+
+		it('should resolve an SSE direct-mode tool call for numeric request ID 0', async () => {
+			const tool = createMockTool('get_weather', { invokeReturn: { weather: 'clear' } });
+			const sseSessionId = 'sse-numeric-zero-session';
+			const transport = createMockTransport(sseSessionId, 'sse');
+			const server = createMockServer();
+			const internals = mcpServer as unknown as {
+				sessionManager: SessionManager;
+				setupHandlers(srv: unknown): void;
+			};
+
+			await internals.sessionManager.registerSession(sseSessionId, server, transport, [tool]);
+			internals.setupHandlers(server);
+
+			const handler = server.setRequestHandler.mock.calls[1][1] as unknown as (
+				request: { params: { name: string; arguments: Record<string, unknown> } },
+				extra: { sessionId?: string; requestId?: string | number },
+			) => Promise<{ isError?: boolean; content: Array<{ text: string }> }>;
+			let handlerResult:
+				| Promise<{ isError?: boolean; content: Array<{ text: string }> }>
+				| undefined;
+			transport.handleRequest.mockImplementation(async () => {
+				handlerResult = handler(
+					{ params: { name: tool.name, arguments: { city: 'London' } } },
+					{ sessionId: sseSessionId, requestId: 0 },
+				);
+			});
+
+			const postResult = await mcpServer.handlePostMessage(
+				createMockRequestWithSessionId(
+					sseSessionId,
+					createValidToolCallMessage(tool.name, { city: 'London' }, 0),
+				),
+				createMockResponse(),
+				[tool],
+			);
+
+			expect(postResult.wasToolCall).toBe(true);
+			expect(postResult.messageId).toBe('0');
+			expect((await handlerResult)?.isError).toBeUndefined();
+			expect((await handlerResult)?.content[0].text).toBe(JSON.stringify({ weather: 'clear' }));
 		});
 	});
 

@@ -628,7 +628,8 @@ export class McpServer {
 				throw new OperationalError('Require a sessionId for the tool call');
 			}
 
-			const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
+			const requestId = extra.requestId?.toString();
+			const callId = requestId ? `${extra.sessionId}_${requestId}` : extra.sessionId;
 
 			try {
 				if (!request.params?.name || !request.params?.arguments) {
@@ -657,8 +658,8 @@ export class McpServer {
 
 				try {
 					if (this.executionCoordinator.isQueueMode()) {
-						const requestId = extra.requestId?.toString() ?? '';
-						this.storePendingResponse(extra.sessionId, requestId);
+						const queueRequestId = requestId ?? '';
+						this.storePendingResponse(extra.sessionId, queueRequestId);
 
 						// Resolve handlePostMessage so webhook can return and enqueue execution.
 						// The handler continues running asynchronously, waiting for worker response.
@@ -669,7 +670,7 @@ export class McpServer {
 						const strategy = this.executionCoordinator.getStrategy() as QueuedExecutionStrategy;
 						const result = await strategy.executeTool(requestedTool, toolArguments, {
 							sessionId: extra.sessionId,
-							messageId: requestId,
+							messageId: queueRequestId,
 						});
 
 						return MessageFormatter.formatToolResult(
@@ -681,7 +682,7 @@ export class McpServer {
 
 					const result = await this.executionCoordinator.executeTool(requestedTool, toolArguments, {
 						sessionId: extra.sessionId,
-						messageId: extra.requestId?.toString(),
+						messageId: requestId,
 					});
 
 					return MessageFormatter.formatToolResult(
