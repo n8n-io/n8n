@@ -352,6 +352,19 @@ describe('runtime', () => {
 			await expect(executeMcpTool(ctx, () => baseConfig)).rejects.toThrow('Tool name not found');
 		});
 
+		it('throws when the tool name is not on the server', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			const callTool = vi.spyOn(Client.prototype, 'callTool');
+			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+			const ctx = createExecuteCtx([{ json: { tool: buildMcpToolName('MCP', 'missing') } }]);
+
+			await expect(executeMcpTool(ctx, () => baseConfig)).rejects.toThrow(
+				'Tool "MCP_missing" was not found on the MCP server',
+			);
+			expect(callTool).not.toHaveBeenCalled();
+		});
+
 		it('sanitizes arguments against the tool inputSchema when additionalProperties is false', async () => {
 			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
