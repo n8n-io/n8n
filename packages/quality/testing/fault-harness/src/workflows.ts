@@ -43,6 +43,19 @@ export const nodes = {
 			mode: 'once',
 			options: { waitForSubWorkflow },
 		}),
+	postgresQuery: (
+		name: string,
+		query: string,
+		queryReplacement: string,
+		credential: { id: string; name: string },
+	) => ({
+		...node(name, 'n8n-nodes-base.postgres', 2.5, {
+			operation: 'executeQuery',
+			query,
+			options: { queryReplacement },
+		}),
+		credentials: { postgres: credential },
+	}),
 };
 
 /** Workflow settings that make `chain` build a workflow that runs on engine v2. */
