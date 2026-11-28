@@ -3,11 +3,13 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import {
+	adaptiveCardField,
 	chatRLC,
 	includeLinkToWorkflowOption,
 	mentionPlacementOption,
 	mentionsField,
 } from '../../descriptions';
+import { buildAdaptiveCardMessage } from '../../helpers/adaptiveCard';
 import { prepareMessage, resolveMentions } from '../../helpers/utils';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 
@@ -27,9 +29,13 @@ const properties: INodeProperties[] = [
 				name: 'HTML',
 				value: 'html',
 			},
+			{
+				name: 'Adaptive Card',
+				value: 'adaptiveCard',
+			},
 		],
 		default: 'text',
-		description: 'Whether the message is plain text or HTML',
+		description: 'Whether the message is plain text, HTML or an Adaptive Card',
 	},
 	{
 		displayName: 'Message',
@@ -41,8 +47,21 @@ const properties: INodeProperties[] = [
 		typeOptions: {
 			rows: 2,
 		},
+		displayOptions: {
+			hide: {
+				contentType: ['adaptiveCard'],
+			},
+		},
 	},
-	mentionsField,
+	adaptiveCardField,
+	{
+		...mentionsField,
+		displayOptions: {
+			hide: {
+				contentType: ['adaptiveCard'],
+			},
+		},
+	},
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -50,7 +69,29 @@ const properties: INodeProperties[] = [
 		default: {},
 		description: 'Other options to set',
 		placeholder: 'Add option',
-		options: [includeLinkToWorkflowOption, mentionPlacementOption],
+		displayOptions: {
+			hide: {
+				contentType: ['adaptiveCard'],
+			},
+		},
+		options: [
+			{
+				...includeLinkToWorkflowOption,
+				displayOptions: {
+					hide: {
+						'/contentType': ['adaptiveCard'],
+					},
+				},
+			},
+			{
+				...mentionPlacementOption,
+				displayOptions: {
+					hide: {
+						'/contentType': ['adaptiveCard'],
+					},
+				},
+			},
+		],
 	},
 ];
 
@@ -71,14 +112,19 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	const contentType = this.getNodeParameter('contentType', i) as string;
-	const message = this.getNodeParameter('message', i) as string;
 	const options = this.getNodeParameter('options', i, {});
-
-	const includeLinkToWorkflow = options.includeLinkToWorkflow !== false;
 
 	// Built before the mentions are resolved, so a malformed chat ID fails without spending a
 	// Graph call on `GET /users/{id}` first.
 	const endpoint = buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/messages']);
+
+	if (contentType === 'adaptiveCard') {
+		const body = buildAdaptiveCardMessage.call(this, this.getNodeParameter('adaptiveCard', i), i);
+		return await microsoftApiRequest.call(this, 'POST', endpoint, body);
+	}
+
+	const message = this.getNodeParameter('message', i) as string;
+	const includeLinkToWorkflow = options.includeLinkToWorkflow !== false;
 
 	const mentions = await resolveMentions.call(this, i);
 

@@ -1,14 +1,17 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
 import {
+	adaptiveCardField,
 	channelMentionsField,
 	channelRLC,
 	includeLinkToWorkflowOption,
 	mentionPlacementOption,
 	teamRLC,
 } from '../../descriptions';
+import { buildAdaptiveCardMessage } from '../../helpers/adaptiveCard';
 import { prepareMessage, resolveMentions } from '../../helpers/utils';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 import { throwIfChannelMessageSendUnsupported } from './sharedGuard';
@@ -30,9 +33,13 @@ const properties: INodeProperties[] = [
 				name: 'HTML',
 				value: 'html',
 			},
+			{
+				name: 'Adaptive Card',
+				value: 'adaptiveCard',
+			},
 		],
 		default: 'text',
-		description: 'Whether the message is plain text or HTML',
+		description: 'Whether the message is plain text, HTML or an Adaptive Card',
 	},
 	{
 		displayName: 'Message',
@@ -44,8 +51,21 @@ const properties: INodeProperties[] = [
 		typeOptions: {
 			rows: 2,
 		},
+		displayOptions: {
+			hide: {
+				contentType: ['adaptiveCard'],
+			},
+		},
 	},
-	channelMentionsField,
+	adaptiveCardField,
+	{
+		...channelMentionsField,
+		displayOptions: {
+			hide: {
+				contentType: ['adaptiveCard'],
+			},
+		},
+	},
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -53,8 +73,22 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add option',
 		default: {},
 		options: [
-			includeLinkToWorkflowOption,
-			mentionPlacementOption,
+			{
+				...includeLinkToWorkflowOption,
+				displayOptions: {
+					hide: {
+						'/contentType': ['adaptiveCard'],
+					},
+				},
+			},
+			{
+				...mentionPlacementOption,
+				displayOptions: {
+					hide: {
+						'/contentType': ['adaptiveCard'],
+					},
+				},
+			},
 			{
 				displayName: 'Reply to ID',
 				name: 'makeReply',
@@ -94,8 +128,19 @@ export async function execute(
 	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 	const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
 	const contentType = this.getNodeParameter('contentType', i) as string;
-	const message = this.getNodeParameter('message', i) as string;
-	const options = this.getNodeParameter('options', i);
+	const options = this.getNodeParameter('options', i, {});
+
+	if (contentType === 'adaptiveCard' && options.makeReply) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Adaptive cards cannot be sent as a reply from the Create operation',
+			{
+				itemIndex: i,
+				description:
+					'Use the Reply operation to send this adaptive card as a reply. The Reply to ID option supports only text and HTML messages.',
+			},
+		);
+	}
 
 	let includeLinkToWorkflow = options.includeLinkToWorkflow;
 	if (includeLinkToWorkflow === undefined) {
@@ -121,6 +166,13 @@ export async function execute(
 				{ id: channelId },
 				'/messages',
 			]);
+
+	if (contentType === 'adaptiveCard') {
+		const body = buildAdaptiveCardMessage.call(this, this.getNodeParameter('adaptiveCard', i), i);
+		return await microsoftApiRequest.call(this, 'POST', endpoint, body);
+	}
+
+	const message = this.getNodeParameter('message', i) as string;
 
 	const mentions = await resolveMentions.call(this, i, teamId);
 
