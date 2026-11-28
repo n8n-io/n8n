@@ -23,11 +23,17 @@ export async function yourlsApiRequest(
 
 	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
-		body,
 		qs,
 		uri: requestUrl`${credentials.url}/yourls-api.php`,
 		json: true,
 	};
+
+	// Every call this node makes is a GET with all of its data in the query string. Sending an
+	// (empty) JSON body on a GET request is unusual enough that some reverse proxies/WAFs in front
+	// of a self-hosted YOURLS instance reject it outright, even though YOURLS itself ignores it.
+	if (Object.keys(body).length) {
+		options.body = body;
+	}
 	try {
 		const response = await this.helpers.request.call(this, options);
 
