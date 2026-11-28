@@ -79,9 +79,10 @@ export class SsrfProtectionConfig {
 	 * influenced by user input, for example a URL pasted into the HTTP Request
 	 * node, a workflow imported from a URL, or an OAuth/discovery endpoint.
 	 *
-	 * Off by default so existing self-hosted setups that call internal services
-	 * keep working. Turn it on to stop n8n from reaching private or internal
-	 * addresses on behalf of untrusted input, then use the allow-lists below to
+	 * On by default: n8n blocks outbound requests to private or internal
+	 * addresses on behalf of untrusted input (a URL pasted into the HTTP Request
+	 * node, a workflow imported from a URL, an OAuth/discovery endpoint). Opt out
+	 * with N8N_SSRF_PROTECTION_ENABLED=false, or use the allow-lists below to
 	 * re-open the specific internal hosts you still need.
 	 *
 	 * Requests to fixed, n8n-owned or operator-configured destinations (the
@@ -89,7 +90,7 @@ export class SsrfProtectionConfig {
 	 * are unaffected by this setting.
 	 */
 	@Env('N8N_SSRF_PROTECTION_ENABLED')
-	enabled: boolean = false;
+	enabled: boolean = true;
 
 	/**
 	 * The IP address ranges (in CIDR notation) that guarded requests are not
