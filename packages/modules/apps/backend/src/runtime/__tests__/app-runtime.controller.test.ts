@@ -6,6 +6,7 @@ import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import type { App } from '../../app.entity';
+import type { AppsConfig } from '../../apps.config';
 import type { AppAuthService } from '../../auth/app-auth.service';
 import type {
 	AppAgentPort,
@@ -17,6 +18,7 @@ import type { AppPreviewService } from '../../preview/app-preview.service';
 import type { AppHostService } from '../../serving/app-host.service';
 import type { AppVersion } from '../../versions/app-version.entity';
 import type { AppVersionRepository } from '../../versions/app-version.repository';
+import { AppAgentTurnLimiter } from '../app-agent-turn-limiter';
 import { AppRuntimeController, type AppRuntimeRequest } from '../app-runtime.controller';
 
 const ORIGIN = 'https://crm.apps.example.com';
@@ -99,7 +101,15 @@ function response() {
 	return res;
 }
 
-function setup({ host = 'published' }: { host?: 'published' | 'preview' } = {}) {
+function setup({
+	host = 'published',
+	agentMaxConcurrentTurnsPerVisitor = 2,
+	agentTurnsPerVisitorPerHour = 100,
+}: {
+	host?: 'published' | 'preview';
+	agentMaxConcurrentTurnsPerVisitor?: number;
+	agentTurnsPerVisitorPerHour?: number;
+} = {}) {
 	const auth = mock<AppAuthService>();
 	auth.admit.mockResolvedValue({
 		ok: true,
@@ -135,6 +145,13 @@ function setup({ host = 'published' }: { host?: 'published' | 'preview' } = {}) 
 	const workflows = mock<AppWorkflowPort>();
 	const agents = mock<AppAgentPort>();
 	const events = mock<EventService>();
+	const agentTurns = new AppAgentTurnLimiter(
+		mock<AppsConfig>({
+			agentMaxConcurrentTurns: 20,
+			agentMaxConcurrentTurnsPerVisitor,
+			agentTurnsPerVisitorPerHour,
+		}),
+	);
 	const controller = new AppRuntimeController(
 		auth,
 		preview,
@@ -145,6 +162,7 @@ function setup({ host = 'published' }: { host?: 'published' | 'preview' } = {}) 
 		agents,
 		mock<Logger>(),
 		events,
+		agentTurns,
 	);
 	return { controller, auth, preview, versions, dataTables, workflows, agents, events };
 }
@@ -766,6 +784,117 @@ describe('AppRuntimeController', () => {
 			expect(res.status).toHaveBeenCalledWith(400);
 			expect(res.flushHeaders).not.toHaveBeenCalled();
 			expect(agents.resume).not.toHaveBeenCalled();
+		});
+
+		describe('turn limits', () => {
+			const chatRequest = () =>
+				request({ method: 'POST', params: { key: 'support' }, body: { message: 'Hi', sessionId } });
+
+			it('refuses a turn above the visitor limit before the stream opens', async () => {
+				const { controller, agents } = setup({ agentMaxConcurrentTurnsPerVisitor: 1 });
+				let finish = () => {};
+				const finished = new Promise<void>((resolve) => (finish = resolve));
+				async function* longTurn(): AsyncGenerator<AgentSseEvent> {
+					await finished;
+					yield { type: 'done', sessionId };
+				}
+				agents.chat.mockResolvedValueOnce({ events: longTurn() });
+
+				const first = controller.chat(chatRequest(), response());
+				await vi.waitFor(() => expect(agents.chat).toHaveBeenCalledTimes(1));
+
+				const refused = response();
+				await controller.chat(chatRequest(), refused);
+				expect(refused.status).toHaveBeenCalledWith(429);
+				expect(refused.flushHeaders).not.toHaveBeenCalled();
+				expect(agents.chat).toHaveBeenCalledTimes(1);
+
+				finish();
+				await first;
+			});
+
+			it('frees the slot when the stream ends', async () => {
+				const { controller, agents } = setup({ agentMaxConcurrentTurnsPerVisitor: 1 });
+				async function* turn(): AsyncGenerator<AgentSseEvent> {
+					yield { type: 'done', sessionId };
+				}
+				agents.chat.mockImplementation(async () => ({ events: turn() }));
+
+				await controller.chat(chatRequest(), response());
+				const second = response();
+				await controller.chat(chatRequest(), second);
+
+				expect(second.status).not.toHaveBeenCalledWith(429);
+				expect(agents.chat).toHaveBeenCalledTimes(2);
+			});
+
+			it('frees the slot when the turn is refused before it starts', async () => {
+				const { controller, agents } = setup({ agentMaxConcurrentTurnsPerVisitor: 1 });
+				agents.chat.mockRejectedValueOnce(
+					new AppRuntimeError(409, 'run_in_progress', 'The agent is waiting for an answer.'),
+				);
+				async function* turn(): AsyncGenerator<AgentSseEvent> {
+					yield { type: 'done', sessionId };
+				}
+				agents.chat.mockResolvedValueOnce({ events: turn() });
+
+				const refused = response();
+				await controller.chat(chatRequest(), refused);
+				expect(refused.status).toHaveBeenCalledWith(409);
+
+				const next = response();
+				await controller.chat(chatRequest(), next);
+				expect(next.flushHeaders).toHaveBeenCalled();
+			});
+
+			it('does not count a refused turn toward the hourly limit', async () => {
+				const { controller, agents } = setup({ agentTurnsPerVisitorPerHour: 1 });
+				agents.chat.mockRejectedValueOnce(
+					new AppRuntimeError(409, 'run_in_progress', 'The agent is waiting for an answer.'),
+				);
+				async function* turn(): AsyncGenerator<AgentSseEvent> {
+					yield { type: 'done', sessionId };
+				}
+				agents.chat.mockImplementation(async () => ({ events: turn() }));
+
+				const refused = response();
+				await controller.chat(chatRequest(), refused);
+				expect(refused.status).toHaveBeenCalledWith(409);
+
+				const accepted = response();
+				await controller.chat(chatRequest(), accepted);
+				expect(accepted.flushHeaders).toHaveBeenCalled();
+
+				const overLimit = response();
+				await controller.chat(chatRequest(), overLimit);
+				expect(overLimit.status).toHaveBeenCalledWith(429);
+			});
+
+			it('counts a resumed turn against the visitor limit', async () => {
+				const { controller, agents } = setup({ agentMaxConcurrentTurnsPerVisitor: 1 });
+				let finish = () => {};
+				const finished = new Promise<void>((resolve) => (finish = resolve));
+				async function* longTurn(): AsyncGenerator<AgentSseEvent> {
+					await finished;
+					yield { type: 'done', sessionId };
+				}
+				agents.chat.mockResolvedValueOnce({ events: longTurn() });
+
+				const first = controller.chat(chatRequest(), response());
+				await vi.waitFor(() => expect(agents.chat).toHaveBeenCalledTimes(1));
+
+				const refused = response();
+				const body = { sessionId, runId: 'r1', toolCallId: 't1', resumeData: { approved: true } };
+				await controller.resume(
+					request({ method: 'POST', params: { key: 'support' }, body }),
+					refused,
+				);
+				expect(refused.status).toHaveBeenCalledWith(429);
+				expect(agents.resume).not.toHaveBeenCalled();
+
+				finish();
+				await first;
+			});
 		});
 
 		it('requires the history permission to read messages', async () => {

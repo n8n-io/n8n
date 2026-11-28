@@ -26,6 +26,18 @@ export class AppsConfig {
 	@Env('N8N_APPS_API_RUN_WAIT_MS', positiveInteger.max(2 ** 31 - 1))
 	apiRunWaitMs: number = 60 * 1000;
 
+	/** Maximum agent chat turns that apps run at the same time in each main process, across all apps and visitors. Requests above this limit get a "too many requests" error. Set to 0 to disable it. */
+	@Env('N8N_APPS_AGENT_MAX_CONCURRENT_TURNS', rateLimit)
+	agentMaxConcurrentTurns: number = 20;
+
+	/** Maximum agent chat turns that one visitor of one app can run at the same time in each main process. Set to 0 to disable it. */
+	@Env('N8N_APPS_AGENT_MAX_CONCURRENT_TURNS_PER_VISITOR', rateLimit)
+	agentMaxConcurrentTurnsPerVisitor: number = 2;
+
+	/** Maximum agent chat turns that one visitor of one app can start per hour in each main process. A new message and an answer to a waiting agent each count as one turn. Set to 0 to disable it. */
+	@Env('N8N_APPS_AGENT_TURNS_PER_VISITOR_PER_HOUR', rateLimit)
+	agentTurnsPerVisitorPerHour: number = 100;
+
 	/** Maximum decoded app bundle bytes to cache in each main process. Bundles larger than this limit are served without retaining them in the cache. */
 	@Env('N8N_APPS_BUNDLE_CACHE_MAX_BYTES', positiveInteger)
 	bundleCacheMaxBytes: number = 64 * 1024 * 1024;

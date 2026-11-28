@@ -73,7 +73,7 @@ import { AgentsSettingsService } from './agents-settings.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
-import { withBudgetGuardrail } from './budget-guardrail';
+import { budgetSessionKey, withBudgetGuardrail } from './budget-guardrail';
 import { withToolGuardrails } from './tool-guardrails';
 import type { WorkflowToolContext } from './tools/workflow-tool-factory';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
@@ -1768,7 +1768,11 @@ export class AgentExecutionOrchestratorService {
 					this.createResumeOptions(config, memoryScope, messageContext, executionSource, tracing),
 					{
 						budget: runtime.budget,
-						sessionId: memoryScope.threadId,
+						sessionId: budgetSessionKey({
+							agentId: config.agentId,
+							threadId: memoryScope.threadId,
+							resourceId: memoryScope.resourceId,
+						}),
 						agentId: config.agentId,
 						...(runtime.modelCredentialGatewayManaged
 							? { modelCredentialGatewayManaged: true }
@@ -2303,7 +2307,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					{
 						budget: config.budget,
-						sessionId: threadId,
+						sessionId: budgetSessionKey({ agentId, threadId, resourceId }),
 						agentId,
 						...(config.modelCredentialGatewayManaged
 							? { modelCredentialGatewayManaged: true }

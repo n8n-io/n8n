@@ -4,7 +4,7 @@ import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 /** Running USD total for one budget ledger key. */
 @Entity({ name: 'agent_budget_spend' })
 export class AgentBudgetSpend extends WithTimestamps {
-	/** Session key is the root thread id. Month key is {agentId}:{YYYY-MM}. */
+	/** Session key is the root thread id, or {agentId}:app-visitor:{visitor hash}:{YYYY-MM-DD} for an app visitor. Month key is {agentId}:{YYYY-MM}. */
 	@PrimaryColumn({
 		type: 'varchar',
 		length: 128,

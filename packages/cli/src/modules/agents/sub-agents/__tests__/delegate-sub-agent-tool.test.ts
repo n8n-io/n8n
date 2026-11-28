@@ -217,6 +217,39 @@ describe('createN8nDelegateSubAgentTool', () => {
 		);
 	});
 
+	it.each([
+		[
+			'every thread of an app visitor',
+			'app:app-1:user:user-1',
+			expect.stringMatching(/^parent-agent-1:app-visitor:[\w-]{43}:\d{4}-\d{2}-\d{2}$/),
+		],
+		['the parent thread', 'resource-1', 'parent-thread-1'],
+	])('charges the child to the root session bucket of %s', async (_, resourceId, expectedKey) => {
+		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			parentBudget: { enabled: true, sessionCostCapUsd: 2 },
+		});
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{ runId: 'parent-run-1', persistence: { threadId: 'parent-thread-1', resourceId } },
+		);
+
+		expect(runner.run).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({
+				rootSessionId: expectedKey,
+				rootSessionCapUsd: 2,
+				budgetForwarded: true,
+			}),
+		);
+	});
+
 	it('forwards the parent episodic scope decision to the runner context', async () => {
 		const tool = createN8nDelegateSubAgentTool({
 			parentAgentId,
