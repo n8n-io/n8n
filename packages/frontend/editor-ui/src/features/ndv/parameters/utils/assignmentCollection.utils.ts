@@ -41,11 +41,12 @@ export function inputDataToAssignments(input: IDataObject): AssignmentValue[] {
 				processValue(objectValue as IDataObject, [...path, key]);
 			}
 		} else {
-			const name = path.reduce((fullPath: string, part) => {
+			const name = path.reduce((fullPath: string, part, index) => {
 				if (typeof part === 'number') {
 					return `${fullPath}[${part}]`;
 				}
-				return fullPath ? `${fullPath}.${part}` : part;
+				// Check the index, not fullPath, so an empty first key still gets its dot
+				return index === 0 ? part : `${fullPath}.${part}`;
 			}, '');
 
 			assignments.push({

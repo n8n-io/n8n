@@ -27,4 +27,10 @@ describe('inputDataToAssignments', () => {
 			{ name: "it's", value: "={{ $json['it\\'s'] }}", type: 'boolean' },
 		]);
 	});
+
+	it('should keep an empty key in the field name', () => {
+		expect(toNameValueType({ '': { value: 1 } })).toEqual([
+			{ name: '.value', value: "={{ $json[''].value }}", type: 'number' },
+		]);
+	});
 });
