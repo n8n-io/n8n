@@ -2,7 +2,7 @@ import type { InstanceAiPrefillPayload } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import type { McpServerAssistantHandoff } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { useRouter } from 'vue-router';
+import { isNavigationFailure, NavigationFailureType, useRouter } from 'vue-router';
 
 import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
@@ -66,7 +66,12 @@ export function useMcpServerAssistantHandoff(): McpServerAssistantHandoff {
 			const failure = await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 			if (failure) {
 				await discardThread(threadId);
-				if (router.currentRoute.value !== originRoute) return true;
+				if (
+					isNavigationFailure(failure, NavigationFailureType.cancelled) ||
+					isNavigationFailure(failure, NavigationFailureType.aborted)
+				) {
+					return true;
+				}
 				toast.showError(failure, i18n.baseText('instanceAi.handoff.openFailed.title'));
 				return false;
 			}

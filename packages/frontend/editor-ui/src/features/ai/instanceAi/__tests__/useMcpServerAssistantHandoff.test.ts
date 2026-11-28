@@ -1,5 +1,12 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import {
+	createMemoryHistory,
+	createRouter,
+	isNavigationFailure,
+	NavigationFailureType,
+	type NavigationFailure,
+} from 'vue-router';
 
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useMcpServerAssistantHandoff } from '../composables/useMcpServerAssistantHandoff';
@@ -17,7 +24,10 @@ const { available, currentRoute, push, showError } = vi.hoisted(() => ({
 	showError: vi.fn(),
 }));
 
-vi.mock('vue-router', () => ({ useRouter: () => ({ currentRoute, push }) }));
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({ currentRoute, push }),
+}));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
 vi.mock('../composables/useInstanceAiAvailability', () => ({
 	useInstanceAiReady: () => available,
@@ -129,6 +139,71 @@ describe('useMcpServerAssistantHandoff', () => {
 		expect(clearPendingThreadHandoff).toHaveBeenCalledWith('thread-new');
 		expect(useInstanceAiStore().deleteThread).toHaveBeenCalledWith('thread-new', { silent: true });
 		expect(showError).toHaveBeenCalledWith(error, expect.any(String));
+	});
+
+	it('silently deletes the provisioned thread when navigation is cancelled or aborted', async () => {
+		let releaseGuard!: () => void;
+		const guardGate = new Promise<void>((resolve) => {
+			releaseGuard = resolve;
+		});
+		const stub = { render: () => null };
+		const testRouter = createRouter({
+			history: createMemoryHistory(),
+			routes: [
+				{ path: '/', component: stub },
+				{ path: '/aborted', component: stub, beforeEnter: () => false },
+				{ path: '/slow', component: stub, beforeEnter: async () => await guardGate },
+				{ path: '/other', component: stub },
+			],
+		});
+		await testRouter.push('/');
+		await testRouter.isReady();
+
+		const abortedFailure = (await testRouter.push('/aborted')) as NavigationFailure;
+		expect(isNavigationFailure(abortedFailure, NavigationFailureType.aborted)).toBe(true);
+		push.mockResolvedValueOnce(abortedFailure);
+
+		await expect(useMcpServerAssistantHandoff().openServer(server)).resolves.toBe(true);
+		expect(clearPendingThreadHandoff).toHaveBeenCalledWith('thread-new');
+		expect(useInstanceAiStore().deleteThread).toHaveBeenCalledWith('thread-new', { silent: true });
+		expect(showError).not.toHaveBeenCalled();
+
+		vi.clearAllMocks();
+		vi.mocked(provisionLaunchedSubjectThread).mockResolvedValue('thread-cancelled');
+
+		const slowPush = testRouter.push('/slow');
+		const otherPush = testRouter.push('/other');
+		releaseGuard();
+		const cancelledFailure = (await slowPush) as NavigationFailure;
+		await otherPush;
+		expect(isNavigationFailure(cancelledFailure, NavigationFailureType.cancelled)).toBe(true);
+		push.mockResolvedValueOnce(cancelledFailure);
+
+		await expect(useMcpServerAssistantHandoff().openServer(server)).resolves.toBe(true);
+		expect(clearPendingThreadHandoff).toHaveBeenCalledWith('thread-cancelled');
+		expect(useInstanceAiStore().deleteThread).toHaveBeenCalledWith('thread-cancelled', {
+			silent: true,
+		});
+		expect(showError).not.toHaveBeenCalled();
+	});
+
+	it('shows an error toast when navigation resolves with a non-cancelled failure', async () => {
+		const stub = { render: () => null };
+		const testRouter = createRouter({
+			history: createMemoryHistory(),
+			routes: [{ path: '/', component: stub }],
+		});
+		await testRouter.push('/');
+		await testRouter.isReady();
+		const duplicatedFailure = (await testRouter.push('/')) as NavigationFailure;
+		expect(isNavigationFailure(duplicatedFailure, NavigationFailureType.duplicated)).toBe(true);
+		push.mockResolvedValueOnce(duplicatedFailure);
+
+		await expect(useMcpServerAssistantHandoff().openServer(server)).resolves.toBe(false);
+
+		expect(clearPendingThreadHandoff).toHaveBeenCalledWith('thread-new');
+		expect(useInstanceAiStore().deleteThread).toHaveBeenCalledWith('thread-new', { silent: true });
+		expect(showError).toHaveBeenCalledWith(duplicatedFailure, expect.any(String));
 	});
 
 	it('shows an error toast when provisioning fails', async () => {
