@@ -142,7 +142,8 @@ function addPairedItemIdsRec(
 
 		outputData.forEach((executionData, item: number) => {
 			const pairedItemId = getPairedItemId(node, runIndex, output, item);
-			if (!executionData.pairedItem) {
+			// A numeric pairedItem of 0 is valid, so only a missing value means no pairing
+			if (executionData.pairedItem === undefined || executionData.pairedItem === null) {
 				paths.data[pairedItemId] = [];
 				return;
 			}
