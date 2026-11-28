@@ -2,6 +2,7 @@
 import { DialogContent, DialogTitle, DialogDescription } from 'reka-ui';
 import { computed, provide, useCssModule } from 'vue';
 
+import { hasActiveMessageBox, isEscapeConsumedByMessageBox } from '../../composables/useMessage';
 import N8nVisuallyHidden from '../N8nVisuallyHidden';
 import N8nDialogClose from './DialogClose.vue';
 import { dialogCloseButtonKey } from './dialogContext';
@@ -122,6 +123,10 @@ const needsFallbackDescription = computed(() => !!props.ariaDescription);
 const PORTALED_INTERACTIVE_SELECTOR = '.el-popper, .el-select-dropdown, .el-overlay, .cm-tooltip';
 
 function handleInteractOutside(e: Event) {
+	if (hasActiveMessageBox.value) {
+		e.preventDefault();
+		return;
+	}
 	const target = e.target instanceof Element ? e.target : null;
 	if (target?.closest(PORTALED_INTERACTIVE_SELECTOR)) {
 		e.preventDefault();
@@ -133,6 +138,10 @@ function handleInteractOutside(e: Event) {
 }
 
 function handleEscapeKeyDown(event: KeyboardEvent) {
+	if (isEscapeConsumedByMessageBox(event)) {
+		event.preventDefault();
+		return;
+	}
 	if (!props.closeOnEscape) {
 		event.preventDefault();
 	}
@@ -145,7 +154,12 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 		:force-mount="forceMount"
 		:trap-focus="trapFocus"
 		:disable-outside-pointer-events="disableOutsidePointerEvents"
-		:class="[$style.content, sizeClass, stacked && $style.stacked]"
+		:class="[
+			$style.content,
+			sizeClass,
+			stacked && $style.stacked,
+			hasActiveMessageBox && $style.behindMessageBox,
+		]"
 		@escape-key-down="handleEscapeKeyDown"
 		@interact-outside="handleInteractOutside"
 		@open-auto-focus="emit('openAutoFocus', $event)"
@@ -267,6 +281,12 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 
 .stacked {
 	z-index: 1952; // Higher than default .content z-index to ensure the dialog is always on top.
+}
+
+// Reka DismissableLayer sets inline pointer-events: auto on the dialog; disable it while
+// an Element Plus message box is mounted above this dialog.
+.behindMessageBox {
+	pointer-events: none !important;
 }
 
 .content[data-state='open'] {
