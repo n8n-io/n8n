@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { render, waitFor } from '@testing-library/vue';
+import { render, waitFor, within } from '@testing-library/vue';
 import { DialogRoot, DialogTrigger, DialogPortal } from 'reka-ui';
 import { ref } from 'vue';
 
@@ -15,6 +15,8 @@ import {
 	N8nDialogTitle,
 } from './index';
 import { OVERLAY_LAYER_SELECTOR } from '../../constants';
+import N8nPopover from '../N8nPopover';
+import { useMessage } from '../../composables/useMessage';
 
 // Helper to render the simplified N8nDialog component
 const renderDialog = (
@@ -818,6 +820,71 @@ describe('N8nDialog', () => {
 			await user.click(getByTestId('dialog-trigger'));
 
 			expect(getByRole('dialog')).toBeInTheDocument();
+		});
+	});
+	describe('interaction with useMessage', () => {
+		it('keeps focus in a message box and closes only the message box on Escape', async () => {
+			const user = userEvent.setup();
+			const escapeHandler = vi.fn();
+			const { getByTestId, getByRole } = render({
+				components: { N8nDialog, N8nDialogHeader, N8nDialogTitle },
+				setup() {
+					const isOpen = ref(false);
+					return { isOpen, escapeHandler };
+				},
+				template: `
+					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
+					<N8nDialog v-model:open="isOpen" @escape-key-down="escapeHandler">
+						<N8nDialogHeader><N8nDialogTitle>Parent Dialog</N8nDialogTitle></N8nDialogHeader>
+					</N8nDialog>
+				`,
+			});
+
+			await user.click(getByTestId('dialog-trigger'));
+			const parentDialog = getByRole('dialog', { name: 'Parent Dialog' });
+
+			const pending = useMessage().confirm('Discard changes?', 'Close without saving?', {
+				confirmButtonText: 'Keep Editing',
+				cancelButtonText: 'Close',
+			});
+			const messageBox = await waitFor(() =>
+				getByRole('dialog', { name: 'Close without saving?' }),
+			);
+			expect(parentDialog.contains(messageBox)).toBe(true);
+
+			for (let i = 0; i < 4; i++) {
+				await user.tab();
+				expect(messageBox.contains(document.activeElement)).toBe(true);
+			}
+
+			await user.keyboard('{Escape}');
+			await expect(pending).resolves.toBe('close');
+			expect(escapeHandler).not.toHaveBeenCalled();
+			expect(getByRole('dialog', { name: 'Parent Dialog' })).toBeInTheDocument();
+		});
+
+		it('mounts a message box in the body when only a popover is open', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByRole } = render({
+				components: { N8nPopover },
+				template: `
+					<N8nPopover>
+						<template #trigger><button data-test-id="popover-trigger">Open</button></template>
+						<template #content><div>Popover content</div></template>
+					</N8nPopover>
+				`,
+			});
+
+			await user.click(getByTestId('popover-trigger'));
+			const popover = await waitFor(() => getByRole('dialog'));
+
+			const pending = useMessage().confirm('Sure?', 'Confirm?');
+			const messageBox = await waitFor(() => getByRole('dialog', { name: 'Confirm?' }));
+			expect(popover.contains(messageBox)).toBe(false);
+
+			// Close the message box so it does not leak into later tests.
+			await user.click(within(messageBox).getByRole('button', { name: /confirm|ok|yes/i }));
+			await expect(pending).resolves.toBe('confirm');
 		});
 	});
 });
