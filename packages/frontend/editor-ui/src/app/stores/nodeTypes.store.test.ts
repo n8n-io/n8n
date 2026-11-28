@@ -468,20 +468,45 @@ describe('useNodeTypesStore', () => {
 			await expect(first).rejects.toBe(error);
 			await expect(second).rejects.toBe(error);
 			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(1);
+			expect(store.nodeTypesLoaded).toBe(false);
 
 			await store.loadNodeTypesIfNotLoaded();
 
 			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(2);
+			expect(store.nodeTypesLoaded).toBe(true);
 			expect(store.nodeTypes[restNode.name]).toBeDefined();
 		});
 
-		it('should send no request when the node types are already loaded', async () => {
+		it('should load the full catalog when only a partial catalog is present', async () => {
+			vi.mocked(nodeTypesApi.getNodeTypes).mockResolvedValueOnce([restNode]);
+			const partialNode = makeNodeType({
+				name: 'n8n-nodes-base.partial',
+				outputs: [NodeConnectionTypes.Main],
+			});
 			const store = useNodeTypesStore();
-			store.setNodeTypes([restNode]);
+			store.setNodeTypes([partialNode]);
+			expect(store.hasNodeTypes).toBe(true);
+			expect(store.nodeTypesLoaded).toBe(false);
 
 			await store.loadNodeTypesIfNotLoaded();
 
-			expect(nodeTypesApi.getNodeTypes).not.toHaveBeenCalled();
+			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(1);
+			expect(store.nodeTypesLoaded).toBe(true);
+			expect(store.nodeTypes[restNode.name]).toBeDefined();
+			// The partial registration stays usable.
+			expect(store.getNodeType(partialNode.name)).toBeDefined();
+		});
+
+		it('should send no request after the full catalog loaded', async () => {
+			vi.mocked(nodeTypesApi.getNodeTypes).mockResolvedValueOnce([restNode]);
+			const store = useNodeTypesStore();
+
+			await store.loadNodeTypesIfNotLoaded();
+			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(1);
+
+			await store.loadNodeTypesIfNotLoaded();
+
+			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(1);
 		});
 
 		it('should initialize the data worker once for calls that start together', async () => {

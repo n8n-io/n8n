@@ -3,6 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
 import { useNodeTypesLoad } from './useNodeTypesLoad';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn(() => ({
@@ -28,6 +29,12 @@ const nodeType = {
 	inputs: ['main'],
 	outputs: ['main'],
 	properties: [],
+} as INodeTypeDescription;
+
+const partialNodeType = {
+	...nodeType,
+	name: 'n8n-nodes-base.partial',
+	displayName: 'Partial',
 } as INodeTypeDescription;
 
 describe('useNodeTypesLoad', () => {
@@ -67,14 +74,42 @@ describe('useNodeTypesLoad', () => {
 		expect(isLoaded.value).toBe(false);
 	});
 
-	it('stops loading when the request succeeds with no node types', async () => {
+	it('reports loaded when the request succeeds with no node types, and does not retry', async () => {
 		vi.mocked(nodeTypesApi.getNodeTypes).mockResolvedValueOnce([]);
 
 		const { isLoading, isLoaded, whenSettled } = useNodeTypesLoad();
 		await whenSettled();
 
 		expect(isLoading.value).toBe(false);
-		expect(isLoaded.value).toBe(false);
+		// The full load completed; an empty catalog is a finished load, not a retry case.
+		expect(isLoaded.value).toBe(true);
+
+		const second = useNodeTypesLoad();
+		await second.whenSettled();
+		expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(1);
+	});
+
+	it('loads the full catalog when a partial catalog is already present, sharing one request', async () => {
+		const store = useNodeTypesStore();
+		store.setNodeTypes([partialNodeType]);
+
+		const { promise, resolve } = Promise.withResolvers<INodeTypeDescription[]>();
+		vi.mocked(nodeTypesApi.getNodeTypes).mockReturnValueOnce(promise);
+
+		const first = useNodeTypesLoad();
+		const second = useNodeTypesLoad();
+
+		// A non-empty catalog is not a finished load.
+		expect(first.isLoading.value).toBe(true);
+		expect(first.isLoaded.value).toBe(false);
+
+		resolve([nodeType]);
+		await Promise.all([first.whenLoaded(), second.whenLoaded()]);
+
+		expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(1);
+		expect(first.isLoaded.value).toBe(true);
+		expect(store.getNodeType(nodeType.name)).toBeDefined();
+		expect(store.getNodeType(partialNodeType.name)).toBeDefined();
 	});
 
 	it('shares one request between instances, and sends none once the types are loaded', async () => {

@@ -23,6 +23,7 @@ import { waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import { defineComponent, inject, nextTick, type PropType } from 'vue';
+import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
@@ -57,6 +58,13 @@ vi.mock('vue-router', () => ({
 	useRoute: () => ({ params: {}, query: {} }),
 	RouterLink: { template: '<a><slot /></a>' },
 }));
+
+// Keep the rest of the API real; only control the full catalog request so the
+// real store's `getNodeTypes` (and its completion signal) runs in the tests.
+vi.mock('@n8n/rest-api-client/api/nodeTypes', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/rest-api-client/api/nodeTypes')>();
+	return { ...actual, getNodeTypes: vi.fn() };
+});
 
 const MOCK_NODE_TYPE: INodeTypeDescription = {
 	displayName: 'Test Tool',
@@ -225,6 +233,8 @@ describe('NodeToolSettingsContent', () => {
 	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 	let environmentsStore: ReturnType<typeof mockedStore<typeof useEnvironmentsStore>>;
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+	// The real action, captured before the suite replaces it with a resolved mock.
+	let realLoadNodeTypesIfNotLoaded: () => Promise<void>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -233,6 +243,7 @@ describe('NodeToolSettingsContent', () => {
 		createTestingPinia({ stubActions: false });
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
+		realLoadNodeTypesIfNotLoaded = nodeTypesStore.loadNodeTypesIfNotLoaded;
 		credentialsStore = mockedStore(useCredentialsStore);
 		projectsStore = mockedStore(useProjectsStore);
 		environmentsStore = mockedStore(useEnvironmentsStore);
@@ -1864,6 +1875,7 @@ describe('NodeToolSettingsContent', () => {
 
 		it('hydrates immediately when the full catalog is already present', async () => {
 			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: PARTIAL_NODE_TYPE } };
+			nodeTypesStore.nodeTypesLoaded = true;
 
 			const toolWorkflowStore = getToolWorkflowStore();
 			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
@@ -1883,8 +1895,10 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		it('marks a permanently unknown type only after the shared load settles', async () => {
-			// The load resolves without ever providing the requested type.
-			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
+			// The load completes without ever providing the requested type.
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockImplementation(async () => {
+				nodeTypesStore.nodeTypesLoaded = true;
+			});
 
 			const toolWorkflowStore = getToolWorkflowStore();
 			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
@@ -1900,6 +1914,132 @@ describe('NodeToolSettingsContent', () => {
 			expect(alert.textContent).toContain('nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown');
 			expect(setNodesSpy).not.toHaveBeenCalled();
 			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(false);
+		});
+	});
+
+	describe('partial catalog with the real node-types load', () => {
+		const REQUESTED_NODE_TYPE: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			name: 'n8n-nodes-base.httpRequest',
+			displayName: 'HTTP Request',
+			credentials: undefined,
+			properties: [
+				{
+					displayName: 'URL',
+					name: 'endpointUrl',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Include',
+					name: 'include',
+					type: 'options',
+					options: [
+						{ name: 'All', value: 'all' },
+						{ name: 'Selected', value: 'selected' },
+					],
+					default: 'all',
+				},
+			],
+		};
+
+		const requestedNode = () =>
+			createMockNode({
+				type: 'n8n-nodes-base.httpRequest',
+				name: 'HTTP Request',
+				parameters: {},
+			});
+
+		function seedPartialCatalog() {
+			nodeTypesStore.nodeTypes = {
+				'n8n-nodes-base.partial': {
+					1: { ...MOCK_NODE_TYPE, name: 'n8n-nodes-base.partial' },
+				},
+			};
+		}
+
+		beforeEach(() => {
+			window.localStorage.clear();
+			vi.mocked(nodeTypesApi.getNodeTypes).mockReset();
+			nodeTypesStore.nodeTypes = {};
+			nodeTypesStore.nodeTypesLoaded = false;
+			nodeTypesStore.getNodeType = vi.fn((type: string) => {
+				const entry = nodeTypesStore.nodeTypes[type];
+				if (!entry) return null;
+				if ('name' in entry) return entry as unknown as INodeTypeDescription;
+				const versionNumbers = Object.keys(entry).map(Number);
+				return entry[Math.max(...versionNumbers)] ?? null;
+			});
+			// Exercise the real gating: a partial catalog must not skip the full load.
+			nodeTypesStore.loadNodeTypesIfNotLoaded = realLoadNodeTypesIfNotLoaded;
+		});
+
+		it('stays pending with a partial catalog and hydrates when the full catalog arrives', async () => {
+			seedPartialCatalog();
+			const { promise, resolve } = Promise.withResolvers<INodeTypeDescription[]>();
+			vi.mocked(nodeTypesApi.getNodeTypes).mockReturnValueOnce(promise);
+
+			const toolWorkflowStore = getToolWorkflowStore();
+			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
+
+			const { emitted, queryByTestId, queryAllByTestId, container } = renderComponent({
+				props: { initialNode: requestedNode() },
+			});
+			await flushPromises();
+
+			// The requested type is absent from the partial catalog, and the full
+			// load has not completed. Stay gated; do not call the type unknown.
+			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(1);
+			expect(container.querySelector('[role="alert"]')).toBeNull();
+			expect(queryByTestId('tool-settings-loading')).toBeInTheDocument();
+			expect(queryAllByTestId('parameter-input-list')).toHaveLength(0);
+			expect(setNodesSpy).not.toHaveBeenCalled();
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0] ?? false).toBe(false);
+
+			resolve([REQUESTED_NODE_TYPE]);
+			await waitFor(() => {
+				expect(queryAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+			});
+
+			expect(queryByTestId('tool-settings-loading')).not.toBeInTheDocument();
+			expect(container.querySelector('[role="alert"]')).toBeNull();
+			expect(setNodesSpy).toHaveBeenCalledTimes(1);
+			const nodeInStore = toolWorkflowStore.allNodes[0];
+			expect(nodeInStore?.parameters.endpointUrl).toBe('');
+			expect(nodeInStore?.parameters.include).toBe('all');
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(true);
+			expect(nodeTypesStore.nodeTypesLoaded).toBe(true);
+		});
+
+		it('recovers from a failed full load with a retry', async () => {
+			seedPartialCatalog();
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			vi.mocked(nodeTypesApi.getNodeTypes)
+				.mockRejectedValueOnce(new Error('node types'))
+				.mockResolvedValueOnce([REQUESTED_NODE_TYPE]);
+
+			const { emitted, getByTestId, queryByTestId, queryAllByTestId } = renderComponent({
+				props: { initialNode: requestedNode() },
+			});
+			await waitFor(() => {
+				expect(getByTestId('tool-settings-load-error')).toBeInTheDocument();
+			});
+
+			// A partial catalog is not enough to treat the type as known, and the
+			// failed load offers a retry instead of a false unknown warning.
+			expect(queryAllByTestId('parameter-input-list')).toHaveLength(0);
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(false);
+
+			await userEvent.click(getByTestId('tool-settings-retry'));
+			await waitFor(() => {
+				expect(queryAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+			});
+
+			expect(queryByTestId('tool-settings-load-error')).not.toBeInTheDocument();
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(true);
+			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(2);
+
+			consoleErrorSpy.mockRestore();
 		});
 	});
 
