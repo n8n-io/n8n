@@ -31,6 +31,7 @@ import {
 import { createReusableTemplate, useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
+	type AgentChatMode,
 	type AgentChatQueueItem,
 	type AgentSessionFile,
 	type AgentBuilderOpenSuspension,
@@ -44,6 +45,7 @@ import {
 	getProviderAttachmentCapabilities,
 	acceptedMimeTypesFromCapabilities,
 	AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
+	AGENT_SAFE_TESTING_FLAG,
 	AGENT_SANDBOX_FILES_FLAG,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -69,7 +71,14 @@ import {
 } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
-import type { ChatMessage, ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
+import AgentNewTestRunButton from './AgentNewTestRunButton.vue';
+import AgentTestRunChangesNote from './AgentTestRunChangesNote.vue';
+import AgentTestRunToolsNotice from './AgentTestRunToolsNotice.vue';
+import type {
+	ChatMessage,
+	ChatMessageAttachment,
+	ToolCall,
+} from '@/features/ai/shared/agentsChat/types';
 import { resolveFileMimeType } from '@/app/utils/fileUtils';
 import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 import AgentChatMessageList from './AgentChatMessageList.vue';
@@ -102,8 +111,10 @@ import { useAgentChatTaskControls } from '../composables/useAgentChatTaskControl
 import {
 	getChatAttachmentUrl,
 	getSessionFiles,
+	resetAgentTestRun,
 	type AgentChatChannel,
 } from '../composables/useAgentApi';
+import { useAgentTestRunTools } from '@/features/agents/composables/useAgentTestRunTools';
 import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
 import ToolApprovalCard from '@/features/ai/shared/components/ToolApprovalCard.vue';
 
@@ -138,6 +149,8 @@ const props = withDefaults(
 		backgroundJobsActive?: boolean;
 		/** `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'` talks to the published n8n Chat channel; `'system'` talks to a system agent, such as the n8n Assistant. */
 		channel?: AgentChatChannel;
+		/** Safe-testing execution mode for preview chats (`'test'` or `'live'`). Omitted when the flag is off. */
+		chatMode?: AgentChatMode;
 		/**
 		 * The n8n Chat entry page: centers the empty state and the composer together until a
 		 * new chat gets its first message, and shows that message right away when sent.
@@ -203,6 +216,7 @@ const props = withDefaults(
 		inputDraft: undefined,
 		backgroundJobsActive: false,
 		channel: 'chat',
+		chatMode: undefined,
 		centerEmptyState: false,
 		budgetCards: false,
 		increaseBudget: undefined,
@@ -259,6 +273,7 @@ const emit = defineEmits<{
 			isFirstMessage: boolean;
 		},
 	];
+	'new-test-run': [];
 }>();
 
 defineSlots<{
@@ -287,6 +302,8 @@ defineSlots<{
 	 * `executionId` is the agent execution of the turn, when it is known.
 	 */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
+	/** Content rendered directly below an assistant reply that executed tool calls. */
+	'after-reply'?: (props: { groupId: string; toolCalls: ToolCall[]; complete: boolean }) => unknown;
 	/** Content below the composer. */
 	'input-footer'?: () => unknown;
 	/** The `references` of a user message, for example mentioned workflows. */
@@ -325,6 +342,7 @@ const {
 	fatalError,
 	warnings,
 	loadHistory,
+	clearHistory,
 	sendMessage,
 	stopGenerating,
 	requestTaskStop,
@@ -340,6 +358,7 @@ const {
 	continueSessionId: toRef(props, 'continueSessionId'),
 	newSession: toRef(props, 'newSession'),
 	channel: toRef(props, 'channel'),
+	chatMode: toRef(props, 'chatMode'),
 	onHistoryLoaded: (count) => {
 		if (props.continueSessionId) {
 			emit('continue-loaded', { sessionId: props.continueSessionId, count });
@@ -1785,6 +1804,72 @@ const showSessionFilesToggle = computed(
 	() =>
 		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true && Boolean(props.continueSessionId),
 );
+
+const isSafeTestingEnabled = computed(
+	() => props.channel === 'chat' && posthog.isFeatureEnabled(AGENT_SAFE_TESTING_FLAG) === true,
+);
+const testRunConfigKey = computed(() => {
+	if (!isSafeTestingEnabled.value || !props.agentConfig) return '';
+	return JSON.stringify({
+		tools: props.agentConfig.tools ?? [],
+		mcpServers: props.agentConfig.mcpServers ?? [],
+		webSearch: props.agentConfig.config?.webSearch?.enabled ?? false,
+	});
+});
+const { tools: testRunTools, refresh: refreshTestRunTools } = useAgentTestRunTools({
+	projectId: toRef(props, 'projectId'),
+	agentId: toRef(props, 'agentId'),
+	enabled: isSafeTestingEnabled,
+	configKey: testRunConfigKey,
+});
+const isResettingTestRun = ref(false);
+let testRunResetRequest = 0;
+
+// A reset in flight on one chat must not keep the button busy on another.
+watch(
+	() => [props.projectId, props.agentId, props.continueSessionId],
+	() => {
+		testRunResetRequest++;
+		isResettingTestRun.value = false;
+	},
+);
+
+async function onNewTestRun() {
+	if (isResettingTestRun.value || isStreaming.value) return;
+	isResettingTestRun.value = true;
+	const request = ++testRunResetRequest;
+	// The panel can move to another chat while the request runs.
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		sessionId: props.continueSessionId,
+	};
+	const isCurrentTarget = () =>
+		props.projectId === target.projectId &&
+		props.agentId === target.agentId &&
+		props.continueSessionId === target.sessionId;
+	try {
+		// A simulated world belongs to a chat session, so a chat without one has no world.
+		if (target.sessionId) {
+			await resetAgentTestRun(
+				rootStore.restApiContext,
+				target.projectId,
+				target.agentId,
+				target.sessionId,
+			);
+			if (!isCurrentTarget()) return;
+			emit('new-test-run');
+		} else {
+			await clearHistory();
+			if (!isCurrentTarget()) return;
+		}
+		void refreshTestRunTools();
+	} catch (error) {
+		if (isCurrentTarget()) toast.showError(error, locale.baseText('agents.testRun.reset.error'));
+	} finally {
+		if (request === testRunResetRequest) isResettingTestRun.value = false;
+	}
+}
 const sessionFilesOpen = ref(false);
 const sessionFiles = ref<AgentSessionFile[]>([]);
 const sessionFilesLoading = ref(false);
@@ -2016,6 +2101,7 @@ onBeforeUnmount(() => {
 						v-bind="planCardProps"
 						@stop="stopTasks"
 					/>
+					<!-- Approvals in Test Run follow the same card flow: resume keeps the thread's SimulationSession so approved calls stay simulated. -->
 					<div ref="approvalCards" :class="$style.approvalCards" data-testid="agent-chat-approvals">
 						<ToolApprovalCard
 							v-if="pendingApproval"
@@ -2174,7 +2260,14 @@ onBeforeUnmount(() => {
 								/>
 							</N8nTooltip>
 						</template>
-						<template v-if="$slots['composer-actions']" #right-actions>
+						<template v-if="$slots['composer-actions'] || isSafeTestingEnabled" #right-actions>
+							<AgentNewTestRunButton
+								v-if="isSafeTestingEnabled"
+								:require-confirmation="displayedMessages.length > 0"
+								:disabled="isStreaming"
+								:busy="isResettingTestRun"
+								@confirm="onNewTestRun"
+							/>
 							<slot name="composer-actions" />
 						</template>
 					</ChatInputBase>
@@ -2246,6 +2339,10 @@ onBeforeUnmount(() => {
 			<slot name="empty-state">
 				<AgentChatEmptyState :agent-config="agentConfig" :icon="emptyStateIcon" />
 			</slot>
+			<div v-if="isSafeTestingEnabled" :class="$style.testRunNotices">
+				<AgentTestRunToolsNotice v-if="testRunTools.length > 0" :tools="testRunTools" />
+				<AgentTestRunChangesNote />
+			</div>
 			<ReuseInput />
 		</template>
 		<N8nChatScrollArea
@@ -2265,9 +2362,15 @@ onBeforeUnmount(() => {
 					!$slots['inline-offers']
 				"
 			>
-				<slot name="empty-state">
-					<AgentChatEmptyState :agent-config="agentConfig" :icon="emptyStateIcon" />
-				</slot>
+				<div :class="{ [$style.testRunEmpty]: isSafeTestingEnabled }">
+					<slot name="empty-state">
+						<AgentChatEmptyState :agent-config="agentConfig" :icon="emptyStateIcon" />
+					</slot>
+					<div v-if="isSafeTestingEnabled" :class="$style.testRunNotices">
+						<AgentTestRunToolsNotice v-if="testRunTools.length > 0" :tools="testRunTools" />
+						<AgentTestRunChangesNote />
+					</div>
+				</div>
 			</template>
 			<AgentChatMessageList
 				v-else
@@ -2289,6 +2392,7 @@ onBeforeUnmount(() => {
 				:load-older-messages-failed="loadOlderMessagesFailed"
 				:thinking-label="props.thinkingLabel"
 				:stopped-label="props.stoppedLabel"
+				:test-run="props.chatMode === 'test'"
 				:task-trace-route="
 					continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 				"
@@ -2301,6 +2405,9 @@ onBeforeUnmount(() => {
 			>
 				<template v-if="$slots['message-actions']" #message-actions="actionProps">
 					<slot name="message-actions" v-bind="actionProps" />
+				</template>
+				<template v-if="$slots['after-reply']" #after-reply="replyProps">
+					<slot name="after-reply" v-bind="replyProps" />
 				</template>
 				<template
 					v-if="$slots['user-message-references']"
@@ -2355,6 +2462,22 @@ onBeforeUnmount(() => {
 	min-height: 0;
 	// Centers the scroll button over the input, which a host panel can move.
 	--n8n-chat-scroll-area--x-offset--end: var(--agent-chat-reserved-end, 0);
+}
+
+/* Sizes the empty test run from the scroll area, so its starters sit by the composer. */
+.scrollArea:has(.testRunEmpty) {
+	container-type: size;
+}
+
+.testRunEmpty {
+	display: flex;
+	flex-direction: column;
+	/* The scroll area adds two 1px sentinels around the content; without them the viewport overflows. */
+	min-height: calc(100cqb - var(--chat--input--height, 0px) - 2px);
+
+	.testRunNotices {
+		margin-bottom: var(--spacing--xs);
+	}
 }
 
 .centeredEmpty {
@@ -2552,5 +2675,16 @@ onBeforeUnmount(() => {
 }
 .attachmentGroup {
 	margin-block-start: calc(var(--spacing--4xs) * -1);
+}
+
+.testRunNotices {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	width: 100%;
+	max-width: 32rem;
+	margin: 0 auto var(--spacing--sm);
+	padding: 0 var(--spacing--sm);
+	box-sizing: border-box;
 }
 </style>

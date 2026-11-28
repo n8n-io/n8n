@@ -3,6 +3,7 @@ import {
 	N8N_CHAT_ACTION_TOOL_NAME,
 	WAIT_TOOL_NAME,
 	instanceAiApprovalAskReasonSchema,
+	toolCallSimulationSchema,
 	type AgentBuilderOpenSuspension,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -390,6 +391,10 @@ export function convertDbMessages(
 				}
 
 				const call = resolveToolCatalogCall(part.toolName, part.input);
+				const parsedSimulation =
+					part.simulation !== undefined
+						? toolCallSimulationSchema.safeParse(part.simulation)
+						: undefined;
 				const toolCall: ToolCall = {
 					tool: call.tool,
 					toolCallId: part.toolCallId ?? '',
@@ -401,6 +406,7 @@ export function convertDbMessages(
 					...(part.endTime !== undefined && { endTime: part.endTime }),
 					...(part.suspendPayload !== undefined && { suspendPayload: part.suspendPayload }),
 					...(part.childTrace && { childProgress: part.childTrace }),
+					...(parsedSimulation?.success && { simulation: parsedSimulation.data }),
 					displaySummary: summariseToolCall(call.tool, output, call.input),
 				};
 				toolCalls.push(toolCall);

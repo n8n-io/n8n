@@ -220,6 +220,14 @@ export type PubSubCommandMap = {
 		threadId: string;
 	};
 
+	/** Ask other mains to drop their simulated world of a test chat that the user reset. */
+	'reset-agent-test-run': {
+		userId: string;
+		projectId: string;
+		agentId: string;
+		testChatId: string;
+	};
+
 	'clear-test-webhooks': {
 		webhookKey: string;
 		workflowEntity: IWorkflowBase;

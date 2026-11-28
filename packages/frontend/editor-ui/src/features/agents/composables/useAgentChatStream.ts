@@ -8,6 +8,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AgentBuilderOpenSuspension,
 	AgentChatMessagesResponse,
+	AgentChatMode,
 	AgentChatQueueItem,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
@@ -19,6 +20,7 @@ import {
 	applyForwardedChildChunk,
 	APPROVAL_TOOL_NAME,
 	emptyChildTrace,
+	toolCallSimulationSchema,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { convertFileToBinaryData, resolveFileMimeType } from '@/app/utils/fileUtils';
@@ -95,6 +97,12 @@ export interface UseAgentChatStreamParams {
 	 * between channels.
 	 */
 	channel?: Ref<AgentChatChannel>;
+	/**
+	 * Preview chat execution mode when safe testing is enabled (`'test'` runs
+	 * simulated; `'live'` runs against real services). Omitted when safe testing
+	 * is disabled so the request body stays unchanged.
+	 */
+	chatMode?: Ref<AgentChatMode | undefined>;
 	onHistoryLoaded?: (count: number) => void;
 	onSessionCreated?: (sessionId: string) => void;
 	onUsageUpdated?: (update: AgentUsageUpdate) => void;
@@ -1399,6 +1407,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							? TOOL_CALL_STATE.CANCELLED
 							: TOOL_CALL_STATE.DONE;
 					found.tc.canceled = toolResultEvent.canceled === true;
+					if (event.simulation !== undefined) {
+						const parsedSimulation = toolCallSimulationSchema.safeParse(event.simulation);
+						if (parsedSimulation.success) {
+							found.tc.simulation = parsedSimulation.data;
+						}
+					}
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					addReplyAttachments(found.msg, found.tc);
 					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
@@ -1853,6 +1867,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			body.sessionId = sessionId;
 			body.messageId = userMessage?.id;
 			if (newSession) body.newSession = true;
+		}
+		if (channel.value === 'chat' && params.chatMode?.value) {
+			body.mode = params.chatMode.value;
 		}
 		if (clientContext) body.clientContext = clientContext;
 		if (files?.length) {

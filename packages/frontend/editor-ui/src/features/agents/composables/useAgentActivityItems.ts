@@ -318,6 +318,8 @@ export function useAgentActivityItems(options: {
 			if (dismissedToolCallIds.has(toolCall.toolCallId)) continue;
 			if (isCanceledToolCall(toolCall)) continue;
 			if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
+			/** A test run blocked the call on purpose, so there is nothing to fix. */
+			if (toolCall.simulation?.route === 'blocked') continue;
 			if (isRecoverablePlanError(toolCall)) continue;
 			/** The assistant cannot lift a policy. */
 			if (toolStepRefusal(toolCall)) continue;

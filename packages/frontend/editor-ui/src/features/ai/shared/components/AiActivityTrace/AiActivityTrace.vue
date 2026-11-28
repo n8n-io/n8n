@@ -22,6 +22,8 @@ import type {
 
 const props = defineProps<{
 	items: Array<AiActivityItem<TTool>>;
+	/** Puts a single tool call in a collapsed group too. */
+	groupSingleTool?: boolean;
 }>();
 
 /**
@@ -41,7 +43,9 @@ defineSlots<{
 
 const i18n = useI18n();
 
-const renderItems = computed(() => groupActivityItems(props.items));
+const renderItems = computed(() =>
+	groupActivityItems(props.items, { minGroupSize: props.groupSingleTool ? 1 : 2 }),
+);
 
 /** Renders the rows of a single call without a group around them. */
 const PassThrough: FunctionalComponent = (_, { slots }) => slots.default?.();
@@ -114,6 +118,7 @@ function toolArgs(tool: AiActivityToolItem<TTool>): Record<string, unknown> | un
 							<AiActivityTrace
 								v-if="tool.children?.length"
 								:items="tool.children"
+								:group-single-tool="groupSingleTool"
 								:class="$style.children"
 								data-test-id="ai-activity-tool-children"
 							/>

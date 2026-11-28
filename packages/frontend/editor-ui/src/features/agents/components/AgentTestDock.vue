@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AgentChatMode } from '@n8n/api-types';
 import { N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
@@ -68,6 +69,8 @@ const props = withDefaults(
 		budgetCards?: boolean;
 		/** Persists a raised budget cap. Omitted when the agent is read-only. */
 		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
+		/** Safe-testing execution mode (`'test'` or `'live'`). Omitted when safe testing is off. */
+		chatMode?: AgentChatMode;
 	}>(),
 	{
 		newSession: false,
@@ -78,6 +81,7 @@ const props = withDefaults(
 		dismissedFixToolCallIds: () => [],
 		budgetCards: false,
 		increaseBudget: undefined,
+		chatMode: undefined,
 	},
 );
 
@@ -94,6 +98,7 @@ const emit = defineEmits<{
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
 	'message-sent': [];
+	'first-user-message': [text: string | undefined];
 }>();
 
 const i18n = useI18n();
@@ -328,6 +333,7 @@ defineExpose({ clearBudgetStops });
 					</KeyboardShortcutTooltip>
 				</div>
 			</header>
+			<slot name="sub-header" />
 
 			<AgentTestChatPage
 				ref="previewChatPage"
@@ -350,6 +356,7 @@ defineExpose({ clearBudgetStops });
 				:before-generate="props.beforeGenerate"
 				:budget-cards="props.budgetCards"
 				:increase-budget="props.increaseBudget"
+				:chat-mode="props.chatMode"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@usage-updated="onUsageUpdated"
 				@session-created="emit('session-created', $event)"
@@ -357,7 +364,18 @@ defineExpose({ clearBudgetStops });
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@initial-consumed="emit('initial-consumed')"
 				@message-sent="emit('message-sent')"
+				@new-session="emit('new-session')"
+				@first-user-message="emit('first-user-message', $event)"
 			>
+				<template v-if="$slots['empty-state']" #empty-state>
+					<slot name="empty-state" />
+				</template>
+				<template v-if="$slots['after-reply']" #after-reply="replyProps">
+					<slot name="after-reply" v-bind="replyProps" />
+				</template>
+				<template v-if="$slots['above-input']" #above-input>
+					<slot name="above-input" />
+				</template>
 				<template v-if="$slots['composer-start']" #composer-start>
 					<slot name="composer-start" />
 				</template>

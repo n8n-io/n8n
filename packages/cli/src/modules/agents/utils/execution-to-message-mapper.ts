@@ -61,6 +61,7 @@ function mergeTerminalToolCallPart(
 		startTime: previous.startTime ?? terminal.startTime,
 		endTime: terminal.endTime ?? previous.endTime,
 		canceled: terminal.canceled ?? previous.canceled,
+		simulation: terminal.simulation ?? previous.simulation,
 	};
 }
 
@@ -95,6 +96,7 @@ function timelineToolCallToPart(event: ToolCallTimelineEvent): AgentPersistedMes
 		...(event.startTime > 0 ? { startTime: event.startTime } : {}),
 		...(event.endTime > 0 ? { endTime: event.endTime } : {}),
 		...(event.childTrace ? { childTrace: event.childTrace } : {}),
+		...(event.simulation ? { simulation: event.simulation } : {}),
 	};
 
 	if (state === undefined) return base;

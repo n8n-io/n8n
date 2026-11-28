@@ -76,6 +76,7 @@ import {
 	type UseAgentChatStreamParams,
 } from '../composables/useAgentChatStream';
 import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
+import { TOOL_CALL_STATE } from '@/features/agents/constants';
 import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import {
 	TEST_EXTENSION_KEY,
@@ -235,6 +236,7 @@ function buildHook(
 		onAgentUnavailable?: () => void;
 		budgetCards?: boolean;
 		channel?: Ref<'chat' | 'n8n-chat' | 'system'>;
+		chatMode?: UseAgentChatStreamParams['chatMode'];
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
 		onStreamEvent?: UseAgentChatStreamParams['onStreamEvent'];
 		messageReferences?: UseAgentChatStreamParams['messageReferences'];
@@ -6334,6 +6336,57 @@ describe('useAgentChatStream — interaction extensions', () => {
 			runId: 'run-ext',
 		});
 	});
+
+	it('drops simulation metadata that fails validation and keeps the tool call', async () => {
+		const events = [
+			{ type: 'execution-started', executionId: 'exec-sim-2', sessionId: 'thread-sim' },
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'call-email',
+				toolName: 'gmail_send',
+				input: { to: 'ana@example.com' },
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'call-email',
+				toolName: 'gmail_send',
+				output: { sent: true },
+				// The reason does not belong to the route.
+				simulation: { route: 'blocked', reason: 'served_from_world' },
+			},
+			{
+				type: 'tool-call',
+				toolCallId: 'call-slack',
+				toolName: 'slack_post_message',
+				input: { channel: '#support' },
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'call-slack',
+				toolName: 'slack_post_message',
+				output: { ok: true },
+				simulation: { route: 'not_a_route' },
+			},
+			{ type: 'finish-step' },
+		] as AgentSseEvent[];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => makeSseResponse(events)),
+		);
+		const hook = buildHook('thread-sim');
+
+		await hook.sendMessage('Send the refund email and notify Slack');
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((m) => m.role === 'assistant');
+		expect(assistant?.toolCalls).toHaveLength(2);
+		for (const toolCall of assistant?.toolCalls ?? []) {
+			expect(toolCall.state).toBe(TOOL_CALL_STATE.DONE);
+			expect(toolCall.simulation).toBeUndefined();
+		}
+		expect(assistant?.toolCalls?.[0].output).toEqual({ sent: true });
+	});
 });
 
 describe('useAgentChatStream — first message of a new session', () => {
@@ -6583,5 +6636,130 @@ describe('useAgentChatStream — first message of a new session', () => {
 
 		expect(hook.messages.value).toEqual([]);
 		expect(hook.messagingState.value).toBe('idle');
+	});
+
+	it('attaches validated simulation metadata from live tool-result SSE events', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'execution-started', executionId: 'exec-sim-1', sessionId: 'thread-sim' },
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'call-email',
+				toolName: 'gmail_send',
+				input: { to: 'ana@example.com', subject: 'Refund', body: 'Issued $42.' },
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'call-email',
+				toolName: 'gmail_send',
+				output: { sent: true },
+				simulation: {
+					route: 'simulated',
+					reason: 'served_from_world',
+					evidence: ['world_write'],
+				},
+			},
+			{
+				type: 'tool-call',
+				toolCallId: 'call-slack',
+				toolName: 'slack_post_message',
+				input: { channel: '#support', text: 'Refund processed.' },
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'call-slack',
+				toolName: 'slack_post_message',
+				output: { ok: true },
+				simulation: {
+					route: 'simulated_made_up',
+					reason: 'invented_by_llm',
+				},
+			},
+			{ type: 'finish-step' },
+		];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => makeSseResponse(events)),
+		);
+		const hook = buildHook('thread-sim');
+
+		await hook.sendMessage('Send the refund email and notify Slack');
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((m) => m.role === 'assistant');
+		expect(assistant?.toolCalls).toHaveLength(2);
+		expect(assistant?.toolCalls?.[0].simulation).toEqual({
+			route: 'simulated',
+			reason: 'served_from_world',
+			evidence: ['world_write'],
+		});
+		expect(assistant?.toolCalls?.[1].simulation).toEqual({
+			route: 'simulated_made_up',
+			reason: 'invented_by_llm',
+		});
+	});
+
+	it('drops simulation metadata that fails validation on a live tool-result SSE event', async () => {
+		const events = [
+			{ type: 'execution-started', executionId: 'exec-sim-2', sessionId: 'thread-sim' },
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'call-email',
+				toolName: 'gmail_send',
+				input: { to: 'ana@example.com' },
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'call-email',
+				toolName: 'gmail_send',
+				output: { sent: true },
+				simulation: { route: 'not-a-route', reason: 'served_from_world' },
+			},
+			{ type: 'finish-step' },
+		] as unknown as AgentSseEvent[];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => makeSseResponse(events)),
+		);
+		const hook = buildHook('thread-sim');
+
+		await hook.sendMessage('Send the refund email');
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((m) => m.role === 'assistant');
+		expect(assistant?.toolCalls).toHaveLength(1);
+		expect(assistant?.toolCalls?.[0].output).toEqual({ sent: true });
+		expect(assistant?.toolCalls?.[0].simulation).toBeUndefined();
+	});
+
+	it('sends mode in the preview chat body when chatMode is set and omits it when undefined', async () => {
+		const fetchMock = vi.fn<typeof fetch>(async () => makeSseResponse([{ type: 'done' }]));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const chatMode = ref<'test' | 'live' | undefined>('test');
+		const hook = buildHook('thread-mode-1', { chatMode });
+		await hook.sendMessage('Run in test mode');
+		await flushPromises();
+
+		const readBody = (callIndex: number) => {
+			const raw = fetchMock.mock.calls[callIndex]?.[1]?.body;
+			return JSON.parse(typeof raw === 'string' ? raw : '') as Record<string, unknown>;
+		};
+
+		const firstBody = readBody(0);
+		expect(firstBody.mode).toBe('test');
+
+		chatMode.value = 'live';
+		await hook.sendMessage('Run in live mode');
+		await flushPromises();
+		const secondBody = readBody(1);
+		expect(secondBody.mode).toBe('live');
+
+		chatMode.value = undefined;
+		await hook.sendMessage('Flag off');
+		await flushPromises();
+		const thirdBody = readBody(2);
+		expect('mode' in thirdBody).toBe(false);
 	});
 });

@@ -167,6 +167,13 @@ import type { SetupTask } from '../components/AgentSetupTasks/agentSetupTasks.re
 import AgentTestHeader from '../components/AgentTestHeader.vue';
 import AgentTestChatPage from '../components/AgentTestChatPage.vue';
 import AgentTestDock from '../components/AgentTestDock.vue';
+import AgentHeldActionsTray from '../components/chatMode/AgentHeldActionsTray.vue';
+import AgentTestChatSubHeader from '../components/chatMode/AgentTestChatSubHeader.vue';
+import AgentRunHeldActionsModal from '../components/chatMode/AgentRunHeldActionsModal.vue';
+import AgentTestRunEmptyState from '../components/chatMode/AgentTestRunEmptyState.vue';
+import { extractHeldActions } from '../components/chatMode/heldActions';
+import { useAgentHeldActions } from '../components/chatMode/useAgentHeldActions';
+import { useAgentSafeTestingFlag } from '../composables/useAgentSafeTestingFlag';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
@@ -1115,6 +1122,25 @@ function onSetupTaskPublishAgent() {
 const tasksReloadKey = ref(0);
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
 const previewChatPage = useTemplateRef<InstanceType<typeof AgentTestChatPage>>('previewChatPage');
+const isSafeTestingEnabled = useAgentSafeTestingFlag();
+const panelChatMode = computed<'test' | undefined>(() =>
+	isSafeTestingEnabled.value ? 'test' : undefined,
+);
+const heldActionsState = useAgentHeldActions({
+	projectId,
+	agentId,
+	sessionId: effectiveSessionId,
+});
+
+function sendStarterPrompt(prompt: string) {
+	const target = { projectId: projectId.value, agentId: agentId.value };
+	taskPreviewPrompt.value = undefined;
+	void nextTick(() => {
+		if (isStaleAgentTarget(target.projectId, target.agentId)) return;
+		taskPreviewPrompt.value = prompt;
+	});
+}
+
 const previewDock = useTemplateRef<InstanceType<typeof AgentTestDock>>('previewDock');
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
@@ -3746,17 +3772,38 @@ useKeybindings({
 					:effective-session-id="effectiveSessionId"
 					:show-test-scenarios="showTestScenariosEmptyState"
 					:new-session="currentSessionIsEphemeral"
+					:initial-prompt="taskPreviewPrompt"
 					:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
 					:before-generate="beforeTestScenariosGenerate"
 					budget-cards
 					:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
+					:chat-mode="panelChatMode"
 					@continue-loaded="onContinueLoaded"
 					@session-created="markSessionCreated"
+					@new-session="startNewPreviewSession"
 					@open-build="returnToBuilderFromPreview"
 					@send-to-assistant="onSendPreviewToAssistant"
-				/>
+					@initial-consumed="taskPreviewPrompt = undefined"
+				>
+					<template v-if="isSafeTestingEnabled" #empty-state>
+						<AgentTestRunEmptyState
+							:agent-config="localConfig"
+							:agent-name="localConfig?.name || agentName"
+							@select-prompt="sendStarterPrompt"
+						/>
+					</template>
+					<template v-if="isSafeTestingEnabled" #after-reply="{ groupId, toolCalls, complete }">
+						<AgentHeldActionsTray
+							:actions="extractHeldActions(toolCalls)"
+							:committed="heldActionsState.committedByReply.value[groupId]"
+							:busy="heldActionsState.committingReplyId.value === groupId"
+							:run-disabled="!complete || !effectiveSessionId"
+							@run-actions="heldActionsState.openConfirmModal(groupId, $event)"
+						/>
+					</template>
+				</AgentTestChatPage>
 
 				<AgentBuilderEditorColumn
 					ref="editorColumn"
@@ -3907,6 +3954,7 @@ useKeybindings({
 							:before-generate="beforeTestScenariosGenerate"
 							budget-cards
 							:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
+							:chat-mode="panelChatMode"
 							@view-trace="viewPreviewTrace"
 							@new-session="startNewPreviewSession"
 							@delete-session="onDeletePreviewSession"
@@ -3918,6 +3966,25 @@ useKeybindings({
 							@open-build="!isArtifactMode && setChatMode('build')"
 							@initial-consumed="taskPreviewPrompt = undefined"
 						>
+							<template v-if="isSafeTestingEnabled" #empty-state>
+								<AgentTestRunEmptyState
+									:agent-config="localConfig"
+									:agent-name="localConfig?.name || agentName"
+									@select-prompt="sendStarterPrompt"
+								/>
+							</template>
+							<template v-if="isSafeTestingEnabled" #sub-header>
+								<AgentTestChatSubHeader :sent-count="heldActionsState.sentCount.value" />
+							</template>
+							<template v-if="isSafeTestingEnabled" #after-reply="{ groupId, toolCalls, complete }">
+								<AgentHeldActionsTray
+									:actions="extractHeldActions(toolCalls)"
+									:committed="heldActionsState.committedByReply.value[groupId]"
+									:busy="heldActionsState.committingReplyId.value === groupId"
+									:run-disabled="!complete || !effectiveSessionId"
+									@run-actions="heldActionsState.openConfirmModal(groupId, $event)"
+								/>
+							</template>
 							<template v-if="inlineTestChat" #composer-footer>
 								<AgentBuilderChatDisclaimer />
 							</template>
@@ -3937,6 +4004,15 @@ useKeybindings({
 				</Teleport>
 			</template>
 		</div>
+		<AgentRunHeldActionsModal
+			v-if="isSafeTestingEnabled"
+			v-model:open="heldActionsState.confirmModalOpen.value"
+			:actions="heldActionsState.pendingActions.value"
+			:busy="heldActionsState.committingReplyId.value !== null"
+			:error="heldActionsState.commitError.value"
+			@confirm="heldActionsState.confirmCommit"
+			@cancel="heldActionsState.cancelConfirmModal"
+		/>
 	</div>
 </template>
 

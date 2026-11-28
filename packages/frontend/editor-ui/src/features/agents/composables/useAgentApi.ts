@@ -1,4 +1,8 @@
-import type { AgentTaskCancellationState } from '@n8n/api-types';
+import type {
+	AgentTaskCancellationState,
+	AgentTestRunCommitActionResult,
+	AgentTestRunCommitResponse,
+} from '@n8n/api-types';
 import type {
 	AgentPlanSnapshotDto,
 	AgentKnowledgeCollectionDto,
@@ -41,6 +45,8 @@ import type {
 	AgentSkillWorkflowAccessResponse,
 	AgentTaskConfig,
 	AgentTaskDto,
+	AgentTestRunResetResponse,
+	AgentTestRunToolsResponse,
 	AgentIntegrationSettings,
 	AgentCatalogModel,
 	AgentProviderModelsResponse,
@@ -1242,6 +1248,32 @@ export const clearTestChatMessages = async (
 	);
 };
 
+export const getAgentTestRunTools = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentTestRunToolsResponse> => {
+	return await makeRestApiRequest<AgentTestRunToolsResponse>(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/test-run/tools`,
+	);
+};
+
+export const resetAgentTestRun = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	sessionId: string,
+): Promise<AgentTestRunResetResponse> => {
+	return await makeRestApiRequest<AgentTestRunResetResponse>(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/test-run/reset`,
+		{ sessionId },
+	);
+};
+
 export const generateAgentTestScenarios = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -1360,4 +1392,21 @@ export const getAgentPlan = async (
 		context,
 		'GET',
 		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/plan`,
+	);
+
+/** One held action after its run in the real apps. */
+export type AgentTestRunCommitResult = AgentTestRunCommitActionResult;
+export type { AgentTestRunCommitResponse };
+
+export const commitAgentTestRunActions = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: { testChatId: string; actionIds: string[] },
+): Promise<AgentTestRunCommitResponse> =>
+	await makeRestApiRequest<AgentTestRunCommitResponse>(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/test-run/commit`,
+		payload,
 	);

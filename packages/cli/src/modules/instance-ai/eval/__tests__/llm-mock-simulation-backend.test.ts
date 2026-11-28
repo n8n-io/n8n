@@ -383,6 +383,43 @@ describe('LlmMockSimulationBackend', () => {
 		]);
 	});
 
+	it('reports world_write on every reply of a held send or change, and nothing on a read', async () => {
+		const { backend, httpMock, mcpFetch, webSearch } = setup();
+		httpMock.mockResolvedValue({ statusCode: 200, headers: {}, body: { ok: true } });
+		mcpFetch.mockImplementation(
+			async () => new Response('{"jsonrpc":"2.0","id":1,"result":{}}', { status: 200 }),
+		);
+		webSearch.mockResolvedValue({ results: [] });
+		const world = await backend.openWorld({
+			ownerId: 'user-1',
+			testChatId: 'chat-1',
+			agent,
+			firstMessage: 'hi',
+		});
+		const requests = [
+			{ protocol: 'http', method: 'POST', url: 'https://slack.com/api/chat.postMessage' },
+			{ protocol: 'mcp', server: 'linear', method: 'POST', body: { method: 'tools/call' } },
+			{ protocol: 'web_search', args: { query: 'n8n' } },
+		] as const;
+
+		for (const request of requests) {
+			const held = await world.handleRequest(request, {
+				toolName: 'Send_Slack',
+				actionMode: 'write_hold',
+			});
+			const read = await world.handleRequest(request, {
+				toolName: 'Send_Slack',
+				actionMode: 'read_through',
+			});
+			const unknown = await world.handleRequest(request, { toolName: 'Send_Slack' });
+
+			expect(held).toMatchObject({ outcome: 'served', evidence: ['world_write'] });
+			expect(read).toMatchObject({ outcome: 'served' });
+			expect(read).not.toHaveProperty('evidence');
+			expect(unknown).not.toHaveProperty('evidence');
+		}
+	});
+
 	it('answers an MCP server it does not know with unsupported', async () => {
 		const { backend, mcpFetch } = setup();
 		const world = await backend.openWorld({

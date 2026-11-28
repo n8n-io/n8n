@@ -2,6 +2,8 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import { PubSubMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentSkillRefsService } from '../../agent-skill-refs.service';
@@ -524,6 +526,77 @@ describe('SimulationSessionService', () => {
 
 		expect(results[0]).toEqual({ status: 'fulfilled', value: undefined });
 		expect(results[1]).toMatchObject({ status: 'rejected' });
+	});
+
+	const resetInput = {
+		userId: 'user-1',
+		projectId: 'project-1',
+		agentId: 'agent-1',
+		testChatId: 'chat-1',
+	};
+
+	it('drops the session of a reset chat, closes its world and opens a new one on the next turn', async () => {
+		const closeWorld = vi.fn(async () => {});
+		const backend = { ...llmBackend(), closeWorld };
+		const { service } = setup({ backend });
+		const first = await service.openForDraftRun(openInput);
+		const otherChat = await service.openForDraftRun({ ...openInput, testChatId: 'chat-2' });
+
+		service.resetForTestChat(resetInput);
+
+		await expect(service.getSession(openInput)).resolves.toBeUndefined();
+		await expect(service.getSession({ ...openInput, testChatId: 'chat-2' })).resolves.toBe(
+			otherChat,
+		);
+		await vi.waitFor(() => expect(closeWorld).toHaveBeenCalledWith('world-1'));
+		expect(closeWorld).toHaveBeenCalledTimes(1);
+		const second = await service.openForDraftRun(openInput);
+		expect(second).not.toBe(first);
+		expect(backend.openWorld).toHaveBeenCalledTimes(3);
+	});
+
+	it('resets the chat when another main relays a reset', () => {
+		const handlers = Container.get(PubSubMetadata)
+			.getHandlers()
+			.filter(
+				({ eventName, eventHandlerClass }) =>
+					eventName === 'reset-agent-test-run' &&
+					eventHandlerClass.name === 'SimulationSessionService',
+			);
+
+		expect(handlers).toEqual([
+			expect.objectContaining({
+				methodName: 'resetForTestChat',
+				filter: { instanceType: 'main' },
+			}),
+		]);
+	});
+
+	it('does nothing when the reset chat has no session', () => {
+		const closeWorld = vi.fn(async () => {});
+		const { service } = setup({ backend: { ...llmBackend(), closeWorld } });
+
+		expect(() => service.resetForTestChat(resetInput)).not.toThrow();
+		expect(closeWorld).not.toHaveBeenCalled();
+	});
+
+	it('drops a world that was still opening when the chat was reset', async () => {
+		const closeWorld = vi.fn(async () => {});
+		let finishOpen: (opened: SimulationWorld) => void = () => {};
+		const openWorld = vi.fn(
+			async () => await new Promise<SimulationWorld>((resolve) => (finishOpen = resolve)),
+		);
+		const backend = { ...llmBackend(), openWorld, closeWorld };
+		const { service } = setup({ backend });
+
+		const pending = service.openForDraftRun(openInput);
+		await vi.waitFor(() => expect(openWorld).toHaveBeenCalledTimes(1));
+		service.resetForTestChat(resetInput);
+		finishOpen(world);
+		await pending;
+
+		await vi.waitFor(() => expect(closeWorld).toHaveBeenCalledWith('world-1'));
+		await expect(service.getSession(openInput)).resolves.toBeUndefined();
 	});
 
 	it('keeps the sessions of two agents apart when they share a chat ID', async () => {

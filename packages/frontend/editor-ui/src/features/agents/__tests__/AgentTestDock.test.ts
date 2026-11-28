@@ -99,6 +99,7 @@ const AgentTestChatPageStub = {
 		'send-to-assistant',
 		'initial-consumed',
 		'usage-updated',
+		'new-session',
 	],
 	setup(_props: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
 		expose({
@@ -149,9 +150,11 @@ function mountDock(
 		}>;
 	}> = {},
 	attachTo?: HTMLElement,
+	slots?: Record<string, string>,
 ) {
 	return mount(AgentTestDock, {
 		...(attachTo ? { attachTo } : {}),
+		...(slots ? { slots } : {}),
 		props: {
 			isOpen: true,
 			sessionTitle: 'Order help',
@@ -194,6 +197,15 @@ describe('AgentTestDock', () => {
 		expect(localStorage.getItem('N8N_AGENT_PREVIEW_LAYOUT')).toBe('fullpage');
 		await wrapper.get('[data-testid="agent-preview-close-btn"]').trigger('click');
 		expect(wrapper.emitted('close')).toEqual([[]]);
+	});
+
+	it('renders the sub-header between the header and the chat', () => {
+		const wrapper = mountDock({}, undefined, {
+			'sub-header': '<div data-testid="dock-sub-header">Test chat</div>',
+		});
+		const html = wrapper.html();
+		expect(wrapper.get('[data-testid="dock-sub-header"]').text()).toBe('Test chat');
+		expect(html.indexOf('agent-preview-dock-header')).toBeLessThan(html.indexOf('dock-sub-header'));
 	});
 
 	it('keeps inline test chat in the shared column regardless of the saved dock layout', () => {
@@ -334,6 +346,15 @@ describe('AgentTestDock', () => {
 		expect(wrapper.findComponent({ name: 'N8nActionDropdown' }).exists()).toBe(false);
 		wrapper.getComponent({ name: 'AgentTestMoreMenu' }).vm.$emit('delete-session');
 		expect(wrapper.emitted('delete-session')).toBeUndefined();
+	});
+
+	it('starts a new session for a new test run without the new chat icon event', () => {
+		const wrapper = mountDock();
+
+		wrapper.getComponent({ name: 'AgentTestChatPage' }).vm.$emit('new-session');
+
+		expect(wrapper.emitted('new-session')).toEqual([[]]);
+		expect(track).not.toHaveBeenCalled();
 	});
 
 	it('renders accessible header actions and emits their events', async () => {

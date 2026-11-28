@@ -5,18 +5,22 @@ import type {
 	AiActivityToolItem,
 } from './types';
 
-/** Puts two or more adjacent tool calls into one group. A single call stays a row. */
+/**
+ * Puts adjacent tool calls into one group. By default a single call stays a row;
+ * `minGroupSize: 1` groups it too.
+ */
 export function groupActivityItems<TTool>(
 	items: Array<AiActivityItem<TTool>>,
+	{ minGroupSize = 2 }: { minGroupSize?: number } = {},
 ): Array<AiActivityRenderItem<TTool>> {
 	const result: Array<AiActivityRenderItem<TTool>> = [];
 	let run: Array<AiActivityToolItem<TTool>> = [];
 
 	function flush() {
-		if (run.length > 1) {
+		if (run.length >= minGroupSize) {
 			result.push({ kind: 'tools', id: `tools-${run[0].id}`, items: run });
-		} else if (run.length === 1) {
-			result.push(run[0]);
+		} else {
+			result.push(...run);
 		}
 		run = [];
 	}

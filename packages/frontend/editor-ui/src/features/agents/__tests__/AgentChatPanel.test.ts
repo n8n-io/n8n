@@ -8,6 +8,7 @@ import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { AGENT_SUMMARY_WAIT_TIMEOUT } from '@/app/constants/durations';
 import {
 	AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
+	AGENT_SANDBOX_FILES_FLAG,
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	WAIT_TOOL_NAME,
@@ -48,7 +49,10 @@ type FocusVm = { focusOpenInteraction: () => void; isAwaitingUserApproval: boole
 const isMacOsMock = ref(false);
 const sessionFilesFlag = vi.hoisted(() => ({ value: true }));
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled: () => sessionFilesFlag.value }),
+	usePostHog: () => ({
+		isFeatureEnabled: (flag?: string) =>
+			flag === AGENT_SANDBOX_FILES_FLAG ? sessionFilesFlag.value : false,
+	}),
 }));
 
 vi.mock('@n8n/composables/useDeviceSupport', () => ({
@@ -345,6 +349,7 @@ vi.mock('../components/AgentChatMessageList.vue', async () => {
 				'taskTraceRoute',
 				'preparingSummary',
 				'summaryMissing',
+				'testRun',
 			],
 			emits: ['send-to-assistant', 'increase-budget', 'retry'],
 			setup() {
@@ -481,6 +486,7 @@ describe('AgentChatPanel', () => {
 			showAttachButton: boolean;
 			interactionExtensions: readonly AgentsChatInteractionExtension[];
 			disabled: boolean;
+			chatMode: 'test' | 'live';
 			inputDraft: string;
 		}> = {},
 		attachTo?: HTMLElement,
@@ -612,6 +618,23 @@ describe('AgentChatPanel', () => {
 				status: 'error',
 			},
 		];
+		const chatModeCases: Array<{ chatMode: 'test' | 'live'; testRun: boolean }> = [
+			{ chatMode: 'test', testRun: true },
+			{ chatMode: 'live', testRun: false },
+		];
+		it.each(chatModeCases)(
+			'tells the message list whether the chat is a test run ($chatMode)',
+			async (input) => {
+				messagesMock.value = failedMessages([]);
+				const wrapper = mountPanel({ chatMode: input.chatMode });
+				await flushPromises();
+				expect(wrapper.findComponent({ name: 'AgentChatMessageList' }).props('testRun')).toBe(
+					input.testRun,
+				);
+				wrapper.unmount();
+			},
+		);
+
 		it('sends the original text and attachment through the normal send action', async () => {
 			const beforeSend = vi.fn();
 			const file = new File(['invoice'], 'invoice.txt', { type: 'text/plain' });

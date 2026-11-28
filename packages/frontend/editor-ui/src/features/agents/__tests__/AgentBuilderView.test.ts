@@ -4,6 +4,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref, computed, reactive, type Component } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import {
+	AGENT_SAFE_TESTING_FLAG,
 	MAX_AGENT_FILE_SIZE_BYTES,
 	MAX_AGENT_FILES_PER_UPLOAD,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
@@ -279,6 +280,8 @@ const resetSessionStoreMock = vi.fn(() => {
 const startSessionAutoRefreshMock = vi.fn();
 const stopSessionAutoRefreshMock = vi.fn();
 
+const commitAgentTestRunActionsMock = vi.fn();
+
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: getAgentMock,
 	createAgent: createAgentMock,
@@ -290,6 +293,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	deleteAgent: deleteAgentMock,
 	archiveAgent: archiveAgentMock,
 	publishAgent: publishAgentMock,
+	commitAgentTestRunActions: commitAgentTestRunActionsMock,
 	getIntegrationStatus: getIntegrationStatusMock,
 	getModelCatalog: vi.fn().mockResolvedValue({}),
 	getAgentConfigValidation: getAgentConfigValidationMock,
@@ -736,7 +740,7 @@ const commonStubs = {
 	AgentTestDock: {
 		name: 'AgentTestDock',
 		template:
-			'<aside data-testid="stub-agent-preview-dock"><slot name="composer-start" /><slot name="composer-footer" /></aside>',
+			'<aside data-testid="stub-agent-preview-dock"><slot name="empty-state" /><slot name="composer-start" /><slot name="composer-footer" /></aside>',
 		props: [
 			'isOpen',
 			'overlay',
@@ -760,6 +764,7 @@ const commonStubs = {
 			'canDeleteSession',
 			'isDeletingSession',
 			'increaseBudget',
+			'chatMode',
 		],
 		emits: [
 			'view-trace',
@@ -2159,6 +2164,27 @@ describe('AgentBuilderView — preview routing', () => {
 			},
 			undefined,
 		);
+	});
+
+	it('starts a new session when the standalone preview asks for a new test run', async () => {
+		routeState.name = AGENT_PREVIEW_VIEW;
+		routeQuery.continueSessionId = 'thread-1';
+		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentTestChatPage' });
+		expect(preview.props('effectiveSessionId')).toBe('thread-1');
+		routerReplace.mockClear();
+
+		preview.vm.$emit('new-session');
+		await nextTick();
+
+		const newSessionId = preview.props('effectiveSessionId');
+		expect(newSessionId).not.toBe('thread-1');
+		expect(preview.props('newSession')).toBe(true);
+		expect(routerReplace).toHaveBeenCalledWith({
+			query: expect.objectContaining({ continueSessionId: newSessionId }),
+		});
 	});
 
 	it('dismisses handed-off tool calls after the assistant writes the agent', async () => {
@@ -8109,4 +8135,302 @@ describe('chat-first builder', () => {
 			}
 		},
 	);
+});
+
+describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
+	beforeEach(() => {
+		resetViewMocks();
+		commitAgentTestRunActionsMock.mockReset();
+		agentPermissionsMock.canUpdate.value = true;
+		agentPermissionsMock.canExecute.value = true;
+	});
+
+	it('is a complete no-op when the safe-testing flag is off', async () => {
+		const wrapper = await renderView();
+		const dock = wrapper.getComponent({ name: 'AgentTestDock' });
+
+		expect(dock.props('chatMode')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-test-run-empty-state"]').exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentRunHeldActionsModal' }).exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it('runs in test mode with the Hold & Replay empty state and starter chips when the flag is on', async () => {
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+		});
+
+		const dock = wrapper.getComponent({ name: 'AgentTestDock' });
+		expect(dock.props('chatMode')).toBe('test');
+		expect(wrapper.get('[data-testid="agent-test-run-empty-title"]').text()).toBe(
+			'agents.testRun.holdReplay.emptyState.title',
+		);
+		expect(wrapper.get('[data-testid="agent-test-run-empty-bullets"]').text()).toContain(
+			'agents.testRun.holdReplay.emptyState.bulletReads',
+		);
+		expect(wrapper.get('[data-testid="agent-test-run-empty-bullets"]').text()).toContain(
+			'agents.testRun.holdReplay.emptyState.bulletHolds',
+		);
+
+		const firstChip = wrapper.findAll('[data-testid="agent-test-run-starter-chip"]')[0];
+		expect(firstChip).toBeDefined();
+		await firstChip.trigger('click');
+		await nextTick();
+		expect(dock.props('initialPrompt')).toBe(firstChip.text());
+		wrapper.unmount();
+	});
+
+	it('opens the confirm modal and commits held actions via POST /test-run/commit', async () => {
+		const committedAt = new Date(2026, 10, 20, 14, 12, 0).toISOString();
+		commitAgentTestRunActionsMock.mockResolvedValueOnce({
+			committedAt,
+			results: [{ actionId: 'call-1', toolName: 'slack__post_message', status: 'done' }],
+		});
+
+		const heldToolCalls = [
+			{
+				tool: 'slack__post_message',
+				toolCallId: 'call-1',
+				input: { channel: '#ops', text: 'Shipped' },
+				state: 'done',
+				simulation: {
+					route: 'simulated',
+					reason: 'served_from_world',
+					evidence: ['world_write'],
+				},
+			},
+		];
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentTestDock: {
+					...commonStubs.AgentTestDock,
+					data: () => ({ heldToolCalls }),
+					template:
+						'<aside data-testid="stub-agent-preview-dock"><slot name="after-reply" group-id="reply-1" :tool-calls="heldToolCalls" :complete="true" /></aside>',
+				},
+			},
+		});
+
+		// Ensure a session ID is bound so commit has a testChatId.
+		await wrapper.getComponent({ name: 'AgentTestDock' }).vm.$emit('new-session');
+		await nextTick();
+
+		expect(wrapper.get('[data-testid="agent-held-actions-count"]').text()).toBe(
+			'agents.testRun.holdReplay.onHold',
+		);
+		await wrapper.get('[data-testid="agent-held-actions-toggle"]').trigger('click');
+		await nextTick();
+		expect(wrapper.get('[data-testid="agent-held-actions-note"]').text()).toBe(
+			'agents.testRun.holdReplay.nothingSent',
+		);
+
+		await wrapper.get('[data-testid="agent-held-actions-run-btn"]').trigger('click');
+		await nextTick();
+
+		const modal = wrapper.getComponent({ name: 'AgentRunHeldActionsModal' });
+		expect(modal.props('open')).toBe(true);
+
+		modal.vm.$emit('confirm');
+		await flushPromises();
+
+		expect(commitAgentTestRunActionsMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			expect.objectContaining({
+				testChatId: expect.any(String),
+				actionIds: ['call-1'],
+			}),
+		);
+		expect(wrapper.get('[data-testid="agent-held-actions-committed-banner"]').text()).toBe(
+			'agents.testRun.holdReplay.doneCount',
+		);
+		expect(wrapper.get('[data-testid="agent-held-actions-done-summary"]').text()).toBe(
+			'agents.testRun.holdReplay.doneSummary',
+		);
+		wrapper.unmount();
+	});
+
+	it('does not open the confirm modal while the test reply is not complete', async () => {
+		const heldToolCalls = [
+			{
+				tool: 'slack__post_message',
+				toolCallId: 'call-1',
+				input: { channel: '#ops', text: 'Shipped' },
+				state: 'done',
+				simulation: {
+					route: 'simulated',
+					reason: 'served_from_world',
+					evidence: ['world_write'],
+				},
+			},
+		];
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentTestDock: {
+					...commonStubs.AgentTestDock,
+					data: () => ({ heldToolCalls, complete: false }),
+					template:
+						'<aside data-testid="stub-agent-preview-dock"><button data-testid="finish-reply" @click="complete = true" /><slot name="after-reply" group-id="reply-1" :tool-calls="heldToolCalls" :complete="complete" /></aside>',
+				},
+			},
+		});
+
+		await wrapper.getComponent({ name: 'AgentTestDock' }).vm.$emit('new-session');
+		await nextTick();
+		await wrapper.get('[data-testid="agent-held-actions-toggle"]').trigger('click');
+		await nextTick();
+
+		const runButton = () => wrapper.get('[data-testid="agent-held-actions-run-btn"]');
+		const modal = wrapper.getComponent({ name: 'AgentRunHeldActionsModal' });
+		expect(runButton().attributes('disabled')).toBeDefined();
+		await runButton().trigger('click');
+		await nextTick();
+		expect(modal.props('open')).toBe(false);
+
+		await wrapper.get('[data-testid="finish-reply"]').trigger('click');
+		await nextTick();
+		expect(runButton().attributes('disabled')).toBeUndefined();
+		await runButton().trigger('click');
+		await nextTick();
+		expect(modal.props('open')).toBe(true);
+		wrapper.unmount();
+	});
+
+	it('disables Run until the test chat has a session', async () => {
+		const heldToolCalls = [
+			{
+				tool: 'slack__post_message',
+				toolCallId: 'call-1',
+				state: 'done',
+				simulation: {
+					route: 'simulated',
+					reason: 'served_from_world',
+					evidence: ['world_write'],
+				},
+			},
+		];
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentTestDock: {
+					...commonStubs.AgentTestDock,
+					data: () => ({ heldToolCalls }),
+					template:
+						'<aside data-testid="stub-agent-preview-dock"><slot name="after-reply" group-id="reply-1" :tool-calls="heldToolCalls" :complete="true" /></aside>',
+				},
+			},
+		});
+
+		await wrapper.get('[data-testid="agent-held-actions-toggle"]').trigger('click');
+		await nextTick();
+		const runButton = () => wrapper.get('[data-testid="agent-held-actions-run-btn"]');
+		expect(runButton().attributes('disabled')).toBeDefined();
+		await runButton().trigger('click');
+		await nextTick();
+		const modal = wrapper.getComponent({ name: 'AgentRunHeldActionsModal' });
+		expect(modal.props('open')).toBe(false);
+
+		await wrapper.getComponent({ name: 'AgentTestDock' }).vm.$emit('new-session');
+		await nextTick();
+		expect(runButton().attributes('disabled')).toBeUndefined();
+		wrapper.unmount();
+	});
+
+	it('shows the held line for a send that the LLM mock made up, and not for its reads', async () => {
+		const toolCalls = [
+			{
+				tool: 'slack__list_channels',
+				toolCallId: 'call-read',
+				state: 'done',
+				simulation: { route: 'simulated_made_up', reason: 'invented_by_llm' },
+			},
+			{
+				tool: 'slack__post_message',
+				toolCallId: 'call-send',
+				input: { channel: '#ops', text: 'Shipped' },
+				state: 'done',
+				simulation: {
+					route: 'simulated_made_up',
+					reason: 'invented_by_llm',
+					evidence: ['world_write'],
+				},
+			},
+		];
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentTestDock: {
+					...commonStubs.AgentTestDock,
+					data: () => ({ toolCalls }),
+					template:
+						'<aside data-testid="stub-agent-preview-dock"><slot name="after-reply" group-id="reply-1" :tool-calls="toolCalls" :complete="true" /></aside>',
+				},
+			},
+		});
+		await wrapper.getComponent({ name: 'AgentTestDock' }).vm.$emit('new-session');
+		await nextTick();
+
+		expect(wrapper.find('[data-testid="agent-held-actions-count"]').exists()).toBe(true);
+		expect(
+			wrapper
+				.getComponent({ name: 'AgentHeldActionsTray' })
+				.props('actions')
+				.map((action: { actionId: string }) => action.actionId),
+		).toEqual(['call-send']);
+		await wrapper.get('[data-testid="agent-held-actions-toggle"]').trigger('click');
+		await nextTick();
+		expect(wrapper.find('[data-testid="agent-held-actions-run-btn"]').exists()).toBe(true);
+		wrapper.unmount();
+	});
+
+	it('sends a starter prompt from the standalone preview page', async () => {
+		routeState.name = AGENT_PREVIEW_VIEW;
+		const sendMessageFromOutside = vi.fn();
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentChatPanel: {
+					name: 'AgentChatPanel',
+					template: '<div><slot name="empty-state" /></div>',
+					emits: ['initial-consumed'],
+					methods: { sendMessageFromOutside },
+				},
+			},
+		});
+
+		const page = wrapper.getComponent({ name: 'AgentTestChatPage' });
+		const firstChip = wrapper.findAll('[data-testid="agent-test-run-starter-chip"]')[0];
+		expect(firstChip).toBeDefined();
+		await firstChip.trigger('click');
+		await flushPromises();
+
+		expect(page.props('initialPrompt')).toBe(firstChip.text());
+		expect(sendMessageFromOutside).toHaveBeenCalledExactlyOnceWith(firstChip.text());
+
+		// The panel accepts the message, so the same starter can be sent again.
+		wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('initial-consumed');
+		await nextTick();
+
+		expect(page.props('initialPrompt')).toBeUndefined();
+		wrapper.unmount();
+	});
 });

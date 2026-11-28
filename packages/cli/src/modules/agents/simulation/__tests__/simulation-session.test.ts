@@ -917,3 +917,224 @@ describe('SimulationSession route evidence', () => {
 		});
 	});
 });
+
+describe('SimulationSession held actions and read-through', () => {
+	it('records held write actions with input and does not fire real writes during the test run', async () => {
+		const world = makeWorld({
+			outcome: 'served',
+			source: 'world_state',
+			status: 200,
+			body: { ok: true },
+		});
+		const session = new SimulationSession({
+			testChatId: 'chat-hold',
+			world,
+			capabilities: [slackCapability],
+		});
+		const { tool } = slackTool(session);
+
+		await session.interceptor(
+			{ tool, toolCallId: 'tc-write-1', input: { channel: '#ops', text: 'Deploy done' } },
+			async () => await tool.handler!({}, {}),
+		);
+
+		const held = session.getHeldAction('tc-write-1');
+		expect(held).toMatchObject({
+			actionId: 'tc-write-1',
+			toolName: 'send_slack',
+			input: { channel: '#ops', text: 'Deploy done' },
+		});
+		expect(Date.parse(held?.createdAt ?? '')).not.toBeNaN();
+		expect(held?.committedAt).toBeUndefined();
+		expect(world.handleRequest).toHaveBeenCalledTimes(1);
+	});
+
+	it('allows GET read-through only when configured and still intercepts POST writes', async () => {
+		const world = makeWorld({
+			outcome: 'served',
+			source: 'world_state',
+			status: 200,
+			body: { ok: true },
+		});
+		const session = new SimulationSession({
+			testChatId: 'chat-rt',
+			world,
+			allowReadThrough: true,
+			capabilities: [
+				{ toolName: 'slack_list_channels', kind: 'node', testability: 'simulated' },
+				slackCapability,
+			],
+		});
+
+		const readData = mock<IWorkflowExecuteAdditionalData>();
+		session.instrumentation().configureToolAdditionalData?.(readData, {
+			toolName: 'slack_list_channels',
+			toolKind: 'node',
+		});
+
+		let getResult: unknown = 'sentinel';
+		let sneakyPostResult: unknown;
+		const readTool: BuiltTool = {
+			name: 'slack_list_channels',
+			description: 'List channels',
+			metadata: {
+				kind: 'node',
+				nodeType: 'n8n-nodes-base.slack',
+				nodeParameters: { resource: 'channel', operation: 'getAll' },
+			},
+			handler: async () => {
+				getResult = await readData.evalLlmMockHandler!(
+					{ url: 'https://slack.com/api/conversations.list', method: 'GET' },
+					slackNode,
+				);
+				// Even inside a read-classified tool, a POST HTTP call must still be intercepted.
+				sneakyPostResult = await readData.evalLlmMockHandler!(
+					{ url: 'https://slack.com/api/chat.postMessage', method: 'POST', body: { text: 'x' } },
+					slackNode,
+				);
+				return { ok: true };
+			},
+		};
+
+		await session.interceptor(
+			{ tool: readTool, toolCallId: 'tc-read-1', input: {} },
+			async () => await readTool.handler!({}, {}),
+		);
+
+		expect(getResult).toBeUndefined();
+		expect(sneakyPostResult).toEqual({ body: { ok: true }, headers: {}, statusCode: 200 });
+		expect(world.handleRequest).toHaveBeenCalledTimes(1);
+		expect(session.getHeldAction('tc-read-1')).toBeUndefined();
+	});
+
+	it('tells the backend which calls it holds, so the same calls show as held and can run', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [
+				{ toolName: 'slack_list_channels', kind: 'node', testability: 'simulated' },
+				slackCapability,
+			],
+		});
+		const { tool: sendTool } = slackTool(session);
+		const readData = mock<IWorkflowExecuteAdditionalData>();
+		session.instrumentation().configureToolAdditionalData?.(readData, {
+			toolName: 'slack_list_channels',
+			toolKind: 'node',
+		});
+		const readTool: BuiltTool = {
+			name: 'slack_list_channels',
+			description: 'List channels',
+			metadata: {
+				kind: 'node',
+				nodeType: 'n8n-nodes-base.slack',
+				nodeParameters: { resource: 'channel', operation: 'getAll' },
+			},
+			handler: async () =>
+				await readData.evalLlmMockHandler!(
+					{ url: 'https://slack.com/api/conversations.list', method: 'GET' },
+					slackNode,
+				),
+		};
+
+		await runTool(session, sendTool, 'tc-send');
+		await runTool(session, readTool, 'tc-read');
+
+		expect(world.handleRequest).toHaveBeenNthCalledWith(
+			1,
+			expect.anything(),
+			expect.objectContaining({ toolCallId: 'tc-send', actionMode: 'write_hold' }),
+		);
+		expect(world.handleRequest).toHaveBeenNthCalledWith(
+			2,
+			expect.anything(),
+			expect.objectContaining({ toolCallId: 'tc-read', actionMode: 'read_through' }),
+		);
+		expect(session.getHeldAction('tc-send')).toMatchObject({ toolName: 'send_slack' });
+		expect(session.getHeldAction('tc-read')).toBeUndefined();
+	});
+
+	it('does not show a failed write as held, because it has no held action to run', async () => {
+		const world = makeWorld({
+			outcome: 'served',
+			source: 'made_up',
+			status: 200,
+			body: {},
+			evidence: ['world_read', 'world_write'],
+		});
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [slackCapability],
+		});
+		const { tool: sendTool, handler } = slackTool(session);
+		const failingTool = nodeTool('send_slack', 'n8n-nodes-base.slack', async () => {
+			await handler();
+			throw new Error('The node failed after the reply');
+		});
+
+		await expect(runTool(session, failingTool, 'tc-failed')).rejects.toThrow(
+			'The node failed after the reply',
+		);
+		await runTool(session, sendTool, 'tc-held');
+
+		expect(session.getHeldAction('tc-failed')).toBeUndefined();
+		expect(session.takeDecision('tc-failed')).toEqual({
+			route: 'simulated_made_up',
+			reason: 'invented_by_llm',
+			evidence: ['world_read'],
+		});
+		expect(session.getHeldAction('tc-held')).toBeDefined();
+		expect(session.takeDecision('tc-held')).toMatchObject({
+			evidence: ['world_read', 'world_write'],
+		});
+	});
+
+	it('serves a GET from the world when read-through is not configured', async () => {
+		const world = makeWorld({
+			outcome: 'served',
+			source: 'world_state',
+			status: 200,
+			body: { channels: [] },
+		});
+		const session = new SimulationSession({
+			testChatId: 'chat-no-rt',
+			world,
+			capabilities: [{ toolName: 'slack_list_channels', kind: 'node', testability: 'simulated' }],
+		});
+
+		const readData = mock<IWorkflowExecuteAdditionalData>();
+		session.instrumentation().configureToolAdditionalData?.(readData, {
+			toolName: 'slack_list_channels',
+			toolKind: 'node',
+		});
+
+		let getResult: unknown;
+		const readTool: BuiltTool = {
+			name: 'slack_list_channels',
+			description: 'List channels',
+			metadata: {
+				kind: 'node',
+				nodeType: 'n8n-nodes-base.slack',
+				nodeParameters: { resource: 'channel', operation: 'getAll' },
+			},
+			handler: async () => {
+				getResult = await readData.evalLlmMockHandler!(
+					{ url: 'https://slack.com/api/conversations.list', method: 'GET' },
+					slackNode,
+				);
+				return { ok: true };
+			},
+		};
+
+		await session.interceptor(
+			{ tool: readTool, toolCallId: 'tc-read-2', input: {} },
+			async () => await readTool.handler!({}, {}),
+		);
+
+		expect(getResult).toEqual({ body: { channels: [] }, headers: {}, statusCode: 200 });
+		expect(world.handleRequest).toHaveBeenCalledTimes(1);
+		expect(session.getHeldAction('tc-read-2')).toBeUndefined();
+	});
+});
