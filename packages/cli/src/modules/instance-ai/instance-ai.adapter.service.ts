@@ -131,6 +131,7 @@ import {
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { withTimeout } from '@n8n/utils/promise/with-timeout';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -206,7 +207,6 @@ import {
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
-
 import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
@@ -241,6 +241,7 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import { EngineV2RunService, type EngineV2RunOutcome } from '@/services/engine-v2-run.service';
 import { FolderService } from '@/services/folder.service';
 import {
 	getParameterOptionsCredentialReferences,
@@ -267,9 +268,10 @@ import { isAgentsAccessEnabled } from './agents-access';
 import { appNamespaceCandidates } from './app-namespace-candidates';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import {
+	ENGINE_V2_CALL_TIMEOUT_MS,
+	type ExecutionWaitOutcome,
 	isEngineV2ExecutionUnsettled,
 	pollEngineV2Execution,
-	waitForEngineV2Execution,
 	waitForInstanceAiExecution,
 } from './instance-ai-execution-wait';
 import {
@@ -2438,35 +2440,80 @@ export class InstanceAiAdapterService {
 			return execution?.status;
 		};
 
+		const cancelEngineV2Run = async (executionId: ExecutionIdV2) => {
+			try {
+				await withTimeout(
+					Container.get(EngineDataPlaneProxyService).cancelExecution(executionId),
+					ENGINE_V2_CALL_TIMEOUT_MS,
+					() => new OperationalError('Cancelling the engine v2 run timed out'),
+				);
+			} catch {
+				// A failed or slow cancel must not hide the outcome of the wait.
+			}
+		};
+
+		const settleEngineV2Wait = async (
+			executionId: ExecutionIdV2,
+			workflowId: string,
+			outcome: EngineV2RunOutcome,
+			timeoutMs: number,
+		): Promise<ExecutionWaitOutcome> => {
+			switch (outcome.kind) {
+				case 'finished':
+				// As in v1, a paused run counts as settled and is not cancelled.
+				case 'paused':
+					return { kind: 'completed' };
+				case 'aborted':
+					await cancelEngineV2Run(executionId);
+					return { kind: 'cancelled', reason: 'abort', message: 'Execution was cancelled' };
+				case 'timeout': {
+					// The end event can be lost, or the run waits in a way that is not a pause.
+					const status = await withTimeout(
+						readEngineV2Status(executionId, workflowId),
+						ENGINE_V2_CALL_TIMEOUT_MS,
+						() => new OperationalError('Reading the engine v2 run status timed out'),
+					).catch(() => undefined);
+					if (status !== undefined && !isEngineV2ExecutionUnsettled(status)) {
+						return { kind: 'completed' };
+					}
+					await cancelEngineV2Run(executionId);
+					return {
+						kind: 'cancelled',
+						reason: 'timeout',
+						message: `Execution timed out after ${timeoutMs}ms and was cancelled`,
+					};
+				}
+			}
+		};
+
 		/**
-		 * Waits for a run this adapter started, and stops it on a timeout or an
-		 * abort. An engine v2 run never registers in `ActiveExecutions`, so the
-		 * wait polls the data plane for it.
+		 * On engine v2, a timeout reads the status once, because the end event can
+		 * be lost. A run that did not settle, or whose status cannot be read, is
+		 * cancelled, so that it does not keep a worker busy.
 		 */
-		const waitForRun = async (args: {
-			executionId: string;
-			workflowId: string;
-			timeoutMs: number;
-			abortSignal?: AbortSignal;
-		}) => {
-			const { executionId, workflowId, timeoutMs, abortSignal } = args;
-			if (!isExecutionIdV2(executionId)) {
-				return await waitForInstanceAiExecution({
+		const startAndWait = async (
+			runData: IWorkflowExecutionDataProcess,
+			args: { workflowId: string; timeoutMs: number; abortSignal?: AbortSignal },
+		): Promise<{ executionId: string; waitOutcome: ExecutionWaitOutcome }> => {
+			const { workflowId, timeoutMs, abortSignal } = args;
+			const engineV2Runs = Container.get(EngineV2RunService);
+			if (!engineV2Runs.routesToEngineV2(runData)) {
+				const executionId = await workflowRunner.run(runData);
+				const waitOutcome = await waitForInstanceAiExecution({
 					activeExecutions,
 					executionId,
 					timeoutMs,
 					abortSignal,
 				});
+				return { executionId, waitOutcome };
 			}
 
-			return await waitForEngineV2Execution({
-				readStatus: async () => await readEngineV2Status(executionId, workflowId),
-				stop: async () => {
-					await Container.get(EngineDataPlaneProxyService).cancelExecution(executionId);
-				},
+			const { executionId, outcome } = await engineV2Runs.runAndWait(runData, {
 				timeoutMs,
 				abortSignal,
 			});
+			const waitOutcome = await settleEngineV2Wait(executionId, workflowId, outcome, timeoutMs);
+			return { executionId, waitOutcome };
 		};
 
 		/**
@@ -2729,7 +2776,11 @@ export class InstanceAiAdapterService {
 				}
 
 				try {
-					const executionId = await workflowRunner.run(runData);
+					const { executionId, waitOutcome } = await startAndWait(runData, {
+						workflowId,
+						timeoutMs,
+						abortSignal: options?.abortSignal,
+					});
 					const pruneVerificationPins = async (executedNodeNames?: string[]) => {
 						try {
 							await pruneUnreachedVerificationPinData({
@@ -2745,14 +2796,6 @@ export class InstanceAiAdapterService {
 							});
 						}
 					};
-
-					// Wait for completion with timeout / abort protection
-					const waitOutcome = await waitForRun({
-						executionId,
-						workflowId,
-						timeoutMs,
-						abortSignal: options?.abortSignal,
-					});
 
 					if (waitOutcome.kind === 'cancelled') {
 						const result = {
@@ -3109,10 +3152,7 @@ export class InstanceAiAdapterService {
 				}
 
 				try {
-					const executionId = await workflowRunner.run(runData);
-
-					const waitOutcome = await waitForRun({
-						executionId,
+					const { executionId, waitOutcome } = await startAndWait(runData, {
 						workflowId,
 						timeoutMs,
 						abortSignal: options?.abortSignal,
