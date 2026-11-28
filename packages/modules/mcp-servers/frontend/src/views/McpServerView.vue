@@ -46,7 +46,7 @@ const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
 const toast = useToast();
-const { serverUrl, copyServerUrl } = useMcpServerUrl();
+const { serverUrl, copyServerUrl, copyShareLink } = useMcpServerUrl();
 const latestFetch = useLatestFetch();
 const assistant = capabilityRegistry.use(capabilities.createMcpServerAssistantHandoff)();
 
@@ -97,7 +97,7 @@ const breadcrumbs = computed<PathItem[]>(() => [
 	...(server.value ? [{ id: MCP_SERVER_VIEW, label: server.value.name }] : []),
 ]);
 
-type MenuAction = 'rename' | 'copy-url' | 'delete';
+type MenuAction = 'rename' | 'copy-share-link' | 'copy-url' | 'delete';
 
 const menuActions = computed(() => {
 	const actions: Array<{
@@ -109,7 +109,10 @@ const menuActions = computed(() => {
 	if (permissions.value.canUpdate) {
 		actions.push({ value: 'rename', label: i18n.baseText('mcpServers.actions.rename') });
 	}
-	actions.push({ value: 'copy-url', label: i18n.baseText('mcpServers.actions.copyUrl') });
+	actions.push(
+		{ value: 'copy-share-link', label: i18n.baseText('mcpServers.actions.copyShareLink') },
+		{ value: 'copy-url', label: i18n.baseText('mcpServers.actions.copyUrl') },
+	);
 	if (permissions.value.canDelete) {
 		actions.push({
 			value: 'delete',
@@ -213,6 +216,7 @@ async function onSelectTab(tab: string) {
 
 function onMenu(action: MenuAction) {
 	if (action === 'rename') renameOpen.value = true;
+	if (action === 'copy-share-link' && server.value) void copyShareLink(server.value);
 	if (action === 'copy-url' && server.value) void copyServerUrl(server.value);
 	if (action === 'delete') deleteOpen.value = true;
 }

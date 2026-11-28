@@ -25,7 +25,7 @@ const rootStore = useRootStore();
 const toast = useToast();
 const latestFetch = useLatestFetch();
 const createDialog = useCreateMcpServerDialog();
-const { copyServerUrl } = useMcpServerUrl();
+const { copyServerUrl, copyShareLink } = useMcpServerUrl();
 const projectPermissions = capabilityRegistry.use(capabilities.projectPermissions);
 
 const ResourcesListLayout = computed(() => componentRegistry.get('resources-list-layout'));
@@ -164,6 +164,7 @@ function openServer(server: McpServerResponse) {
 						:server="server"
 						:to="serverRoute(server)"
 						@open="openServer(server)"
+						@copy-share-link="copyShareLink(server)"
 						@copy-url="copyServerUrl(server)"
 					/>
 				</div>

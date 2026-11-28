@@ -430,6 +430,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'mcp-server-deleted': (event) => this.mcpServerDeleted(event),
 			'mcp-server-tool-added': (event) => this.mcpServerToolAdded(event),
 			'mcp-server-tool-called': (event) => this.mcpServerToolCalled(event),
+			'mcp-server-share-viewed': (event) => this.mcpServerShareViewed(event),
 			'mcp-server-tool-drafted': (event) => this.mcpServerToolDrafted(event),
 		});
 	}
@@ -691,6 +692,21 @@ export class TelemetryEventRelay extends EventRelay {
 			tool_kind: toolKind,
 			status,
 			duration_ms: durationMs,
+		});
+	}
+
+	private mcpServerShareViewed({
+		serverId,
+		userId,
+		canConnect,
+		result,
+	}: RelayEventMap['mcp-server-share-viewed']) {
+		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_VIEWED_MCP_SERVER_SHARE_PAGE, {
+			server_id: serverId,
+			user_id: userId,
+			signed_in: userId !== undefined,
+			can_connect: canConnect,
+			result,
 		});
 	}
 

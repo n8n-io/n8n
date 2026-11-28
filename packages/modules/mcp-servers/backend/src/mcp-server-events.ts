@@ -42,6 +42,13 @@ export interface McpServerEventMap {
 		status: 'success' | 'error';
 		durationMs: number;
 	};
+	/** A load of the share page. `userId` is absent for a person who is not signed in. */
+	'mcp-server-share-viewed': {
+		serverId?: string;
+		userId?: string;
+		canConnect: boolean;
+		result: 'found' | 'not_found';
+	};
 }
 
 declare module '@n8n/backend-services' {

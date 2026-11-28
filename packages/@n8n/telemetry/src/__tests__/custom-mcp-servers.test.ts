@@ -14,16 +14,22 @@ const clientEvents = [
 	events.USER_CONNECTED_TO_CUSTOM_MCP_SERVER,
 	events.USER_CALLED_CUSTOM_MCP_SERVER_TOOL,
 ];
+const backendEvents = [...builderEvents, ...clientEvents];
+// The share page also works without a sign-in, so these events can have no `user_id`.
+const sharePageEvents = [
+	events.USER_VIEWED_MCP_SERVER_SHARE_PAGE,
+	events.USER_CLICKED_CLIENT_ON_MCP_SERVER_SHARE_PAGE,
+];
 
 describe('custom MCP server events', () => {
-	it('has the seven events of the build spec, and the draft event', () => {
+	it('has the seven backend events of the build spec, the draft event, and the two share page events', () => {
 		expect(Object.values(events)).toEqual(
-			expect.arrayContaining([...builderEvents, ...clientEvents]),
+			expect.arrayContaining([...backendEvents, ...sharePageEvents]),
 		);
-		expect(Object.keys(events)).toHaveLength(8);
+		expect(Object.keys(events)).toHaveLength(10);
 	});
 
-	it.each(Object.values(events).map((event) => [event.name, event]))(
+	it.each(backendEvents.map((event) => [event.name, event]))(
 		'%s needs the user id, because PostHog drops a backend event without it',
 		(_name, event) => {
 			const shape = event.properties.shape as Record<
@@ -53,6 +59,38 @@ describe('custom MCP server events', () => {
 			expect(Object.keys(event.properties.shape)).not.toContain('source');
 		},
 	);
+
+	it('accepts a share page view without a sign-in', () => {
+		expect(
+			getEventValidationError(events.USER_VIEWED_MCP_SERVER_SHARE_PAGE, {
+				server_id: 'server-1',
+				signed_in: false,
+				can_connect: false,
+				result: 'found',
+			}),
+		).toBeNull();
+	});
+
+	it('accepts a share page view that finds no server, without a server id', () => {
+		expect(
+			getEventValidationError(events.USER_VIEWED_MCP_SERVER_SHARE_PAGE, {
+				user_id: 'user-1',
+				signed_in: true,
+				can_connect: false,
+				result: 'not_found',
+			}),
+		).toBeNull();
+	});
+
+	it('refuses a client click with an unknown method', () => {
+		expect(
+			getEventValidationError(events.USER_CLICKED_CLIENT_ON_MCP_SERVER_SHARE_PAGE, {
+				server_id: 'server-1',
+				client: 'cursor',
+				method: 'open',
+			}),
+		).not.toBeNull();
+	});
 
 	it('accepts a draft for one field, and refuses an unknown status', () => {
 		const draft = {

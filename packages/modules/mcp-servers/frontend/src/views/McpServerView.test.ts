@@ -406,7 +406,7 @@ describe('McpServerView', () => {
 			api.getMcpServer.mockResolvedValue({ ...server, project });
 			await renderPage();
 
-			await openMenuItem('Copy URL');
+			await openMenuItem('Copy server URL');
 
 			await waitFor(() =>
 				expect(copy).toHaveBeenCalledWith(expect.stringMatching(/\/mcp-servers\/sales-tools$/)),
@@ -418,13 +418,30 @@ describe('McpServerView', () => {
 			});
 		});
 
+		it('copies the link of the share page from the menu', async () => {
+			await renderPage(VIEWER);
+
+			await openMenuItem('Copy share link');
+
+			expect(copy).toHaveBeenCalledWith('http://localhost:5678/mcp-share/sales-tools');
+		});
+
+		it('copies the server URL from the menu', async () => {
+			await renderPage(VIEWER);
+
+			await openMenuItem('Copy server URL');
+
+			expect(copy).toHaveBeenCalledWith('http://localhost:5678/mcp-servers/sales-tools');
+		});
+
 		it('gives a project viewer no rename, no delete, and no description edit', async () => {
 			await renderPage(VIEWER);
 
 			await fireEvent.dblClick(screen.getByTestId('mcp-server-name'));
 			await userEvent.click(screen.getByTestId('mcp-server-menu').querySelector('button')!);
 
-			expect(await screen.findByText('Copy URL')).toBeInTheDocument();
+			expect(await screen.findByText('Copy share link')).toBeInTheDocument();
+			expect(screen.getByText('Copy server URL')).toBeInTheDocument();
 			expect(screen.queryByText('Rename')).not.toBeInTheDocument();
 			expect(screen.queryByText('Delete')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('rename-mcp-server-dialog')).not.toBeInTheDocument();
@@ -440,7 +457,7 @@ describe('McpServerView', () => {
 
 			await userEvent.click(screen.getByTestId('mcp-server-menu').querySelector('button')!);
 
-			expect(await screen.findByText('Copy URL')).toBeInTheDocument();
+			expect(await screen.findByText('Copy server URL')).toBeInTheDocument();
 			expect(screen.queryByText('Rename')).not.toBeInTheDocument();
 			expect(screen.queryByText('Delete')).not.toBeInTheDocument();
 			expect(screen.getByTestId('mcp-server-description')).not.toHaveAttribute('role', 'button');

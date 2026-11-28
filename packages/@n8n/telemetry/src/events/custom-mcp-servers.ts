@@ -112,6 +112,43 @@ export const CUSTOM_MCP_SERVERS_TELEMETRY = defineTelemetryEvents({
 			...builderSource,
 		}),
 	},
+	USER_VIEWED_MCP_SERVER_SHARE_PAGE: {
+		name: 'User viewed MCP server share page',
+		description:
+			'A person opened the share page of a custom MCP server. The backend sends it once per page load, also for a link that finds no server. Without a sign-in the event has no user_id, so PostHog drops it and only the warehouse has it.',
+		properties: z.object({
+			server_id: serverId.optional().describe('Absent when the link finds no server'),
+			user_id: z
+				.string()
+				.optional()
+				.describe('The person who opened the page. Absent without a sign-in'),
+			signed_in: z.boolean(),
+			can_connect: z
+				.boolean()
+				.describe('True when the person can connect, so the page shows the tools'),
+			result: z
+				.enum(['found', 'not_found'])
+				.describe('not_found: an unknown or deleted server, or the feature flag is off'),
+		}),
+	},
+	USER_CLICKED_CLIENT_ON_MCP_SERVER_SHARE_PAGE: {
+		name: 'User clicked client on MCP server share page',
+		description:
+			'A person used a client button on the share page of a custom MCP server. With "Custom MCP server tool called", it shows the path from the click to the first call. The editor sends it, and the editor starts telemetry only after a sign-in, so it misses the clicks of people who are not signed in.',
+		properties: z.object({
+			server_id: serverId,
+			client: z
+				.string()
+				.describe(
+					'Client id from the share page, e.g. "claude-ai" or "cursor". "any" is the URL at the top of the page, "other" the steps for any other client',
+				),
+			method: z
+				.enum(['deep_link', 'copy_command', 'copy_sign_in_command', 'copy_url', 'copy_config'])
+				.describe(
+					'What the person did: open a link, or copy an install command, a sign-in command, the URL, or a config',
+				),
+		}),
+	},
 	USER_DELETED_CUSTOM_MCP_SERVER: {
 		name: 'User deleted custom MCP server',
 		description: 'A builder deleted a custom MCP server.',

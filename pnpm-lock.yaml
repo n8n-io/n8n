@@ -9031,6 +9031,9 @@ importers:
       '@n8n/frontend-module-sdk':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-module-sdk
+      '@n8n/frontend-utils':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-utils
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/i18n
@@ -9043,9 +9046,15 @@ importers:
       '@n8n/stores':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/stores
+      '@n8n/telemetry':
+        specifier: workspace:*
+        version: link:../../../@n8n/telemetry
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
+      vue-i18n:
+        specifier: catalog:frontend
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       vue-router:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
@@ -9134,6 +9143,9 @@ importers:
       '@n8n/frontend-module-sdk':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-module-sdk
+      '@n8n/frontend-utils':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-utils
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/i18n
