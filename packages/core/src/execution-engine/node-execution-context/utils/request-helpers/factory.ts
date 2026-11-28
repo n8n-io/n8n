@@ -22,6 +22,11 @@ import type {
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
 import { getNonWorkflowAdditionalKeys } from '../get-additional-keys';
+import {
+	getManagedCredentialType,
+	getValidManagedData,
+	resolveManagedCredentialType,
+} from '../managed-credential';
 import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
@@ -68,6 +73,28 @@ export const getRequestHelperFunctions = (
 		return parameterValue;
 	};
 
+	// SPIKE (API-663): requests a node sends without an auth helper (its own auth header) still get
+	// the managed type's `authenticate`, so the platform's data reaches every request.
+	const withManagedAuthentication = async <T extends object | undefined>(
+		options: T,
+	): Promise<T> => {
+		const managedType = getManagedCredentialType();
+		// Nodes without a credential (RSS Read, for example) send their requests unchanged.
+		if (!managedType || !node.credentials?.[managedType]) return options;
+		const data = getValidManagedData(
+			node,
+			managedType,
+			additionalData.credentialsHelper.getCredentialsProperties(managedType),
+		);
+		return (await additionalData.credentialsHelper.authenticate(
+			data,
+			managedType,
+			(options ?? {}) as IHttpRequestOptions,
+			workflow,
+			node,
+		)) as T;
+	};
+
 	// Eval LLM mock handler: extract once for use in direct helpers below
 	const evalLlmMock = additionalData.evalLlmMockHandler;
 
@@ -86,7 +113,11 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			return await sendHttpRequest(requestOptions, additionalData, node);
+			return await sendHttpRequest(
+				await withManagedAuthentication(requestOptions),
+				additionalData,
+				node,
+			);
 		},
 		getSecureEgressFilter: (useDefaultSsrfPolicy) =>
 			Container.get(OutboundHttp).egressFilter(useDefaultSsrfPolicy),
@@ -121,7 +152,7 @@ export const getRequestHelperFunctions = (
 		): Promise<any> {
 			return await httpRequestWithAuthentication.call(
 				this,
-				credentialsType,
+				resolveManagedCredentialType(node, credentialsType),
 				requestOptions,
 				workflow,
 				node,
@@ -145,22 +176,31 @@ export const getRequestHelperFunctions = (
 
 		// oxlint-disable-next-line typescript/no-deprecated -- Keep this helper for existing node implementations.
 		request: async (uriOrObjectWithTarget, optionsWithTarget) => {
-			const uriOrObject =
+			const rawUriOrObject =
 				typeof uriOrObjectWithTarget === 'string'
 					? uriOrObjectWithTarget
 					: toLegacyRequestOptions(uriOrObjectWithTarget);
-			const options = optionsWithTarget && toLegacyRequestOptions(optionsWithTarget);
+			const rawOptions = optionsWithTarget && toLegacyRequestOptions(optionsWithTarget);
 			if (evalLlmMock) {
-				const wantsFull = typeof uriOrObject !== 'string' && uriOrObject.resolveWithFullResponse;
+				const wantsFull =
+					typeof rawUriOrObject !== 'string' && rawUriOrObject.resolveWithFullResponse;
 				const evalMockResponse = await callEvalMockHandler(
 					evalLlmMock,
-					normalizeLegacyRequest(uriOrObject, options),
+					normalizeLegacyRequest(rawUriOrObject, rawOptions),
 					node,
 					wantsFull,
 					'legacy',
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
+			const uriOrObject =
+				typeof rawUriOrObject === 'string'
+					? rawUriOrObject
+					: await withManagedAuthentication(rawUriOrObject);
+			const options =
+				typeof rawUriOrObject === 'string'
+					? await withManagedAuthentication(rawOptions)
+					: rawOptions;
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
 		},
@@ -177,7 +217,7 @@ export const getRequestHelperFunctions = (
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestWithAuthentication.call(
 				this,
-				credentialsType,
+				resolveManagedCredentialType(node, credentialsType),
 				requestOptions,
 				workflow,
 				node,
@@ -205,6 +245,18 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
+			const resolvedOAuth1Type = resolveManagedCredentialType(node, credentialsType);
+			if (resolvedOAuth1Type !== credentialsType) {
+				// oxlint-disable-next-line typescript/no-deprecated
+				return await requestWithAuthentication.call(
+					this,
+					resolvedOAuth1Type,
+					requestOptions,
+					workflow,
+					node,
+					additionalData,
+				);
+			}
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth1.call(this, credentialsType, requestOptions);
 		},
@@ -227,6 +279,18 @@ export const getRequestHelperFunctions = (
 					'legacy',
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			const resolvedOAuth2Type = resolveManagedCredentialType(node, credentialsType);
+			if (resolvedOAuth2Type !== credentialsType) {
+				// oxlint-disable-next-line typescript/no-deprecated
+				return await requestWithAuthentication.call(
+					this,
+					resolvedOAuth2Type,
+					requestOptions,
+					workflow,
+					node,
+					additionalData,
+				);
 			}
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth2.call(

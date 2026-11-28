@@ -46,6 +46,7 @@ import {
 	WorkflowActivationError,
 } from 'n8n-workflow';
 
+import { isManagedCredentialReference } from '@/spike-managed-credential-types';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsFinderService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -675,7 +676,9 @@ export class EnterpriseWorkflowService {
 			const current = stack.pop()!;
 
 			if (current.credentials) {
-				for (const nodeCred of Object.values(current.credentials)) {
+				for (const [credType, nodeCred] of Object.entries(current.credentials)) {
+					// Managed reference: resolved at execution, any stored id is never read.
+					if (isManagedCredentialReference(credType)) continue;
 					const id = nodeCred.id?.toString();
 					if (id) {
 						ids.push(id);

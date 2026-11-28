@@ -2086,6 +2086,32 @@ describe('CredentialsService', () => {
 			credentialsRepository.findOneBy.mockResolvedValue(credential);
 		};
 
+		it('refuses to update a credential in managed mode (spike)', async () => {
+			process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
+			try {
+				const credential = mock<CredentialsEntity>({
+					id: 'stored',
+					name: 'Slack',
+					type: 'slackApi',
+				});
+				storeCredential(credential);
+				const encrypted = await service.createEncryptedData({
+					id: credential.id,
+					name: credential.name,
+					type: credential.type,
+					data: { accessToken: 'xoxb-secret' },
+				});
+
+				await expect(service.update(credential.id, encrypted, ownerActor)).rejects.toThrow(
+					'Credentials cannot be saved on this instance',
+				);
+				expect(externalHooks.run).not.toHaveBeenCalledWith('credentials.update', expect.anything());
+				expect(credentialsRepository.runInTransaction).not.toHaveBeenCalled();
+			} finally {
+				delete process.env.N8N_MANAGED_CREDENTIAL_TYPE;
+			}
+		});
+
 		it('serializes instance credential validation and persistence with settings updates', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: 'instance-credential',

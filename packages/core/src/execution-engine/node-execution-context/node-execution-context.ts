@@ -12,6 +12,7 @@ import type {
 	INode,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
+	INodeProperties,
 	INodeExecutionData,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
@@ -48,6 +49,12 @@ import { createExecutionCustomData } from './utils/custom-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
+import {
+	fillManagedPlaceholders,
+	getManagedCredentialType,
+	getValidManagedData,
+	resolveManagedCredentialType,
+} from './utils/managed-credential';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
@@ -326,15 +333,40 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		}
 	}
 
+	/**
+	 * SPIKE (API-663): no credential is stored. n8n builds the node's data from the requested
+	 * type's fields, with no secret, plus the platform's data from the node's managed reference.
+	 */
+	private getManagedCredentials<T extends object>(managedType: string, requestedType: string): T {
+		const { node, additionalData } = this;
+		const propertiesOf = (type: string): INodeProperties[] => {
+			try {
+				return additionalData.credentialsHelper.getCredentialsProperties(type);
+			} catch (error) {
+				this.logger.warn(`Managed credential: unknown credential type "${type}"`, { error });
+				return [];
+			}
+		};
+		const managedData = getValidManagedData(node, managedType, propertiesOf(managedType));
+		return fillManagedPlaceholders(propertiesOf(requestedType), managedData) as T;
+	}
+
 	/** Returns the requested decrypted credentials if the node has access to them */
 	protected async _getCredentials<T extends object = ICredentialDataDecryptedObject>(
-		type: string,
+		requestedType: string,
 		executeData?: IExecuteData,
 		connectionInputData?: INodeExecutionData[],
 		itemIndex?: number,
 		options?: IGetDecryptedCredentialsOptions,
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
+		const type = resolveManagedCredentialType(node, requestedType);
+
+		const managedType = getManagedCredentialType();
+		if (managedType) {
+			this.assertCredentialUsableByNode(requestedType, node.type);
+			return this.getManagedCredentials<T>(managedType, requestedType);
+		}
 
 		// Eval bypass: only mock when the node is fully unconfigured, so nodes
 		// probing multiple auth types still get production's throw. Handler

@@ -1,4 +1,5 @@
 import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
+import { assertManagedCredentialType } from '@/spike-managed-credential-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	CredentialRestrictionsProviderProxy,
@@ -1221,6 +1222,7 @@ export class CredentialsService {
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 		options?: UpdateOptions,
 	) {
+		assertManagedCredentialType(newCredentialData.type);
 		// One flag lookup for the whole update, reused for the write payload and the response.
 		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
 		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
@@ -1325,6 +1327,7 @@ export class CredentialsService {
 		if (!credential) {
 			throw new NotFoundError(`Credential with ID "${credentialId}" could not be found.`);
 		}
+		assertManagedCredentialType(credential.type);
 
 		const prepared = await this.prepareUpdateData(user, data, credential, {
 			operationContext: ctx,
@@ -1413,6 +1416,7 @@ export class CredentialsService {
 
 		// Authorize first: a caller without access to the project must not learn its policy verdict.
 		await this.assertCanCreateInProject(user, projectId);
+		assertManagedCredentialType(credential.type);
 
 		// Gate the save on policy before persisting, so the author learns about a blocked type
 		// while setting the credential up rather than at run time. No stored credential: this one is new.
@@ -1517,6 +1521,7 @@ export class CredentialsService {
 				decryptedCredentialData,
 			);
 		await this.assertCanCreateInProject(user, projectId);
+		assertManagedCredentialType(newCredential.type);
 		const cleared = await this.enforceCredentialCreate(newCredential.type, projectId, user);
 		const saved = await this.transactionRunner.run({ policyCleared: cleared }, async (ctx) => {
 			return await this.credentialsRepository.insertProjectCredentialWithOwner(
@@ -2480,6 +2485,7 @@ export class CredentialsService {
 		if (opts.isResolvable === true || opts.isManaged) {
 			throw new BadRequestError('Provider connections cannot be end-user or managed credentials');
 		}
+		assertManagedCredentialType(opts.type);
 		const data = opts.data as ICredentialDataDecryptedObject;
 		this.validateInstanceCredentialData(data);
 

@@ -12,6 +12,7 @@ import { UnexpectedError, UserError } from '@n8n/errors';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
+import { applyManagedCredentialToDescription } from './spike-managed-credential-types';
 import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation';
 import { satisfiesToolCapability, shouldAssignExecuteMethod, stripToolSuffix } from './utils';
 
@@ -91,7 +92,7 @@ export class NodeTypes implements INodeTypes {
 			}
 		}
 
-		return description;
+		return applyManagedCredentialToDescription(description, nodeTypeName);
 	}
 
 	getByName(nodeType: string): INodeType | IVersionedNodeType {

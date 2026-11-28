@@ -68,7 +68,7 @@ import {
 	useNodeCredentialOptions,
 	type CredentialDropdownOption,
 } from '../composables/useNodeCredentialOptions';
-import { getAutoSelectedCredential } from '../credentials.utils';
+import { getAutoSelectedCredential, isSystemManagedCredentialType } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { getCredentialOwnerShortName } from '../composables/useUnusableWorkflowCredentials';
 import {
@@ -576,6 +576,7 @@ watch(
 	(types) => {
 		if (props.skipAutoSelect || props.readonly || readOnly.value) return;
 		if (types.length === 0) return;
+		if (types.every(({ type }) => isSystemManaged(type.name))) return;
 		// Before the scoped fetch lands there are no options to pick from, which would
 		// read as "no credentials exist" and auto-enable the AI Gateway below. The
 		// watcher re-fires once the fetch populates the slice. A host-supplied list
@@ -784,6 +785,9 @@ function getSelectedId(type: INodeCredentialDescription) {
 }
 
 function getSelectedName(type: string) {
+	if (isSystemManaged(type)) {
+		return credentialsStore.getCredentialTypeByName(type)?.displayName ?? type;
+	}
 	if (isAiGatewayManagedCredentials(type)) {
 		return N8N_CREDITS_LABEL;
 	}
@@ -1171,8 +1175,16 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 	if (!props.standalone) void aiGateway.saveAfterToggle();
 }
 
+function isSystemManaged(credentialTypeName: string): boolean {
+	return isSystemManagedCredentialType(
+		credentialsStore.getCredentialTypeByName(credentialTypeName),
+	);
+}
+
 function getIssues(credentialTypeName: string): string[] {
 	const node = props.node;
+
+	if (isSystemManaged(credentialTypeName)) return [];
 
 	if (node.issues?.credentials === undefined) {
 		return [];
@@ -1628,7 +1640,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					<slot name="label-postfix" />
 				</template>
 				<div
-					v-if="readonly"
+					v-if="readonly || isSystemManaged(type.name)"
 					:class="[
 						$style.selectContainer,
 						{
