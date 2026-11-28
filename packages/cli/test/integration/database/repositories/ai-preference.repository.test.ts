@@ -44,6 +44,82 @@ describe('AiPreferenceRepository', () => {
 		return id;
 	}
 
+	describe('conditional writes', () => {
+		it('accepts only one update from the same saved state', async () => {
+			const id = await insertPreference({ content: 'Original' });
+			const previous = await repository.findOneByOrFail({ id });
+			const outcomes = await Promise.allSettled(
+				['First edit', 'Second edit'].map(
+					async (content) =>
+						await repository.updateIfUnchanged(previous, {
+							content,
+							userId: null,
+							projectId: null,
+						}),
+				),
+			);
+			expect(outcomes.filter(({ status }) => status === 'fulfilled')).toHaveLength(1);
+			expect(outcomes.find(({ status }) => status === 'rejected')).toMatchObject({
+				reason: { httpStatusCode: 409, meta: { reason: 'stale' } },
+			});
+			const winner = outcomes.find((outcome) => outcome.status === 'fulfilled');
+			expect(await repository.findOneByOrFail({ id })).toMatchObject({
+				content: winner?.value.content,
+			});
+		});
+
+		it.each(['content', 'project', 'user', 'timestamp'] as const)(
+			'rejects edits and deletions after the %s changes',
+			async (field) => {
+				const id = await insertPreference({ content: 'Original' });
+				const previous = await repository.findOneByOrFail({ id });
+				const changes = {
+					content: { content: 'Newer edit' },
+					project: { projectId: marketing.id },
+					user: { userId: owner.id },
+					timestamp: { updatedAt: new Date(previous.updatedAt.getTime() + 1) },
+				}[field];
+				await repository.update(id, { updatedAt: previous.updatedAt, ...changes });
+				await expect(
+					repository.updateIfUnchanged(previous, {
+						content: 'Stale edit',
+						userId: null,
+						projectId: null,
+					}),
+				).rejects.toMatchObject({ meta: { reason: 'stale' } });
+				await expect(repository.deleteIfUnchanged(previous)).rejects.toMatchObject({
+					meta: { reason: 'stale' },
+				});
+				expect(await repository.findOneByOrFail({ id })).toMatchObject(changes);
+			},
+		);
+
+		it('does not recreate a row deleted after it was read', async () => {
+			const id = await insertPreference({ content: 'Original' });
+			const previous = await repository.findOneByOrFail({ id });
+			await repository.deleteIfUnchanged(previous);
+			await expect(
+				repository.updateIfUnchanged(previous, {
+					content: 'Late edit',
+					userId: null,
+					projectId: null,
+				}),
+			).rejects.toMatchObject({ meta: { reason: 'stale' } });
+			expect(await repository.existsBy({ id })).toBe(false);
+		});
+
+		it('advances the saved timestamp when the clock has not advanced', async () => {
+			const id = await insertPreference({ content: 'Original', updatedAt: new Date('2099-01-01') });
+			const previous = await repository.findOneByOrFail({ id });
+			const changes = { content: previous.content, userId: null, projectId: null };
+			const saved = await repository.updateIfUnchanged(previous, changes);
+			expect(saved.updatedAt.getTime()).toBe(previous.updatedAt.getTime() + 1);
+			await expect(repository.updateIfUnchanged(previous, changes)).rejects.toMatchObject({
+				meta: { reason: 'stale' },
+			});
+		});
+	});
+
 	describe('countForTarget', () => {
 		it('counts one scope at a time, so a cap applies per scope', async () => {
 			await insertPreference({ content: 'Instance A' });

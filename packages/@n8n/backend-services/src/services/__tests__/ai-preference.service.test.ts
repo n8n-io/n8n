@@ -13,7 +13,7 @@ import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, Person } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { AiPreferenceScopeFullError } from '../../errors/response-errors/ai-preference-scope-full.error';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import {
 	AI_PREFERENCES_CLEARED_BLOCK,
 	AI_PREFERENCES_REPLACES_EARLIER,
@@ -85,6 +85,12 @@ describe('AiPreferenceService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		aiPreferenceRepository.updateIfUnchanged.mockImplementation(async (previous, changes) => ({
+			...previous,
+			...changes,
+			createdAt: previous.createdAt ?? new Date(),
+			updatedAt: new Date(),
+		}));
 	});
 
 	describe('getApplicable', () => {
@@ -389,7 +395,7 @@ describe('AiPreferenceService', () => {
 			// the full set would have the client offer buttons the service then refuses.
 			allowProjectOperations('projectAiPreference:create');
 			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
-			aiPreferenceRepository.save.mockImplementation(
+			aiPreferenceRepository.createPreference.mockImplementation(
 				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
 			);
 
@@ -409,7 +415,7 @@ describe('AiPreferenceService', () => {
 				'projectAiPreference:delete',
 			);
 			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
-			aiPreferenceRepository.save.mockImplementation(
+			aiPreferenceRepository.createPreference.mockImplementation(
 				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
 			);
 
@@ -426,7 +432,7 @@ describe('AiPreferenceService', () => {
 				'projectAiPreference:delete',
 			);
 			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
-			aiPreferenceRepository.save.mockImplementation(
+			aiPreferenceRepository.createPreference.mockImplementation(
 				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
 			);
 
@@ -455,7 +461,7 @@ describe('AiPreferenceService', () => {
 
 		beforeEach(() => {
 			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
-			aiPreferenceRepository.save.mockImplementation(
+			aiPreferenceRepository.createPreference.mockImplementation(
 				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
 			);
 			aiPreferenceRepository.countForTarget.mockResolvedValue(0);
@@ -516,7 +522,7 @@ describe('AiPreferenceService', () => {
 			await expect(
 				service.create(member, { content: 'Rule.', scope: 'user' }, 'ui'),
 			).rejects.toThrow(`A user cannot hold more than ${AI_PREFERENCE_MAX_PER_SCOPE} preferences`);
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.createPreference).not.toHaveBeenCalled();
 		});
 
 		it('names the limit and the saved count on the cap error, so a caller can relay the numbers', async () => {
@@ -555,7 +561,7 @@ describe('AiPreferenceService', () => {
 			await expect(
 				service.create(owner, { content: 'Rule.', scope: 'user', userId: 'user-2' }, 'ui'),
 			).rejects.toThrow(`A user cannot hold more than ${AI_PREFERENCE_MAX_PER_SCOPE} preferences`);
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.createPreference).not.toHaveBeenCalled();
 		});
 
 		it.each(['ui', 'import'] as const)('keeps the %s creation source on edit', async (source) => {
@@ -571,8 +577,9 @@ describe('AiPreferenceService', () => {
 			});
 
 			expect(updated.source).toBe(source);
-			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
-				expect.objectContaining({ content: 'A better rule.', source }),
+			expect(aiPreferenceRepository.updateIfUnchanged).toHaveBeenCalledWith(
+				expect.any(Object),
+				expect.objectContaining({ content: 'A better rule.' }),
 			);
 		});
 
@@ -584,7 +591,7 @@ describe('AiPreferenceService', () => {
 			await expect(
 				service.update(owner, 'pref-1', { content: 'A better rule.', scope: 'user' }),
 			).rejects.toThrow('An edit of a user preference must name the user');
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.updateIfUnchanged).not.toHaveBeenCalled();
 		});
 
 		it('checks the scope a move lands in, not the one it leaves', async () => {
@@ -610,7 +617,8 @@ describe('AiPreferenceService', () => {
 
 			await service.update(owner, 'pref-1', { content: 'A better rule.' });
 
-			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+			expect(aiPreferenceRepository.updateIfUnchanged).toHaveBeenCalledWith(
+				expect.any(Object),
 				expect.objectContaining({
 					content: 'A better rule.',
 					userId: null,
@@ -628,7 +636,8 @@ describe('AiPreferenceService', () => {
 
 			await service.update(owner, 'pref-1', { content: 'A better rule.' });
 
-			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+			expect(aiPreferenceRepository.updateIfUnchanged).toHaveBeenCalledWith(
+				expect.any(Object),
 				expect.objectContaining({
 					content: 'A better rule.',
 					userId: 'owner-1',
@@ -644,7 +653,8 @@ describe('AiPreferenceService', () => {
 
 			await service.update(owner, 'pref-1', { content: 'A better rule.' });
 
-			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+			expect(aiPreferenceRepository.updateIfUnchanged).toHaveBeenCalledWith(
+				expect.any(Object),
 				expect.objectContaining({ content: 'A better rule.', userId: null, projectId: null }),
 			);
 		});
@@ -669,7 +679,7 @@ describe('AiPreferenceService', () => {
 			await expect(
 				service.create(member, { content: 'Keep replies short.', scope: 'user' }, 'aia'),
 			).rejects.toThrow('This user already has a preference with the same text');
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.createPreference).not.toHaveBeenCalled();
 			expect(aiPreferenceRepository.existsForTargetWithContent).toHaveBeenCalledWith(
 				{ scope: 'user', userId: 'user-1' },
 				'Keep replies short.',
@@ -682,7 +692,7 @@ describe('AiPreferenceService', () => {
 
 			await service.create(member, { content: 'Use British English.', scope: 'user' }, 'aia');
 
-			expect(aiPreferenceRepository.save).toHaveBeenCalledTimes(1);
+			expect(aiPreferenceRepository.createPreference).toHaveBeenCalledTimes(1);
 		});
 
 		it('runs the cap check before the duplicate check, so a full scope reports the cap', async () => {
@@ -727,11 +737,34 @@ describe('AiPreferenceService', () => {
 	});
 
 	/** For callers that hold an id and no scope, such as an MCP client. */
+	it.each(['update', 'updateContent'] as const)(
+		'refuses a changed row in %s without saving it',
+		async (method) => {
+			const user = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			const previous = row({ id: 'pref-1', content: 'Original', userId: user.id });
+			const conflict = new ConflictError('The Preference changed. Reload it and try again.');
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(previous);
+			aiPreferenceRepository.updateIfUnchanged.mockRejectedValue(conflict);
+
+			const update =
+				method === 'update'
+					? service.update(user, previous.id, { content: 'Changed' })
+					: service.updateContent(user, previous.id, 'Changed');
+
+			await expect(update).rejects.toBe(conflict);
+			expect(aiPreferenceRepository.updateIfUnchanged).toHaveBeenCalledWith(
+				previous,
+				expect.objectContaining({ content: 'Changed', userId: user.id }),
+			);
+			expect(previous.content).toBe('Original');
+		},
+	);
+
 	describe('updateContent', () => {
 		const member = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
 		beforeEach(() => {
-			aiPreferenceRepository.save.mockImplementation(
+			aiPreferenceRepository.createPreference.mockImplementation(
 				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
 			);
 			aiPreferenceRepository.existsForTargetWithContent.mockResolvedValue(false);
@@ -745,8 +778,9 @@ describe('AiPreferenceService', () => {
 			const updated = await service.updateContent(member, 'pref-1', 'A better rule.');
 
 			expect(updated).toMatchObject({ content: 'A better rule.', userId: 'user-1', source: 'ui' });
-			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
-				expect.objectContaining({ content: 'A better rule.', userId: 'user-1', source: 'ui' }),
+			expect(aiPreferenceRepository.updateIfUnchanged).toHaveBeenCalledWith(
+				expect.any(Object),
+				expect.objectContaining({ content: 'A better rule.', userId: 'user-1' }),
 			);
 			// An edit in place never moves the row, so the cap is not the edit's business.
 			expect(aiPreferenceRepository.countForTarget).not.toHaveBeenCalled();
@@ -760,7 +794,7 @@ describe('AiPreferenceService', () => {
 			await expect(service.updateContent(member, 'pref-1', 'Mine now.')).rejects.toBeInstanceOf(
 				NotFoundError,
 			);
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.updateIfUnchanged).not.toHaveBeenCalled();
 		});
 
 		it('refuses a row the caller may see but not edit, such as an instance rule for a member', async () => {
@@ -771,7 +805,7 @@ describe('AiPreferenceService', () => {
 			await expect(service.updateContent(member, 'pref-1', 'Mine now.')).rejects.toBeInstanceOf(
 				NotFoundError,
 			);
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.updateIfUnchanged).not.toHaveBeenCalled();
 		});
 
 		// The owner may edit all three in settings. Over this path they are shared rules or somebody
@@ -789,7 +823,7 @@ describe('AiPreferenceService', () => {
 			await expect(service.updateContent(owner, 'pref-1', 'Mine now.')).rejects.toBeInstanceOf(
 				NotFoundError,
 			);
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.updateIfUnchanged).not.toHaveBeenCalled();
 		});
 
 		it('refuses a text another row in the scope already holds, through the shared rule', async () => {
@@ -841,7 +875,9 @@ describe('AiPreferenceService', () => {
 
 			const removed = await service.undoWrite(member, 'pref-1', 'mcp');
 
-			expect(aiPreferenceRepository.delete).toHaveBeenCalledWith({ id: 'pref-1' });
+			expect(aiPreferenceRepository.deleteIfUnchanged).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'pref-1' }),
+			);
 			expect(removed).toMatchObject({ id: 'pref-1', content: 'Rule.', source: 'mcp' });
 		});
 
@@ -861,7 +897,7 @@ describe('AiPreferenceService', () => {
 			await expect(service.undoWrite(member, 'pref-1', 'mcp')).rejects.toBeInstanceOf(
 				NotFoundError,
 			);
-			expect(aiPreferenceRepository.delete).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.deleteIfUnchanged).not.toHaveBeenCalled();
 		});
 
 		it('refuses a row the person has since moved to the instance, even for an owner', async () => {
@@ -871,7 +907,7 @@ describe('AiPreferenceService', () => {
 			);
 
 			await expect(service.undoWrite(owner, 'pref-1', 'mcp')).rejects.toBeInstanceOf(NotFoundError);
-			expect(aiPreferenceRepository.delete).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.deleteIfUnchanged).not.toHaveBeenCalled();
 		});
 
 		it('refuses a row the caller cannot see, before it reads the source', async () => {
@@ -888,7 +924,7 @@ describe('AiPreferenceService', () => {
 			await expect(service.undoWrite(member, 'pref-1', 'mcp')).rejects.toBeInstanceOf(
 				NotFoundError,
 			);
-			expect(aiPreferenceRepository.delete).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.deleteIfUnchanged).not.toHaveBeenCalled();
 		});
 	});
 

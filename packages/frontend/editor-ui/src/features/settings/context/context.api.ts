@@ -2,6 +2,7 @@ import type {
 	AiPreferenceCountDto,
 	AiPreferenceListDto,
 	AiPreferenceRequestDto,
+	AiPreferenceUpdateRequestDto,
 	AiPreferenceSettingsRequestDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -40,7 +41,7 @@ export async function createPreference(
 export async function updatePreference(
 	context: IRestApiContext,
 	id: string,
-	payload: AiPreferenceRequestDto,
+	payload: AiPreferenceUpdateRequestDto,
 ): Promise<Preference> {
 	return await makeRestApiRequest<Preference>(context, 'PATCH', `${ENDPOINT}/${id}`, payload);
 }

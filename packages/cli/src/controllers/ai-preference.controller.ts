@@ -1,4 +1,8 @@
-import { AiPreferenceListQueryDto, AiPreferenceRequestDto } from '@n8n/api-types';
+import {
+	AiPreferenceListQueryDto,
+	AiPreferenceRequestDto,
+	AiPreferenceUpdateRequestDto,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Middleware, Patch, Post, Query, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
@@ -56,7 +60,7 @@ export class AiPreferenceController {
 	async updatePreference(
 		req: AuthenticatedRequest<{ id: string }>,
 		_res: Response,
-		@Body payload: AiPreferenceRequestDto,
+		@Body payload: AiPreferenceUpdateRequestDto,
 	) {
 		return await this.aiPreferenceService.update(req.user, req.params.id, payload);
 	}

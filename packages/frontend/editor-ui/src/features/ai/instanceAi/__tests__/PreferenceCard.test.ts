@@ -539,6 +539,9 @@ describe('PreferenceCard', () => {
 	});
 
 	describe('the edit modal', () => {
+		beforeEach(() => {
+			resolvedRows(preferenceRow());
+		});
 		// The same scope label, required mark, cap, and counter as the settings page modal.
 		it('opens with the stored text and "Just you" selected, and the select is enabled', async () => {
 			renderActive();
@@ -592,6 +595,7 @@ describe('PreferenceCard', () => {
 		});
 
 		it('keeps the current scope as an option even when the user may not write it any more', async () => {
+			resolvedRows(preferenceRow({ userId: null, projectId: 'thread-project' }));
 			// Review focus 4: the select must show the truth about where the row is.
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.myProjects = [
@@ -646,6 +650,7 @@ describe('PreferenceCard', () => {
 
 			await waitFor(() =>
 				expect(editPreferenceCard).toHaveBeenCalledWith(expect.anything(), 'thread-1', 'pref-1', {
+					expectedUpdatedAt: '2026-09-24T00:00:00.000Z',
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					content: STORED_TEXT,
@@ -679,6 +684,7 @@ describe('PreferenceCard', () => {
 
 			await waitFor(() =>
 				expect(editPreferenceCard).toHaveBeenCalledWith(expect.anything(), 'thread-1', 'pref-1', {
+					expectedUpdatedAt: '2026-09-24T00:00:00.000Z',
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					content: 'Keep replies brief.',
@@ -710,6 +716,7 @@ describe('PreferenceCard', () => {
 		});
 
 		it('names the caller when a row moves into the user scope, which has no prior owner', async () => {
+			resolvedRows(preferenceRow({ userId: null }));
 			editPreferenceCard.mockResolvedValue({
 				preference: { id: 'pref-1', content: STORED_TEXT },
 				event: editedEvent,
@@ -735,6 +742,42 @@ describe('PreferenceCard', () => {
 					expect.objectContaining({ scope: 'user', userId: 'user-1', projectId: null }),
 				),
 			);
+		});
+
+		it('keeps the draft version after another save refreshes the store', async () => {
+			editPreferenceCard.mockRejectedValue(
+				new Error('The Preference changed. Reload it and try again.'),
+			);
+			renderActive();
+			const input = await openModal();
+			await userEvent.clear(input);
+			await userEvent.type(input, 'My unsaved edit');
+			resolvedRows(
+				preferenceRow({ content: 'Other tab edit', updatedAt: '2026-09-25T00:00:00.000Z' }),
+			);
+			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-save'));
+			expect(editPreferenceCard).toHaveBeenCalledWith(
+				expect.anything(),
+				'thread-1',
+				'pref-1',
+				expect.objectContaining({
+					content: 'My unsaved edit',
+					expectedUpdatedAt: '2026-09-24T00:00:00.000Z',
+				}),
+			);
+			expect(input).toHaveValue('My unsaved edit');
+			expect(screen.getByTestId('instance-ai-preference-modal-error')).toHaveTextContent(
+				'The Preference changed.',
+			);
+		});
+
+		it('does not save a card before its saved version is available', async () => {
+			resolvedRows();
+			renderActive();
+			const input = await openModal();
+			expect(input).toBeDisabled();
+			expect(screen.getByTestId('instance-ai-preference-modal-save')).toBeDisabled();
+			expect(editPreferenceCard).not.toHaveBeenCalled();
 		});
 
 		it('disables Save while the text is unchanged', async () => {
@@ -786,6 +829,7 @@ describe('PreferenceCard', () => {
 
 			await waitFor(() =>
 				expect(editPreferenceCard).toHaveBeenCalledWith(expect.anything(), 'thread-1', 'pref-1', {
+					expectedUpdatedAt: '2026-09-24T00:00:00.000Z',
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					content: 'Keep replies brief.',
@@ -1074,7 +1118,7 @@ describe('PreferenceCard', () => {
 		});
 
 		it('hands the store the row a save returned', async () => {
-			const contextStore = resolvedRows();
+			const contextStore = resolvedRows(preferenceRow());
 			const saved = preferenceRow({ content: 'Keep replies brief.' });
 			editPreferenceCard.mockResolvedValue({ preference: saved, event: editedEvent });
 			renderActive();

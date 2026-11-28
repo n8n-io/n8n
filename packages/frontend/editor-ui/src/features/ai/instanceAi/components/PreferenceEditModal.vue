@@ -153,18 +153,37 @@ function parseScope(): {
 	return { scope: 'user', projectId: null, userId: owner ?? null };
 }
 
+const initialContent = ref(props.content);
 const draft = ref(props.content);
+const expectedUpdatedAt = ref<string>();
 const busy = ref(false);
 const errorMessage = ref('');
 
 // Each opening starts from what is stored, so a cancelled edit leaves nothing behind.
-watch(open, (isOpen) => {
+watch(open, async (isOpen, _wasOpen, onCleanup) => {
 	if (!isOpen) return;
 	draft.value = props.content;
 	scopeDraft.value = currentScopeValue.value;
 	scopeTouched.value = false;
 	errorMessage.value = '';
+	expectedUpdatedAt.value = undefined;
 	void projectsStore.getMyProjects();
+	let current = true;
+	onCleanup(() => {
+		current = false;
+	});
+	if (!contextStore.rowById.has(props.preferenceId)) {
+		await contextStore.resolveRows([props.preferenceId]);
+	}
+	if (!current) return;
+	const row = contextStore.rowById.get(props.preferenceId);
+	if (!row) {
+		errorMessage.value = i18n.baseText('instanceAi.preferenceCard.modal.saveFailed');
+		return;
+	}
+	initialContent.value = row.content;
+	draft.value = row.content;
+	expectedUpdatedAt.value = row.updatedAt;
 });
 
 // The same rules, counter, and cap as the preference modal on the settings page.
@@ -178,8 +197,14 @@ const validation = computed(() => aiPreferenceContentSchema.safeParse(draft.valu
 const scopeChanged = computed(() => scopeDraft.value !== currentScopeValue.value);
 
 // Nothing to accept when neither the text nor the scope changed: the preference is already saved.
-const isDirty = computed(() => draft.value.trim() !== props.content || scopeChanged.value);
-const canSave = computed(() => isDirty.value && validation.value.success && !busy.value);
+const isDirty = computed(() => draft.value.trim() !== initialContent.value || scopeChanged.value);
+const canSave = computed(
+	() =>
+		isDirty.value &&
+		validation.value.success &&
+		expectedUpdatedAt.value !== undefined &&
+		!busy.value,
+);
 
 async function save() {
 	if (!canSave.value || !validation.value.success) return;
@@ -188,6 +213,7 @@ async function save() {
 	try {
 		const preference = await host.edit(cardTarget(), {
 			content: validation.value.data,
+			expectedUpdatedAt: expectedUpdatedAt.value,
 			// The scope travels only when the user moved it. The card's idea of where the row
 			// lives is its own last write, which a move on the settings page or over MCP makes
 			// stale, so restating it on a text-only edit would undo that move.
@@ -273,7 +299,7 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 					:maxlength="AI_PREFERENCE_CONTENT_MAX_LENGTH"
 					:validate-on-blur="false"
 					:validation-rules="contentValidationRules"
-					:disabled="busy"
+					:disabled="busy || expectedUpdatedAt === undefined"
 					data-test-id="instance-ai-preference-modal-text"
 				/>
 				<N8nText

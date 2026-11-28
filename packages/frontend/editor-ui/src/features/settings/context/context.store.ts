@@ -1,4 +1,4 @@
-import type { AiPreferenceRequestDto } from '@n8n/api-types';
+import type { AiPreferenceRequestDto, AiPreferenceUpdateRequestDto } from '@n8n/api-types';
 import { AI_PREFERENCES_MAX_IDS_FILTER } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -159,7 +159,7 @@ export const useContextStore = defineStore('context', () => {
 		return created;
 	}
 
-	async function updatePreference(id: string, payload: AiPreferenceRequestDto) {
+	async function updatePreference(id: string, payload: AiPreferenceUpdateRequestDto) {
 		const updated = await api.updatePreference(rootStore.restApiContext, id, payload);
 		setRow(updated);
 		return updated;

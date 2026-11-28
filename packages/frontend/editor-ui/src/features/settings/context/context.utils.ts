@@ -151,7 +151,7 @@ const SCOPE_FULL_MESSAGE = 'cannot hold more than';
 
 /**
  * Why a save from the settings page did not land, in the same words the assistant surfaces use.
- * The status is what the service throws: 409 for the duplicate check, 403 for a scope the user
+ * The service marks stale writes in metadata. Other 409s are duplicates; 403 is a scope the user
  * may not write. A 400 covers the per-scope cap and several malformed requests alike, so only
  * the cap message counts as `scope_full`. Anything else is `failed`, which keeps a form bug out
  * of the number that reviews the cap.
@@ -160,7 +160,9 @@ export function preferenceWriteRejectionReason(
 	error: unknown,
 ): 'duplicate' | 'scope_full' | 'not_permitted' | 'failed' {
 	if (!(error instanceof ResponseError)) return 'failed';
-	if (error.httpStatusCode === 409) return 'duplicate';
+	if (error.httpStatusCode === 409) {
+		return error.meta?.reason === 'stale' ? 'failed' : 'duplicate';
+	}
 	if (error.httpStatusCode === 403) return 'not_permitted';
 	if (error.httpStatusCode === 400 && error.message.includes(SCOPE_FULL_MESSAGE)) {
 		return 'scope_full';
