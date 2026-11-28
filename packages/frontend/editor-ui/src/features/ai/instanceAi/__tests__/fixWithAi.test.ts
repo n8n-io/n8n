@@ -1,3 +1,4 @@
+import { EXTENDED_PROMPT_MAX_LENGTH } from '@n8n/api-types';
 import { describe, expect, it } from 'vitest';
 import { buildFixWithAiPrompt, isFixWithAiError } from '../fixWithAi';
 
@@ -68,5 +69,19 @@ describe('buildFixWithAiPrompt', () => {
 		expect(single).not.toContain('x'.repeat(501));
 		expect(multiple).toContain('Parameter URL is required');
 		expect(multiple).not.toContain('x'.repeat(501));
+	});
+
+	it('keeps the prompt under the message limit when many nodes fail with long errors', () => {
+		const errors = Array.from({ length: 60 }, (_, index) => ({
+			nodeName: `Node ${String(index).padStart(2, '0')}`,
+			errorMessage: 'x'.repeat(30_000),
+		}));
+
+		const prompt = buildFixWithAiPrompt({ errors });
+
+		expect(prompt.length).toBeLessThanOrEqual(EXTENDED_PROMPT_MAX_LENGTH);
+		for (const { nodeName } of errors) {
+			expect(prompt).toContain(nodeName);
+		}
 	});
 });
