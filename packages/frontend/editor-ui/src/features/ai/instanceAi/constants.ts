@@ -6,6 +6,7 @@ export const INSTANCE_AI_THREAD_VIEW = 'InstanceAiThread';
 export const INSTANCE_AI_THREAD_SESSION_VIEW = 'InstanceAiThreadSession';
 export const INSTANCE_AI_THREADS_VIEW = 'InstanceAiThreads';
 export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
+export const INSTANCE_AI_USAGE_SETTINGS_VIEW = 'InstanceAiUsageSettings';
 export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
 export const INSTANCE_AI_APP_ID_QUERY = 'appId';
 export const INSTANCE_AI_PENDING_APP_ID_QUERY = 'pendingAppId';

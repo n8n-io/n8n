@@ -21,7 +21,12 @@ import { InstanceAiModule } from '../module.descriptor';
 import { useAssistantCreditsStore } from '../assistantCredits.store';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from '../constants';
+import {
+	INSTANCE_AI_VIEW,
+	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_SETTINGS_VIEW,
+	INSTANCE_AI_USAGE_SETTINGS_VIEW,
+} from '../constants';
 
 vi.mock('../composables/useInstanceAiAvailability', () => ({
 	useInstanceAiAvailable: () => ref(true),
@@ -298,6 +303,37 @@ describe.each(['initial navigation', 'from another page'])('self-healing access 
 		expect(
 			(await open('/projects/project/settings/self-healing/new')).currentRoute.value.name,
 		).toBe(VIEWS.HOMEPAGE);
+	});
+});
+
+describe('InstanceAiModule usage insights page access', () => {
+	const openUsagePage = async () => {
+		const router = createTestRouter();
+		await router.push('/settings/assistant/usage');
+		return router.currentRoute.value.name;
+	};
+
+	const useAgentsRuntime = () => {
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...instanceAiModuleSettings, assistantAgentEnabled: true },
+		};
+	};
+
+	it('opens for an owner when the Assistant runs on the Agents runtime', async () => {
+		useAgentsRuntime();
+
+		expect(await openUsagePage()).toBe(INSTANCE_AI_USAGE_SETTINGS_VIEW);
+	});
+
+	it('sends the viewer to the homepage on the current runtime, which records no usage', async () => {
+		expect(await openUsagePage()).toBe(VIEWS.HOMEPAGE);
+	});
+
+	it('sends a member to the homepage', async () => {
+		useAgentsRuntime();
+		setGlobalScopes(GLOBAL_MEMBER_SCOPES);
+
+		expect(await openUsagePage()).toBe(VIEWS.HOMEPAGE);
 	});
 });
 

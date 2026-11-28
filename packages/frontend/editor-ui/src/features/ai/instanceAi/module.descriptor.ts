@@ -14,6 +14,7 @@ import {
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_THREAD_SESSION_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
+	INSTANCE_AI_USAGE_SETTINGS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 	INSTANCE_AI_THREADS_VIEW,
 	INSTANCE_AI_SOURCE_QUERY,
@@ -34,7 +35,8 @@ import {
 } from './composables/useInstanceAiAvailability';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
-import { canManageInstanceAi } from './instanceAiPermissions';
+import { canManageInstanceAi, canViewAssistantUsage } from './instanceAiPermissions';
+import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 
 /**
  * The settings page renders its sections only for a viewer who can manage
@@ -89,6 +91,8 @@ const InstanceAiThreadsView = async () => await import('./InstanceAiThreadsView.
 const AssistantAgentSessionView = async () =>
 	await import('./assistantAgent/AssistantAgentSessionView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
+const SettingsAssistantUsageView = async () =>
+	await import('./views/SettingsAssistantUsageView.vue');
 
 const SelfHealingConfigView = async () =>
 	(await import('@n8n/frontend-module-self-healing')).SelfHealingConfigView;
@@ -263,6 +267,28 @@ export const InstanceAiModule = defineFrontendModule({
 					// must also pass this check to reach their default editor row.
 					rbac: {
 						scope: ['instanceAi:message', 'instanceAi:manage'],
+					},
+				},
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+		{
+			path: 'assistant/usage',
+			name: INSTANCE_AI_USAGE_SETTINGS_VIEW,
+			component: SettingsAssistantUsageView,
+			// Only the Assistant on the Agents runtime records usage.
+			beforeEnter: () =>
+				useInstanceAiSettingsStore().isAssistantAgentEnabled && canViewAssistantUsage()
+					? true
+					: { name: VIEWS.HOMEPAGE },
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'rbac'],
+				middlewareOptions: {
+					rbac: {
+						scope: 'instanceAi:viewUsage',
 					},
 				},
 				telemetry: {

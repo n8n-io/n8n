@@ -618,6 +618,11 @@
 	--diff--color--deleted--light: var(--color--red-200);
 	--diff--color--deleted--faint: var(--color--red-50);
 
+	// Charts: categorical series in a fixed order. Neighbors stay apart for color-blind readers.
+	--chart--color--series-1: var(--color--blue-500);
+	--chart--color--series-2: var(--color--orange-500);
+	--chart--color--series-3: var(--color--green-600);
+
 	// Various
 	--avatar--color--accent-1: var(--color--neutral-200);
 	--avatar--color--accent-2: var(--color--blue-500);
@@ -1221,6 +1226,11 @@
 	--diff--color--deleted: #fb887a;
 	--diff--color--deleted--light: #7a524e;
 	--diff--color--deleted--faint: #4d3e3d;
+
+	// Charts: categorical series in a fixed order. Neighbors stay apart for color-blind readers.
+	--chart--color--series-1: var(--color--blue-400);
+	--chart--color--series-2: var(--color--orange-500);
+	--chart--color--series-3: var(--color--green-500);
 
 	// Various
 	--color--info--tint-1: var(--color--neutral-400);

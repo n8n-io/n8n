@@ -7,6 +7,7 @@ import {
 	N8nEmptyState,
 	N8nEnterpriseReadinessBadge,
 	N8nExternalLink,
+	N8nLink,
 	N8nLoading,
 	N8nOption,
 	N8nSelect,
@@ -44,7 +45,11 @@ import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfigur
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSetupPageViewTelemetry } from '../instanceAiSetup.telemetry';
-import type { InstanceAiConnectionKind } from '../constants';
+import {
+	INSTANCE_AI_USAGE_SETTINGS_VIEW,
+	type InstanceAiConnectionKind,
+} from '@/features/ai/instanceAi/constants';
+import { canViewAssistantUsage } from '@/features/ai/instanceAi/instanceAiPermissions';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 import SandboxSettingsRow from '../components/settings/SandboxSettingsRow.vue';
 
@@ -73,6 +78,8 @@ const DATA_SHARING_DOCS_URL =
 	'https://docs.n8n.io/build/ways-of-building-workflows/use-the-ai-assistant#ai-usage-settings';
 
 const isAdmin = computed(() => store.canManage);
+// Only the Assistant on the Agents runtime records usage.
+const showUsageInsights = computed(() => store.isAssistantAgentEnabled && canViewAssistantUsage());
 const isEnabled = computed(
 	() => store.settings?.enabled ?? settingsStore.moduleSettings?.['instance-ai']?.enabled ?? false,
 );
@@ -850,6 +857,30 @@ const { isLoading: isSavingModelTraining, executeImmediate: handleModelTrainingT
 								data-test-id="n8n-agent-model-training-toggle"
 								@update:model-value="handleModelTrainingToggle"
 							/>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</N8nSettingsSection>
+
+			<N8nSettingsSection
+				v-if="showUsageInsights"
+				:title="i18n.baseText('settings.n8nAgent.usageInsights.title')"
+				data-test-id="n8n-agent-usage-insights-section"
+			>
+				<N8nSettingsRowGroup>
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.n8nAgent.usageInsights.label')"
+						:description="i18n.baseText('settings.n8nAgent.usageInsights.description')"
+					>
+						<template #action>
+							<N8nLink
+								:to="{ name: INSTANCE_AI_USAGE_SETTINGS_VIEW }"
+								bold
+								data-test-id="n8n-agent-usage-insights-link"
+								data-attr="n8n-agent-usage-insights-link"
+							>
+								{{ i18n.baseText('settings.n8nAgent.usageInsights.link') }}
+							</N8nLink>
 						</template>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>
