@@ -214,14 +214,20 @@ describe('runCloudBrowserAgent', () => {
 		/** Runs the agent, then calls the tool as the model would. */
 		async function requestUserAction(
 			result: Awaited<ReturnType<CloudBrowserUserActionHost['requestUserAction']>>,
+			isLoginRequest = true,
 		) {
 			vi.mocked(executeResumableStream).mockResolvedValue(streamResult());
 			const options = makeOptions();
 			vi.mocked(options.userActionHost.requestUserAction).mockResolvedValue(result);
 			await runCloudBrowserAgent(options);
 			const tool = agents[0].tools.find((t) => t.name === 'browser_request_user_action');
-			const output = await tool?.handler?.({ reason: 'Sign in to Acme.' }, {} as never);
-			expect(options.userActionHost.requestUserAction).toHaveBeenCalledTimes(1);
+			const output = await tool?.handler?.(
+				{ reason: 'Sign in to Acme.', isLoginRequest },
+				{} as never,
+			);
+			expect(options.userActionHost.requestUserAction).toHaveBeenCalledExactlyOnceWith({
+				isLoginRequest,
+			});
 			return output;
 		}
 
@@ -236,6 +242,12 @@ describe('runCloudBrowserAgent', () => {
 			expect(
 				await requestUserAction({ returned: false, error: 'The browser task has ended.' }),
 			).toEqual({ controlReturned: false, error: 'The browser task has ended.' });
+		});
+
+		it('tells the host when the action is not a sign-in', async () => {
+			expect(await requestUserAction({ returned: true }, false)).toMatchObject({
+				controlReturned: true,
+			});
 		});
 	});
 

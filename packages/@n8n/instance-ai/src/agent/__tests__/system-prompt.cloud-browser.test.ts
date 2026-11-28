@@ -25,6 +25,16 @@ describe('getSystemPrompt — cloud browser', () => {
 		expect(section).not.toContain('The browser agent cannot sign in for them');
 	});
 
+	it('tells the model what to say about the login results of a task', () => {
+		const section = cloudBrowserSection();
+
+		expect(section).toContain('**Login results:**');
+		expect(section).toContain('n8n writes them, not the browser agent');
+		expect(section).toContain('Your login for example.com is saved, so I can use it next time.');
+		expect(section).toContain('Sign in again next time to save it.');
+		expect(section).not.toContain('n8n Assistant can reuse');
+	});
+
 	it('names the start tool when the cloud browser is on', () => {
 		expect(cloudBrowserSection()).toContain(ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER_TASK);
 	});

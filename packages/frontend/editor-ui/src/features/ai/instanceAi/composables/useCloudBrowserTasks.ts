@@ -24,8 +24,11 @@ export interface CloudBrowserTask {
 	 * view link is fetched again.
 	 */
 	sessionKey: string;
-	/** Set while the agent waits for the user to do a step in the browser. */
-	userAction?: { reason: string };
+	/**
+	 * Set while the agent waits for the user to do a step in the browser. `isLoginRequest` is set
+	 * only when the step is to sign in.
+	 */
+	userAction?: { reason: string; isLoginRequest?: boolean };
 }
 
 export const CloudBrowserTasksKey: InjectionKey<ComputedRef<CloudBrowserTask[]>> =
@@ -45,7 +48,8 @@ function userActionOf(node: InstanceAiAgentNode): CloudBrowserTask['userAction']
 		(toolCall) => toolCall.toolName === REQUEST_USER_ACTION_TOOL && toolCall.isLoading,
 	);
 	const reason = request?.args.reason;
-	return typeof reason === 'string' ? { reason } : undefined;
+	if (typeof reason !== 'string') return undefined;
+	return request?.args.isLoginRequest === true ? { reason, isLoginRequest: true } : { reason };
 }
 
 function taskStateOf(node: InstanceAiAgentNode): CloudBrowserTask['state'] | undefined {

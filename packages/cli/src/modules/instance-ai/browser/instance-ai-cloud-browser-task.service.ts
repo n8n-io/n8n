@@ -29,6 +29,7 @@ import { nanoid } from 'nanoid';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 
 import type { BrowserDomainGate } from './browser.helpers';
+import type { CloudBrowserLocalMcpServer } from './cloud-browser-local-mcp-server';
 import type { InstanceAiCloudBrowserService } from './instance-ai-cloud-browser.service';
 import type { InstanceAiCreditService } from '../instance-ai-credit.service';
 import type { SuspendedThreadPersistenceService } from '../suspended-thread-persistence.service';
@@ -329,13 +330,9 @@ export class InstanceAiCloudBrowserTaskService {
 		}, TASK_ALIVE_INTERVAL_MS);
 		aliveTimer.unref();
 
+		let mcpServer: CloudBrowserLocalMcpServer | undefined;
 		try {
-			const mcpServer = await cloudBrowserService.createServer(
-				user.id,
-				threadId,
-				taskId,
-				run.domainGate,
-			);
+			mcpServer = await cloudBrowserService.createServer(user.id, threadId, taskId, run.domainGate);
 			mcpServer.setCurrentWindowListener(() =>
 				eventBus.publish(threadId, {
 					type: 'cloud-browser-window-changed',
@@ -378,7 +375,11 @@ export class InstanceAiCloudBrowserTaskService {
 					tracing: task.tracing,
 				});
 				await this.claimUsage(run, taskId, result);
-				await this.taskStore.markFinished(threadId, taskId, result);
+				await mcpServer.release();
+				await this.taskStore.markFinished(threadId, taskId, {
+					...result,
+					loginSaveResults: mcpServer.getLoginSaveResults(),
+				});
 				return { text: result.summary, outcome: { outcome: result.outcome } };
 			} finally {
 				await cloudBrowserService.release(taskId);
@@ -389,6 +390,7 @@ export class InstanceAiCloudBrowserTaskService {
 			await this.taskStore.markFinished(threadId, taskId, {
 				outcome: 'failed',
 				summary: `The browser task failed: ${error instanceof Error ? error.message : String(error)}`,
+				loginSaveResults: mcpServer?.getLoginSaveResults(),
 			});
 			throw error;
 		} finally {
@@ -624,6 +626,26 @@ export class InstanceAiCloudBrowserTaskService {
 }
 
 /**
+ * Tells the orchestrator which logins the user chose to save were saved, and which were not. n8n
+ * writes these lines, not the agent, so they are outside the untrusted data. The system prompt says
+ * what to tell the user about them.
+ */
+function loginSaveResultLines(loginSaveResults: CloudBrowserTaskRecord['loginSaveResults'] = []) {
+	const savedSites: string[] = [];
+	const unsavedSites: string[] = [];
+	for (const { domain, status } of loginSaveResults) {
+		const site = sanitisePromptText(domain);
+		if (status === 'saved') savedSites.push(site);
+		if (status === 'notSaved') unsavedSites.push(site);
+	}
+
+	const lines: string[] = [];
+	if (savedSites.length > 0) lines.push(`Logins saved: ${savedSites.join(', ')}.`);
+	if (unsavedSites.length > 0) lines.push(`Logins not saved: ${unsavedSites.join(', ')}.`);
+	return lines;
+}
+
+/**
  * The follow-up message that tells the orchestrator how its tasks ended. The UI never shows it:
  * `internal-messages.ts` strips the block, and the trailing follow-up marker hides the rest.
  * Each summary is the agent's own report, which can repeat content from the pages it visited,
@@ -640,6 +662,7 @@ function buildTasksCompletedMessage(tasks: CloudBrowserTaskRecord[]): string {
 			sanitisePromptText(scrubSecretsInText(task.summary ?? ''), TASK_SUMMARY_MAX_LENGTH),
 			CLOUD_BROWSER_AGENT_ROLE,
 		),
+		...loginSaveResultLines(task.loginSaveResults),
 		'</task>',
 	]);
 	return [

@@ -126,6 +126,36 @@ describe('useCloudBrowserTasks', () => {
 			expect(tasks.value[0].userAction).toEqual({ reason: 'Log in, please' });
 		});
 
+		it('marks a request to sign in', () => {
+			const tasks = useCloudBrowserTasks(
+				makeRuntime([
+					makeNode({
+						toolCalls: [requestUserAction({ reason: 'Sign in, please', isLoginRequest: true })],
+					}),
+				]),
+			);
+
+			expect(tasks.value[0].userAction).toEqual({
+				reason: 'Sign in, please',
+				isLoginRequest: true,
+			});
+		});
+
+		it.each([false, undefined, 'true'])(
+			'does not mark the request as a sign-in when isLoginRequest is %s',
+			(isLoginRequest) => {
+				const tasks = useCloudBrowserTasks(
+					makeRuntime([
+						makeNode({
+							toolCalls: [requestUserAction({ reason: 'Solve the CAPTCHA', isLoginRequest })],
+						}),
+					]),
+				);
+
+				expect(tasks.value[0].userAction).toEqual({ reason: 'Solve the CAPTCHA' });
+			},
+		);
+
 		it('is not set when the request call finished', () => {
 			const tasks = useCloudBrowserTasks(
 				makeRuntime([

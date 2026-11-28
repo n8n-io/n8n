@@ -10,17 +10,27 @@ import { FocusScope, N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-s
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { withTimeout } from '@n8n/utils/promise/with-timeout';
 import { computed, inject, ref, watch } from 'vue';
+
+import { CLOUD_BROWSER_LOGIN_TO_SAVE_TIMEOUT } from '@/app/constants/durations';
+import {
+	fetchCloudBrowserLoginToSave,
+	postCloudBrowserReturnControl,
+	postCloudBrowserTakeOver,
+} from '@/features/ai/instanceAi/instanceAi.api';
 
 import {
 	CloudBrowserLiveViewRefreshKey,
 	CloudBrowserLiveViewsKey,
 	embeddedLiveViewUrl,
 } from '../composables/useCloudBrowserLiveViews';
-import { postCloudBrowserReturnControl, postCloudBrowserTakeOver } from '../instanceAi.api';
 import { useThread } from '../instanceAi.store';
 
-const props = defineProps<{ taskId: string; userAction?: { reason: string } }>();
+const props = defineProps<{
+	taskId: string;
+	userAction?: { reason: string; isLoginRequest?: boolean };
+}>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -43,6 +53,27 @@ const frames = computed(() => {
 	const current = { windowId: view.windowId, liveViewUrl: view.liveViewUrl, isCurrent: true };
 	return view.background ? [{ ...view.background, isCurrent: false }, current] : [current];
 });
+
+/** Where the session keeps its sign-ins, and whether the user saved it. */
+const loginProfile = computed(() =>
+	liveView.value?.status === 'live' ? liveView.value.loginProfile : undefined,
+);
+
+/**
+ * Whether the user can maybe save a login: the agent asked them to sign in, and the session has a
+ * login profile that is not saved yet. Only the server knows the site of the current page, so it
+ * decides the rest when the user clicks "I'm done".
+ */
+const canMaybeSaveLogin = computed(() => {
+	const profile = loginProfile.value;
+	// The agent did not ask the user to sign in, or the session has no login profile.
+	if (!props.userAction?.isLoginRequest || !profile) return false;
+	// The login is saved, or the user already chose to save it.
+	return !profile.savedAt && !profile.willBeSavedOnSessionEnd;
+});
+
+/** The site of the login that the save dialog offers to save. */
+const loginDomainToSave = ref<string>();
 
 const isDisconnected = computed(
 	() => liveView.value?.status === 'disconnected' || liveView.value?.status === 'not-found',
@@ -80,6 +111,7 @@ const showsPlaceholder = computed(
 const hasControl = ref(false);
 const isBusy = ref(false);
 const isNoteDialogOpen = ref(false);
+const isSaveLoginDialogOpen = ref(false);
 const note = ref('');
 /** The user took over without the agent asking, so the agent does not know what they changed. */
 const isUserTakeover = computed(() => hasControl.value && !props.userAction);
@@ -103,10 +135,12 @@ watch(
 	},
 );
 
-// Control ended, so the question about what changed no longer applies.
+// Control ended, so the questions about what changed and about the login no longer apply.
 watch(hasControl, (inControl) => {
 	if (inControl) return;
 	isNoteDialogOpen.value = false;
+	isSaveLoginDialogOpen.value = false;
+	loginDomainToSave.value = undefined;
 	note.value = '';
 });
 
@@ -132,31 +166,79 @@ async function takeOver() {
 	}
 }
 
-function onDone() {
+async function onDone() {
 	if (isUserTakeover.value) {
 		isNoteDialogOpen.value = true;
+		return;
+	}
+	if (isBusy.value) return;
+	const domain = await findLoginDomainToSave();
+	// Control ended elsewhere while we asked, for example on a timeout.
+	if (!hasControl.value) return;
+	if (domain) {
+		loginDomainToSave.value = domain;
+		isSaveLoginDialogOpen.value = true;
 		return;
 	}
 	void returnControl();
 }
 
-async function returnControl(userNote?: string) {
-	if (isBusy.value) return;
+/** Asks the server which login the user can save now. Nothing when they cannot save one. */
+async function findLoginDomainToSave(): Promise<string | undefined> {
+	if (!canMaybeSaveLogin.value) return undefined;
 	isBusy.value = true;
 	try {
-		await postCloudBrowserReturnControl(
+		const { domain } = await withTimeout(
+			fetchCloudBrowserLoginToSave(rootStore.restApiContext, thread.id, props.taskId),
+			CLOUD_BROWSER_LOGIN_TO_SAVE_TIMEOUT,
+			() => new Error('Timed out while checking which login can be saved'),
+		);
+		return domain;
+	} catch {
+		// Only the server knows the site of the current page, so without its answer we offer no save.
+		return undefined;
+	} finally {
+		isBusy.value = false;
+	}
+}
+
+async function returnControl(userNote?: string, shouldSaveLogin = false) {
+	if (isBusy.value) return;
+	isBusy.value = true;
+	const domain = loginDomainToSave.value;
+	try {
+		const { loginWillBeSaved } = await postCloudBrowserReturnControl(
 			rootStore.restApiContext,
 			thread.id,
 			props.taskId,
-			userNote,
+			{ note: userNote, shouldSaveLogin },
 		);
 		hasControl.value = false;
 		refreshLiveView?.(props.taskId);
+		if (shouldSaveLogin) showSaveLoginResult(loginWillBeSaved, domain);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('instanceAi.cloudBrowser.returnControlFailed'));
 	} finally {
 		isBusy.value = false;
 	}
+}
+
+function showSaveLoginResult(loginWillBeSaved: boolean, domain: string | undefined) {
+	if (loginWillBeSaved) {
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('instanceAi.cloudBrowser.loginSavedTitle'),
+			message: i18n.baseText('instanceAi.cloudBrowser.loginSavedMessage'),
+		});
+		return;
+	}
+	toast.showMessage({
+		type: 'warning',
+		title: i18n.baseText('instanceAi.cloudBrowser.loginNotSavedTitle'),
+		message: i18n.baseText('instanceAi.cloudBrowser.loginNotSavedMessage', {
+			interpolate: { domain: domain ?? '' },
+		}),
+	});
 }
 </script>
 
@@ -304,6 +386,52 @@ async function returnControl(userNote?: string) {
 									@click="returnControl(note.trim())"
 								>
 									{{ i18n.baseText('instanceAi.cloudBrowser.noteSubmit') }}
+								</N8nButton>
+							</div>
+						</div>
+					</FocusScope>
+				</div>
+				<div
+					v-if="isSaveLoginDialogOpen && loginDomainToSave"
+					:class="$style.noteBackdrop"
+					data-test-id="instance-ai-browser-preview-save-login-dialog"
+				>
+					<FocusScope trapped loop as-child>
+						<div
+							:class="$style.noteDialog"
+							role="dialog"
+							aria-modal="true"
+							aria-labelledby="instance-ai-browser-save-login-title"
+							@keydown.esc="isSaveLoginDialogOpen = false"
+						>
+							<N8nText id="instance-ai-browser-save-login-title" tag="h3" size="large" bold>
+								{{ i18n.baseText('instanceAi.cloudBrowser.saveLoginTitle') }}
+							</N8nText>
+							<N8nText tag="p" size="small" :class="$style.noteDescription">
+								{{
+									i18n.baseText('instanceAi.cloudBrowser.saveLoginDescription', {
+										interpolate: { domain: loginDomainToSave },
+									})
+								}}
+							</N8nText>
+							<div :class="$style.noteActions">
+								<N8nButton
+									variant="outline"
+									size="medium"
+									:disabled="isBusy"
+									data-test-id="instance-ai-browser-preview-save-login-skip"
+									@click="returnControl()"
+								>
+									{{ i18n.baseText('instanceAi.cloudBrowser.saveLoginSkip') }}
+								</N8nButton>
+								<N8nButton
+									variant="brand"
+									size="medium"
+									:loading="isBusy"
+									data-test-id="instance-ai-browser-preview-save-login-submit"
+									@click="returnControl(undefined, true)"
+								>
+									{{ i18n.baseText('instanceAi.cloudBrowser.saveLoginSubmit') }}
 								</N8nButton>
 							</div>
 						</div>

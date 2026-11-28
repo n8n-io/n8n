@@ -16,6 +16,8 @@ import {
 } from '@n8n/api-types';
 import type {
 	InstanceAiCloudBrowserLiveViewResponse,
+	InstanceAiCloudBrowserLoginToSaveResponse,
+	InstanceAiCloudBrowserReturnControlResponse,
 	InstanceAiEvent,
 	AssistantThreadTabsResponse,
 } from '@n8n/api-types';
@@ -674,6 +676,28 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	/**
+	 * The login the user can save before they give control back. Only the server knows the site of
+	 * the current page, so the client asks before it offers to save.
+	 */
+	@Get('/chat/:threadId/tasks/:taskId/cloud-browser-login-to-save')
+	@GlobalScope('instanceAi:message')
+	async cloudBrowserLoginToSave(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('taskId') taskId: string,
+	): Promise<InstanceAiCloudBrowserLoginToSaveResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const domain = await this.cloudBrowserService.getLoginDomainToSave(
+			req.user.id,
+			threadId,
+			taskId,
+		);
+		return domain ? { domain } : {};
+	}
+
 	/** The user gives control of a cloud browser task's browser back to its agent. */
 	@Post('/chat/:threadId/tasks/:taskId/cloud-browser-return-control')
 	@GlobalScope('instanceAi:message')
@@ -686,14 +710,17 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		const error = this.cloudBrowserService.returnControlToAgent(
+		const result = await this.cloudBrowserService.returnControlToAgent(
 			req.user.id,
 			threadId,
 			taskId,
-			payload.note || undefined,
+			{ note: payload.note || undefined, shouldSaveLogin: payload.shouldSaveLogin },
 		);
-		if (error) throw new ConflictError(error);
-		return { ok: true };
+		if (!result.returned) throw new ConflictError(result.error);
+		return {
+			ok: true,
+			loginWillBeSaved: result.loginWillBeSaved,
+		} satisfies InstanceAiCloudBrowserReturnControlResponse;
 	}
 
 	@Post('/chat/:threadId/tasks/:taskId/correct')

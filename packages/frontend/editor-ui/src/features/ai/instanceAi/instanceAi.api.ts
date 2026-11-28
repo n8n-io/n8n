@@ -6,6 +6,8 @@ import type {
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
 	InstanceAiCloudBrowserLiveViewResponse,
+	InstanceAiCloudBrowserLoginToSaveResponse,
+	InstanceAiCloudBrowserReturnControlResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
@@ -143,6 +145,22 @@ export async function postCloudBrowserTakeOver(
 }
 
 /**
+ * GET /instance-ai/chat/:threadId/tasks/:taskId/cloud-browser-login-to-save
+ * The site of the login the user can save before they give the browser back, if any.
+ */
+export async function fetchCloudBrowserLoginToSave(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+): Promise<InstanceAiCloudBrowserLoginToSaveResponse> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-login-to-save`,
+	);
+}
+
+/**
  * POST /instance-ai/chat/:threadId/tasks/:taskId/cloud-browser-return-control
  * The user gives the browser back to the agent, with what they changed.
  */
@@ -150,13 +168,13 @@ export async function postCloudBrowserReturnControl(
 	context: IRestApiContext,
 	threadId: string,
 	taskId: string,
-	note?: string,
-): Promise<void> {
-	await makeRestApiRequest(
+	{ note, shouldSaveLogin }: { note?: string; shouldSaveLogin?: boolean } = {},
+): Promise<InstanceAiCloudBrowserReturnControlResponse> {
+	return await makeRestApiRequest(
 		context,
 		'POST',
 		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-return-control`,
-		note ? { note } : {},
+		{ ...(note && { note }), ...(shouldSaveLogin && { shouldSaveLogin }) },
 	);
 }
 

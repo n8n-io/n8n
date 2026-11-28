@@ -3,7 +3,7 @@ import type { MockInstance } from 'vitest';
 import * as apiUtils from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-import { fetchCloudBrowserLiveView } from '../instanceAi.api';
+import { fetchCloudBrowserLiveView, postCloudBrowserReturnControl } from '../instanceAi.api';
 
 vi.mock('@n8n/rest-api-client');
 
@@ -29,5 +29,43 @@ describe('cloud browser API', () => {
 			'/instance-ai/chat/thread-1/tasks/task-1/cloud-browser-live-view',
 		);
 		expect(result).toEqual(response);
+	});
+	describe('postCloudBrowserReturnControl', () => {
+		const path = '/instance-ai/chat/thread-1/tasks/task-1/cloud-browser-return-control';
+
+		it('sends an empty body without a note or a save', async () => {
+			makeRestApiRequestSpy.mockResolvedValue({ ok: true, loginWillBeSaved: false });
+
+			const result = await postCloudBrowserReturnControl(context, 'thread-1', 'task-1');
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(context, 'POST', path, {});
+			expect(result).toEqual({ ok: true, loginWillBeSaved: false });
+		});
+
+		it('leaves out an empty note and a save of false', async () => {
+			makeRestApiRequestSpy.mockResolvedValue({ ok: true, loginWillBeSaved: false });
+
+			await postCloudBrowserReturnControl(context, 'thread-1', 'task-1', {
+				note: '',
+				shouldSaveLogin: false,
+			});
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(context, 'POST', path, {});
+		});
+
+		it('sends the note and the save choice', async () => {
+			makeRestApiRequestSpy.mockResolvedValue({ ok: true, loginWillBeSaved: true });
+
+			const result = await postCloudBrowserReturnControl(context, 'thread-1', 'task-1', {
+				note: 'I signed in',
+				shouldSaveLogin: true,
+			});
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(context, 'POST', path, {
+				note: 'I signed in',
+				shouldSaveLogin: true,
+			});
+			expect(result).toEqual({ ok: true, loginWillBeSaved: true });
+		});
 	});
 });

@@ -45,6 +45,9 @@ export const AGENT_EVAL_RUN_POLL_MAX_ERRORS = 3;
 /** How often to ask again for a cloud browser's live view until its browser is live. */
 export const CLOUD_BROWSER_LIVE_VIEW_RETRY_INTERVAL = 3 * TIME.SECOND;
 
+/** How long "I'm done" waits to learn which login the user can save, before it stops waiting. */
+export const CLOUD_BROWSER_LOGIN_TO_SAVE_TIMEOUT = 2 * TIME.SECOND;
+
 /** How long the editor waits for `nodeExecuteAfterData` before it fetches the node's output. */
 export const TRIMMED_RUN_DATA_FILL_DELAY = 3 * TIME.SECOND;
 

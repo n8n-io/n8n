@@ -108,6 +108,30 @@ describe('CloudBrowserTaskStorage', () => {
 		]);
 	});
 
+	it('keeps the login save results of a finished task', async () => {
+		const { memory } = makeMemory();
+		const storage = new CloudBrowserTaskStorage(memory);
+		await storage.add(THREAD_ID, makeRecord());
+
+		await storage.markFinished(THREAD_ID, 'task-1', {
+			outcome: 'succeeded',
+			summary: '$20',
+			loginSaveResults: [
+				{ domain: 'example.com', status: 'saved' },
+				{ domain: 'example.org', status: 'notSaved' },
+			],
+		});
+
+		expect(await storage.list(THREAD_ID)).toEqual([
+			expect.objectContaining({
+				loginSaveResults: [
+					{ domain: 'example.com', status: 'saved' },
+					{ domain: 'example.org', status: 'notSaved' },
+				],
+			}),
+		]);
+	});
+
 	it('does not create a record when it marks an unknown task finished', async () => {
 		const { memory } = makeMemory();
 		const storage = new CloudBrowserTaskStorage(memory);
