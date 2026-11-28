@@ -349,6 +349,74 @@ describe('McpServerContentsTab', () => {
 
 			expect(input).toHaveValue('Saved with shortcut');
 		});
+
+		it('syncs external description updates when the field is focused without edits', async () => {
+			api.getMcpServer.mockResolvedValue(server([], true, 'Initial'));
+			const { findByTestId, rerender } = await render({ props: { refreshKey: 0 } });
+
+			const input = await findByTestId('mcp-server-description-input');
+			await userEvent.click(input);
+
+			api.getMcpServer.mockResolvedValueOnce(server([], true, 'Updated by Assistant'));
+			await rerender({ refreshKey: 1 });
+
+			await waitFor(() => expect(input).toHaveValue('Updated by Assistant'));
+
+			await fireEvent.blur(input);
+			expect(api.updateMcpServer).not.toHaveBeenCalled();
+			expect(input).toHaveValue('Updated by Assistant');
+		});
+
+		it('syncs a deferred external description update on blur if the edit returns to the starting text', async () => {
+			api.getMcpServer.mockResolvedValue(server([], true, 'Initial'));
+			const { findByTestId, rerender } = await render({ props: { refreshKey: 0 } });
+
+			const input = await findByTestId('mcp-server-description-input');
+			await userEvent.click(input);
+			await userEvent.type(input, '!');
+
+			api.getMcpServer.mockResolvedValueOnce(server([], true, 'Updated by Assistant'));
+			await rerender({ refreshKey: 1 });
+			await new Promise((resolve) => setTimeout(resolve));
+			expect(input).toHaveValue('Initial!');
+
+			await userEvent.type(input, '{Backspace}');
+			await fireEvent.blur(input);
+
+			expect(api.updateMcpServer).not.toHaveBeenCalled();
+			expect(input).toHaveValue('Updated by Assistant');
+		});
+
+		it('reverts a failed second description save to the earlier successful save', async () => {
+			api.getMcpServer.mockResolvedValue(server([], true, 'Initial'));
+			const firstSave = deferred<McpServerDetailResponse>();
+			const secondSave = deferred<McpServerDetailResponse>();
+			api.updateMcpServer
+				.mockReturnValueOnce(firstSave.promise)
+				.mockReturnValueOnce(secondSave.promise);
+			const { findByTestId, emitted } = await render();
+
+			const input = await findByTestId('mcp-server-description-input');
+			await userEvent.clear(input);
+			await userEvent.type(input, 'First saved');
+			await fireEvent.blur(input);
+
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Second fails');
+			await fireEvent.blur(input);
+
+			firstSave.resolve(server([], true, 'First saved'));
+			await waitFor(() => expect(emitted('server-updated')).toHaveLength(1));
+			expect(emitted('server-updated')?.[0]).toEqual([
+				expect.objectContaining({ description: 'First saved' }),
+			]);
+			// Keeps the in-flight second draft visible until the second save settles.
+			expect(input).toHaveValue('Second fails');
+
+			secondSave.reject(new Error('Validation error'));
+			await waitFor(() => expect(toast.showError).toHaveBeenCalledTimes(1));
+			expect(input).toHaveValue('First saved');
+		});
 	});
 
 	describe('workflow picker', () => {
@@ -739,6 +807,83 @@ describe('McpServerContentsTab', () => {
 
 			await waitFor(() => expect(screen.getByTestId(testId)).toHaveValue(saved));
 			expect(toast.showError).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			[
+				'tool name',
+				'mcp-tool-dialog-name-input',
+				'campaign_numbers',
+				{ toolName: 'campaign_numbers' },
+			],
+			[
+				'description',
+				'mcp-tool-dialog-description-input',
+				'New text.',
+				{ description: 'New text.' },
+			],
+		])(
+			'resends a failed %s save on the next blur when the field is focused again before the failure lands',
+			async (_field, testId, typed, expectedChanges) => {
+				api.getMcpServer.mockResolvedValue(server([tool()]));
+				const failedSave = deferred<McpServerToolResponse>();
+				api.updateTool
+					.mockReturnValueOnce(failedSave.promise)
+					.mockResolvedValueOnce(tool({ ...expectedChanges, draftSource: 'edited' }));
+				const { findByTestId } = await render();
+
+				await userEvent.click(await findByTestId('mcp-tool-chip'));
+				const input = await screen.findByTestId(testId);
+				await userEvent.clear(input);
+				await userEvent.type(input, typed);
+				await fireEvent.blur(input);
+
+				// Focus the field again before the first save rejects.
+				await fireEvent.focus(input);
+				failedSave.reject(new Error('Temporary failure'));
+				await waitFor(() => expect(toast.showError).toHaveBeenCalledTimes(1));
+				expect(input).toHaveValue(typed);
+
+				await fireEvent.blur(input);
+				await waitFor(() => expect(api.updateTool).toHaveBeenCalledTimes(2));
+				expect(api.updateTool).toHaveBeenLastCalledWith(
+					expect.anything(),
+					PROJECT_ID,
+					SERVER_ID,
+					tool().id,
+					expectedChanges,
+				);
+			},
+		);
+
+		it('resends a failed description save on Escape when focused again before the failure lands', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			const failedSave = deferred<McpServerToolResponse>();
+			api.updateTool
+				.mockReturnValueOnce(failedSave.promise)
+				.mockResolvedValueOnce(tool({ description: 'Retry on close.', draftSource: 'edited' }));
+			const { findByTestId } = await render();
+
+			await userEvent.click(await findByTestId('mcp-tool-chip'));
+			const input = await screen.findByTestId('mcp-tool-dialog-description-input');
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Retry on close.');
+			await fireEvent.blur(input);
+
+			await fireEvent.focus(input);
+			failedSave.reject(new Error('Temporary failure'));
+			await waitFor(() => expect(toast.showError).toHaveBeenCalledTimes(1));
+			expect(input).toHaveValue('Retry on close.');
+
+			await userEvent.keyboard('{Escape}');
+			await waitFor(() => expect(api.updateTool).toHaveBeenCalledTimes(2));
+			expect(api.updateTool).toHaveBeenLastCalledWith(
+				expect.anything(),
+				PROJECT_ID,
+				SERVER_ID,
+				tool().id,
+				{ description: 'Retry on close.' },
+			);
 		});
 
 		it('keeps the chip when the remove fails', async () => {

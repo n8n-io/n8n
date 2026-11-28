@@ -70,13 +70,14 @@ watch(
 		displayedWorkflowHref.value = props.workflowHref;
 		const switched = !previous || tool.id !== previous.id;
 		if (switched) editing.value = null;
+		// Always sync submitted values to the server so a failed save retries on the next blur or close.
+		lastSubmittedName = tool.toolName;
+		lastSubmittedDescription = tool.description;
 		if (switched || tool.toolName !== previous.toolName || editing.value !== 'toolName') {
 			toolName.value = tool.toolName;
-			lastSubmittedName = tool.toolName;
 		}
 		if (switched || tool.description !== previous.description || editing.value !== 'description') {
 			description.value = tool.description;
-			lastSubmittedDescription = tool.description;
 		}
 	},
 	{ immediate: true },

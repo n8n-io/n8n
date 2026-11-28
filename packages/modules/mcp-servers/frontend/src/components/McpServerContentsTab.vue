@@ -64,13 +64,16 @@ const router = useRouter();
 const rootStore = useRootStore();
 /** The first load and each reload: only the newest response sets the server. */
 const latestFetch = useLatestFetch();
-/** Rapid description edits: only the newest PATCH updates the server or reverts on error. */
-const latestDescriptionSave = useLatestFetch();
+/** Monotonic sequence for description PATCHes. */
+let descriptionSaveSeq = 0;
+/** Sequence of the newest description PATCH already applied to `server`. */
+let appliedDescriptionSeq = 0;
 const style = useCssModule();
 
 const server = ref<McpServerDetailResponse | null>(null);
 const loading = ref(true);
 const descriptionRevision = ref(0);
+const savingDescription = ref(false);
 const pickerOpen = ref(false);
 const candidates = ref<McpServerToolCandidate[]>([]);
 const candidatesLoading = ref(false);
@@ -205,7 +208,8 @@ watch(
 async function onDescription(description: string) {
 	const current = server.value;
 	if (!current) return;
-	const isLatest = latestDescriptionSave.next();
+	const seq = ++descriptionSaveSeq;
+	savingDescription.value = true;
 	try {
 		const updated = await updateMcpServer(
 			rootStore.restApiContext,
@@ -213,7 +217,9 @@ async function onDescription(description: string) {
 			props.serverId,
 			{ description },
 		);
-		if (!isLatest()) return;
+		// Keep the newest successful response even when a newer save is in flight and later fails.
+		if (seq <= appliedDescriptionSeq) return;
+		appliedDescriptionSeq = seq;
 		if (server.value && updated.id === server.value.id) {
 			server.value = {
 				...server.value,
@@ -223,9 +229,11 @@ async function onDescription(description: string) {
 		}
 		emit('server-updated', updated);
 	} catch (error) {
-		if (!isLatest()) return;
+		if (seq !== descriptionSaveSeq) return;
 		descriptionRevision.value++;
 		toast.showError(error, i18n.baseText('mcpServers.server.description.error'));
+	} finally {
+		if (seq === descriptionSaveSeq) savingDescription.value = false;
 	}
 }
 
@@ -380,6 +388,7 @@ onMounted(load);
 				:model-value="server.description"
 				:can-update="canUpdate"
 				:revision="descriptionRevision"
+				:saving="savingDescription"
 				@update:model-value="onDescription"
 			/>
 
