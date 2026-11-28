@@ -81,6 +81,7 @@ describe('ExecuteContext', () => {
 	node.parameters = {
 		testParameter: 'testValue',
 		nullParameter: null,
+		jsonParameter: '',
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
@@ -208,6 +209,32 @@ describe('ExecuteContext', () => {
 			const parameter = executeContext.getNodeParameter('otherParameter', 0, 'fallback');
 
 			expect(parameter).toBe('fallback');
+		});
+
+		describe('when a JSON parameter is blank', () => {
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: {
+						properties: [
+							{
+								displayName: 'Blocks',
+								name: 'jsonParameter',
+								type: 'json',
+								default: '',
+								validateType: 'array',
+							},
+						],
+					},
+				} as unknown as INodeType);
+			});
+
+			it('should return the fallback value', () => {
+				expect(executeContext.getNodeParameter('jsonParameter', 0, [])).toEqual([]);
+			});
+
+			it('should return undefined without a fallback value', () => {
+				expect(executeContext.getNodeParameter('jsonParameter', 0)).toBeUndefined();
+			});
 		});
 
 		it('should handle expression evaluation errors', () => {

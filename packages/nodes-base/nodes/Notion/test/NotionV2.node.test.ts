@@ -181,4 +181,56 @@ describe('NotionV2 getAll pagination (coverage)', () => {
 		);
 		expect(result[0]).toHaveLength(150);
 	});
+
+	it('databasePage getAll: sends no filter when the filter is empty', async () => {
+		mockNotionApiRequestAllItems.mockResolvedValueOnce([]);
+
+		const context = createMockExecuteFunction({
+			resource: 'databasePage',
+			operation: 'getAll',
+			'databaseId.value': 'test-db-id',
+			databaseId: { __rl: true, mode: 'id', value: 'test-db-id' },
+			returnAll: true,
+			simple: false,
+			filterType: 'json',
+			filterJson: undefined,
+		});
+
+		await node.execute.call(context);
+
+		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
+			'results',
+			'POST',
+			requestPath`/databases/test-db-id/query`,
+			expect.not.objectContaining({ filter: expect.anything() }),
+			{},
+		);
+	});
+
+	it('databasePage getAll: sends an evaluated filter object', async () => {
+		mockNotionApiRequestAllItems.mockResolvedValueOnce([]);
+
+		const context = createMockExecuteFunction({
+			resource: 'databasePage',
+			operation: 'getAll',
+			'databaseId.value': 'test-db-id',
+			databaseId: { __rl: true, mode: 'id', value: 'test-db-id' },
+			returnAll: true,
+			simple: false,
+			filterType: 'json',
+			filterJson: { property: 'Name', rich_text: { contains: 'test' } },
+		});
+
+		await node.execute.call(context);
+
+		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
+			'results',
+			'POST',
+			requestPath`/databases/test-db-id/query`,
+			expect.objectContaining({
+				filter: { property: 'Name', rich_text: { contains: 'test' } },
+			}),
+			{},
+		);
+	});
 });

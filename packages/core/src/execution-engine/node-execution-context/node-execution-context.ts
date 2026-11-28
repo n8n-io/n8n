@@ -606,6 +606,8 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 		if (options?.skipValidation) return returnData;
 
+		const isBlank = typeof returnData === 'string' && !returnData.trim();
+
 		// Validate parameter value if it has a schema defined(RMC) or validateType defined
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		returnData = validateValueAgainstSchema(
@@ -616,6 +618,12 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			runIndex,
 			itemIndex,
 		);
+
+		// Validation turns a blank JSON field into no value, which the fallback covers like a missing one
+		if (isBlank && returnData === undefined && fallbackValue !== undefined) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return fallbackValue;
+		}
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return returnData;

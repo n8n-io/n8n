@@ -160,9 +160,12 @@ const validateCollection = (
 			for (const key of Object.keys(value)) {
 				if (!validationMap[key]) continue;
 
-				const fieldValidationResult = validateFieldType(key, value[key], validationMap[key].type, {
-					valueOptions: validationMap[key].options,
-				});
+				const fieldValidationResult = validateFieldType(
+					validationMap[key].displayName,
+					value[key],
+					validationMap[key].type,
+					{ valueOptions: validationMap[key].options, blankStringAsNull: true },
+				);
 
 				if (!fieldValidationResult.valid) {
 					throw new ExpressionError(
@@ -212,9 +215,10 @@ export const validateValueAgainstSchema = (
 		!propertyDescription.ignoreValidationDuringExecution
 	) {
 		validationResult = validateFieldType(
-			parameterName,
+			propertyDescription.displayName,
 			parameterValue,
 			propertyDescription.validateType,
+			{ blankStringAsNull: true },
 		);
 	} else if (
 		propertyDescription.type === 'resourceMapper' &&

@@ -3,6 +3,7 @@ import moment from 'moment-timezone';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
 import { splitPropertyKey } from '../../helpers/utils';
+import { isDataObject } from '../../transport';
 
 type FilterCondition = IDataObject & {
 	key?: string;
@@ -205,13 +206,7 @@ function typeCondition(
 }
 
 function mapRollupFilter(filter: FilterCondition) {
-	if (typeof filter.rollupJson !== 'string' || !filter.rollupJson) return {};
-
-	try {
-		return JSON.parse(filter.rollupJson) as IDataObject;
-	} catch {
-		throw new Error('Rollup Filter (JSON) must be valid JSON');
-	}
+	return isDataObject(filter.rollupJson) ? filter.rollupJson : {};
 }
 
 export function mapDataSourceFilter(filter: FilterCondition, timezone: string) {
@@ -382,6 +377,7 @@ export function dataSourceSearchFilterDescriptions(): INodeProperties[] {
 							type: 'json',
 							typeOptions: { rows: 4 },
 							default: '{}',
+							validateType: 'object',
 							displayOptions: { show: { type: ['rollup'] } },
 							description: ROLLUP_FILTER_HINT,
 						},
@@ -541,6 +537,7 @@ export function dataSourceSearchFilterDescriptions(): INodeProperties[] {
 			type: 'json',
 			typeOptions: { rows: 8 },
 			default: '{}',
+			validateType: 'object',
 			displayOptions: {
 				show: { resource: ['databasePage'], operation: ['getAll'], filterType: ['json'] },
 			},

@@ -93,6 +93,7 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		typeOptions: { rows: 8 },
 		default: '',
+		validateType: 'array',
 		displayOptions: { show: { resource: ['page'], operation: ['create'], contentType: ['json'] } },
 	},
 	blockBuilder('page', 'create', { contentType: ['blockUi'] }),

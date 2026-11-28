@@ -203,8 +203,13 @@ describe('NotionV3', () => {
 		],
 		[
 			'rollup',
-			{ key: 'Rollup|rollup', rollupJson: '{"any":{"number":{"greater_than":5}}}' },
+			{ key: 'Rollup|rollup', rollupJson: { any: { number: { greater_than: 5 } } } },
 			{ property: 'Rollup', rollup: { ['any']: { ['number']: { greater_than: 5 } } } },
+		],
+		[
+			'rollup without a filter',
+			{ key: 'Rollup|rollup', rollupJson: undefined },
+			{ property: 'Rollup', rollup: {} },
 		],
 		[
 			'select',
@@ -240,6 +245,72 @@ describe('NotionV3', () => {
 		expect(mapDataSourceFilter(filter, 'UTC')).toEqual(expected);
 	});
 
+	it('creates pages with blocks from an evaluated array', async () => {
+		mockNotionApiRequest.mockResolvedValueOnce({ object: 'page', id: 'page-id' });
+
+		const context = createMockExecuteFunction({
+			resource: 'page',
+			operation: 'create',
+			pageId: { __rl: true, mode: 'id', value: 'parent-page-id' },
+			title: 'New page',
+			simple: false,
+			contentType: 'json',
+			blocksJson: [{ object: 'block', type: 'paragraph', paragraph: { rich_text: [] } }],
+			options: {},
+		});
+
+		await node.execute.call(context);
+
+		expect(mockNotionApiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/pages`,
+			expect.objectContaining({
+				children: [{ object: 'block', type: 'paragraph', paragraph: { rich_text: [] } }],
+			}),
+		);
+	});
+
+	it('creates pages without blocks when the blocks field is empty', async () => {
+		mockNotionApiRequest.mockResolvedValueOnce({ object: 'page', id: 'page-id' });
+
+		const context = createMockExecuteFunction({
+			resource: 'page',
+			operation: 'create',
+			pageId: { __rl: true, mode: 'id', value: 'parent-page-id' },
+			title: 'New page',
+			simple: false,
+			contentType: 'json',
+			blocksJson: undefined,
+			options: {},
+		});
+
+		await node.execute.call(context);
+
+		expect(mockNotionApiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/pages`,
+			expect.objectContaining({ children: [] }),
+		);
+	});
+
+	it('does not create pages when the blocks are not an array', async () => {
+		const context = createMockExecuteFunction({
+			resource: 'page',
+			operation: 'create',
+			pageId: { __rl: true, mode: 'id', value: 'parent-page-id' },
+			title: 'New page',
+			simple: false,
+			contentType: 'json',
+			blocksJson: { object: 'block' },
+			options: {},
+		});
+
+		await expect(node.execute.call(context)).rejects.toThrow(
+			'Blocks (JSON) must be an array of Notion block objects',
+		);
+		expect(mockNotionApiRequest).not.toHaveBeenCalled();
+	});
+
 	it('creates database pages with a data source parent', async () => {
 		mockGetDataSourceProperties.mockResolvedValueOnce({
 			Name: { type: 'title' },
@@ -255,7 +326,7 @@ describe('NotionV3', () => {
 			simple: false,
 			'propertiesUi.propertyValues': [],
 			contentType: 'json',
-			blocksJson: '[{"object":"block","type":"paragraph","paragraph":{"rich_text":[]}}]',
+			blocksJson: [{ object: 'block', type: 'paragraph', paragraph: { rich_text: [] } }],
 			options: {
 				icon: '🔥',
 			},
@@ -282,7 +353,7 @@ describe('NotionV3', () => {
 			title: '   ',
 			simple: false,
 			contentType: 'json',
-			blocksJson: '[{"object":"block","type":"paragraph","paragraph":{"rich_text":[]}}]',
+			blocksJson: [{ object: 'block', type: 'paragraph', paragraph: { rich_text: [] } }],
 		};
 		nodeParameters['dataSourceId.value'] = 'data-source-id';
 		nodeParameters['propertiesUi.propertyValues'] = [];
@@ -660,7 +731,7 @@ describe('NotionV3', () => {
 				},
 			],
 			contentType: 'json',
-			blocksJson: '[]',
+			blocksJson: [],
 		});
 
 		await node.execute.call(context);
@@ -700,7 +771,7 @@ describe('NotionV3', () => {
 				},
 			],
 			contentType: 'json',
-			blocksJson: '[]',
+			blocksJson: [],
 		});
 
 		await node.execute.call(context);
@@ -742,7 +813,7 @@ describe('NotionV3', () => {
 				},
 			],
 			contentType: 'json',
-			blocksJson: '[]',
+			blocksJson: [],
 		});
 
 		await node.execute.call(context);
@@ -789,7 +860,7 @@ describe('NotionV3', () => {
 				},
 			],
 			contentType: 'json',
-			blocksJson: '[]',
+			blocksJson: [],
 		});
 
 		await node.execute.call(context);
@@ -934,7 +1005,7 @@ describe('NotionV3', () => {
 				},
 			],
 			contentType: 'json',
-			blocksJson: '[]',
+			blocksJson: [],
 		});
 
 		await node.execute.call(context);
@@ -1074,6 +1145,31 @@ describe('NotionV3', () => {
 				page_size: 10,
 			},
 			{ limit: 10 },
+		);
+	});
+
+	it('queries data source pages with an evaluated filter object', async () => {
+		mockNotionApiRequestAllItems.mockResolvedValueOnce([]);
+
+		const context = createMockExecuteFunction({
+			resource: 'databasePage',
+			operation: 'getAll',
+			'dataSourceId.value': 'data-source-id',
+			dataSourceId: { __rl: true, mode: 'id', value: 'data-source-id' },
+			returnAll: true,
+			filterType: 'json',
+			filterJson: { property: 'Name', rich_text: { contains: 'test' } },
+			simple: false,
+		});
+
+		await node.execute.call(context);
+
+		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
+			'results',
+			'POST',
+			requestPath`/data_sources/data-source-id/query`,
+			{ filter: { property: 'Name', rich_text: { contains: 'test' } } },
+			{ limit: undefined },
 		);
 	});
 

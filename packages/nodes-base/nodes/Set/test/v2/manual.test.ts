@@ -117,7 +117,7 @@ describe('test Set2, manual Mode', () => {
 			const output = await execute.call(fakeExecuteFunction, item, 0, options, {}, node);
 
 			expect(output).toEqual({
-				json: { error: "'test' expects a object but we got '{ ok: 1' [item 0]" },
+				json: { error: "'test' expects an object but we got '{ ok: 1' [item 0]" },
 				pairedItem: { item: 0 },
 			});
 		});

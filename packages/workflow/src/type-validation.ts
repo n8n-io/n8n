@@ -334,6 +334,8 @@ type ValidateFieldTypeOptions = Partial<{
 	valueOptions: INodePropertyOptions[];
 	strict: boolean;
 	parseStrings: boolean;
+	// Treat a blank string as no value for 'object' and 'array', like null
+	blankStringAsNull: boolean;
 }>;
 
 // Validates field against the schema and tries to parse it to the correct type
@@ -351,11 +353,20 @@ export function validateFieldType(
 	options: ValidateFieldTypeOptions = {},
 ): ValidationResult {
 	if (value === null || value === undefined) return { valid: true };
+	if (
+		options.blankStringAsNull &&
+		(type === 'object' || type === 'array') &&
+		typeof value === 'string' &&
+		!value.trim()
+	) {
+		return { valid: true };
+	}
 	const strict = options.strict ?? false;
 	const valueOptions = options.valueOptions ?? [];
 	const parseStrings = options.parseStrings ?? false;
 
-	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got ${getValueDescription(value)}`;
+	const article = type === 'object' || type === 'array' ? 'an' : 'a';
+	const defaultErrorMessage = `'${fieldName}' expects ${article} ${type} but we got ${getValueDescription(value)}`;
 	switch (type.toLowerCase()) {
 		case 'string': {
 			if (!parseStrings) return { valid: true, newValue: value };

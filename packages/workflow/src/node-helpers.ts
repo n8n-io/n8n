@@ -1924,12 +1924,12 @@ const validateParameter = (
 	value: GenericValue,
 	type: FieldType,
 ): string | undefined => {
-	const nodeName = nodeProperties.name;
 	const options = type === 'options' ? nodeProperties.options : undefined;
 
 	if (!value?.toString().startsWith('=')) {
-		const validationResult = validateFieldType(nodeName, value, type, {
+		const validationResult = validateFieldType(nodeProperties.displayName, value, type, {
 			valueOptions: options as INodePropertyOptions[],
+			blankStringAsNull: true,
 		});
 
 		if (!validationResult.valid && validationResult.errorMessage) {
@@ -2136,7 +2136,7 @@ export function getParameterIssues(
 				foundIssues.parameters = { ...foundIssues.parameters, ...issues };
 			}
 		}
-	} else if (nodeProperties.validateType) {
+	} else if (nodeProperties.validateType && isDisplayed) {
 		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 		const error = validateParameter(nodeProperties, value, nodeProperties.validateType);
 		if (error) {
