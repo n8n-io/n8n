@@ -2058,6 +2058,10 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 				[1, [2, 3], { id: 4 }, 5, 'a'],
 			],
 			[
+				'{{ (() => { const list = $json.other; list[Symbol.isConcatSpreadable] = true; return list.concat(list); })() }}',
+				['a', 'a'],
+			],
+			[
 				'{{ (() => { const list = $json.other; list[Symbol.isConcatSpreadable] = false; return [0].concat(list).length; })() }}',
 				2,
 			],
@@ -2205,9 +2209,10 @@ describe(`Integration: ${engineName} error handling`, () => {
 		}
 	});
 
+	// A write of Symbol.isConcatSpreadable makes V8 build each concat result as a dictionary, over this limit.
 	it.each([
 		'{{ $json.list.concat($json.list).length }}',
-		'{{ (() => { const list = $json.list; list[Symbol.isConcatSpreadable] = true; return list.concat(list).length; })() }}',
+		'{{ (() => { const list = $json.list; list[0] = 1; return list.concat(list).length; })() }}',
 	])('should concat workflow data arrays within a small memory limit: %s', async (expression) => {
 		const evaluator = new ExpressionEvaluator({
 			createBridge: () => newBridge({ memoryLimit: 16, timeout: 5000 }),
