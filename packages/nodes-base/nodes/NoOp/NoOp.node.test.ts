@@ -1,4 +1,4 @@
-import { getNodeParameters } from 'n8n-workflow';
+import { getNodeParameters, READ_ONLY_ANNOTATIONS, resolveNodeAnnotations } from 'n8n-workflow';
 
 import { NoOp } from './NoOp.node';
 
@@ -29,5 +29,16 @@ describe('NoOp', () => {
 		);
 
 		expect(parameters).toEqual({});
+	});
+
+	describe('annotations', () => {
+		it.each([{}, { emptyGroupAnchor: true }, { emptyGroupAnchor: false }])(
+			'should resolve %j as read-only',
+			(parameters) => {
+				expect(resolveNodeAnnotations(node.description, { parameters, typeVersion: 1 })).toEqual(
+					READ_ONLY_ANNOTATIONS,
+				);
+			},
+		);
 	});
 });
