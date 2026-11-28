@@ -4,7 +4,7 @@ import {
 	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 } from '@n8n/api-types';
 import { AI_PREFERENCES_CLEARED_BLOCK, renderAiPreferencesBlock } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import { Person, ServiceAccount, type User } from '@n8n/db';
 import type { Mock } from 'vitest';
 
 import {
@@ -740,6 +740,8 @@ async function buildOpeningTurn(
 		context?: Record<string, unknown>;
 		builder?: Record<string, unknown>;
 		environment?: Record<string, unknown>;
+		user?: User;
+		resumeReason?: string;
 	} = {},
 ) {
 	const conversationHistory = {
@@ -759,7 +761,8 @@ async function buildOpeningTurn(
 		environment,
 		{ eventBus: { publish: vi.fn() } } as never,
 		{
-			user: { id: 'user-1' } as never,
+			user: params.user ?? ({ id: 'user-1' } as never),
+			...(params.resumeReason ? { resumeReason: params.resumeReason as never } : {}),
 			threadId: 'thread-1',
 			runId: 'run-1',
 			message: params.message ?? 'Send me a daily digest of new GitHub issues',
@@ -776,6 +779,81 @@ async function buildOpeningTurn(
 			conversationHistory.getPastConversationsSection.mock.calls.length > 0,
 	};
 }
+
+describe('AssistantTurnInputBuilder — current user', () => {
+	const openedThread = { title: 'Existing', metadata: { [OPENED_METADATA_KEY]: true } };
+	const jakub = () =>
+		Object.assign(new Person(), {
+			id: 'user-1',
+			firstName: 'Jakub',
+			lastName: 'Kadlubiec',
+			email: 'jakub@example.com',
+			role: { displayName: 'Member' },
+		});
+
+	function projectRepository(lookup: () => Promise<unknown>) {
+		return { getPersonalProjectForUser: vi.fn(lookup) };
+	}
+
+	it('names the user and their personal project on a user turn', async () => {
+		const repository = projectRepository(async () => ({ id: 'project-1' }));
+
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
+			user: jakub(),
+			builder: { projectRepository: repository },
+		});
+
+		expect(repository.getPersonalProjectForUser).toHaveBeenCalledWith('user-1');
+		expect(fullMessage).toContain(
+			'You are talking to Jakub Kadlubiec (email: jakub@example.com, user id: `user-1`, role: Member).\nTheir personal project has the id `project-1`.',
+		);
+	});
+
+	it('still names the user when the personal project lookup fails', async () => {
+		const warn = vi.fn();
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
+			user: jakub(),
+			builder: {
+				projectRepository: projectRepository(async () => {
+					throw new Error('db down');
+				}),
+				logger: { warn },
+			},
+		});
+
+		expect(fullMessage).toContain('You are talking to Jakub Kadlubiec');
+		expect(fullMessage).not.toContain('personal project has the id');
+		expect(warn).toHaveBeenCalledWith('Assistant could not read the personal project of the user', {
+			userId: 'user-1',
+			error: 'db down',
+		});
+	});
+
+	it('leaves the block out of an internal follow-up', async () => {
+		const repository = projectRepository(async () => ({ id: 'project-1' }));
+
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
+			user: jakub(),
+			resumeReason: 'workflow_setup',
+			builder: { projectRepository: repository },
+		});
+
+		expect(fullMessage).not.toContain('<current-user>');
+		expect(repository.getPersonalProjectForUser).not.toHaveBeenCalled();
+	});
+
+	it('leaves the block out for a service account', async () => {
+		const repository = projectRepository(async () => ({ id: 'project-1' }));
+
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
+			user: Object.assign(new ServiceAccount(), { id: 'service-1' }),
+			builder: { projectRepository: repository },
+		});
+
+		expect(fullMessage).not.toContain('<current-user>');
+		expect(repository.getPersonalProjectForUser).not.toHaveBeenCalled();
+	});
+});
 
 describe('AssistantTurnInputBuilder — opening-turn title', () => {
 	it('titles an untitled thread from the first message and marks it opened', async () => {
