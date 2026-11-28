@@ -53,6 +53,24 @@ describe('NodeSettingsTabs', () => {
 		expect(tab.querySelector('.notification')).toBeInTheDocument();
 	});
 
+	it('displays notification when the node has a newer version', async () => {
+		const { findByTestId } = renderComponent({
+			props: { hasNewerVersion: true },
+		});
+
+		const tab = await findByTestId('tab-settings');
+		expect(tab.querySelector('.notification')).toBeInTheDocument();
+	});
+
+	it('does not display notification when the node has no newer version', async () => {
+		const { findByTestId } = renderComponent({
+			props: { hasNewerVersion: false },
+		});
+
+		const tab = await findByTestId('tab-settings');
+		expect(tab.querySelector('.notification')).toBeNull();
+	});
+
 	it('does not display notification when not updateAvailable', () => {
 		// Default mock values (from beforeEach) should not trigger notification
 		const { queryByTestId } = renderComponent({

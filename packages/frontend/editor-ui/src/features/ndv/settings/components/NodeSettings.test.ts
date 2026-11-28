@@ -40,6 +40,12 @@ vi.mock('@/features/credentials/credentials.api', async () => {
 	return { ...actual, getUsableCredentials: vi.fn().mockResolvedValue([]) };
 });
 
+const versionPickerFlag = vi.hoisted(() => ({ enabled: false }));
+vi.mock('@/features/ndv/settings/composables/useNodeVersionPickerFlag', async () => {
+	const { computed } = await import('vue');
+	return { useNodeVersionPickerFlag: () => computed(() => versionPickerFlag.enabled) };
+});
+
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
 	useRoute: () => ({ meta: {}, name: 'fake-route' }),
@@ -121,6 +127,8 @@ interface RenderOptions {
 	runData?: IRunData;
 	node?: typeof httpNode;
 	nodeType?: INodeTypeDescription;
+	/** Registers these descriptions and not `nodeType`. Use it for a node type with many versions. */
+	nodeTypes?: INodeTypeDescription[];
 	provide?: Record<symbol, unknown>;
 	stubs?: Record<string, unknown>;
 	canvasOnly?: boolean;
@@ -135,6 +143,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		runData,
 		node = httpNode,
 		nodeType = httpNodeType,
+		nodeTypes = [nodeType],
 		provide = {},
 		stubs = {},
 		canvasOnly = false,
@@ -155,7 +164,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 
 	workflowDocumentStore.hydrate(workflow);
-	nodeTypesStore.setNodeTypes([nodeType]);
+	nodeTypesStore.setNodeTypes(nodeTypes);
 	ndvStore.activeNodeName = node.name;
 	mockRestrictedNodeTypes(restrictedNodeTypes);
 
@@ -679,6 +688,287 @@ describe('NodeSettings', () => {
 				new Set(['true']),
 			);
 			expect(await readOnlyStates(findAllByTestId, 'credentials-stub')).toEqual(['true']);
+		});
+	});
+
+	describe('version picker', () => {
+		const versionedType = (version: number, overrides: Partial<INodeTypeDescription> = {}) =>
+			({ ...httpNodeType, version, defaultVersion: 2, ...overrides }) as INodeTypeDescription;
+
+		const typeV1 = versionedType(1, {
+			properties: [
+				{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+				{ displayName: 'Timeout', name: 'timeout', type: 'number', default: 10 },
+			],
+		});
+		const typeV2 = versionedType(2, {
+			properties: [
+				{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+				{ displayName: 'Timeout', name: 'timeout', type: 'number', default: 30 },
+				{ displayName: 'Method', name: 'method', type: 'string', default: 'GET' },
+				{ displayName: 'Token', name: 'token', type: 'string', default: '', required: true },
+			],
+		});
+		const typeV2AndV2Point1 = versionedType(2, {
+			version: [2, 2.1],
+			defaultVersion: 2.1,
+			properties: [
+				{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'string',
+					default: 'fast',
+					displayOptions: { show: { '@version': [2.1] } },
+				},
+			],
+		});
+
+		/** The editor keeps the default values in the node, so the fixture has them too. */
+		const nodeOnVersion = (typeVersion: number) => ({
+			...httpNode,
+			typeVersion,
+			parameters: { url: 'https://example.com', timeout: 10 },
+		});
+
+		const pickerStubsEmitting = (version: number) => ({
+			NodeVersionPicker: {
+				props: ['nodeName', 'currentVersion', 'latest', 'versions', 'disabled'],
+				emits: ['update'],
+				template:
+					'<button data-test-id="node-version-select" :data-node-name="nodeName" :data-current="currentVersion" :data-latest="latest" :data-versions="versions.join()" :data-disabled="String(disabled)" @click="$emit(\'update\', ' +
+					version +
+					')" />',
+			},
+			ParameterInputList: {
+				props: ['parameters', 'nodeValues', 'hiddenIssuesInputs'],
+				template:
+					'<div data-test-id="parameters-stub" :data-names="parameters.map((parameter) => parameter.name).join()" :data-values="JSON.stringify(nodeValues.parameters)" :data-hidden-issues="hiddenIssuesInputs.join()" />',
+			},
+		});
+		const pickerStubs = pickerStubsEmitting(2);
+
+		const renderVersioned = (options: RenderOptions = {}) =>
+			renderNodeSettings({
+				node: nodeOnVersion(1),
+				nodeTypes: [typeV1, typeV2],
+				stubs: pickerStubs,
+				...options,
+				props: { readOnly: false, ...options.props },
+			});
+
+		beforeEach(() => {
+			versionPickerFlag.enabled = true;
+		});
+
+		afterEach(() => {
+			versionPickerFlag.enabled = false;
+		});
+
+		it('keeps the version line when the flag is off', async () => {
+			versionPickerFlag.enabled = false;
+			const { findByTestId, queryByTestId } = renderVersioned();
+
+			expect(await findByTestId('node-version')).toHaveTextContent(
+				'HTTP Request node version 1 (Latest version: 2)',
+			);
+			expect(queryByTestId('node-version-select')).not.toBeInTheDocument();
+		});
+
+		it('shows the picker with the listed versions when the flag is on', async () => {
+			const { findByTestId, queryByTestId } = renderVersioned();
+
+			const picker = await findByTestId('node-version-select');
+			expect(picker).toHaveAttribute('data-node-name', 'HTTP Request');
+			expect(picker).toHaveAttribute('data-current', '1');
+			expect(picker).toHaveAttribute('data-latest', '2');
+			expect(picker).toHaveAttribute('data-versions', '2,1');
+			expect(picker).toHaveAttribute('data-disabled', 'false');
+			expect(queryByTestId('node-version')).not.toBeInTheDocument();
+		});
+
+		it('keeps the version line for a node type with one version', async () => {
+			const { findByTestId, queryByTestId } = renderVersioned({ nodeTypes: [typeV1] });
+
+			expect(await findByTestId('node-version')).toBeInTheDocument();
+			expect(queryByTestId('node-version-select')).not.toBeInTheDocument();
+		});
+
+		it('keeps the version line when embedded in the canvas', async () => {
+			const { findByTestId, queryByTestId } = renderVersioned({
+				props: { isEmbeddedInCanvas: true },
+			});
+
+			expect(await findByTestId('node-version')).toBeInTheDocument();
+			expect(queryByTestId('node-version-select')).not.toBeInTheDocument();
+		});
+
+		it('disables the picker on a read-only canvas', async () => {
+			const { findByTestId } = renderVersioned({ props: { readOnly: true } });
+
+			expect(await findByTestId('node-version-select')).toHaveAttribute('data-disabled', 'true');
+		});
+
+		it('keeps the node as it is when the picker emits on a read-only canvas', async () => {
+			const { findByTestId, workflowDocumentStore } = renderVersioned({
+				props: { readOnly: true },
+			});
+			const picker = await findByTestId('node-version-select');
+			const markStateDirty = vi.mocked(useUIStore().markStateDirty);
+			markStateDirty.mockClear();
+
+			await fireEvent.click(picker);
+
+			expect(workflowDocumentStore.getNodeByName(httpNode.name)?.typeVersion).toBe(1);
+			expect(markStateDirty).not.toHaveBeenCalled();
+		});
+
+		it('writes a version that shares its description with other versions', async () => {
+			const { findByTestId, workflowDocumentStore } = renderVersioned({
+				nodeTypes: [typeV1, typeV2AndV2Point1],
+				stubs: pickerStubsEmitting(2.1),
+			});
+
+			await fireEvent.click(await findByTestId('node-version-select'));
+
+			const node = workflowDocumentStore.getNodeByName(httpNode.name);
+			expect(node?.typeVersion).toBe(2.1);
+			expect(node?.parameters.mode).toBe('fast');
+		});
+
+		it('writes the default for a value that the new version does not accept', async () => {
+			const formatProperty = (options: string[]) => ({
+				displayName: 'Format',
+				name: 'format',
+				type: 'options' as const,
+				default: 'json',
+				options: options.map((value) => ({ name: value, value })),
+			});
+			const { findByTestId, workflowDocumentStore } = renderVersioned({
+				node: { ...httpNode, typeVersion: 1, parameters: { format: 'xml' } },
+				nodeTypes: [
+					versionedType(1, { properties: [formatProperty(['json', 'xml'])] }),
+					versionedType(2, { properties: [formatProperty(['json', 'text'])] }),
+				],
+			});
+
+			await fireEvent.click(await findByTestId('node-version-select'));
+
+			const node = workflowDocumentStore.getNodeByName(httpNode.name);
+			expect(node?.typeVersion).toBe(2);
+			expect(node?.parameters).toEqual({ format: 'json' });
+		});
+
+		describe('after the user confirms a version', () => {
+			const renderAndUpdate = async () => {
+				const rendered = renderVersioned();
+				const settingsTab = await rendered.findByTestId('tab-settings');
+				await fireEvent.mouseDown(settingsTab.querySelector<HTMLElement>('.tab')!);
+				await waitFor(() => {
+					expect(settingsTab.querySelector('.tab')).toHaveAttribute('data-state', 'active');
+				});
+				const [parametersBefore] = await rendered.findAllByTestId('parameters-stub');
+				const hiddenIssuesBefore = parametersBefore.getAttribute('data-hidden-issues');
+				const markStateDirty = vi.mocked(useUIStore().markStateDirty);
+				markStateDirty.mockClear();
+
+				await fireEvent.click(await rendered.findByTestId('node-version-select'));
+
+				return { ...rendered, hiddenIssuesBefore, markStateDirty };
+			};
+
+			it('writes the version and the parameters of that version to the node', async () => {
+				const { workflowDocumentStore, markStateDirty } = await renderAndUpdate();
+
+				const node = workflowDocumentStore.getNodeByName(httpNode.name);
+				expect(node?.typeVersion).toBe(2);
+				// `timeout` was at the old default, so it takes the new default.
+				// `method` and `token` are new and are written with their defaults.
+				expect(node?.parameters).toEqual({
+					url: 'https://example.com',
+					timeout: 30,
+					method: 'GET',
+					token: '',
+				});
+				expect(markStateDirty).toHaveBeenCalledTimes(1);
+			});
+
+			it('reports the required parameter of that version that has no value', async () => {
+				const { workflowDocumentStore } = await renderAndUpdate();
+
+				const node = workflowDocumentStore.getNodeByName(httpNode.name);
+				expect(node?.issues?.parameters?.token).toEqual(['Parameter "Token" is required.']);
+			});
+
+			it('shows the Parameters tab with the parameters of that version', async () => {
+				const { findByTestId, findAllByTestId, hiddenIssuesBefore } = await renderAndUpdate();
+
+				const paramsTab = await findByTestId('tab-params');
+				await waitFor(() => {
+					expect(paramsTab.querySelector('.tab')).toHaveAttribute('data-state', 'active');
+				});
+
+				const [parameters] = await findAllByTestId('parameters-stub');
+				expect(parameters).toHaveAttribute('data-names', 'url,timeout,method,token');
+				expect(JSON.parse(parameters.getAttribute('data-values') ?? '')).toEqual({
+					url: 'https://example.com',
+					timeout: 30,
+					method: 'GET',
+					token: '',
+				});
+				expect(hiddenIssuesBefore).toBe('credentials,url,timeout');
+				expect(parameters).toHaveAttribute('data-hidden-issues', '');
+			});
+		});
+
+		describe('Settings tab dot', () => {
+			const dot = async (options: RenderOptions = {}) => {
+				const { findByTestId } = renderVersioned({ stubs: {}, ...options });
+				return (await findByTestId('tab-settings')).querySelector('.notification');
+			};
+
+			it('shows when the user can update the node to a newer version', async () => {
+				expect(await dot()).toBeInTheDocument();
+			});
+
+			it('does not show when the flag is off', async () => {
+				versionPickerFlag.enabled = false;
+
+				expect(await dot()).toBeNull();
+			});
+
+			it('does not show when the node is on the latest version', async () => {
+				expect(await dot({ node: nodeOnVersion(2) })).toBeNull();
+			});
+
+			it('does not show on a read-only canvas', async () => {
+				expect(await dot({ props: { readOnly: true } })).toBeNull();
+			});
+
+			it('does not show when the node is above the default version', async () => {
+				expect(
+					await dot({
+						node: nodeOnVersion(2),
+						nodeTypes: [
+							versionedType(1, { defaultVersion: 1 }),
+							versionedType(2, { defaultVersion: 1 }),
+						],
+					}),
+				).toBeNull();
+			});
+
+			it('does not show when the only newer version is hidden', async () => {
+				expect(
+					await dot({
+						node: nodeOnVersion(2),
+						nodeTypes: [
+							versionedType(1, { defaultVersion: 3 }),
+							versionedType(2, { defaultVersion: 3 }),
+							versionedType(3, { defaultVersion: 3, hidden: true }),
+						],
+					}),
+				).toBeNull();
+			});
 		});
 	});
 });

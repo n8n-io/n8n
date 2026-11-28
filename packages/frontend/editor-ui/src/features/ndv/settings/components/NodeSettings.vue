@@ -19,6 +19,7 @@ import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
 import NDVSubConnections from '@/features/ndv/panel/components/NDVSubConnections.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import NodeSettingsHeader from './NodeSettingsHeader.vue';
+import NodeVersionPicker from './NodeVersionPicker.vue';
 import NodeWebhooks from './NodeWebhooks.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import AgentNdvInlineControls from '@/features/ndv/agents/components/AgentNdvInlineControls.vue';
@@ -41,6 +42,8 @@ import {
 	useNodeTypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
+import { useNodeVersionPickerFlag } from '@/features/ndv/settings/composables/useNodeVersionPickerFlag';
+import { getNodeVersionChoices } from '@/features/ndv/settings/nodeVersionPicker.utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
@@ -147,6 +150,7 @@ const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const route = useRoute();
 const nodeSettingsParameters = useNodeSettingsParameters();
+const isVersionPickerEnabled = useNodeVersionPickerFlag();
 
 const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
 const shouldShowStaticScrollbar = ref(false);
@@ -232,6 +236,38 @@ const isExecutable = computed(() =>
 const nodeTypeVersions = computed(() => {
 	if (!node.value) return [];
 	return nodeTypesStore.getNodeVersions(node.value.type);
+});
+
+const versionChoices = computed(() => {
+	const { type, typeVersion } = node.value ?? {};
+	if (type === undefined || typeVersion === undefined) return { latest: undefined, listed: [] };
+
+	return getNodeVersionChoices(
+		nodeTypeVersions.value,
+		(version) => nodeTypesStore.getNodeType(type, version)?.hidden === true,
+		typeVersion,
+		nodeType.value?.defaultVersion,
+	);
+});
+
+const showVersionPicker = computed(
+	() =>
+		isVersionPickerEnabled.value &&
+		!props.isEmbeddedInCanvas &&
+		versionChoices.value.listed.length > 1,
+);
+
+const isVersionPickerDisabled = computed(() => isReadOnly.value || isRestricted.value);
+
+const hasNewerVersion = computed(() => {
+	const { latest } = versionChoices.value;
+	return (
+		showVersionPicker.value &&
+		!isVersionPickerDisabled.value &&
+		latest !== undefined &&
+		!!node.value &&
+		node.value.typeVersion < latest
+	);
 });
 
 const latestVersion = computed(() => Math.max(...nodeTypeVersions.value));
@@ -632,6 +668,54 @@ const setNodeValues = () => {
 	nodeValuesInitialized.value = true;
 };
 
+const applyNodeVersion = (targetVersion: number) => {
+	const currentNode = node.value;
+	const currentType = nodeType.value;
+	if (!currentNode || !currentType || isVersionPickerDisabled.value) return;
+
+	const targetType = nodeTypesStore.getNodeType(currentNode.type, targetVersion);
+	if (!targetType) return;
+
+	// The store keeps default values, but the helper reads each value as set by the user.
+	const savedParameters = NodeHelpers.getNodeParameters(
+		currentType.properties,
+		currentNode.parameters,
+		false,
+		false,
+		currentNode,
+		currentType,
+	);
+	const { parameters: carriedParameters } = NodeHelpers.carryOverNodeParameters(
+		{ ...currentNode, parameters: savedParameters ?? {} },
+		currentType,
+		targetType,
+		targetVersion,
+	);
+	// Add the default values of the target version, as each parameter edit does.
+	const targetParameters = NodeHelpers.getNodeParameters(
+		targetType.properties,
+		carriedParameters,
+		true,
+		false,
+		{ ...currentNode, typeVersion: targetVersion },
+		targetType,
+	);
+
+	workflowDocumentStore.value.setNodeTypeVersion(
+		currentNode.name,
+		targetVersion,
+		targetParameters ?? carriedParameters,
+	);
+
+	// The node object keeps its identity, so the node watcher does not run.
+	setNodeValues();
+	hiddenIssuesInputs.value = [];
+	nodeHelpers.updateNodeParameterIssuesByName(currentNode.name);
+	nodeHelpers.updateNodeCredentialIssuesByName(currentNode.name);
+	nodeHelpers.updateNodeInputIssuesByName(currentNode.name);
+	openPanel.value = 'params';
+};
+
 const onStopExecution = () => {
 	emit('stopExecution');
 };
@@ -749,6 +833,7 @@ function handleSelectAction(params: INodeParameters) {
 			:hide-tabs="!nodeValid"
 			:hide-docs="props.hideDocs"
 			:push-ref="pushRef"
+			:has-newer-version="hasNewerVersion"
 			@execute="onNodeExecute"
 			@stop-execution="onStopExecution"
 			@value-changed="valueChanged"
@@ -919,7 +1004,16 @@ function handleSelectAction(params: INodeParameters) {
 					@value-changed="valueChanged"
 					@parameter-blur="onParameterBlur"
 				/>
-				<div class="node-version" data-test-id="node-version">
+				<NodeVersionPicker
+					v-if="showVersionPicker"
+					:node-name="nodeType?.displayName ?? ''"
+					:current-version="node.typeVersion"
+					:latest="versionChoices.latest"
+					:versions="versionChoices.listed"
+					:disabled="isVersionPickerDisabled"
+					@update="applyNodeVersion"
+				/>
+				<div v-else class="node-version" data-test-id="node-version">
 					{{
 						i18n.baseText('nodeSettings.nodeVersion', {
 							interpolate: {

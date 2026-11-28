@@ -271,6 +271,52 @@ describe('useWorkflowDocumentNodes', () => {
 			).toThrow('could not be found');
 		});
 
+		it('setNodeTypeVersion writes the version and the parameters in one update', () => {
+			const nodesSpy = vi.fn();
+			const dirtySpy = vi.fn();
+			const touchSpy = vi.spyOn(deps.nodeMetadata, 'touchParametersLastUpdatedAt');
+			const node = createNode({ name: 'Target', typeVersion: 1, parameters: { old: 'value' } });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onNodesChange(nodesSpy);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.setNodeTypeVersion('Target', 2, { new: 'value' });
+
+			const updated = workflowDocumentNodes.getNodeByName('Target');
+			expect(updated?.typeVersion).toBe(2);
+			expect(updated?.parameters).toEqual({ new: 'value' });
+			expect(nodesSpy).toHaveBeenCalledOnce();
+			expect(nodesSpy).toHaveBeenCalledWith({ action: 'update', payload: { name: 'Target' } });
+			expect(dirtySpy).toHaveBeenCalledOnce();
+			expect(touchSpy).toHaveBeenCalledWith('Target');
+		});
+
+		it('setNodeTypeVersion fires nothing when the node already has the values', () => {
+			const nodesSpy = vi.fn();
+			const dirtySpy = vi.fn();
+			const touchSpy = vi.spyOn(deps.nodeMetadata, 'touchParametersLastUpdatedAt');
+			const node = createNode({ name: 'Target', typeVersion: 2, parameters: { same: 'value' } });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onNodesChange(nodesSpy);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.setNodeTypeVersion('Target', 2, { same: 'value' });
+
+			expect(nodesSpy).not.toHaveBeenCalled();
+			expect(dirtySpy).not.toHaveBeenCalled();
+			expect(touchSpy).not.toHaveBeenCalled();
+		});
+
+		it('setNodeTypeVersion throws when node not found', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+
+			expect(() => workflowDocumentNodes.setNodeTypeVersion('NonExistent', 2, {})).toThrow(
+				'could not be found',
+			);
+		});
+
 		it('setNodeValue updates a property readable via getNodeByName', () => {
 			const node = createNode({ name: 'Target' });
 

@@ -442,6 +442,24 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		}
 	}
 
+	/** Writes the version and its parameters in one update, so no subscriber sees a mixed state. */
+	function setNodeTypeVersion(
+		name: string,
+		typeVersion: number,
+		parameters: INodeParameters,
+	): void {
+		const nodeIndex = nodes.value.findIndex((node) => node.name === name);
+
+		if (nodeIndex === -1) {
+			throw new Error(`Node with the name "${name}" could not be found to set the version.`);
+		}
+
+		if (updateNodeAtIndex(nodeIndex, { typeVersion, parameters })) {
+			void onStateDirty.trigger();
+			deps.nodeMetadata.touchParametersLastUpdatedAt(name);
+		}
+	}
+
 	function setLastNodeParameters(updateInformation: IUpdateInformation): void {
 		const latestNode = findLast(nodes.value, (node) => node.type === updateInformation.key);
 		if (!latestNode) return;
@@ -677,6 +695,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		removeNode,
 		removeNodeById,
 		setNodeParameters,
+		setNodeTypeVersion,
 		setNodeValue,
 		setNodePositionById,
 		updateNodeProperties,
