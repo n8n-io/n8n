@@ -37,7 +37,11 @@ import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
 import { stepErrorDetails } from './step-error-details';
-import { announceStepFailed, stepEventFields } from './step-events';
+import {
+	announceStepFailed,
+	refreshLiveStatusAndAnnounceWait,
+	stepEventFields,
+} from './step-events';
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
@@ -192,7 +196,11 @@ export class StepReadyHandler {
 			// Nudge first, so the sweeper's re-arm read runs beside the status
 			// write rather than after it. Either order is correct.
 			this.onStepSuspended();
-			await this.executionStore.refreshLiveStatus(execution.id);
+			await refreshLiveStatusAndAnnounceWait(
+				this.executionStore,
+				this.lifecycleEventPublisherFactory,
+				execution,
+			);
 			return;
 		}
 
@@ -231,7 +239,11 @@ export class StepReadyHandler {
 		});
 		if (!recorded) return;
 		// If the suspension results in no running steps, mark the execution as waiting.
-		await this.executionStore.refreshLiveStatus(execution.id);
+		await refreshLiveStatusAndAnnounceWait(
+			this.executionStore,
+			this.lifecycleEventPublisherFactory,
+			execution,
+		);
 
 		const started = await this.startSubExecution(step, execution, subExecution);
 		if (started.kind === 'started') return;

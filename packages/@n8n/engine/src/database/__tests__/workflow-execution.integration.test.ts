@@ -4,8 +4,8 @@ import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { ExecutionNotFoundError, ParentExecutionEndedError } from '../../execution/execution-store';
-import type { NewExecutionRecord } from '../../execution/execution-store';
-import type { ExecutionStatus, StepStatus } from '../../execution/execution.types';
+import type { ExecutionWaitSummary, NewExecutionRecord } from '../../execution/execution-store';
+import type { ExecutionStatus, StepStatus, WaitDeclaration } from '../../execution/execution.types';
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowSeededStep } from '../entities/workflow-seeded-step.entity';
@@ -34,14 +34,14 @@ describe('workflow_execution table (integration)', () => {
 		if (container) await container.stop();
 	});
 
-	async function waitUntilQueryBlocksOnLock(queryFragment: string): Promise<void> {
+	async function waitUntilQueryBlocksOnLock(queryFragment: string, count = 1): Promise<void> {
 		for (let attempt = 0; attempt < 500; attempt++) {
 			const [{ blocked }] = await dataSource.query<Array<{ blocked: number }>>(
 				`SELECT count(*)::int AS blocked FROM pg_stat_activity
 				 WHERE wait_event_type = 'Lock' AND pid <> pg_backend_pid() AND query LIKE $1`,
 				[`%${queryFragment}%`],
 			);
-			if (blocked > 0) return;
+			if (blocked >= count) return;
 			await new Promise((resolve) => setTimeout(resolve, 10));
 		}
 		throw new Error(`No query containing "${queryFragment}" blocked on a lock`);
@@ -373,8 +373,21 @@ describe('workflow_execution table (integration)', () => {
 	);
 
 	describe('TypeOrmExecutionStore.refreshLiveStatus', () => {
-		/** One execution with one step for each status given. */
-		async function seed(status: ExecutionStatus, stepStatuses: StepStatus[]): Promise<string> {
+		type SeedStep = StepStatus | WaitDeclaration | [StepStatus, WaitDeclaration];
+
+		function seedStep(step: SeedStep): [StepStatus, WaitDeclaration | null] {
+			if (typeof step === 'string') return [step, null];
+			if (Array.isArray(step)) return step;
+			return ['waiting', step];
+		}
+
+		/**
+		 * One execution with one step for each entry given. A wait declaration
+		 * seeds a waiting step with the `wait_till` that `suspendStep` derives.
+		 * A `[status, declaration]` pair seeds a step that keeps its declaration,
+		 * as a resumed step does.
+		 */
+		async function seed(status: ExecutionStatus, steps: SeedStep[]): Promise<string> {
 			const repo = dataSource.getRepository(WorkflowExecution);
 			const execution = await repo.save(
 				repo.create({
@@ -393,8 +406,9 @@ describe('workflow_execution table (integration)', () => {
 			const stepRepo = dataSource.getRepository(WorkflowStepExecution);
 			await stepRepo.save(
 				// one iteration for each, so they are distinct rows of the same node
-				stepStatuses.map((stepStatus, iteration) =>
-					stepRepo.create({
+				steps.map((step, iteration) => {
+					const [stepStatus, wait] = seedStep(step);
+					return stepRepo.create({
 						id: generateId(),
 						executionId: execution.id,
 						nodeId: 'a',
@@ -402,40 +416,120 @@ describe('workflow_execution table (integration)', () => {
 						status: stepStatus,
 						outputs: null,
 						error: null,
-						waitDeclaration: null,
-						waitTill: null,
+						waitDeclaration: wait,
+						waitTill: wait?.resumeAt ? new Date(wait.resumeAt) : null,
 						resumeCause: null,
-					}),
-				),
+					});
+				}),
 			);
 			return execution.id;
 		}
 
-		it.each<[string, ExecutionStatus, StepStatus[], ExecutionStatus]>([
+		const noWaitFacts = { awaitsRequest: false, lastDeadline: null };
+
+		it.each<[string, ExecutionStatus, StepStatus[], ExecutionStatus, boolean]>([
 			[
 				'reports waiting when every step it still owes is suspended',
 				'running',
 				['completed', 'waiting'],
 				'waiting',
+				true,
 			],
-			['reports running again once a step can run', 'waiting', ['waiting', 'queued'], 'running'],
-			['reports running while a step runs', 'waiting', ['waiting', 'running'], 'running'],
+			[
+				'reports running again once a step can run',
+				'waiting',
+				['waiting', 'queued'],
+				'running',
+				false,
+			],
+			['reports running while a step runs', 'waiting', ['waiting', 'running'], 'running', false],
+			['does not report a wait that already holds', 'waiting', ['waiting'], 'waiting', false],
 			[
 				'leaves an execution whose steps have all settled to finishExecution',
 				'running',
 				['completed'],
 				'running',
+				false,
 			],
-			['leaves an execution with no steps alone', 'running', [], 'running'],
-			['leaves an execution that already ended alone', 'completed', ['waiting'], 'completed'],
-		])('%s', async (_case, from, stepStatuses, expected) => {
+			['leaves an execution with no steps alone', 'running', [], 'running', false],
+			[
+				'leaves an execution that already ended alone',
+				'completed',
+				['waiting'],
+				'completed',
+				false,
+			],
+		])('%s', async (_case, from, stepStatuses, expected, reportsWait) => {
 			const repo = dataSource.getRepository(WorkflowExecution);
 			const id = await seed(from, stepStatuses);
 
-			await new TypeOrmExecutionStore(repo).refreshLiveStatus(id);
+			const wait = await new TypeOrmExecutionStore(repo).refreshLiveStatus(id);
 
 			const row = await repo.findOneOrFail({ where: { id } });
 			expect(row.status).toBe(expected);
+			expect(wait).toEqual(reportsWait ? { at: row.updatedAt, ...noWaitFacts } : undefined);
+		});
+
+		const soon = new Date(Date.now() + 30_000).toISOString();
+		const later = '2099-01-01T00:00:00.000Z';
+		const deadline = (resumeAt: string): WaitDeclaration => ({ resumeAt, outputsAtDeadline: [] });
+
+		it.each<[string, SeedStep[], Partial<ExecutionWaitSummary>]>([
+			['a short deadline', [deadline(soon)], { lastDeadline: new Date(soon) }],
+			['a long deadline', [deadline(later)], { lastDeadline: new Date(later) }],
+			['a resume request', [{ resumeBinding: 'step' }], { awaitsRequest: true }],
+			[
+				'a deadline or a resume request, which is no deadline-only wait',
+				[{ ...deadline(soon), resumeBinding: 'execution' }],
+				{ awaitsRequest: true },
+			],
+			[
+				'a sub-execution, as neither a request nor a deadline',
+				[{ subExecutionId: 'exec-sub' }],
+				{},
+			],
+			[
+				'two deadlines, as the later one',
+				[deadline(later), deadline(soon)],
+				{ lastDeadline: new Date(later) },
+			],
+			[
+				'each kind across its waiting steps only',
+				[
+					'completed',
+					['completed', { resumeBinding: 'step' }],
+					['completed', deadline(later)],
+					deadline(soon),
+					{ subExecutionId: 'exec-sub' },
+				],
+				{ lastDeadline: new Date(soon) },
+			],
+		])('reports a wait for %s', async (_case, steps, facts) => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const id = await seed('running', steps);
+
+			const wait = await new TypeOrmExecutionStore(repo).refreshLiveStatus(id);
+
+			const row = await repo.findOneOrFail({ where: { id } });
+			expect(wait).toEqual({ at: row.updatedAt, ...noWaitFacts, ...facts });
+		});
+
+		it('reports a wait once when two refreshes race for the same change', async () => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const store = new TypeOrmExecutionStore(repo);
+			const id = await seed('running', [deadline(later)]);
+			// Holds the row, so both refreshes read the steps and then queue on its lock.
+			const holder = dataSource.createQueryRunner();
+			await holder.startTransaction();
+			await holder.query('SELECT 1 FROM workflow_execution WHERE id = $1 FOR UPDATE', [id]);
+
+			const refreshes = [store.refreshLiveStatus(id), store.refreshLiveStatus(id)];
+			await waitUntilQueryBlocksOnLock('UPDATE workflow_execution e', 2);
+			await holder.commitTransaction();
+			await holder.release();
+
+			const reports = await Promise.all(refreshes);
+			expect(reports.filter((wait) => wait !== undefined)).toHaveLength(1);
 		});
 
 		it('does not write when the status already holds', async () => {

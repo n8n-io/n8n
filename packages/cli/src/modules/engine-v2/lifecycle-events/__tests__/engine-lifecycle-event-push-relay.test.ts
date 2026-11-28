@@ -153,6 +153,23 @@ describe('EngineLifecycleEventPushRelay', () => {
 		});
 	});
 
+	it('sends nothing for an execution that starts to wait, and keeps its session', () => {
+		register();
+
+		relay.relay([
+			{
+				type: 'execution:waiting',
+				executionId: EXECUTION_ID,
+				workflowId: WORKFLOW_ID,
+				at: '2026-08-25T10:00:02.000Z',
+				awaitsRequest: true,
+			},
+		]);
+
+		expect(push.send).not.toHaveBeenCalled();
+		expect(registry.get(EXECUTION_ID)).toBeDefined();
+	});
+
 	describe('the trigger', () => {
 		const triggerOutputs = [[{ json: { first: true } }]];
 

@@ -21,6 +21,7 @@ const CANCEL_TIMEOUT_MS = 5_000;
 
 export type EngineV2RunOutcome =
 	| { kind: 'finished'; status: TerminalExecutionStatus }
+	| { kind: 'paused' }
 	| { kind: 'timeout' }
 	| { kind: 'aborted' };
 
@@ -32,6 +33,21 @@ const FINISHED_STATUS: Partial<Record<LifecycleEvent['type'], TerminalExecutionS
 	'execution:failed': 'error',
 	'execution:cancelled': 'canceled',
 };
+
+/**
+ * A wait is a pause when a step waits for a request, or when the last deadline
+ * is not before the caller stops waiting.
+ */
+function isPause(
+	wait: Extract<LifecycleEvent, { type: 'execution:waiting' }>,
+	remainingMs: number,
+): boolean {
+	if (wait.awaitsRequest) return true;
+	if (wait.lastDeadline === undefined) return false;
+
+	// Both times come from the data plane, so the clock of this process does not matter.
+	return Date.parse(wait.lastDeadline) - Date.parse(wait.at) >= remainingMs;
+}
 
 /**
  * Starts engine v2 runs for control-plane code that waits for their end.
@@ -51,14 +67,17 @@ export class EngineV2RunService {
 	}
 
 	/**
-	 * Starts an engine v2 run and waits until it ends, the time runs out, or the
-	 * signal aborts. The time counts from the moment the run has started.
+	 * Starts an engine v2 run and waits until it ends or pauses, the time runs
+	 * out, or the signal aborts. The time counts from the moment the run has
+	 * started. The run pauses when it waits for a request, or for a deadline that
+	 * is not before the timeout. A shorter wait does not end the call.
 	 *
 	 * It cancels the run only when the start
 	 * fails, because the data plane can save the run before the start fails. On
 	 * `timeout` or `aborted`, the caller decides what to do with the run. Events
 	 * can be lost, so after a `timeout` the caller reads the status from the data
-	 * plane.
+	 * plane. A `paused` run can continue later, so the caller must not treat it
+	 * as ended.
 	 *
 	 * @throws {UnexpectedError} If the run does not go to engine v2, if
 	 * `timeoutMs` is more than 24 hours, or if the run starts under another id.
@@ -86,9 +105,15 @@ export class EngineV2RunService {
 		);
 		const executionId = createExecutionIdV2();
 		const ended = createDeferredPromise<EngineV2RunOutcome>();
+		let deadline: number | undefined;
 		const removeListener = await Container.get(EngineV2LifecycleSubscriptions).listen(
 			executionId,
 			(event) => {
+				if (event.type === 'execution:waiting') {
+					const remainingMs = deadline === undefined ? options.timeoutMs : deadline - Date.now();
+					if (isPause(event, remainingMs)) ended.resolve({ kind: 'paused' });
+					return;
+				}
 				const status = FINISHED_STATUS[event.type];
 				if (status !== undefined) ended.resolve({ kind: 'finished', status });
 			},
@@ -101,6 +126,7 @@ export class EngineV2RunService {
 				});
 			}
 
+			deadline = Date.now() + options.timeoutMs;
 			return { executionId, outcome: await waitForEnd(ended.promise, options) };
 		} finally {
 			removeListener();
@@ -141,7 +167,7 @@ async function waitForEnd(
 	});
 
 	try {
-		// `ended` comes first, so an end that already arrived wins over a signal that is already aborted.
+		// `ended` comes first, so an end or a pause that already arrived wins over a signal that is already aborted.
 		return await Promise.race([ended, aborted, timedOut]);
 	} finally {
 		clearTimeout(timer);

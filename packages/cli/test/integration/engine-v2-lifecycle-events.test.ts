@@ -364,4 +364,27 @@ describe('waiting for the end of an engine v2 run', () => {
 			pushRef: 'push-1',
 		});
 	});
+
+	test.each([
+		['a request', { awaitsRequest: true }],
+		[
+			'a deadline after the timeout',
+			{ awaitsRequest: false, lastDeadline: '2026-10-29T11:00:00.000Z' },
+		],
+	])('runs a run that waits for %s, and resolves as paused', async (_name, wait) => {
+		startExecution.mockImplementation(async (request: StartExecutionRequest) => {
+			const { executionId, workflowId } = request;
+			const [started] = runEvents(executionId, workflowId, 'set-id');
+			await lifecycleEventSender.send(
+				[started, { type: 'execution:waiting', executionId, workflowId, at, ...wait }],
+				new AbortController().signal,
+			);
+			return { executionId };
+		});
+
+		const { executionId, outcome } = await runAndWait();
+
+		expect(outcome).toEqual({ kind: 'paused' });
+		expect(Container.get(EngineV2LifecycleSubscriptions).hasListener(executionId)).toBe(false);
+	});
 });

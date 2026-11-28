@@ -17,6 +17,7 @@ import {
 	type CreateExecutionResult,
 	type ExecutionRecord,
 	type ExecutionStore,
+	type ExecutionWaitSummary,
 	type NewExecutionRecord,
 	type PrunableExecution,
 	type PrunableExecutionQuery,
@@ -265,10 +266,12 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		return rows.map(({ id }) => id);
 	}
 
-	async refreshLiveStatus(id: string): Promise<void> {
+	async refreshLiveStatus(id: string): Promise<ExecutionWaitSummary | undefined> {
 		// The probes read the steps before the UPDATE takes the row's lock, so a
 		// step can change in between.
-		await this.repo.query(
+		const [row] = await this.repo.manager.query<
+			Array<ExecutionWaitSummary & { status: ExecutionStatus }>
+		>(
 			// MATERIALIZED, because `live.runnable` is read three times below.
 			`WITH live AS MATERIALIZED (
 				SELECT
@@ -280,20 +283,42 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 						SELECT 1 FROM workflow_step_execution
 						WHERE execution_id = $1 AND status = 'waiting'
 					) AS waiting
+			),
+			updated AS (
+				UPDATE workflow_execution e
+				SET status = CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END,
+					-- A raw query bypasses the UpdateDateColumn hook, so set the time here.
+					updated_at = now()
+				FROM live
+				WHERE e.id = $1
+					-- Re-checked against the row it locks, so losing to finishExecution writes nothing.
+					AND e.status IN ('running', 'waiting')
+					AND (live.runnable OR live.waiting)
+					-- Skip a write that changes nothing, so the row is not locked for it.
+					AND e.status IS DISTINCT FROM CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END
+				RETURNING e.status, e.updated_at
 			)
-			UPDATE workflow_execution e
-			SET status = CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END,
-				-- A raw query bypasses the UpdateDateColumn hook, so set the time here.
-				updated_at = now()
-			FROM live
-			WHERE e.id = $1
-				-- Re-checked against the row it locks, so losing to finishExecution writes nothing.
-				AND e.status IN ('running', 'waiting')
-				AND (live.runnable OR live.waiting)
-				-- Skip a write that changes nothing, so the row is not locked for it.
-				AND e.status IS DISTINCT FROM CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END`,
+			SELECT
+				updated.status,
+				updated.updated_at AS "at",
+				summary.awaits_request AS "awaitsRequest",
+				summary.last_deadline AS "lastDeadline"
+			FROM updated
+			-- Reads the declarations, which can be large, only when this call wrote 'waiting'.
+			CROSS JOIN LATERAL (
+				SELECT
+					bool_or(wait_declaration->>'resumeBinding' IS NOT NULL) AS awaits_request,
+					-- A wait without a deadline has no wait_till, so max() skips it.
+					max(wait_till) FILTER (WHERE wait_declaration->>'resumeBinding' IS NULL) AS last_deadline
+				FROM workflow_step_execution
+				WHERE execution_id = $1 AND status = 'waiting' AND updated.status = 'waiting'
+			) summary`,
 			[id],
 		);
+		if (row?.status !== 'waiting') return undefined;
+
+		const { status: _status, ...wait } = row;
+		return wait;
 	}
 
 	async findPrunableExecutions({
