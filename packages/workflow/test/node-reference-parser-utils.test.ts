@@ -356,6 +356,29 @@ describe('NodeReferenceParserUtils', () => {
 				},
 			]);
 		});
+		it('should match the full node name in dot notation', () => {
+			nodes = [
+				makeNode('N', ['$("A").item.json.myField']),
+				makeNode('P', ['$node.Code1.item.json.myField']),
+			];
+			nodeNames = ['A', 'Code', 'Code1', 'N', 'P'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual([
+				['myField', '$("A").item.json.myField'],
+				['Code1_myField', '$node.Code1.item.json.myField'],
+			]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'N',
+					parameters: { p0: "={{ $('Start').item.json.myField }}" },
+				},
+				{
+					name: 'P',
+					parameters: { p0: "={{ $('Start').item.json.Code1_myField }}" },
+				},
+			]);
+		});
 		it('should handle simple name clashes', () => {
 			nodes = [
 				makeNode('B', ['$("A").item.json.myField']),
