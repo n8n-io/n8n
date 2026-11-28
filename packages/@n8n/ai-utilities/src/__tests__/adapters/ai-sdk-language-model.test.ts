@@ -1,5 +1,8 @@
 import type { LanguageModelV4CallOptions, LanguageModelV4StreamPart } from '@ai-sdk/provider';
 import { UserError } from '@n8n/errors';
+import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ChatModel, ChatModelConfig } from 'src/types/chat-model';
 import type { Message } from 'src/types/message';
@@ -7,6 +10,10 @@ import type { GenerateResult, StreamChunk } from 'src/types/output';
 import type { Tool } from 'src/types/tool';
 
 import { AiSdkLanguageModelAdapter } from '../../adapters/ai-sdk-language-model';
+
+vi.mock('src/utils/tokenizer/token-estimator', () => ({
+	estimateTokensFromStringList: vi.fn().mockResolvedValue(10),
+}));
 
 interface FakeCall {
 	messages: Message[];
@@ -27,6 +34,7 @@ function createFakeChatModel(
 		chunks?: StreamChunk[];
 		structuredOutput?: boolean;
 		onStreamClose?: () => void;
+		generate?: ChatModel['generate'];
 		stream?: ChatModel['stream'];
 	} = {},
 ): FakeChatModel {
@@ -39,10 +47,12 @@ function createFakeChatModel(
 			provider: 'fake',
 			modelId: 'fake-model',
 			calls,
-			async generate(messages, config) {
-				calls.push({ messages, config, tools, structuredOutputSchema });
-				return options.result ?? { message: { role: 'assistant', content: [] } };
-			},
+			generate:
+				options.generate ??
+				async function (messages, config) {
+					calls.push({ messages, config, tools, structuredOutputSchema });
+					return options.result ?? { message: { role: 'assistant', content: [] } };
+				},
 			stream:
 				options.stream ??
 				async function* (messages, config) {
@@ -70,6 +80,22 @@ function callOptions(
 	overrides: Partial<LanguageModelV4CallOptions> = {},
 ): LanguageModelV4CallOptions {
 	return { prompt: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }], ...overrides };
+}
+
+function createNodeContext() {
+	const node: INode = {
+		id: 'model-node',
+		name: 'Model',
+		type: 'community.chatModel',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	};
+	const ctx = mock<ISupplyDataFunctions>({ logger: mock() });
+	ctx.getNode.mockReturnValue(node);
+	ctx.addInputData.mockReturnValue({ index: 0 });
+	ctx.getNextRunIndex.mockReturnValue(0);
+	return ctx;
 }
 
 async function readAll(stream: ReadableStream<LanguageModelV4StreamPart>) {
@@ -1475,6 +1501,250 @@ describe('AiSdkLanguageModelAdapter', () => {
 			await reader.cancel();
 
 			expect(onStreamClose).toHaveBeenCalled();
+		});
+	});
+	describe('run data', () => {
+		it('writes a generate call as input and output of the node', async () => {
+			const ctx = createNodeContext();
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					result: {
+						message: { role: 'assistant', content: [{ type: 'text', text: 'Hello' }] },
+						usage: { promptTokens: 3, completionTokens: 5, totalTokens: 8 },
+					},
+				}),
+				ctx,
+			);
+
+			await adapter.doGenerate(callOptions({ temperature: 0.5, headers: { authorization: 'x' } }));
+
+			expect(ctx.addInputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				[
+					[
+						{
+							json: {
+								messages: ['Human: hi'],
+								estimatedTokens: 10,
+								options: { provider: 'fake', model: 'fake-model', temperature: 0.5 },
+							},
+						},
+					],
+				],
+				undefined,
+			);
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				0,
+				[
+					[
+						{
+							json: {
+								response: { generations: [[{ text: 'Hello' }]] },
+								tokenUsage: { promptTokens: 3, completionTokens: 5, totalTokens: 8 },
+							},
+						},
+					],
+				],
+				expect.anything(),
+				undefined,
+			);
+		});
+
+		it('writes the streamed text and the usage of the finish as output of the node', async () => {
+			const ctx = createNodeContext();
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'text-delta', delta: 'Hel' },
+						{ type: 'text-delta', delta: 'lo' },
+						{ type: 'finish', finishReason: 'stop' },
+						{
+							type: 'finish',
+							finishReason: 'stop',
+							usage: { promptTokens: 3, completionTokens: 5, totalTokens: 8 },
+						},
+					],
+				}),
+				ctx,
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			await readAll(stream);
+
+			expect(ctx.addOutputData).toHaveBeenCalledTimes(1);
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				0,
+				[
+					[
+						{
+							json: {
+								response: { generations: [[{ text: 'Hello' }]] },
+								tokenUsage: { promptTokens: 3, completionTokens: 5, totalTokens: 8 },
+							},
+						},
+					],
+				],
+				expect.anything(),
+				undefined,
+			);
+		});
+
+		it('writes a failed generate call as an error of the node and rethrows it', async () => {
+			const ctx = createNodeContext();
+			const error = new Error('quota exceeded');
+			const model = createFakeChatModel({
+				generate: async () => {
+					throw error;
+				},
+			});
+			const adapter = new AiSdkLanguageModelAdapter(model, ctx);
+
+			await expect(adapter.doGenerate(callOptions())).rejects.toThrow(error);
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				0,
+				expect.any(NodeOperationError),
+			);
+		});
+
+		it('writes a thrown stream error as an error of the node', async () => {
+			const ctx = createNodeContext();
+			const model = createFakeChatModel({
+				async *stream() {
+					yield { type: 'text-delta', delta: 'Hel' };
+					throw new Error('network');
+				},
+			});
+			const adapter = new AiSdkLanguageModelAdapter(model, ctx);
+
+			const { stream } = await adapter.doStream(callOptions());
+			await readAll(stream);
+
+			expect(ctx.addOutputData).toHaveBeenCalledTimes(1);
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				0,
+				expect.any(NodeOperationError),
+			);
+		});
+
+		it('writes every result of a tool message to the input of the node', async () => {
+			const ctx = createNodeContext();
+			const adapter = new AiSdkLanguageModelAdapter(createFakeChatModel(), ctx);
+
+			await adapter.doGenerate(
+				callOptions({
+					prompt: [
+						{
+							role: 'tool',
+							content: [
+								{
+									type: 'tool-result',
+									toolCallId: 'call-1',
+									toolName: 'weather',
+									output: { type: 'text', value: 'sunny' },
+								},
+								{
+									type: 'tool-result',
+									toolCallId: 'call-2',
+									toolName: 'weather',
+									output: { type: 'text', value: 'rainy' },
+								},
+							],
+						},
+					],
+				}),
+			);
+
+			expect(ctx.addInputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				[[{ json: expect.objectContaining({ messages: ['Tool: sunny\nTool: rainy'] }) }]],
+				undefined,
+			);
+		});
+
+		it('writes a stream with an error chunk as an error of the node', async () => {
+			const ctx = createNodeContext();
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'text-delta', delta: 'Hel' },
+						{ type: 'error', error: new Error('overloaded') },
+						{ type: 'finish', finishReason: 'error' },
+					],
+				}),
+				ctx,
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			await readAll(stream);
+
+			expect(ctx.addOutputData).toHaveBeenCalledTimes(1);
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				0,
+				expect.any(NodeOperationError),
+			);
+		});
+
+		it('writes a stream with an error finish and no error chunk as an error of the node', async () => {
+			const ctx = createNodeContext();
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'text-delta', delta: 'Hel' },
+						{ type: 'finish', finishReason: 'error' },
+					],
+				}),
+				ctx,
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			await readAll(stream);
+
+			expect(ctx.addOutputData).toHaveBeenCalledTimes(1);
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				0,
+				expect.any(NodeOperationError),
+			);
+		});
+
+		it('writes a stream that fails to open as an error of the node and rethrows it', async () => {
+			const ctx = createNodeContext();
+			const error = new Error('invalid config');
+			const model = createFakeChatModel({
+				stream: () => {
+					throw error;
+				},
+			});
+			const adapter = new AiSdkLanguageModelAdapter(model, ctx);
+
+			await expect(adapter.doStream(callOptions())).rejects.toThrow(error);
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				0,
+				expect.any(NodeOperationError),
+			);
+		});
+
+		it('writes a cancelled stream as an error of the node', async () => {
+			const ctx = createNodeContext();
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({ chunks: [{ type: 'text-delta', delta: 'a' }] }),
+				ctx,
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			await stream.getReader().cancel(new Error('stopped'));
+
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				0,
+				expect.any(NodeOperationError),
+			);
 		});
 	});
 });
