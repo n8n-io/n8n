@@ -7987,6 +7987,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../../core
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow

@@ -38,6 +38,7 @@
     "@n8n/errors": "workspace:*",
     "@n8n/sandbox-client": "catalog:",
     "@n8n/utils": "workspace:*",
+    "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*"
   },
   "peerDependencies": {
