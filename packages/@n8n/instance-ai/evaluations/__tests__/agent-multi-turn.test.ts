@@ -1,0 +1,467 @@
+import type {
+	InstanceAiEvalAgentExecutionResult,
+	InstanceAiEvalAgentThreadTurn,
+} from '@n8n/api-types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { verifyBuildExpectations } from '../build-expectations/verifier';
+import { verifyChecklist } from '../checklist/verifier';
+import type { N8nClient } from '../clients/n8n-client';
+import { AgentRunError } from '../harness/agent-conversation';
+import { executeAgentScenario } from '../harness/agent-execution';
+import type { EvalLogger } from '../harness/logger';
+import type { BuildExpectationResult, ExecutionScenario, TranscriptTurn } from '../types';
+import { createAgentUserProxy, type AgentUserProxy } from '../utils/user-proxy/agent-user';
+
+vi.mock('../harness/scenario-execution', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../harness/scenario-execution')>()),
+	writeScenarioVerificationSnapshot: vi.fn(),
+}));
+vi.mock('../checklist/verifier', () => ({
+	verifyChecklist: vi.fn().mockResolvedValue({
+		results: [{ id: 1, pass: true, reasoning: 'ok' }],
+		attempts: [],
+	}),
+}));
+vi.mock('../build-expectations/verifier', () => ({ verifyBuildExpectations: vi.fn() }));
+vi.mock('../utils/user-proxy/agent-user', () => ({ createAgentUserProxy: vi.fn() }));
+
+const silentLogger: EvalLogger = {
+	info: () => {},
+	verbose: () => {},
+	success: () => {},
+	warn: () => {},
+	error: () => {},
+	isVerbose: false,
+};
+
+type ExecuteCall = { thread?: InstanceAiEvalAgentThreadTurn };
+
+function agentReply(text: string, thread?: InstanceAiEvalAgentThreadTurn) {
+	return {
+		runId: `run-${text}`,
+		success: true,
+		errors: [],
+		finalText: text,
+		toolCalls: [
+			{
+				tool: 'lookup_order',
+				kind: 'node',
+				input: { id: 1 },
+				mocked: true,
+				interceptedRequests: [],
+			},
+		],
+		modelTurns: [],
+		seed: { openingMessage: 'Where is my order?', globalContext: '', toolHints: {}, warnings: [] },
+		skippedFeatures: [],
+		mockedCredentials: [],
+		...(thread
+			? {
+					thread: {
+						threadId: thread.threadId,
+						resourceId: thread.resourceId,
+						turn: thread.expectedTurn,
+						userMessage: thread.message ?? 'Where is my order?',
+					},
+				}
+			: {}),
+	} as unknown as InstanceAiEvalAgentExecutionResult;
+}
+
+/** A client that answers every turn and records what it was sent. */
+function recordingClient(calls: ExecuteCall[]): N8nClient {
+	return {
+		getPersonalProjectId: vi.fn().mockResolvedValue('project-1'),
+		executeAgentWithLlmMock: vi
+			.fn()
+			.mockImplementation(
+				async (
+					_agentId: string,
+					_projectId: string,
+					_hints?: string,
+					_timeoutMs?: number,
+					thread?: InstanceAiEvalAgentThreadTurn,
+				) => {
+					calls.push({ thread });
+					return agentReply(`reply ${String(calls.length)}`, thread);
+				},
+			),
+	} as unknown as N8nClient;
+}
+
+/** The requests that ran a turn, without the closing release (final, no message). */
+function turnCalls(calls: ExecuteCall[]): ExecuteCall[] {
+	return calls.filter(
+		({ thread }) => !(thread?.final && thread.message === undefined && thread.expectedTurn > 1),
+	);
+}
+
+/** A simulated user that sends the given messages, then declares done. */
+function scriptedUser(messages: string[]): AgentUserProxy {
+	const queue = [...messages];
+	return {
+		nextMessage: vi.fn().mockImplementation(async () => {
+			const message = queue.shift();
+			return message === undefined ? { kind: 'done' } : { kind: 'message', message };
+		}),
+	};
+}
+
+const base: ExecutionScenario = {
+	name: 'track-order',
+	description: 'A customer tracks an order.',
+	dataSetup: 'Order #123 ships tomorrow.',
+	successCriteria: '',
+	expectations: ['Gives the ship date'],
+};
+
+async function run(scenario: ExecutionScenario, calls: ExecuteCall[]) {
+	return await executeAgentScenario(
+		recordingClient(calls),
+		'agent-1',
+		scenario,
+		'(agent context)',
+		silentLogger,
+		60_000,
+	);
+}
+
+function verdicts(...passes: boolean[]): BuildExpectationResult[] {
+	return passes.map((pass, index) => ({
+		expectation: `e${String(index)}`,
+		pass,
+		reason: pass ? 'held' : 'missed',
+	}));
+}
+
+describe('executeAgentScenario: multi-turn runs', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(verifyBuildExpectations).mockImplementation(async (expectations) =>
+			expectations.map((expectation) => ({ expectation, pass: true, reason: 'held' })),
+		);
+	});
+
+	it('keeps one thread for a 3-turn scenario, opening with the seeded message', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser(['Make it express', 'Thanks']));
+		const calls: ExecuteCall[] = [];
+
+		const result = await run(
+			{ ...base, userTurns: { goal: 'Get the order sent express', maxTurns: 6 } },
+			calls,
+		);
+
+		const turns = turnCalls(calls);
+		expect(turns).toHaveLength(3);
+		expect(result.agentTurnCount).toBe(3);
+		const threadIds = new Set(calls.map((call) => call.thread?.threadId));
+		expect(threadIds.size).toBe(1);
+		expect(turns.map((call) => call.thread?.message)).toEqual([
+			undefined,
+			'Make it express',
+			'Thanks',
+		]);
+		expect(turns.map((call) => call.thread?.expectedTurn)).toEqual([1, 2, 3]);
+	});
+
+	it('fails as a framework issue when the server reports another turn than expected', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser(['Make it express']));
+		const client = recordingClient([]);
+		vi.mocked(client.executeAgentWithLlmMock).mockImplementation(async (...args) => {
+			const thread = args[4];
+			// A server that lost the thread starts it over at turn 1.
+			return agentReply('Hello again', thread && { ...thread, expectedTurn: 1 });
+		});
+
+		await expect(
+			executeAgentScenario(
+				client,
+				'agent-1',
+				{ ...base, userTurns: { goal: 'Track it', maxTurns: 3 } },
+				'(agent context)',
+				silentLogger,
+			),
+		).rejects.toThrow(/FRAMEWORK ISSUE: .*expected turn 2, got 1/);
+	});
+
+	it('marks the last turn final when maxTurns makes it the last one', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser(['one', 'two']));
+		const calls: ExecuteCall[] = [];
+
+		await run({ ...base, userTurns: { goal: 'Keep talking', maxTurns: 2 } }, calls);
+
+		expect(calls.map((call) => call.thread?.final)).toEqual([undefined, true]);
+	});
+
+	it('releases the world with a final request when the simulated user ends the scenario', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser(['Make it express']));
+		const calls: ExecuteCall[] = [];
+
+		await run({ ...base, userTurns: { goal: 'Track it', maxTurns: 6 } }, calls);
+
+		expect(calls).toHaveLength(3);
+		expect(calls[2]?.thread).toEqual({
+			threadId: calls[0]?.thread?.threadId,
+			resourceId: calls[0]?.thread?.resourceId,
+			expectedTurn: 3,
+			final: true,
+		});
+	});
+
+	it('fails as a framework issue when the simulated user errors', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue({
+			nextMessage: vi.fn().mockResolvedValue({ kind: 'error', error: 'rate limited' }),
+		});
+
+		await expect(
+			run({ ...base, userTurns: { goal: 'Track it', maxTurns: 3 } }, []),
+		).rejects.toThrow(/FRAMEWORK ISSUE: .*simulated user.*rate limited/);
+	});
+
+	it('reports how many turns ran when the conversation fails part way', async () => {
+		const nextMessage = vi
+			.fn()
+			.mockResolvedValueOnce({ kind: 'message', message: 'Make it express' })
+			.mockResolvedValueOnce({ kind: 'error', error: 'rate limited' });
+		vi.mocked(createAgentUserProxy).mockReturnValue({ nextMessage });
+
+		const failure = await run({ ...base, userTurns: { goal: 'Track it', maxTurns: 5 } }, []).catch(
+			(error: unknown) => error,
+		);
+
+		expect(failure).toBeInstanceOf(AgentRunError);
+		expect(failure).toMatchObject({ turnCount: 2 });
+	});
+
+	it('fails as a framework issue when the simulated user rejects', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue({
+			nextMessage: vi.fn().mockRejectedValue(new Error('socket hang up')),
+		});
+
+		await expect(
+			run({ ...base, userTurns: { goal: 'Track it', maxTurns: 3 } }, []),
+		).rejects.toThrow(/FRAMEWORK ISSUE: .*simulated user.*socket hang up/);
+	});
+
+	it('stops at maxTurns even when the simulated user has more to say', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser(['one', 'two', 'three']));
+		const calls: ExecuteCall[] = [];
+
+		await run({ ...base, userTurns: { goal: 'Keep talking', maxTurns: 2 } }, calls);
+
+		expect(calls).toHaveLength(2);
+	});
+
+	it('runs each session in a new thread for one resource id', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(
+			scriptedUser(['I need dinner ideas', 'I am allergic to nuts', 'Hi again']),
+		);
+		const calls: ExecuteCall[] = [];
+
+		await run(
+			{
+				...base,
+				expectations: undefined,
+				sessions: [
+					{ goal: 'Tell the agent about the allergy', maxTurns: 2 },
+					{ goal: 'Order dinner', maxTurns: 1, expectations: ['Avoids nuts'] },
+				],
+			},
+			calls,
+		);
+
+		expect(calls).toHaveLength(3);
+		const [first, second, third] = calls.map((call) => call.thread);
+		expect(first?.threadId).toBe(second?.threadId);
+		expect(third?.threadId).not.toBe(first?.threadId);
+		expect(new Set(calls.map((call) => call.thread?.resourceId)).size).toBe(1);
+		// Every session, the first included, opens with the simulated user's own message.
+		expect(first?.message).toBe('I need dinner ideas');
+		expect(third?.message).toBe('Hi again');
+	});
+
+	it('uses a fresh, plain resource id per scenario run', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser([]));
+		const calls: ExecuteCall[] = [];
+		const scenario = { ...base, userTurns: { goal: 'Track it', maxTurns: 3 } };
+
+		await run(scenario, calls);
+		await run(scenario, calls);
+
+		const [first, second] = turnCalls(calls).map((call) => call.thread?.resourceId);
+		expect(first).not.toBe(second);
+		expect(first).toMatch(/^eval-user-[0-9a-f-]{36}$/);
+	});
+
+	it('judges the whole transcript, with every session marked', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(
+			scriptedUser(['I need dinner ideas', 'I am allergic to nuts', 'Hi again']),
+		);
+		const calls: ExecuteCall[] = [];
+
+		const result = await run(
+			{
+				...base,
+				sessions: [
+					{ goal: 'Tell the agent about the allergy', maxTurns: 2 },
+					{ goal: 'Order dinner', maxTurns: 1 },
+				],
+			},
+			calls,
+		);
+
+		const input = vi.mocked(verifyBuildExpectations).mock.calls[0]?.[1];
+		const transcript: TranscriptTurn[] = input?.transcript ?? [];
+		// The row keeps the transcript the judge read, for eval-results.json.
+		expect(result.agentTranscript).toEqual(transcript);
+		expect(transcript.map((turn) => turn.userMessage)).toEqual([
+			'I need dinner ideas',
+			'I am allergic to nuts',
+			'Hi again',
+		]);
+		expect(transcript.map((turn) => turn.heading)).toEqual([
+			expect.stringContaining('Session 1'),
+			undefined,
+			expect.stringContaining('Session 2'),
+		]);
+		expect(transcript[0]?.steps).toEqual([
+			expect.objectContaining({ kind: 'tool-call', toolName: 'lookup_order' }),
+			{ kind: 'agent-text', text: 'reply 1' },
+		]);
+	});
+
+	it('marks the session even when the scenario has only one', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser(['I need dinner ideas']));
+
+		await run({ ...base, sessions: [{ goal: 'Order dinner', maxTurns: 1 }] }, []);
+
+		const transcript = vi.mocked(verifyBuildExpectations).mock.calls[0]?.[1].transcript ?? [];
+		expect(transcript[0]?.heading).toEqual(expect.stringContaining('Session 1'));
+	});
+
+	it('adds no session heading to a userTurns scenario', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser([]));
+
+		await run({ ...base, userTurns: { goal: 'Track it', maxTurns: 1 } }, []);
+
+		const transcript = vi.mocked(verifyBuildExpectations).mock.calls[0]?.[1].transcript ?? [];
+		expect(transcript[0]?.heading).toBeUndefined();
+	});
+
+	it('keeps the single-shot request unchanged when the scenario has no turns or sessions', async () => {
+		const calls: ExecuteCall[] = [];
+
+		const result = await run(base, calls);
+
+		expect(calls).toEqual([{ thread: undefined }]);
+		expect(createAgentUserProxy).not.toHaveBeenCalled();
+		expect(result.agentTurnCount).toBe(1);
+	});
+
+	it('fails the run when the simulated user writes no opening for the first session', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser([]));
+		const calls: ExecuteCall[] = [];
+
+		await expect(
+			run({ ...base, sessions: [{ goal: 'Order dinner', maxTurns: 2 }] }, calls),
+		).rejects.toThrow(/FRAMEWORK ISSUE: .*no opening message/);
+		expect(calls).toEqual([]);
+	});
+});
+
+describe('executeAgentScenario: per-expectation grading', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser([]));
+	});
+
+	const graded: ExecutionScenario = {
+		...base,
+		expectations: ['Gives the ship date', 'Offers express shipping'],
+		sessions: undefined,
+		userTurns: { goal: 'Track it', maxTurns: 2 },
+	};
+
+	it('gives each expectation its own verdict, keyed by scenario and expectation', async () => {
+		vi.mocked(verifyBuildExpectations).mockResolvedValue(verdicts(true, true));
+
+		const result = await run(graded, []);
+
+		expect(result.expectationResults).toEqual([
+			expect.objectContaining({ expectation: 'track-order › Gives the ship date', pass: true }),
+			expect.objectContaining({ expectation: 'track-order › Offers express shipping', pass: true }),
+		]);
+		expect(result.success).toBe(true);
+		expect(verifyChecklist).not.toHaveBeenCalled();
+	});
+
+	it('asks the judge for an agent-runtime verdict', async () => {
+		vi.mocked(verifyBuildExpectations).mockResolvedValue(verdicts(true, true));
+
+		await run(graded, []);
+
+		expect(vi.mocked(verifyBuildExpectations).mock.calls[0]?.[1]).toMatchObject({
+			subject: 'agent-runtime',
+		});
+	});
+
+	it('fails the scenario when any expectation fails', async () => {
+		vi.mocked(verifyBuildExpectations).mockResolvedValue(verdicts(true, false));
+
+		const result = await run(graded, []);
+
+		expect(result.success).toBe(false);
+		expect(result.expectationResults?.[1]).toMatchObject({
+			pass: false,
+			attribution: 'builder_issue',
+		});
+		expect(result.reasoning).toContain('Offers express shipping');
+	});
+
+	it('keys a session expectation by its session too', async () => {
+		vi.mocked(verifyBuildExpectations).mockResolvedValue(verdicts(true, true));
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser(['Hi', 'Hi again']));
+
+		const result = await run(
+			{
+				...graded,
+				userTurns: undefined,
+				expectations: ['Is polite'],
+				sessions: [
+					{ goal: 'Say hi', maxTurns: 1 },
+					{ goal: 'Order', maxTurns: 1, expectations: ['Avoids nuts'] },
+				],
+			},
+			[],
+		);
+
+		expect(result.expectationResults?.map((verdict) => verdict.expectation)).toEqual([
+			'track-order › Is polite',
+			'track-order › session 2 › Avoids nuts',
+		]);
+	});
+
+	it('leaves the scenario ungraded when the judge gives no verdict', async () => {
+		vi.mocked(verifyBuildExpectations).mockResolvedValue([
+			{ expectation: 'e0', pass: false, reason: 'no verdict', incomplete: true },
+			{ expectation: 'e1', pass: true, reason: 'held' },
+		]);
+
+		const result = await run(graded, []);
+
+		expect(result.incomplete).toBe(true);
+		expect(result.success).toBe(false);
+	});
+
+	it('grades a single-shot scenario that has expectations the same way', async () => {
+		vi.mocked(verifyBuildExpectations).mockResolvedValue(verdicts(false));
+		const calls: ExecuteCall[] = [];
+
+		const result = await run({ ...base, userTurns: undefined }, calls);
+
+		expect(calls).toEqual([{ thread: undefined }]);
+		expect(result.success).toBe(false);
+		expect(result.expectationResults).toHaveLength(1);
+	});
+});

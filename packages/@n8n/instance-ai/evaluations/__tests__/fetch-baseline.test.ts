@@ -221,6 +221,58 @@ describe('fetchBaselineBucket', () => {
 		expect(bucket.trialTotal).toBe(3);
 	});
 
+	it('ingests the agent scenario expectation verdicts, skipping ungraded ones', async () => {
+		const client = bucketClient([
+			scenarioRun('s1', true, {
+				scenarioExpectationResults: [
+					{ expectation: 's1 › Quotes the price', pass: true, reason: 'ok' },
+				],
+			}),
+			scenarioRun('s2', false, {
+				scenarioExpectationResults: [
+					{ expectation: 's2 › Recalls the order', pass: false, reason: 'forgot' },
+					{ expectation: 's2 › Is polite', pass: false, reason: 'none', incomplete: true },
+				],
+			}),
+			{
+				inputs: { testCaseFile: 'my-case', scenarioName: 's1', _iteration: 1 },
+				outputs: {
+					passed: true,
+					scenarioExpectationResults: [
+						{ expectation: 's1 › Quotes the price', pass: false, reason: 'no' },
+					],
+				},
+			},
+		]);
+		const bucket = await fetchBaselineBucket(client, 'instance-ai-baseline-x');
+
+		expect(bucket.evaluationUnits.get('my-case#expectation:s1 › Quotes the price')).toMatchObject({
+			kind: 'expectation',
+			passed: 1,
+			total: 2,
+		});
+		expect(bucket.evaluationUnits.get('my-case#expectation:s2 › Recalls the order')).toMatchObject({
+			passed: 0,
+			total: 1,
+		});
+		expect(bucket.evaluationUnits.has('my-case#expectation:s2 › Is polite')).toBe(false);
+	});
+
+	it('counts no scenario trial for a row graded by expectations', async () => {
+		const client = bucketClient([
+			scenarioRun('graded', false, {
+				expectationGraded: true,
+				scenarioExpectationResults: [{ expectation: 'graded › Quotes', pass: false, reason: 'no' }],
+			}),
+			scenarioRun('plain', true),
+		]);
+		const bucket = await fetchBaselineBucket(client, 'instance-ai-baseline-x');
+
+		expect(bucket.evaluationUnits.has('my-case/graded')).toBe(false);
+		expect(bucket.evaluationUnits.has('my-case#expectation:graded › Quotes')).toBe(true);
+		expect(bucket.trialTotal).toBe(1);
+	});
+
 	it('defaults a missing _iteration to 0 so single-iteration rows dedupe together', async () => {
 		const verdicts = [{ expectation: 'asks first', pass: true, reason: 'did' }];
 		const client = bucketClient([

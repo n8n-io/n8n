@@ -105,10 +105,9 @@ describe('selectCases with Agent run fields that are not acted on yet', () => {
 
 		expect(testCasesWithFiles).toHaveLength(4);
 		const warnings = logger.warn.mock.calls.map(([message]) => message);
+		// Multi-turn runs (userTurns, sessions) are implemented; only memory still waits.
 		expect(warnings).toEqual([
 			expect.stringMatching(/memory: .*keepMemory, configOverrides.* ignored/),
-			expect.stringMatching(/multi-turn: .*userTurns.* ignored/),
-			expect.stringMatching(/sessions: .*sessions.* ignored/),
 		]);
 	});
 

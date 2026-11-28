@@ -26,7 +26,11 @@ import {
 	AGENT_ARTIFACT_CASE_CAP_BYTES,
 	sanitizeAgentArtifact,
 } from '../harness/artifacts/agent-artifact';
-import { DIRECT_AGENT_BUILD_PATH, isDirectAgentRun } from '../harness/agent-run-schema';
+import {
+	DIRECT_AGENT_BUILD_PATH,
+	isDirectAgentRun,
+	isExpectationGraded,
+} from '../harness/agent-run-schema';
 import type { EvalLogger } from '../harness/logger';
 import { extractErrorMessage } from '../harness/transient-error';
 import { rollupCaseVerification } from '../summary';
@@ -115,7 +119,7 @@ export function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 		for (const tc of testCases) {
 			for (const sa of tc.executionScenarios) {
 				const runResult = sa.runs[i];
-				if (runResult?.incomplete) continue;
+				if (runResult?.incomplete || isExpectationGraded(sa.scenario)) continue;
 				total++;
 				if (runResult?.success) passed++;
 			}
@@ -546,6 +550,9 @@ export function writeEvalResults(
 						? { agentId: sr.agentId ?? tc.runs[runIndex]?.agentId }
 						: {}),
 					...(sr.modelResolution ? { modelResolution: sr.modelResolution } : {}),
+					...(sr.agentTurnCount !== undefined ? { agentTurnCount: sr.agentTurnCount } : {}),
+					...(sr.durationMs !== undefined ? { durationMs: sr.durationMs } : {}),
+					...(sr.agentTranscript ? { transcript: sr.agentTranscript } : {}),
 					passed: sr.success,
 					...(sr.incomplete ? { incomplete: true } : {}),
 					score: sr.score,

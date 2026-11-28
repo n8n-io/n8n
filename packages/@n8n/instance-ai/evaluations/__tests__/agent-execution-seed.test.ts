@@ -2,6 +2,7 @@ import type { InstanceAiEvalAgentExecutionResult } from '@n8n/api-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { N8nClient } from '../clients/n8n-client';
+import { verifyBuildExpectations } from '../build-expectations/verifier';
 import { verifyChecklist } from '../checklist/verifier';
 import { executeAgentScenario } from '../harness/agent-execution';
 import type { EvalLogger } from '../harness/logger';
@@ -15,6 +16,7 @@ vi.mock('../harness/scenario-execution', async (importOriginal) => ({
 	...(await importOriginal<typeof import('../harness/scenario-execution')>()),
 	writeScenarioVerificationSnapshot: vi.fn(),
 }));
+vi.mock('../build-expectations/verifier', () => ({ verifyBuildExpectations: vi.fn() }));
 vi.mock('../checklist/verifier', () => ({
 	verifyChecklist: vi.fn().mockResolvedValue({
 		results: [{ id: 1, pass: true, reasoning: 'ok' }],
@@ -143,12 +145,18 @@ describe('executeAgentScenario', () => {
 			'build-project',
 			scenario.dataSetup,
 			10_000,
+			undefined,
 		);
 		expect(client.getPersonalProjectId).not.toHaveBeenCalled();
 	});
 
-	it('hands the judge the expectations with the success criteria', async () => {
+	it('grades each expectation with the expectations judge, not the success-criteria checklist', async () => {
 		const client = clientRecording([]);
+		vi.mocked(verifyBuildExpectations).mockResolvedValue([
+			{ expectation: 'Names Ada', pass: true, reason: 'named' },
+			{ expectation: 'Shows her email', pass: true, reason: 'shown' },
+		]);
+		vi.mocked(verifyChecklist).mockClear();
 
 		await executeAgentScenario(
 			client,
@@ -159,9 +167,10 @@ describe('executeAgentScenario', () => {
 			10_000,
 		);
 
-		const [checklist] = vi.mocked(verifyChecklist).mock.calls.at(-1) ?? [];
-		expect(checklist?.[0].description).toBe(
-			'The agent finds Ada.\n\nAll of these must hold:\n- Names Ada\n- Shows her email',
-		);
+		expect(vi.mocked(verifyBuildExpectations).mock.calls.at(-1)?.[0]).toEqual([
+			'Names Ada',
+			'Shows her email',
+		]);
+		expect(verifyChecklist).not.toHaveBeenCalled();
 	});
 });

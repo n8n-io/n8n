@@ -3,12 +3,14 @@ import {
 	raceWithAbort,
 	throwIfAborted,
 	type Agent as RuntimeAgent,
+	type AgentMessage,
 	type GenerateResult,
 } from '@n8n/agents';
 import type {
 	AgentJsonConfig,
 	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalAgentExecutionResult,
+	InstanceAiEvalAgentThreadTurn,
 	InstanceAiEvalAgentScenarioSeed,
 	InstanceAiEvalAgentSkippedFeature,
 	InstanceAiEvalAgentToolCallRecord,
@@ -27,6 +29,7 @@ import { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evalua
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
+import { EvalAgentThreadStore, type EvalAgentThread } from './agent-eval-threads';
 import { createAgentModelTurnRecorder } from './agent-model-turn-recorder';
 import { generateAgentScenarioSeed } from './agent-scenario-seed';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
@@ -89,6 +92,42 @@ interface AgentRunOutput {
 	result: GenerateResult;
 	segmentToolCalls: NonNullable<GenerateResult['toolCalls']>;
 	autoApprovedToolNames: Set<string>;
+	/** A tool call suspended and was approved, so the turn ran in segments. */
+	resumed: boolean;
+}
+
+type RuntimeInstrumentation = Parameters<AgentEvaluationPreparation['buildRuntime']>[0];
+
+/**
+ * What one simulated user shares across its turns and threads: the prepared
+ * Agent, the generated seed, and the tool mocks that seed steers. The mocks
+ * record into `evidence.current`, which each turn replaces, so a turn reports
+ * only its own tool calls.
+ */
+interface EvalAgentWorld {
+	agentId: string;
+	userId: string;
+	preparation: AgentEvaluationPreparation;
+	seed: InstanceAiEvalAgentScenarioSeed;
+	instrumentation: RuntimeInstrumentation;
+	evidence: { current: AgentRunEvidence };
+}
+
+type AgentInput = string | AgentMessage[];
+
+function userTextMessage(text: string): AgentMessage {
+	return { role: 'user', content: [{ type: 'text', text }] };
+}
+
+/**
+ * The messages a successful turn adds to its thread. A turn that ran in
+ * segments (approvals) keeps only its final text: its segments' messages may
+ * hold a tool call without its result, which a provider rejects on replay.
+ */
+function threadMessagesOf(output: AgentRunOutput, finalText: string): AgentMessage[] {
+	if (!output.resumed) return output.result.messages;
+	if (finalText.length === 0) return [];
+	return [{ role: 'assistant', content: [{ type: 'text', text: finalText }] }];
 }
 
 /**
@@ -183,6 +222,12 @@ function extractFinalAssistantText(result: GenerateResult): string {
 
 @Service()
 export class EvalAgentExecutionService {
+	private readonly threads = new EvalAgentThreadStore<EvalAgentWorld>();
+
+	/** Resource ids with a turn in flight. One turn per simulated user at a time:
+	 *  turns share the world's evidence and the thread's history. */
+	private readonly busyResources = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionsConfig: ExecutionsConfig,
@@ -212,9 +257,171 @@ export class EvalAgentExecutionService {
 		if (!this.moduleRegistry.isActive('agents')) {
 			return this.errorResult('Agent eval execution requires the agents module to be active.');
 		}
+		if (options.thread)
+			return await this.executeGuardedThreadTurn(agentId, user, options, options.thread);
+
+		const world = await this.createWorld(agentId, user, options, caseInput);
+		if ('error' in world) return world.error;
+		const { output } = await this.runTurn(world, world.seed.openingMessage, options);
+		return output;
+	}
+
+	/** Run a thread turn unless one is already running for its resource id. */
+	private async executeGuardedThreadTurn(
+		agentId: string,
+		user: User,
+		options: InstanceAiEvalAgentExecutionRequest,
+		turn: InstanceAiEvalAgentThreadTurn,
+	): Promise<InstanceAiEvalAgentExecutionResult> {
+		if (this.busyResources.has(turn.resourceId)) {
+			return this.errorResult(`Resource id ${turn.resourceId} has a turn already running`);
+		}
+		this.busyResources.add(turn.resourceId);
+		try {
+			return await this.executeThreadTurn(agentId, user, options, turn);
+		} finally {
+			this.busyResources.delete(turn.resourceId);
+		}
+	}
+
+	/**
+	 * One turn of a multi-turn run. The thread's earlier messages are replayed
+	 * before the new one, and the world is shared by every thread of the same
+	 * resource id. A failed turn is not added to the thread.
+	 */
+	private async executeThreadTurn(
+		agentId: string,
+		user: User,
+		options: InstanceAiEvalAgentExecutionRequest,
+		turn: InstanceAiEvalAgentThreadTurn,
+	): Promise<InstanceAiEvalAgentExecutionResult> {
+		const thread = this.threads.thread(turn.threadId);
+		const refusal = this.threadRefusal(agentId, user, turn, thread);
+		if (refusal) return this.errorResult(refusal);
+		if (thread && turn.final && turn.message === undefined) return this.releaseThread(turn, thread);
+
+		const world = await this.resolveWorld(agentId, user, options, turn.resourceId);
+		if ('error' in world) return world.error;
+
+		const userMessage = turn.message ?? world.seed.openingMessage;
+		const input = [...(thread?.messages ?? []), userTextMessage(userMessage)];
+		const { output, threadMessages } = await this.runTurn(world, input, options);
+		const turns = (thread?.turns ?? 0) + 1;
+		if (threadMessages) {
+			this.saveThread(turn, { agentId, userId: user.id }, [...input, ...threadMessages], turns);
+		}
+		if (threadMessages && turn.final) this.threads.dropResource(turn.resourceId);
+		const echo = { threadId: turn.threadId, resourceId: turn.resourceId, turn: turns, userMessage };
+		return { ...output, thread: echo };
+	}
+
+	/** A final request with no message: forget the resource, run nothing. */
+	private releaseThread(
+		turn: InstanceAiEvalAgentThreadTurn,
+		thread: EvalAgentThread,
+	): InstanceAiEvalAgentExecutionResult {
+		const seed = this.threads.world(turn.resourceId)?.seed;
+		this.threads.dropResource(turn.resourceId);
+		return {
+			runId: '',
+			success: true,
+			errors: [],
+			finalText: '',
+			toolCalls: [],
+			modelTurns: [],
+			seed: seed ?? { openingMessage: '', globalContext: '', toolHints: {}, warnings: [] },
+			skippedFeatures: [],
+			mockedCredentials: [],
+			thread: {
+				threadId: turn.threadId,
+				resourceId: turn.resourceId,
+				turn: thread.turns,
+				userMessage: '',
+			},
+		};
+	}
+
+	/** The resource's world, made on its first turn. */
+	private async resolveWorld(
+		agentId: string,
+		user: User,
+		options: InstanceAiEvalAgentExecutionRequest,
+		resourceId: string,
+	): Promise<EvalAgentWorld | { error: InstanceAiEvalAgentExecutionResult }> {
+		const existing = this.threads.world(resourceId);
+		if (existing) return existing;
+		const created = await this.createWorld(agentId, user, options);
+		if (!('error' in created)) this.threads.saveWorld(resourceId, created);
+		return created;
+	}
+
+	private saveThread(
+		turn: InstanceAiEvalAgentThreadTurn,
+		owner: { agentId: string; userId: string },
+		messages: AgentMessage[],
+		turns: number,
+	): void {
+		this.threads.saveThread(turn.threadId, {
+			resourceId: turn.resourceId,
+			...owner,
+			messages,
+			turns,
+		});
+	}
+
+	/** A turn must be the next one of the thread the server holds. */
+	private turnStepRefusal(
+		turn: InstanceAiEvalAgentThreadTurn,
+		thread: EvalAgentThread | undefined,
+	): string | undefined {
+		if (!thread) {
+			return turn.expectedTurn === 1
+				? undefined
+				: `Eval thread ${turn.threadId} is unknown or expired, so turn ${String(turn.expectedTurn)} cannot continue it`;
+		}
+		const next = thread.turns + 1;
+		if (turn.expectedTurn === next) return undefined;
+		return `Eval thread ${turn.threadId} is at turn ${String(thread.turns)}, so the next turn is ${String(next)}, not ${String(turn.expectedTurn)}`;
+	}
+
+	/** Why a thread turn cannot run, or undefined when it can. */
+	private threadRefusal(
+		agentId: string,
+		user: User,
+		turn: InstanceAiEvalAgentThreadTurn,
+		thread: EvalAgentThread | undefined,
+	): string | undefined {
+		const stepRefusal = this.turnStepRefusal(turn, thread);
+		if (stepRefusal) return stepRefusal;
+		if (thread && (thread.agentId !== agentId || thread.userId !== user.id)) {
+			return `Eval thread ${turn.threadId} belongs to another Agent or user`;
+		}
+		if (thread && thread.resourceId !== turn.resourceId) {
+			return `Eval thread ${turn.threadId} belongs to another resource id`;
+		}
+		if (thread && turn.message === undefined && !turn.final) {
+			return `Continuing eval thread ${turn.threadId} needs a message`;
+		}
+		const world = this.threads.world(turn.resourceId);
+		if (world && (world.agentId !== agentId || world.userId !== user.id)) {
+			return `Resource id ${turn.resourceId} was made for another Agent or user`;
+		}
+		return undefined;
+	}
+
+	/**
+	 * Prepare the Agent and generate the world its turns run in: the seed and
+	 * the tool mocks it steers. On failure, the error result to return.
+	 */
+	private async createWorld(
+		agentId: string,
+		user: User,
+		options: InstanceAiEvalAgentExecutionRequest,
+		caseInput?: string,
+	): Promise<EvalAgentWorld | { error: InstanceAiEvalAgentExecutionResult }> {
 		const { projectId } = options;
 		const prepared = await Container.get(AgentEvaluationService).prepare(user, projectId, agentId);
-		if (prepared.error !== undefined) return this.errorResult(prepared.error);
+		if (prepared.error !== undefined) return { error: this.errorResult(prepared.error) };
 		const preparation = prepared.preparation;
 		const { config, tools: toolSummaries } = preparation;
 
@@ -240,9 +447,11 @@ export class EvalAgentExecutionService {
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			return this.errorResult(
-				message.startsWith('FRAMEWORK ISSUE:') ? message : `FRAMEWORK ISSUE: ${message}`,
-			);
+			return {
+				error: this.errorResult(
+					message.startsWith('FRAMEWORK ISSUE:') ? message : `FRAMEWORK ISSUE: ${message}`,
+				),
+			};
 		}
 
 		// A fixed eval case overrides the generated opening message: keep the
@@ -258,13 +467,7 @@ export class EvalAgentExecutionService {
 			nodeHints: seed.toolHints,
 		});
 
-		const toolLedger: ToolLedger = new Map();
-		const credentialHelpers: EvalMockedCredentialsHelper[] = [];
-		const recorder = createAgentModelTurnRecorder(
-			createAiProxyFetch(this.outboundHttp),
-			this.logger,
-		);
-		const evidence = { recorder, toolLedger, credentialHelpers };
+		const evidence = { current: this.newEvidence() };
 		const instrumentation = await this.createRuntimeInstrumentation(
 			config,
 			seed,
@@ -272,11 +475,31 @@ export class EvalAgentExecutionService {
 			mockHandler,
 			evidence,
 		);
+		return { agentId, userId: user.id, preparation, seed, instrumentation, evidence };
+	}
+
+	private newEvidence(): AgentRunEvidence {
+		return {
+			recorder: createAgentModelTurnRecorder(createAiProxyFetch(this.outboundHttp), this.logger),
+			toolLedger: new Map(),
+			credentialHelpers: [],
+		};
+	}
+
+	/** Run one turn in the world, with fresh evidence so it reports only its own calls. */
+	private async runTurn(
+		world: EvalAgentWorld,
+		input: AgentInput,
+		options: InstanceAiEvalAgentExecutionRequest,
+	) {
+		const evidence = this.newEvidence();
+		world.evidence.current = evidence;
 		return await this.executePreparedRuntime(
-			preparation,
-			instrumentation,
-			seed,
+			world.preparation,
+			{ ...world.instrumentation, modelFetch: evidence.recorder.fetch },
+			world.seed,
 			evidence,
+			input,
 			options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
 		);
 	}
@@ -286,8 +509,8 @@ export class EvalAgentExecutionService {
 		seed: InstanceAiEvalAgentScenarioSeed,
 		scenarioSignal: string | undefined,
 		mockHandler: EvalLlmMockHandler,
-		{ recorder, toolLedger, credentialHelpers }: AgentRunEvidence,
-	): Promise<Parameters<AgentEvaluationPreparation['buildRuntime']>[0]> {
+		evidence: { current: AgentRunEvidence },
+	): Promise<RuntimeInstrumentation> {
 		const pendingMcpCalls = new Map<string, McpMockToolCall[]>();
 		const mcpCallIdentity = (serverName: string, toolName: string) =>
 			JSON.stringify([serverName, toolName]);
@@ -328,6 +551,7 @@ export class EvalAgentExecutionService {
 			if (calls.length === 0) pendingMcpCalls.delete(identity);
 
 			const key = modelToolName ?? sanitizeMcpToolName(`${serverName}_${toolName}`);
+			const toolLedger = evidence.current.toolLedger;
 			let entries = toolLedger.get(key);
 			if (!entries) {
 				entries = [];
@@ -351,6 +575,7 @@ export class EvalAgentExecutionService {
 			searchHint: seed.toolHints?.web_search,
 			logger: this.logger,
 			onSearch: (args, result) => {
+				const toolLedger = evidence.current.toolLedger;
 				let entries = toolLedger.get('web_search');
 				if (!entries) {
 					entries = [];
@@ -367,7 +592,7 @@ export class EvalAgentExecutionService {
 		});
 
 		return {
-			modelFetch: recorder.fetch,
+			modelFetch: evidence.current.recorder.fetch,
 			mcpFetch: () => mcpFetch,
 			onMcpToolCallSettled: ({ serverName, toolName, modelToolName }) => {
 				recordSettledMcpCall(serverName, toolName, modelToolName);
@@ -379,24 +604,26 @@ export class EvalAgentExecutionService {
 					undefined,
 					this.logger,
 				);
-				credentialHelpers.push(helper);
+				evidence.current.credentialHelpers.push(helper);
 				additionalData.credentialsHelper = helper;
 				additionalData.evalLlmMockHandler = this.createRecordingMockHandler(
 					mockHandler,
 					toolContext.toolName,
-					toolLedger,
+					evidence.current.toolLedger,
 				);
 			},
 		};
 	}
 
+	/** The turn's result, and on success the messages it adds to its thread. */
 	private async executePreparedRuntime(
 		preparation: AgentEvaluationPreparation,
-		instrumentation: Parameters<AgentEvaluationPreparation['buildRuntime']>[0],
+		instrumentation: RuntimeInstrumentation,
 		seed: InstanceAiEvalAgentScenarioSeed,
 		evidence: AgentRunEvidence,
+		input: AgentInput,
 		timeoutMs: number,
-	): Promise<InstanceAiEvalAgentExecutionResult> {
+	): Promise<{ output: InstanceAiEvalAgentExecutionResult; threadMessages?: AgentMessage[] }> {
 		const { config, skippedFeatures } = preparation;
 		const { recorder, toolLedger, credentialHelpers } = evidence;
 		const budgetSignal = AbortSignal.timeout(timeoutMs);
@@ -409,38 +636,45 @@ export class EvalAgentExecutionService {
 				return runtime;
 			}, budgetSignal);
 		} catch (error) {
-			return this.errorResult(
-				this.runErrorMessage(error, budgetSignal, timeoutMs, 'Failed to build agent runtime'),
-				seed,
-				skippedFeatures,
-			);
+			return {
+				output: this.errorResult(
+					this.runErrorMessage(error, budgetSignal, timeoutMs, 'Failed to build agent runtime'),
+					seed,
+					skippedFeatures,
+				),
+			};
 		}
 
 		const maxIterations = Math.min(
 			config.config?.maxIterations ?? DEFAULT_MAX_ITERATIONS,
 			MAX_ITERATIONS_CAP,
 		);
-		let output: AgentRunOutput;
+		let run: AgentRunOutput;
 		try {
-			output = await this.generateWithAutoApprovals(agent, seed.openingMessage, {
+			run = await this.generateWithAutoApprovals(agent, input, {
 				abortSignal: budgetSignal,
 				maxIterations,
 			});
 		} catch (error) {
 			// Flush so the failure result carries the recorded response bodies too.
 			await recorder.flush();
-			return this.errorResult(
-				this.runErrorMessage(error, budgetSignal, timeoutMs, 'Agent run failed'),
-				seed,
-				skippedFeatures,
-				{ modelTurns: recorder.turns, toolLedger, credentialHelpers },
-			);
+			return {
+				output: this.errorResult(
+					this.runErrorMessage(error, budgetSignal, timeoutMs, 'Agent run failed'),
+					seed,
+					skippedFeatures,
+					{ modelTurns: recorder.turns, toolLedger, credentialHelpers },
+				),
+			};
 		} finally {
 			await recorder.flush();
 			if (budgetSignal.aborted) void this.closeRuntime(agent);
 			else await this.closeRuntime(agent);
 		}
-		return this.executionResult(output, preparation, seed, evidence);
+		const output = this.executionResult(run, preparation, seed, evidence);
+		return output.success
+			? { output, threadMessages: threadMessagesOf(run, output.finalText) }
+			: { output };
 	}
 
 	private async closeRuntime(agent: RuntimeAgent) {
@@ -469,7 +703,7 @@ export class EvalAgentExecutionService {
 
 	private async generateWithAutoApprovals(
 		agent: RuntimeAgent,
-		openingMessage: string,
+		input: AgentInput,
 		options: { abortSignal: AbortSignal; maxIterations: number },
 	): Promise<AgentRunOutput> {
 		const autoApprovedToolNames = new Set<string>();
@@ -480,7 +714,7 @@ export class EvalAgentExecutionService {
 			}
 		};
 		let result = await raceWithAbort(
-			async () => await agent.generate(openingMessage, options),
+			async () => await agent.generate(input, options),
 			options.abortSignal,
 		);
 		collectToolCalls(result);
@@ -501,7 +735,7 @@ export class EvalAgentExecutionService {
 			);
 			collectToolCalls(result);
 		}
-		return { result, segmentToolCalls, autoApprovedToolNames };
+		return { result, segmentToolCalls, autoApprovedToolNames, resumed: approvals > 0 };
 	}
 
 	private executionResult(

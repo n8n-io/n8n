@@ -1,3 +1,4 @@
+import { isExpectationGraded } from './harness/agent-run-schema';
 import type {
 	BuildExpectationAggregation,
 	ExecutionScenarioAggregation,
@@ -51,7 +52,9 @@ export function getCheckedRunCount(tc: TestCaseAggregation): number {
 export function getRunScoredCounts(result: WorkflowTestCaseResult): ScoredCounts {
 	// Incomplete units (no verifier/judge verdict) are visible but not scored.
 	const scoredExpectations = (result.buildExpectationResults ?? []).filter((e) => !e.incomplete);
-	const scoredScenarios = result.executionScenarioResults.filter((sr) => !sr.incomplete);
+	const scoredScenarios = result.executionScenarioResults.filter(
+		(sr) => !sr.incomplete && !isExpectationGraded(sr.scenario),
+	);
 
 	return {
 		passCount:

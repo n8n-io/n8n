@@ -117,3 +117,35 @@ describe('writeEvalResults — notVerified serialization', () => {
 		);
 	});
 });
+
+describe('writeEvalResults — agent scenario runs', () => {
+	it('records the turn count and duration of an agent scenario run', () => {
+		const testCase = scenarioCase();
+		const result = runResult(testCase, { success: true });
+		result.executionScenarioResults[0] = {
+			...result.executionScenarioResults[0],
+			agentTurnCount: 5,
+			durationMs: 61_000,
+		};
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-test-'));
+		const { jsonPath } = writeEvalResults(
+			aggregateResults([[result]], 1),
+			1234,
+			dir,
+			'exp-test',
+			undefined,
+			undefined,
+			new Map([[testCase, 'agent-case']]),
+			undefined,
+			undefined,
+		);
+
+		const report = jsonParse<{
+			testCases: Array<{ scenarios: Array<{ runs: Array<Record<string, unknown>> }> }>;
+		}>(readFileSync(jsonPath, 'utf8'));
+		expect(report.testCases[0]?.scenarios[0]?.runs[0]).toMatchObject({
+			agentTurnCount: 5,
+			durationMs: 61_000,
+		});
+	});
+});

@@ -1,3 +1,4 @@
+import { isExpectationGraded } from '../harness/agent-run-schema';
 import { collectExpectations } from '../build-expectations/collect';
 import type {
 	WorkflowTestCaseResult,
@@ -130,8 +131,11 @@ export function aggregateResults(
 					},
 			);
 			// Verifier-incomplete runs carry no verdict — excluded from the count,
-			// mirroring build expectations (denominator = evaluated runs).
-			const evaluated = scenarioRuns.filter((sr) => !sr.incomplete);
+			// mirroring build expectations (denominator = evaluated runs). A scenario
+			// graded by expectations counts through them, not through its row.
+			const evaluated = isExpectationGraded(scenario)
+				? []
+				: scenarioRuns.filter((sr) => !sr.incomplete);
 			const passCount = evaluated.filter((sr) => sr.success).length;
 			const n = evaluated.length;
 			const { passAtKValues, passHatKValues } = computePassMetrics(n, passCount);

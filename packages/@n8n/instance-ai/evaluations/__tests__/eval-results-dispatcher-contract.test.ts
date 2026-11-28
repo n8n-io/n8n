@@ -176,6 +176,8 @@ interface DispatcherView {
 				attribution?: string;
 				rootCause?: string;
 				execErrors: string[];
+				/** Agent runs: the multi-turn conversation, sessions marked by `heading`. */
+				transcript?: TranscriptTurn[];
 			}>;
 		}>;
 	}>;
@@ -368,6 +370,58 @@ describe('eval-results.json — dispatcher contract', () => {
 		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
 
 		expect(report.testCases[0].buildPath).toBe('agent-direct');
+	});
+
+	it('serializes the conversation of an Agent scenario run, with its session headings', () => {
+		const directCase: WorkflowTestCase = {
+			complexity: 'simple',
+			tags: [],
+			datasets: ['full'],
+			executionScenarios: [scenario],
+			agentRun: { mode: 'direct' },
+		};
+		const transcript: TranscriptTurn[] = [
+			{
+				heading: '## Session 1 (a new chat thread, same user)',
+				userMessage: 'I am allergic to nuts',
+				steps: [
+					{ kind: 'tool-call', toolName: 'save_note', args: { note: 'nut allergy' } },
+					{ kind: 'agent-text', text: 'Noted.' },
+				],
+			},
+			{
+				heading: '## Session 2 (a new chat thread, same user)',
+				userMessage: 'What can I order?',
+				steps: [{ kind: 'agent-text', text: 'The salad has no nuts.' }],
+			},
+		];
+		const run = (): WorkflowTestCaseResult => ({
+			testCase: directCase,
+			workflowBuildSuccess: true,
+			agentId: 'agent-1',
+			executionScenarioResults: [
+				{ scenario, success: true, score: 1, reasoning: 'ok', agentTranscript: transcript },
+			],
+		});
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const { jsonPath } = writeEvalResults(
+			aggregateResults([[run()]], 1),
+			1234,
+			dir,
+			'exp-direct-agent',
+			undefined,
+			undefined,
+			new Map([[directCase, 'support-agent']]),
+			undefined,
+			undefined,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+
+		expect(report.testCases[0].scenarios[0].runs[0].transcript).toEqual(transcript);
+	});
+
+	it('leaves the transcript off a workflow scenario run', () => {
+		expect(writeAndRead().testCases[0].scenarios[0].runs[0]).not.toHaveProperty('transcript');
 	});
 
 	it('leaves the build path off an assistant build, as before', () => {

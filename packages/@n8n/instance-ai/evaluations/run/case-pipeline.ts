@@ -24,7 +24,8 @@ import {
 	findAgentArtifactRef,
 	type AgentScenarioContext,
 } from '../harness/agent-execution';
-import { isDirectAgentRun } from '../harness/agent-run-schema';
+import { AgentRunError } from '../harness/agent-conversation';
+import { isDirectAgentRun, isExpectationGraded } from '../harness/agent-run-schema';
 import { buildFailedOnInfra, harnessFault } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
@@ -85,6 +86,11 @@ const SILENT_LOGGER: EvalLogger = {
 	error() {},
 	isVerbose: false,
 };
+
+/** Turns that got a reply before an Agent run failed: 0 unless the run says otherwise. */
+function turnsBeforeError(error: unknown): number {
+	return error instanceof AgentRunError ? error.turnCount : 0;
+}
 
 export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 	const {
@@ -165,7 +171,28 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		return await next;
 	}
 
-	const runRow = async (inputs: ScenarioRowInputs): Promise<TargetOutput> => {
+	/** An Agent row that ended in an error still records its turn count. */
+	const agentTurnFields = (inputs: ScenarioRowInputs, error: unknown) => {
+		const testCase = testCaseByFileSlug.get(inputs.testCaseFile);
+		const agentRow = error instanceof AgentRunError || (testCase && isDirectAgentRun(testCase));
+		return agentRow ? { agentTurnCount: turnsBeforeError(error) } : {};
+	};
+
+	/** A scenario graded by expectations is not a scored unit; its row says so on
+	 *  every outcome, so the baseline fetch can skip it too. */
+	const markExpectationGraded = (inputs: ScenarioRowInputs, output: TargetOutput): TargetOutput => {
+		const scenario = testCaseByFileSlug
+			.get(inputs.testCaseFile)
+			?.executionScenarios?.find((s) => s.name === inputs.scenarioName);
+		return scenario && isExpectationGraded(scenario)
+			? { ...output, expectationGraded: true }
+			: output;
+	};
+
+	const runRow = async (inputs: ScenarioRowInputs): Promise<TargetOutput> =>
+		markExpectationGraded(inputs, await runRowOutcome(inputs));
+
+	const runRowOutcome = async (inputs: ScenarioRowInputs): Promise<TargetOutput> => {
 		const iteration = inputs._iteration ?? 0;
 		try {
 			// Only rows start builds, so a build and its judges count on the meter of its own case.
@@ -190,6 +217,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				attribution: classified.attribution,
 				rootCause: classified.rootCause,
 				execErrors: [message],
+				...agentTurnFields(inputs, error),
 				buildDurationMs: 0,
 				execDurationMs: 0,
 				nodeCount: 0,
@@ -284,6 +312,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				failureCategory: 'framework_issue',
 				attribution: 'framework_issue',
 				execErrors: [fault.reason],
+				...(agentRef ? { agentTurnCount: 0 } : {}),
 				buildDurationMs,
 				...buildSpendFields,
 				execDurationMs: 0,
@@ -413,6 +442,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					attribution: draft.attribution,
 					...(draft.incomplete ? { incomplete: true } : {}),
 					execErrors: [draft.execError],
+					agentTurnCount: 0,
 					buildDurationMs,
 					...buildSpendFields,
 					execDurationMs: 0,
@@ -435,6 +465,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					failureCategory: 'framework_issue',
 					attribution: 'framework_issue',
 					execErrors: [NO_SEED_MAPPING_REASON],
+					agentTurnCount: 0,
 					buildDurationMs,
 					...buildSpendFields,
 					execDurationMs: 0,
@@ -487,6 +518,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 							failureCategory: 'framework_issue',
 							attribution: 'framework_issue',
 							execErrors: [errorMessage],
+							agentTurnCount: turnsBeforeError(error),
 							buildDurationMs,
 							...buildSpendFields,
 							execDurationMs: Date.now() - agentExecStart,
@@ -514,6 +546,13 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					attribution: agentAttribution,
 					rootCause: agentRootCause,
 					...(agentResult.incomplete ? { incomplete: true } : {}),
+					...(agentResult.expectationResults
+						? { scenarioExpectationResults: agentResult.expectationResults }
+						: {}),
+					...(agentResult.agentTurnCount !== undefined
+						? { agentTurnCount: agentResult.agentTurnCount }
+						: {}),
+					...(agentResult.agentTranscript ? { agentTranscript: agentResult.agentTranscript } : {}),
 					execErrors: agentResult.agentEvalResult?.errors ?? [],
 					buildDurationMs,
 					...buildSpendFields,

@@ -333,6 +333,18 @@ export interface ExecutionScenarioResult {
 	 *  workflow failure). Rendered visibly but kept out of the pass-rate count,
 	 *  mirroring `BuildExpectationResult.incomplete`. */
 	incomplete?: boolean;
+	/** Agent runs graded by `expectations`: one verdict per expectation, keyed
+	 *  `<scenario> › <expectation>` (harness/agent-run-schema.ts). Folded into the
+	 *  case's expectation units by the reshape. */
+	expectationResults?: BuildExpectationResult[];
+	/** Agent runs: user messages sent across all sessions (1 for a single-shot run). */
+	agentTurnCount?: number;
+	/** Agent runs: wall time of the whole scenario row, every turn and the grading included. */
+	durationMs?: number;
+	/** Agent runs: the conversation the judge read, turn by turn, each session of a
+	 *  `sessions` scenario starting with a `heading`. Written to eval-results.json as
+	 *  `scenarios[].runs[].transcript`. */
+	agentTranscript?: TranscriptTurn[];
 }
 
 /**
@@ -437,6 +449,9 @@ export interface TranscriptTurn {
 	seeded?: boolean;
 	/** Main run plus any resumes — the join key for this turn's token usage. */
 	runIds?: string[];
+	/** Rendered on its own line before the turn, e.g. where a new session (thread)
+	 *  of a multi-session Agent run starts. */
+	heading?: string;
 }
 
 /** One ordered step within a turn: a slice of agent narration or a tool interaction. */

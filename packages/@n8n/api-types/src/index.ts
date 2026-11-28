@@ -795,6 +795,8 @@ export type {
 	InstanceAiEvalAgentScenarioSeed,
 	InstanceAiEvalAgentSkippedFeature,
 	InstanceAiEvalAgentExecutionResult,
+	InstanceAiEvalAgentThreadEcho,
+	InstanceAiEvalAgentThreadTurn,
 	InstanceAiEvalSeedWorkflow,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedAgent,

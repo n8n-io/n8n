@@ -10,6 +10,7 @@ import {
 	type ExperimentBucket,
 } from './compare';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { isExpectationGraded } from '../harness/agent-run-schema';
 import type { MultiRunEvaluation } from '../types';
 import { caseDisplayPrompt } from '../utils/conversation-text';
 
@@ -42,6 +43,8 @@ export function bucketFromEvaluation(
 			);
 		}
 		for (const sa of tc.executionScenarios) {
+			// Graded by its expectations, which are units of their own.
+			if (isExpectationGraded(sa.scenario)) continue;
 			const failureCategories: Record<string, number> = {};
 			for (const sr of sa.runs) {
 				// Verifier-incomplete runs carry no verdict — not a trial.

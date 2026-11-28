@@ -6,6 +6,7 @@ import type { Message } from '@n8n/agents';
 
 import { buildAssertionsBlock, judgeExpectations } from './assertion-judge';
 import { EPHEMERAL_CACHE } from '../../src/utils/eval-agents';
+import { AGENT_RUNTIME_EXPECTATIONS_VERIFY_PROMPT } from '../system-prompts/agent-runtime-expectations-verify';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import { buildWorkflowContextBlock } from '../harness/workflow-context';
 import type { BuildExpectationResult, ConversationMetrics, TranscriptTurn } from '../types';
@@ -35,6 +36,11 @@ export interface BuildExpectationsInput {
 	/** Rendered agent/config-eval sections (each with a "(no … produced)" fallback), appended
 	 *  to the cached build context so outcome expectations can be judged against them. */
 	artifactContext?: string;
+	/** What is judged. `build` (default): the builder's conversation and workflow.
+	 *  `agent-runtime`: a running n8n Agent (direct-mode cases). Its judge gets
+	 *  its own instructions, the Agent context, and the transcript; no workflow,
+	 *  metrics, or token sections. */
+	subject?: 'build' | 'agent-runtime';
 }
 
 /**
@@ -50,6 +56,9 @@ export async function verifyBuildExpectations(
 	build: BuildExpectationsInput,
 ): Promise<BuildExpectationResult[]> {
 	if (expectations.length === 0) return [];
+	if (build.subject === 'agent-runtime') {
+		return await verifyAgentRuntimeExpectations(expectations, build);
+	}
 
 	// Workflow + artifact blocks are stable per build — mark them as one Anthropic cache breakpoint.
 	const buildContext = [buildWorkflowContextBlock(build.workflowJson), build.artifactContext]
@@ -81,6 +90,36 @@ export async function verifyBuildExpectations(
 	await dumpJudgeContext(messages);
 
 	return await judgeExpectations(messages, expectations);
+}
+
+/** The judge for a running Agent: the Agent context (stable across the run's
+ *  scenarios, so cached), then the transcript and the expectations. */
+async function verifyAgentRuntimeExpectations(
+	expectations: string[],
+	build: BuildExpectationsInput,
+): Promise<BuildExpectationResult[]> {
+	const conversation = [
+		'## Conversation transcript',
+		'',
+		transcriptAsText(build.transcript),
+		'',
+		buildAssertionsBlock(expectations),
+	].join('\n');
+	const messages: Message[] = [
+		{
+			role: 'user',
+			content: [
+				{
+					type: 'text',
+					text: build.artifactContext ?? '(no Agent context captured)',
+					providerOptions: EPHEMERAL_CACHE,
+				},
+				{ type: 'text', text: conversation },
+			],
+		},
+	];
+	await dumpJudgeContext(messages);
+	return await judgeExpectations(messages, expectations, AGENT_RUNTIME_EXPECTATIONS_VERIFY_PROMPT);
 }
 
 /** Dump the assembled judge prompt to `DEBUG_JUDGE_CONTEXT`; nothing else shows it. */

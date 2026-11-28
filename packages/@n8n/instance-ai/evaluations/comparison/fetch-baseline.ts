@@ -60,6 +60,10 @@ const outputsSchema = z
 		// baselines captured before expectation persistence. `.catch` so a
 		// malformed field doesn't void the whole row.
 		expectationResults: expectationResultsSchema.optional().catch(undefined),
+		// Agent scenario expectations (AGENT-1666): each row carries only its own.
+		scenarioExpectationResults: expectationResultsSchema.optional().catch(undefined),
+		// Graded by its expectations: not a scenario unit (AGENT-1666).
+		expectationGraded: z.boolean().optional(),
 	})
 	.passthrough();
 
@@ -115,6 +119,28 @@ export async function findLatestBaseline(
 	return candidates[0]?.name;
 }
 
+/** Count graded verdicts into their expectation units. Ungraded ones carry no signal. */
+function addExpectationVerdicts(
+	evaluationUnits: Map<string, EvaluationUnitCounts>,
+	testCaseFile: string,
+	verdicts: Array<{ expectation: string; pass: boolean; incomplete?: boolean }>,
+): void {
+	for (const verdict of verdicts) {
+		if (verdict.incomplete) continue;
+		const key = expectationUnitKey(testCaseFile, verdict.expectation);
+		const existing: EvaluationUnitCounts = evaluationUnits.get(key) ?? {
+			kind: 'expectation',
+			testCaseFile,
+			name: verdict.expectation,
+			passed: 0,
+			total: 0,
+		};
+		existing.total++;
+		if (verdict.pass) existing.passed++;
+		evaluationUnits.set(key, existing);
+	}
+}
+
 /**
  * Fetch a baseline experiment's per-unit pass/fail counts. Each root run
  * corresponds to one (testCaseFile, scenarioName, iteration) triple — we
@@ -166,28 +192,21 @@ export async function fetchBaselineBucket(
 		const expectationResults = outputs.data.expectationResults;
 		if (expectationResults && !seenExpectationCarriers.has(carrierKey)) {
 			seenExpectationCarriers.add(carrierKey);
-			for (const verdict of expectationResults) {
-				// Judge-incomplete verdicts carry no signal — outside the denominator.
-				if (verdict.incomplete) continue;
-				const key = expectationUnitKey(inputs.data.testCaseFile, verdict.expectation);
-				const existing: EvaluationUnitCounts = evaluationUnits.get(key) ?? {
-					kind: 'expectation',
-					testCaseFile: inputs.data.testCaseFile,
-					name: verdict.expectation,
-					passed: 0,
-					total: 0,
-				};
-				existing.total++;
-				if (verdict.pass) existing.passed++;
-				evaluationUnits.set(key, existing);
-			}
+			addExpectationVerdicts(evaluationUnits, inputs.data.testCaseFile, expectationResults);
 		}
+
+		addExpectationVerdicts(
+			evaluationUnits,
+			inputs.data.testCaseFile,
+			outputs.data.scenarioExpectationResults ?? [],
+		);
 
 		// Build-only sentinel rows aren't execution scenarios — counting them would
 		// add a pseudo-scenario per build-only case and skew the trial totals.
 		if (inputs.data.scenarioName === BUILD_ONLY_SCENARIO_NAME) continue;
 		// Verifier-incomplete rows carry no verdict — skip so they don't count as failed trials.
-		if (outputs.data.incomplete) continue;
+		// A row graded by expectations counts through them only.
+		if (outputs.data.incomplete || outputs.data.expectationGraded) continue;
 
 		const key = scenarioUnitKey(inputs.data.testCaseFile, inputs.data.scenarioName);
 		const existing: EvaluationUnitCounts = evaluationUnits.get(key) ?? {

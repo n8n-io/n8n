@@ -1,4 +1,4 @@
-import { scenarioJudgeCriteria } from '../harness/agent-run-schema';
+import { agentExpectationUnits } from '../harness/agent-run-schema';
 import { EvalTestCaseSchema } from '../harness/schema';
 
 // The case contract shared with lang-tracer (AGENT-1665/1666): `agentRun` on the
@@ -367,31 +367,77 @@ describe('scenario expectations', () => {
 	});
 });
 
-describe('scenarioJudgeCriteria', () => {
-	const scenario = { successCriteria: 'Handles the refund well.' };
-
-	it('lists the expectations after the success criteria', () => {
-		expect(
-			scenarioJudgeCriteria({ ...scenario, expectations: ['Quotes the window', 'Offers a link'] }),
-		).toBe(
-			'Handles the refund well.\n\nAll of these must hold:\n- Quotes the window\n- Offers a link',
-		);
+describe('duplicate expectations', () => {
+	const scenario = (extra: Record<string, unknown>) => ({
+		name: 'refund',
+		description: 'asks for a refund',
+		dataSetup: 'The user asks for a refund on order 42.',
+		...extra,
 	});
 
-	it('includes the expectations of every session', () => {
-		expect(
-			scenarioJudgeCriteria({
-				successCriteria: '',
-				expectations: ['Greets the user'],
-				sessions: [
-					{ goal: 'g', maxTurns: 6 },
-					{ goal: 'g', maxTurns: 6, expectations: ['Recalls the order'] },
+	it('are refused within a scenario, since both would be one unit', () => {
+		const messages = issueMessages(
+			directCase({
+				executionScenarios: [
+					scenario({ expectations: ['Quotes the window', 'Quotes the window'] }),
 				],
 			}),
-		).toBe('All of these must hold:\n- Greets the user\n- Recalls the order');
+		);
+
+		expect(messages).toEqual([expect.stringContaining('"Quotes the window" is listed twice')]);
 	});
 
-	it('leaves a scenario without expectations unchanged', () => {
-		expect(scenarioJudgeCriteria(scenario)).toBe('Handles the refund well.');
+	it('are refused within a session', () => {
+		const messages = issueMessages(
+			directCase({
+				executionScenarios: [
+					scenario({
+						sessions: [{ goal: 'g', expectations: ['Recalls the order', 'Recalls the order'] }],
+					}),
+				],
+			}),
+		);
+
+		expect(messages).toEqual([expect.stringContaining('"Recalls the order" is listed twice')]);
+	});
+
+	it('are allowed across a scenario and its sessions, which key them apart', () => {
+		const messages = issueMessages(
+			directCase({
+				executionScenarios: [
+					scenario({
+						expectations: ['Is polite'],
+						sessions: [
+							{ goal: 'g', expectations: ['Is polite'] },
+							{ goal: 'g', expectations: ['Is polite'] },
+						],
+					}),
+				],
+			}),
+		);
+
+		expect(messages).toEqual([]);
+	});
+});
+
+describe('agentExpectationUnits', () => {
+	it('keys each expectation by its scenario, and a session expectation by its session too', () => {
+		const units = agentExpectationUnits({
+			name: 'refund',
+			expectations: ['Greets the user'],
+			sessions: [
+				{ goal: 'g', maxTurns: 6 },
+				{ goal: 'g', maxTurns: 6, expectations: ['Recalls the order'] },
+			],
+		});
+
+		expect(units).toEqual([
+			{ key: 'refund › Greets the user', text: 'Greets the user' },
+			{ key: 'refund › session 2 › Recalls the order', text: 'In session 2: Recalls the order' },
+		]);
+	});
+
+	it('has no units for a scenario without expectations', () => {
+		expect(agentExpectationUnits({ name: 'refund', successCriteria: 'ok' })).toEqual([]);
 	});
 });
