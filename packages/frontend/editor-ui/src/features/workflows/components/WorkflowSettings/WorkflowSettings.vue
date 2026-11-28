@@ -19,6 +19,7 @@ import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 import {
 	N8nBadge,
 	N8nButton,
+	N8nCombobox2,
 	N8nIcon,
 	N8nInput,
 	N8nInputNumber,
@@ -147,10 +148,27 @@ const executionLogicAllOptions = ref<Array<{ key: string; value: string; descrip
 		description: i18n.baseText('workflowSettings.executionLogic.v2.description'),
 	},
 ]);
-const timezones = ref<Array<{ key: string; value: string }>>([]);
 const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
 const workflows = ref<IWorkflowShortResponse[]>([]);
-const credentialResolverSelectRef = ref<InstanceType<typeof N8nSelect> | null>(null);
+const timezones = ref<Array<{ key: string; value: string }>>([]);
+const timezoneSearch = ref('');
+const credentialResolverOpen = ref(false);
+const credentialResolverFieldKey = ref(0);
+const CREATE_CREDENTIAL_RESOLVER = '__create_credential_resolver__';
+
+const timezoneEmptyText = computed(() => {
+	const query = timezoneSearch.value.trim();
+	if (!query) return undefined;
+	const selected = workflowSettings.value.timezone ?? '';
+	const selectedLabel = timezones.value.find((timezone) => timezone.key === selected)?.value;
+	// The closed field shows the current value. That is not a search.
+	if (query === selected || query === selectedLabel) return undefined;
+	return i18n.baseText('workflowSettings.timezone.noMatch');
+});
+
+const timezoneItems = computed(() =>
+	timezones.value.map((timezone) => ({ value: timezone.key, label: timezone.value })),
+);
 const originalBinaryMode = ref<undefined | WorkflowSettingsBinaryMode>(undefined);
 
 const {
@@ -188,6 +206,7 @@ const selectedResolverId = computed({
 			: undefined;
 	},
 	set(value: string | undefined) {
+		if (value === CREATE_CREDENTIAL_RESOLVER) return;
 		// Don't persist when the user (re)selects the system resolver — it's the
 		// implicit fallback already, and storing the id would tie the workflow to
 		// a specific seeded row.
@@ -715,9 +734,22 @@ const loadWorkflows = async (searchTerm?: string) => {
 	workflows.value = workflowsData;
 };
 
+const errorWorkflowItems = computed(() =>
+	workflows.value.map((workflow) => ({
+		value: workflow.id,
+		label: workflow.name ?? '',
+		disabled: workflow.active === false,
+	})),
+);
+
+function isInactiveErrorWorkflow(workflowId: string | number) {
+	return workflows.value.some(
+		(workflow) => workflow.id === workflowId && workflow.active === false,
+	);
+}
+
 const handleCreateNewResolver = async () => {
-	// Close the dropdown first
-	credentialResolverSelectRef.value?.blur();
+	credentialResolverOpen.value = false;
 	await nextTick();
 
 	openCreateModal({
@@ -746,6 +778,52 @@ const handleEditResolver = async () => {
 
 const { debounce } = useDebounce();
 const debouncedLoadWorkflows = debounce(loadWorkflows, { debounceTime: 300, trailing: true });
+
+const credentialResolverItems = computed(() => {
+	const items: Array<{
+		value: string;
+		label: string;
+		icon?: 'plus';
+		onSelect?: (event: Event) => void;
+	}> = credentialResolvers.value.map((resolver) => ({
+		value: resolver.id,
+		label: resolver.name,
+	}));
+
+	if (canCreateCredentialResolver) {
+		items.push({
+			value: CREATE_CREDENTIAL_RESOLVER,
+			label: i18n.baseText('workflowSettings.credentialResolver.createNew'),
+			icon: 'plus',
+			onSelect: (event: Event) => {
+				event.preventDefault();
+				void handleCreateNewResolver();
+			},
+		});
+	}
+
+	return items;
+});
+
+function onErrorWorkflowSearch(term: string) {
+	const selectedName = errorWorkflowItems.value.find(
+		(item) => item.value === workflowSettings.value.errorWorkflow,
+	)?.label;
+	// The closed field shows the selected name. That is not a search.
+	if (selectedName && term === selectedName) return;
+	void debouncedLoadWorkflows(term);
+}
+
+function onErrorWorkflowChange(value: string | number | undefined) {
+	if (typeof value !== 'string') return;
+	workflowSettings.value.errorWorkflow = value;
+}
+
+function selectComboboxText(event: FocusEvent) {
+	// The field shows the selected label. Select that text so the next key starts a new search.
+	const target = event.target;
+	if (target instanceof HTMLInputElement) target.select();
+}
 
 const convertToHMS = (num: number): ITimeoutHMS => {
 	if (num > 0) {
@@ -1089,6 +1167,8 @@ onMounted(async () => {
 		!credentialResolvers.value.some((r) => r.id === workflowSettingsData.credentialResolverId)
 	) {
 		workflowSettings.value.credentialResolverId = undefined;
+		// The field already rendered the missing id. Remount it so it shows the fallback label.
+		credentialResolverFieldKey.value += 1;
 	}
 
 	timeoutHMS.value = convertToHMS(workflowSettingsData.executionTimeout);
@@ -1228,36 +1308,29 @@ onBeforeUnmount(() => {
 						</N8nTooltip>
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
-						<N8nSelect
-							v-model="workflowSettings.errorWorkflow"
-							:placeholder="i18n.baseText('workflowSettings.errorWorkflow.placeholder')"
-							filterable
-							remote
-							:remote-method="debouncedLoadWorkflows"
-							remote-show-suffix
-							:disabled="readOnlyEnv || !workflowPermissions.update"
-							:limit-popper-width="true"
-							data-test-id="workflow-settings-error-workflow"
-						>
-							<N8nOption
-								v-for="item in workflows"
-								:key="item.id"
-								:label="item.name"
-								:value="item.id"
-								:disabled="item.active === false"
+						<div data-test-id="workflow-settings-error-workflow">
+							<N8nCombobox2
+								size="medium"
+								:model-value="workflowSettings.errorWorkflow"
+								:items="errorWorkflowItems"
+								:placeholder="i18n.baseText('workflowSettings.errorWorkflow.placeholder')"
+								ignore-filter
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								@focusin="selectComboboxText"
+								@update:model-value="onErrorWorkflowChange"
+								@update:search-term="onErrorWorkflowSearch"
 							>
-								<div :class="$style.optionContent">
-									<span>{{ item.name }}</span>
+								<template #item-trailing="{ item }">
 									<N8nTooltip
-										v-if="item.active === false"
+										v-if="isInactiveErrorWorkflow(item.value)"
 										:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
 										placement="top"
 									>
 										<N8nIcon icon="triangle-alert" size="small" :class="$style.inactiveIcon" />
 									</N8nTooltip>
-								</div>
-							</N8nOption>
-						</N8nSelect>
+								</template>
+							</N8nCombobox2>
+						</div>
 					</ElCol>
 				</ElRow>
 				<ElRow v-if="isCredentialResolverEnabled" data-test-id="credential-resolver">
@@ -1272,38 +1345,31 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<div :class="$style['credential-resolver-container']">
-							<N8nSelect
-								ref="credentialResolverSelectRef"
-								v-model="selectedResolverId"
-								:placeholder="i18n.baseText('workflowSettings.credentialResolver.placeholder')"
-								filterable
-								clearable
-								:disabled="
-									readOnlyEnv || !workflowPermissions.update || !canListCredentialResolvers
-								"
-								:limit-popper-width="true"
-								data-test-id="workflow-settings-credential-resolver"
-							>
-								<N8nOption
-									v-for="resolver in credentialResolvers"
-									:key="resolver.id"
-									:label="resolver.name"
-									:value="resolver.id"
+							<div data-test-id="workflow-settings-credential-resolver">
+								<N8nCombobox2
+									:key="credentialResolverFieldKey"
+									v-model="selectedResolverId"
+									v-model:open="credentialResolverOpen"
+									:items="credentialResolverItems"
+									:placeholder="i18n.baseText('workflowSettings.credentialResolver.placeholder')"
+									size="medium"
+									clearable
+									:disabled="
+										readOnlyEnv || !workflowPermissions.update || !canListCredentialResolvers
+									"
+									@focusin="selectComboboxText"
 								>
-								</N8nOption>
-								<template v-if="canCreateCredentialResolver" #footer>
-									<button
-										type="button"
-										:class="$style['create-new-button']"
-										:disabled="readOnlyEnv || !workflowPermissions.update"
-										data-test-id="workflow-settings-credential-resolver-create-new"
-										@click="handleCreateNewResolver"
-									>
-										<N8nIcon size="xsmall" icon="plus" />
-										{{ i18n.baseText('workflowSettings.credentialResolver.createNew') }}
-									</button>
-								</template>
-							</N8nSelect>
+									<template #item-label="{ item }">
+										<span
+											v-if="item.value === CREATE_CREDENTIAL_RESOLVER"
+											data-test-id="workflow-settings-credential-resolver-create-new"
+										>
+											{{ item.label }}
+										</span>
+										<template v-else>{{ item.label }}</template>
+									</template>
+								</N8nCombobox2>
+							</div>
 							<N8nIconButton
 								v-if="isSelectedResolverEditable && canUpdateCredentialResolver"
 								variant="ghost"
@@ -1388,22 +1454,18 @@ onBeforeUnmount(() => {
 						</N8nTooltip>
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
-						<N8nSelect
-							v-model="workflowSettings.timezone"
-							:placeholder="i18n.baseText('workflowSettings.timezone.placeholder')"
-							filterable
-							:disabled="readOnlyEnv || !workflowPermissions.update"
-							:limit-popper-width="true"
-							data-test-id="workflow-settings-timezone"
-						>
-							<N8nOption
-								v-for="timezone of timezones"
-								:key="timezone.key"
-								:label="timezone.value"
-								:value="timezone.key"
-							>
-							</N8nOption>
-						</N8nSelect>
+						<div data-test-id="workflow-settings-timezone">
+							<N8nCombobox2
+								v-model="workflowSettings.timezone"
+								:items="timezoneItems"
+								:placeholder="i18n.baseText('workflowSettings.timezone.placeholder')"
+								:empty-text="timezoneEmptyText"
+								size="medium"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								@focusin="selectComboboxText"
+								@update:search-term="timezoneSearch = $event"
+							/>
+						</div>
 					</ElCol>
 				</ElRow>
 				<ElRow>
@@ -2317,33 +2379,5 @@ onBeforeUnmount(() => {
 .credential-resolver-container {
 	display: flex;
 	align-items: center;
-}
-
-.create-new-button {
-	display: flex;
-	width: 100%;
-	gap: var(--spacing--3xs);
-	align-items: center;
-	font-weight: var(--font-weight--medium);
-	padding: var(--spacing--xs) var(--spacing--md);
-	background-color: var(--color--background--light-2);
-	color: var(--color--text--shade-1);
-
-	border: 0;
-	border-top: var(--border);
-	box-shadow: var(--shadow--light);
-	clip-path: inset(-12px 0 0 0);
-
-	&:not([disabled]) {
-		cursor: pointer;
-		&:hover {
-			color: var(--color--primary);
-		}
-	}
-
-	&[disabled] {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
 }
 </style>
