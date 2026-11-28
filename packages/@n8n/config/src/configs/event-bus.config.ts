@@ -38,9 +38,10 @@ class LogWriterConfig {
 	maxMessagesPerParse: number = 10_000;
 
 	/**
-	 * Absolute ceiling on total lines processed from a single event log file during
-	 * parsing, across all return modes (including 'all'). Skipped/invalid lines count
-	 * toward this total, bounding worst-case memory on malformed files.
+	 * Maximum number of messages and malformed lines that n8n reads from one event log
+	 * file. Confirmations don't count, and neither do repeated copies of a message that's
+	 * still unconfirmed. n8n stops reading the file at this limit, to keep memory use
+	 * bounded.
 	 */
 	@Env('N8N_EVENTBUS_LOGWRITER_MAXTOTALMESSAGESPERFILE')
 	maxTotalMessagesPerFile: number = 500_000;

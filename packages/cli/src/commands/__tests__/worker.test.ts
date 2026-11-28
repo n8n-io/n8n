@@ -229,6 +229,29 @@ describe('Worker', () => {
 			);
 		});
 
+		it('should replay unsent events and send worker.started after the modules initialize', async () => {
+			const eventBus = Container.get(MessageEventBus);
+			const worker = createWorkerForInit();
+
+			await worker.init();
+
+			// @ts-expect-error - Accessing protected property for testing
+			const initModules = worker.moduleRegistry.initModules as Mock;
+			const replayUnsent = eventBus.replayUnsent as Mock;
+			const send = eventBus.send as Mock;
+			const workerStartedCall = send.mock.calls.findIndex(
+				([msg]) => (msg as { eventName?: string }).eventName === 'n8n.worker.started',
+			);
+			expect(replayUnsent).toHaveBeenCalledTimes(1);
+			expect(initModules.mock.invocationCallOrder[0]).toBeLessThan(
+				replayUnsent.mock.invocationCallOrder[0],
+			);
+			expect(workerStartedCall).toBeGreaterThanOrEqual(0);
+			expect(initModules.mock.invocationCallOrder[0]).toBeLessThan(
+				send.mock.invocationCallOrder[workerStartedCall],
+			);
+		});
+
 		it.each([
 			{ envValue: '45', expected: 45, case: 'the parsed value' },
 			{ envValue: 'not-a-number', expected: 20, case: 'the queue default when unparseable' },
