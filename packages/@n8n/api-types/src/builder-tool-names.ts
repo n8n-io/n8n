@@ -6,6 +6,8 @@
  * former name to `LEGACY_BUILDER_TOOL_NAMES` so stored data still resolves.
  */
 
+import { isRecord } from '@n8n/utils/is-record';
+
 /** Tools that the Instance AI orchestrator uses to build workflows. */
 export const WORKFLOW_BUILDER_TOOL_NAMES = {
 	LIST_WORKFLOWS: 'list_workflows',
@@ -445,6 +447,21 @@ export function getExecutionCallAction(
 		return EXECUTION_TOOL_ACTIONS.find((known) => known === action);
 	}
 	return EXECUTION_TOOL_ACTIONS.find((known) => EXECUTION_TOOL_NAME_BY_ACTION[known] === toolName);
+}
+
+/**
+ * Whether a tool call gives conversation files to a run. The run can send the
+ * files to an outside service, so the user confirms each such call: no "Always
+ * allow" grant, `always_allow` permission or Auto mode judge approves it.
+ */
+export function callCarriesInputFiles(toolName: string, args: unknown): boolean {
+	if (!isRecord(args)) return false;
+	if (getExecutionCallAction(toolName, args.action) === 'run') return hasEntries(args.files);
+	return false;
+}
+
+function hasEntries(value: unknown): boolean {
+	return isRecord(value) && Object.keys(value).length > 0;
 }
 
 /** Whether a stored tool name is the former multi-action workspace tool. */

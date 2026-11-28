@@ -8,6 +8,7 @@ import {
 	buildWorkflowActionSessionGrantKey,
 	buildCleanupTestExecutionsSessionGrantKey,
 	buildWorkspaceSessionGrantKey,
+	callCarriesInputFiles,
 	CHANGE_DATA_TABLES_TOOL_NAME,
 	DATA_TABLE_WRITE_TOOL_ACTIONS,
 	getDataTableCallAction,
@@ -90,6 +91,8 @@ export function buildAlwaysAllowKeys(
 	if (rawToolName === CHANGE_DATA_TABLES_TOOL_NAME) {
 		return grantableBatchActions(args).map(buildDataTablesSessionGrantKey);
 	}
+	// The backend asks again for every run with conversation files, so a grant would do nothing.
+	if (callCarriesInputFiles(rawToolName, args)) return [];
 	const key = buildSingleAlwaysAllowKey(rawToolName, args, confirmationWorkflowId);
 	return key === null ? [] : [key];
 }

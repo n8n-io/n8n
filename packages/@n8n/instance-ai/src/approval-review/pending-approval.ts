@@ -2,6 +2,7 @@ import { APPROVAL_SUSPEND_SCHEMA } from '@n8n/agents';
 import type { BuiltTool } from '@n8n/agents';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	callCarriesInputFiles,
 	instanceAiApprovalDetailsSchema,
 	instanceAiConfirmationSeveritySchema,
 	isDataTableWriteToolAction,
@@ -129,6 +130,8 @@ export function routeApproval(
 	if (ALWAYS_ASK_TOOLS.has(approval.toolName) || isSkillActionRequiringReview(approval)) {
 		return 'always-ask';
 	}
+	// A run with conversation files can send them to an outside service, so a person confirms it.
+	if (callCarriesInputFiles(approval.toolName, approval.args)) return 'always-ask';
 	if (LOW_RISK_TOOLS.has(approval.toolName)) return 'low-risk';
 	return 'judge';
 }

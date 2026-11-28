@@ -9218,6 +9218,8 @@
 	"instanceAi.approval.moreColumns": "{count} more column | {count} more columns",
 	"instanceAi.approval.moreRows": "{count} more row | {count} more rows",
 	"instanceAi.approval.moreNodes": "{count} more node | {count} more nodes",
+	"instanceAi.approval.moreFiles": "{count} more file | {count} more files",
+	"instanceAi.approval.inputFiles": "The run gets these files: {files}",
 	"instanceAi.approval.filter.empty": "\"{column}\" has no value",
 	"instanceAi.approval.filter.notEmpty": "\"{column}\" has a value",
 	"instanceAi.approval.filter.contains": "\"{column}\" contains {value} (matching case)",

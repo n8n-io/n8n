@@ -164,16 +164,29 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 				},
 			});
 		}
-		case 'run-workflow':
-			return (
+		case 'run-workflow': {
+			const lines = [
 				details.summary?.replace(/\s+/g, ' ').trim() ||
-				t(
-					details.trigger
-						? 'instanceAi.approval.runFromTrigger'
-						: 'instanceAi.approval.runWorkflow',
-					{ interpolate: { trigger: details.trigger ?? '' } },
-				)
-			);
+					t(
+						details.trigger
+							? 'instanceAi.approval.runFromTrigger'
+							: 'instanceAi.approval.runWorkflow',
+						{ interpolate: { trigger: details.trigger ?? '' } },
+					),
+			];
+			if (details.files?.length) {
+				const names = [...details.files];
+				if (details.moreFiles)
+					names.push(
+						t('instanceAi.approval.moreFiles', {
+							adjustToNumber: details.moreFiles,
+							interpolate: { count: details.moreFiles },
+						}),
+					);
+				lines.push(t('instanceAi.approval.inputFiles', { interpolate: { files: join(names) } }));
+			}
+			return lines.join('\n\n');
+		}
 		case 'publish-workflow': {
 			const lines = [
 				details.summary?.replace(/\s+/g, ' ').trim() ||

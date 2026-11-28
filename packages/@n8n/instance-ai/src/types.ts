@@ -20,6 +20,7 @@ import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentConfigValidationIssueCode,
 	AgentToolOutputFile,
+	AgentToolSkippedFile,
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
@@ -58,6 +59,8 @@ import type {
 import type { NodeJSON, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
+	IBinaryData,
+	IBinaryKeyData,
 	IDisplayOptions,
 	INodeInputConfiguration,
 	INodeTypes,
@@ -226,6 +229,13 @@ export interface ExecutionResult {
 	 * `credential_inaccessible` or `workflow_redaction_policy`.
 	 */
 	redaction?: ExecutionRedaction;
+	/**
+	 * Files that the last node of the run returned, stored as conversation
+	 * files. Set only when the caller passed `storeOutputFile` to `run`.
+	 */
+	files?: InstanceAiConversationFile[];
+	/** Output files that were not stored, for example because they are too large. The list has a cap. */
+	skippedFiles?: InstanceAiSkippedFiles;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
@@ -709,6 +719,18 @@ export interface InstanceAiExecutionService {
 			 */
 			omitConnections?: Array<{ source: string; target: string }>;
 			abortSignal?: AbortSignal;
+			/**
+			 * Binary data for the trigger item, by binary property name. The run
+			 * gives it to the trigger together with `inputData`, and grants the run
+			 * read access to each stored binary here. Build it only from
+			 * `InstanceAiStoredFileReader.readBinary`, never from model input.
+			 */
+			binary?: IBinaryKeyData;
+			/**
+			 * Store each file that the last node of the run returned as a
+			 * conversation file. The result lists them in `files`.
+			 */
+			storeOutputFile?: InstanceAiStoreWorkflowFile;
 		},
 	): Promise<ExecutionResult>;
 	/**
@@ -1796,8 +1818,11 @@ export type InstanceAiImportedFile = AgentToolOutputFile & {
 
 /** A file in the list of the thread's files. */
 export interface InstanceAiListedFile extends InstanceAiConversationFile {
-	/** `upload`: the user attached it. `sandbox`: it came from `outputs/` of the sandbox. */
-	origin: 'upload' | 'sandbox';
+	/**
+	 * `upload`: the user attached it. `sandbox`: it came from `outputs/` of the
+	 * sandbox. `workflow`: a workflow run returned it.
+	 */
+	origin: 'upload' | 'sandbox' | 'workflow';
 	/** ISO date and time when n8n stored the file. */
 	createdAt: string;
 }
@@ -1815,7 +1840,37 @@ export interface InstanceAiStoredFileReader {
 	 * attaches only these types to the model input. `view-file` needs it.
 	 */
 	canView?(mimeType: string): boolean;
+	/**
+	 * The binary data entry of a file, for the input of a workflow run. It
+	 * points to the stored bytes. Gives `undefined` when the thread has no such
+	 * file or storage no longer has its bytes. The host sets it only when it
+	 * can pass files to workflow runs.
+	 */
+	readBinary?(fileId: string): Promise<IBinaryData | undefined>;
+	/**
+	 * Store a binary that a workflow run returned as a conversation file. Gives
+	 * a skipped file for a file over a cap, and `undefined` when storage fails.
+	 * The host sets it together with `readBinary`.
+	 */
+	storeWorkflowFile?: InstanceAiStoreWorkflowFile;
 }
+
+/** A file that n8n did not store as a conversation file, with the reason. */
+export type InstanceAiSkippedFile = AgentToolSkippedFile;
+
+/** The files that n8n did not store. `files` has a cap; `total` counts all of them. */
+export interface InstanceAiSkippedFiles {
+	total: number;
+	files: InstanceAiSkippedFile[];
+}
+
+/**
+ * Stores a binary that a workflow run returned as a conversation file. Gives a
+ * skipped file for a file over a cap, and `undefined` when storage fails.
+ */
+export type InstanceAiStoreWorkflowFile = (
+	binary: IBinaryData,
+) => Promise<InstanceAiConversationFile | InstanceAiSkippedFile | undefined>;
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 

@@ -12,9 +12,11 @@ import {
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
+	MAX_APPROVAL_FILE_NAMES,
 } from '@n8n/api-types';
 import type { ExecutionToolAction, InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
+import type { IBinaryData, IBinaryKeyData } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -85,6 +87,15 @@ const runAction = z.object({
 		.max(MAX_TIMEOUT_MS)
 		.optional()
 		.describe('Max wait time in milliseconds (default 300000, max 600000)'),
+	// Only when the host can pass files to workflow runs. See `createExecutionTool`.
+	files: z
+		.record(z.string(), z.string())
+		.optional()
+		.describe(
+			'Files of this conversation to give the trigger as binary data. ' +
+				'Key = binary property name (usually "data"), value = fileId, such as the fileId of a user upload ' +
+				'or of a file from `share-files`. Files that the last node returns come back under `files`.',
+		),
 });
 
 const runStepAction = z.object({
@@ -223,6 +234,54 @@ const ACTION_SCHEMAS = {
 
 type Input = z.infer<(typeof ACTION_SCHEMAS)[ExecutionToolAction]>;
 
+/**
+ * The file reads and writes that let a workflow run take conversation files
+ * and return its files. Only hosts that store conversation files set them.
+ */
+function workflowFilesOf(context: InstanceAiContext) {
+	const { storedFiles } = context;
+	const readBinary = storedFiles?.readBinary?.bind(storedFiles);
+	const storeWorkflowFile = storedFiles?.storeWorkflowFile?.bind(storedFiles);
+	return readBinary && storeWorkflowFile ? { readBinary, storeWorkflowFile } : undefined;
+}
+
+/**
+ * The names of the files that a run gets, one time for each file. The names
+ * come from the stored files, not from the model.
+ */
+function inputFileNames(binaries: Array<IBinaryKeyData | undefined>): string[] {
+	const names = new Map<IBinaryData | string, string>();
+	for (const entry of binaries.flatMap((binary) => Object.values(binary ?? {}))) {
+		names.set(entry.id ?? entry, entry.fileName ?? 'file');
+	}
+	return [...names.values()];
+}
+
+/** The files that the approval card lists. Empty when the run gets no files. */
+function approvalFilesOf(binaries: Array<IBinaryKeyData | undefined>): {
+	files?: string[];
+	moreFiles?: number;
+} {
+	const names = inputFileNames(binaries);
+	if (names.length === 0) return {};
+	const more = names.length - MAX_APPROVAL_FILE_NAMES;
+	return {
+		files: names.slice(0, MAX_APPROVAL_FILE_NAMES),
+		...(more > 0 ? { moreFiles: more } : {}),
+	};
+}
+
+/**
+ * The approval message names the files that a run gets, because the run can
+ * send them to an outside service. Empty when the run gets no files.
+ */
+function describeInputFiles(binaries: Array<IBinaryKeyData | undefined>): string {
+	const { files, moreFiles } = approvalFilesOf(binaries);
+	if (!files) return '';
+	const count = files.length + (moreFiles ?? 0);
+	return ` with ${count === 1 ? 'the file' : 'the files'} ${files.join(', ')}${moreFiles ? ` and ${moreFiles} more` : ''}`;
+}
+
 interface ExecutionsToolOptions {
 	allowedActions?: readonly ExecutionToolAction[];
 }
@@ -314,27 +373,6 @@ async function handleRun(
 	// A per-workflow "always allow" grant skips HITL for the rest of the session.
 	const grantKey = buildRunWorkflowSessionGrantKey(workflowId);
 	const allowedBySessionGrant = context.sessionApprovedToolKeys?.has(grantKey) === true;
-	const needsApproval = !allowedByScope && !allowedBySessionGrant;
-
-	// If approval is required and this is the first call, suspend for confirmation
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await context.assertInThreadProject?.({ kind: 'workflow', id: workflowId });
-		const workflowName = (await getWorkflowName()) ?? input.workflowId;
-		return await suspend({
-			requestId: nanoid(),
-			message: formatApprovalMessage(
-				`Run this workflow live${input.triggerNodeName ? ` from "${input.triggerNodeName}"` : ''}`,
-				input.approvalSummary,
-			),
-			resourceName: workflowName,
-			approvalDetails: {
-				action: 'run-workflow',
-				summary: input.approvalSummary,
-				trigger: input.triggerNodeName,
-			} satisfies InstanceAiApprovalDetails,
-			severity: 'warning' as const,
-		});
-	}
 
 	// If resumed with denial
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
@@ -346,8 +384,56 @@ async function handleRun(
 		};
 	}
 
-	// "Always allow" — persist the grant so subsequent runs of this workflow skip HITL.
-	if (resumeData?.approved && resumeData.scope === 'session') {
+	// Read the files before the approval, so a missing file fails early and the card can name them.
+	const workflowFiles = workflowFilesOf(context);
+	let binary: IBinaryKeyData | undefined;
+	if (workflowFiles && input.files && Object.keys(input.files).length > 0) {
+		const entries = new Map<string, IBinaryData>();
+		for (const [key, fileId] of Object.entries(input.files)) {
+			const entry = await workflowFiles.readBinary(fileId);
+			if (!entry) {
+				return {
+					executionId: '',
+					status: 'error' as const,
+					error: `File "${fileId}" not found in this conversation`,
+				};
+			}
+			entries.set(key, entry);
+		}
+		// A plain object would take a `__proto__` key as its prototype. `fromEntries` defines
+		// own properties only, so no key from the model can change a prototype.
+		binary = Object.fromEntries(entries);
+	}
+
+	// The run can send the files to an outside service, so the user confirms every run
+	// with files. Grants and the `always_allow` permission cover only runs without files.
+	const carriesFiles = binary !== undefined;
+	const needsApproval = carriesFiles || (!allowedByScope && !allowedBySessionGrant);
+
+	// If approval is required and this is the first call, suspend for confirmation
+	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: workflowId });
+		const workflowName = (await getWorkflowName()) ?? input.workflowId;
+		return await suspend({
+			requestId: nanoid(),
+			message: formatApprovalMessage(
+				`Run this workflow live${input.triggerNodeName ? ` from "${input.triggerNodeName}"` : ''}${describeInputFiles([binary])}`,
+				input.approvalSummary,
+			),
+			resourceName: workflowName,
+			approvalDetails: {
+				action: 'run-workflow',
+				summary: input.approvalSummary,
+				trigger: input.triggerNodeName,
+				...approvalFilesOf([binary]),
+			} satisfies InstanceAiApprovalDetails,
+			severity: 'warning' as const,
+		});
+	}
+
+	// "Always allow" — persist the grant so later runs of this workflow without files skip HITL.
+	// A run with files never stores a grant, because it must not approve the next one.
+	if (resumeData?.approved && resumeData.scope === 'session' && !carriesFiles) {
 		await context.grantSessionToolApproval?.(grantKey);
 	}
 
@@ -356,6 +442,8 @@ async function handleRun(
 		timeout: input.timeout,
 		triggerNodeName: input.triggerNodeName,
 		abortSignal,
+		binary,
+		storeOutputFile: workflowFiles?.storeWorkflowFile,
 	});
 	// A live test is the evidence verification cannot produce itself. Record it
 	// so the publish gate stops disclosing simulations that this run replaced.
@@ -578,7 +666,10 @@ const neverSuspend = async (): Promise<never> => {
 /** Builds the tool for one execution action. */
 export function createExecutionTool(context: InstanceAiContext, action: ExecutionToolAction) {
 	const name = EXECUTION_TOOL_NAME_BY_ACTION[action];
-	const schema: z.ZodDiscriminatedUnionOption<'action'> = ACTION_SCHEMAS[action];
+	const schema: z.ZodDiscriminatedUnionOption<'action'> =
+		action === 'run' && !workflowFilesOf(context)
+			? runAction.omit({ files: true })
+			: ACTION_SCHEMAS[action];
 	const tool = new Tool(name)
 		.description(getActionDescription(action))
 		.input(sanitizeInputSchema(schema.omit({ action: true })));
