@@ -698,6 +698,46 @@ describe('SimulationSession', () => {
 		expect(await response.text()).toBe('');
 	});
 
+	describe('with a multi-value set-cookie header', () => {
+		const cookieReply: SimulatedReply = {
+			outcome: 'served',
+			source: 'world_state',
+			status: 200,
+			headers: { 'set-cookie': ['a=1; Path=/', 'b=2; Path=/'], 'x-id': 'r-1' },
+			body: { ok: true },
+		};
+
+		it('gives an HTTP node each cookie as its own value', async () => {
+			const session = new SimulationSession({
+				testChatId: 't',
+				world: makeWorld(cookieReply),
+				capabilities: [slackCapability],
+			});
+			const { tool } = slackTool(session);
+
+			await expect(runTool(session, tool)).resolves.toMatchObject({
+				headers: { 'set-cookie': ['a=1; Path=/', 'b=2; Path=/'], 'x-id': 'r-1' },
+			});
+		});
+
+		it('gives an MCP client each cookie as its own header', async () => {
+			const session = new SimulationSession({
+				testChatId: 't',
+				world: makeWorld(cookieReply),
+				capabilities: [{ toolName: 'linear', kind: 'mcp', testability: 'simulated' }],
+			});
+
+			const response = await session.instrumentation().mcpFetch!('linear')('https://x.test/mcp', {
+				method: 'POST',
+				body: '{}',
+			});
+
+			expect(response.headers.getSetCookie()).toEqual(['a=1; Path=/', 'b=2; Path=/']);
+			expect(response.headers.get('x-id')).toBe('r-1');
+			expect(response.headers.get('content-type')).toBe('application/json');
+		});
+	});
+
 	it('passes the abort signal of the request to the world', async () => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
 		const session = new SimulationSession({

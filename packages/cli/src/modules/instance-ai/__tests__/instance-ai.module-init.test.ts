@@ -1,7 +1,7 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { GlobalConfig, InstanceAiConfig } from '@n8n/config';
+import { AgentsConfig, GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -476,6 +476,7 @@ describe('InstanceAiModule.init', () => {
 		const modules = mockInstance(ModuleRegistry);
 		let eligibleModules = ['instance-ai', 'agents'];
 		Object.defineProperty(modules, 'eligibleModules', { get: () => eligibleModules });
+		mockInstance(AgentsConfig, { simulationBackend: 'llm-mock' });
 
 		await new InstanceAiModule().init();
 		expect(registry.register).toHaveBeenCalledWith(backend);
@@ -483,6 +484,21 @@ describe('InstanceAiModule.init', () => {
 		eligibleModules = ['instance-ai'];
 		registry.register.mockClear();
 		await new InstanceAiModule().init();
+		expect(registry.register).not.toHaveBeenCalled();
+	});
+
+	it('does not register the LLM mock when another simulation backend is selected', async () => {
+		setup();
+		const { SimulationBackendRegistry } = await import(
+			'@/modules/agents/simulation/simulation-backend-registry.js'
+		);
+		const registry = mockInstance(SimulationBackendRegistry);
+		const modules = mockInstance(ModuleRegistry);
+		Object.defineProperty(modules, 'eligibleModules', { get: () => ['instance-ai', 'agents'] });
+		mockInstance(AgentsConfig, { simulationBackend: 'gym' });
+
+		await new InstanceAiModule().init();
+
 		expect(registry.register).not.toHaveBeenCalled();
 	});
 

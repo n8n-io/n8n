@@ -18,7 +18,8 @@ import type { ExternalSecretsProxy } from './external-secrets-proxy';
 /** Standardized mock HTTP response returned by the eval mock handler. */
 export interface EvalMockHttpResponse {
 	body: unknown;
-	headers: Record<string, string>;
+	/** A list keeps each value apart, like `set-cookie` in a real response. */
+	headers: Record<string, string | string[]>;
 	statusCode: number;
 }
 
