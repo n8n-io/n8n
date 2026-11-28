@@ -5,7 +5,10 @@ import { DataSource, type Repository } from '@n8n/typeorm';
 
 import { createUser } from '@test-integration/db/users';
 
+import { AccessToken } from '../database/entities/oauth-access-token.entity';
+import { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import { OAuthClient } from '../database/entities/oauth-client.entity';
+import { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
 import { UserConsent } from '../database/entities/oauth-user-consent.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 
@@ -100,9 +103,63 @@ test('conditional deletion keeps the client until the last consent is gone', asy
 	expect(await clients.deleteIfUnused(client.id, {})).toBe(false);
 });
 
+test('virtual client removal deletes the grants of virtual clients only', async () => {
+	const user = await createUser();
+	const virtual = {
+		...registration('https://sales.apps.example.com/callback'),
+		isFirstParty: true,
+	};
+	const kept = { ...registration('https://support.apps.example.com/callback'), isFirstParty: true };
+	const registered = registration('https://registered.example.com/callback');
+	await rows.save([virtual, kept, registered]);
+	const dataSource = Container.get(DataSource);
+	for (const { id: clientId } of [virtual, kept, registered]) {
+		const grant = { clientId, userId: user.id };
+		await consents.save({ ...grant, grantedAt: Date.now(), scope: [] });
+		await dataSource.getRepository(AccessToken).save({ ...grant, token: `access-${clientId}` });
+		await dataSource.getRepository(RefreshToken).save({
+			...grant,
+			token: `refresh-${clientId}`,
+			expiresAt: Date.now() + 60_000,
+			scope: [],
+			resource: clientId,
+		});
+		await dataSource.getRepository(AuthorizationCode).save({
+			...grant,
+			code: `code-${clientId}`,
+			redirectUri: clientId,
+			codeChallenge: 'challenge',
+			codeChallengeMethod: 'S256',
+			state: null,
+			resource: clientId,
+			scope: [],
+			expiresAt: Date.now() + 60_000,
+		});
+	}
+
+	expect(
+		await clients.removeVirtualClients([virtual.id, registered.id, 'missing-client'], {}),
+	).toBe(1);
+	expect(await clients.removeVirtualClients([], {})).toBe(0);
+
+	expect(await rows.findOneBy({ id: virtual.id })).toBeNull();
+	for (const entity of [UserConsent, AccessToken, RefreshToken, AuthorizationCode]) {
+		const remaining = await dataSource.getRepository(entity).find({ select: { clientId: true } });
+		expect(remaining.map(({ clientId }) => clientId).sort()).toEqual(
+			[registered.id, kept.id].sort(),
+		);
+	}
+});
+
 test('all methods use the supplied transaction context', async () => {
 	const original = registration('original-client');
-	await rows.save([original, registration('remove-client'), registration('unused-client')]);
+	const virtual = { ...registration('virtual-client'), isFirstParty: true };
+	await rows.save([
+		original,
+		registration('remove-client'),
+		registration('unused-client'),
+		virtual,
+	]);
 	const rollback = new Error('Roll back test changes');
 
 	await expect(
@@ -114,6 +171,7 @@ test('all methods use the supplied transaction context', async () => {
 			expect(await clients.findRegisteredNames(ctx)).toHaveLength(4);
 			await clients.removeRegistration('remove-client', ctx);
 			expect(await clients.deleteIfUnused('unused-client', ctx)).toBe(true);
+			expect(await clients.removeVirtualClients([virtual.id], ctx)).toBe(1);
 			throw rollback;
 		}),
 	).rejects.toBe(rollback);
@@ -122,4 +180,5 @@ test('all methods use the supplied transaction context', async () => {
 	expect(await rows.findOneBy({ id: 'new-client' })).toBeNull();
 	expect(await rows.findOneBy({ id: 'remove-client' })).not.toBeNull();
 	expect(await rows.findOneBy({ id: 'unused-client' })).not.toBeNull();
+	expect(await rows.findOneBy({ id: virtual.id })).not.toBeNull();
 });

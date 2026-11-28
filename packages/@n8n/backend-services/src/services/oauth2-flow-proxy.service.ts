@@ -1,3 +1,4 @@
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Inbound } from '@n8n/inbound-auth';
 import type { N8nOAuth2FlowResult, N8nOAuth2RefreshResult } from 'n8n-workflow';
@@ -18,6 +19,8 @@ export interface N8nOAuth2Flow {
 	begin(resourceUrl: string, metadata?: Record<string, string>): Promise<string>;
 	complete(code: string, state: string, request?: OAuth2FlowRequest): Promise<N8nOAuth2FlowResult>;
 	refresh(refreshToken: string, resourceUrl: string): Promise<N8nOAuth2RefreshResult>;
+	/** Delete the virtual clients of these resource URLs, with their consents, codes and tokens. */
+	revokeClients(resourceUrls: string[], ctx: OperationContext): Promise<void>;
 }
 
 @Service()
@@ -45,5 +48,11 @@ export class OAuth2FlowProxy implements N8nOAuth2Flow {
 	async refresh(refreshToken: string, resourceUrl: string): Promise<N8nOAuth2RefreshResult> {
 		if (!this.provider) throw new UnexpectedError('OAuth2 trigger flow is not available');
 		return await this.provider.refresh(refreshToken, resourceUrl);
+	}
+
+	async revokeClients(resourceUrls: string[], ctx: OperationContext): Promise<void> {
+		// Without the OAuth server, no virtual client can exist.
+		if (!this.provider || resourceUrls.length === 0) return;
+		await this.provider.revokeClients(resourceUrls, ctx);
 	}
 }

@@ -74,6 +74,15 @@ const alias = {
 		__dirname,
 		'../modules/mcp-servers/backend/src/index.ts',
 	),
+	'@n8n/backend-module-apps/hosting': path.resolve(
+		__dirname,
+		'../modules/apps/backend/src/serving/apps-hosting.service.ts',
+	),
+	'@n8n/backend-module-apps/module': path.resolve(
+		__dirname,
+		'../modules/apps/backend/src/apps.module.ts',
+	),
+	'@n8n/backend-module-apps': path.resolve(__dirname, '../modules/apps/backend/src/index.ts'),
 	'@n8n/mcp-apps/server': path.resolve(__dirname, '../@n8n/mcp-apps/src/server/index.ts'),
 	'@n8n/telemetry': path.resolve(__dirname, '../@n8n/telemetry/src'),
 	'@': path.resolve(__dirname, 'src'),

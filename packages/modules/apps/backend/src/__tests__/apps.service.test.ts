@@ -2,18 +2,27 @@ import { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import { DbLock, DbLockService, type OperationContext, type User } from '@n8n/db';
+import {
+	DbLock,
+	DbLockService,
+	TransactionRunner,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { appStorageLockSubKey } from '../storage/app-storage-lock';
 import { AppVersionRepository } from '../versions/app-version.repository';
 import { AppWorkspaceService } from '../build/app-workspace.service';
+import { AppGrantRevocation } from '../auth/app-grant-revocation';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
 import { AppsConfig } from '../apps.config';
 import { AppsService } from '../apps.service';
 import { AppHostService } from '../serving/app-host.service';
+
+const txCtx: OperationContext = { trx: mock() };
 
 function createService({ deploymentType = 'default', host = 'n8n.example.net' } = {}) {
 	const appRepository = mock<AppRepository>();
@@ -23,6 +32,9 @@ function createService({ deploymentType = 'default', host = 'n8n.example.net' } 
 	const workspaces = mock<AppWorkspaceService>();
 	const logger = mock<Logger>();
 	const events = mock<EventService>();
+	const grants = mock<AppGrantRevocation>();
+	const txRunner = mock<TransactionRunner>();
+	txRunner.run.mockImplementation(async (_ctx, fn) => await fn(txCtx));
 	const configuredHosts = new AppHostService(
 		mock<AppsConfig>({ baseUrl: 'https://apps.example.com' }),
 		mock<GlobalConfig>({
@@ -49,6 +61,8 @@ function createService({ deploymentType = 'default', host = 'n8n.example.net' } 
 		logger,
 		hosts,
 		events,
+		grants,
+		txRunner,
 	);
 	return {
 		service,
@@ -60,6 +74,7 @@ function createService({ deploymentType = 'default', host = 'n8n.example.net' } 
 		logger,
 		hosts,
 		events,
+		grants,
 	};
 }
 
@@ -173,7 +188,7 @@ describe('AppsService', () => {
 
 		const response = await service.updateApp('project-1', appId, dto);
 
-		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, dto);
+		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, dto, txCtx);
 		expect(hosts.origin).toHaveBeenCalledWith('updated-app');
 		expect(response).toEqual({
 			id: appId,
@@ -214,9 +229,12 @@ describe('AppsService', () => {
 			namespace,
 		});
 		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', dto);
-		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, {
-			namespace,
-		});
+		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith(
+			'project-1',
+			appId,
+			{ namespace },
+			txCtx,
+		);
 	});
 
 	it.each([
@@ -263,10 +281,55 @@ describe('AppsService', () => {
 		).resolves.toMatchObject({
 			name: 'Updated app',
 		});
-		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, {
-			name: 'Updated app',
-		});
+		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith(
+			'project-1',
+			appId,
+			{ name: 'Updated app' },
+			txCtx,
+		);
 		expect(hosts.origin).not.toHaveBeenCalled();
+	});
+
+	it('revokes the grants of the old namespace in the update transaction', async () => {
+		const { service, appRepository, grants } = createService();
+		const appId = '11111111-1111-4111-8111-111111111111';
+		const before = mock<App>({ id: appId, namespace: 'old-app' });
+		appRepository.findInProject.mockResolvedValue(before);
+		appRepository.updateApp.mockResolvedValue(
+			mock<App>({
+				id: appId,
+				namespace: 'new-app',
+				publishedVersionId: null,
+				createdAt: new Date('2026-10-13T00:00:00.000Z'),
+				updatedAt: new Date('2026-10-13T00:00:00.000Z'),
+			}),
+		);
+
+		await service.updateApp('project-1', appId, { namespace: 'new-app' });
+
+		expect(appRepository.findInProject).toHaveBeenCalledExactlyOnceWith('project-1', appId, txCtx);
+		expect(grants.revokeApps).toHaveBeenCalledExactlyOnceWith([before], txCtx);
+	});
+
+	it.each([
+		{ case: 'the namespace stays the same', dto: { namespace: 'same-app' } },
+		{ case: 'only the name changes', dto: { name: 'Renamed' } },
+	])('keeps the grants when $case', async ({ dto }) => {
+		const { service, appRepository, grants } = createService();
+		const appId = '11111111-1111-4111-8111-111111111111';
+		const row = mock<App>({
+			id: appId,
+			namespace: 'same-app',
+			publishedVersionId: null,
+			createdAt: new Date('2026-10-13T00:00:00.000Z'),
+			updatedAt: new Date('2026-10-13T00:00:00.000Z'),
+		});
+		appRepository.findInProject.mockResolvedValue(row);
+		appRepository.updateApp.mockResolvedValue(row);
+
+		await service.updateApp('project-1', appId, dto);
+
+		expect(grants.revokeApps).not.toHaveBeenCalled();
 	});
 
 	it('rejects empty metadata updates', async () => {
@@ -301,10 +364,11 @@ describe('AppsService', () => {
 	);
 
 	it.each([1, 0])('handles app deletion when %i rows match', async (affected) => {
-		const { service, appRepository, appVersions, locks, workspaces } = createService();
+		const { service, appRepository, appVersions, locks, workspaces, grants } = createService();
 		const appId = '11111111-1111-4111-8111-111111111111';
 		const ctx = mock<OperationContext>();
-		appRepository.findInProject.mockResolvedValue(mock<App>({ id: appId }));
+		const app = mock<App>({ id: appId });
+		appRepository.findInProject.mockResolvedValue(app);
 		appRepository.deleteInProject.mockResolvedValue(affected === 1);
 		locks.withLockContext.mockImplementation(async (_key, fn) => {
 			expect(appVersions.hasRunningBuild).not.toHaveBeenCalled();
@@ -318,9 +382,11 @@ describe('AppsService', () => {
 		if (affected) {
 			await expect(deletion).resolves.toBeUndefined();
 			expect(workspaces.delete).toHaveBeenCalledExactlyOnceWith('project-1', appId);
+			expect(grants.revokeApps).toHaveBeenCalledExactlyOnceWith([app], ctx);
 		} else {
 			await expect(deletion).rejects.toThrow(NotFoundError);
 			expect(workspaces.delete).not.toHaveBeenCalled();
+			expect(grants.revokeApps).not.toHaveBeenCalled();
 		}
 		expect(appRepository.findInProject).toHaveBeenCalledWith('project-1', appId, ctx);
 		expect(appRepository.deleteInProject).toHaveBeenCalledWith('project-1', appId, ctx);

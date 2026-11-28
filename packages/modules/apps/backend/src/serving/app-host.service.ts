@@ -17,6 +17,10 @@ const APP_CSP = "base-uri 'self'; object-src 'none'";
 /** A preview host serves a version that can be an unpublished draft. */
 export type AppHostKind = 'published' | 'preview';
 
+function authCallbackUrl(origin: string, appId: string): string {
+	return `${origin}/_n8n/auth/${appId}/callback`;
+}
+
 @Service()
 export class AppHostService {
 	readonly baseUrl: URL;
@@ -103,7 +107,14 @@ export class AppHostService {
 		const origin =
 			kind === 'preview' ? this.previewOrigin(app.namespace) : this.origin(app.namespace);
 		if (!origin) throw new BadRequestError('Use a valid app namespace before publishing this app.');
-		return `${origin}/_n8n/auth/${app.id}/callback`;
+		return authCallbackUrl(origin, app.id);
+	}
+
+	/** The callback URLs of both hosts, which are also the virtual OAuth client IDs of the app. */
+	callbackUrls(app: { id: string; namespace: string }): string[] {
+		return [this.origin(app.namespace), this.previewOrigin(app.namespace)].flatMap((origin) =>
+			origin ? [authCallbackUrl(origin, app.id)] : [],
+		);
 	}
 
 	/** Express trusts the immediate peer when the configured proxy hop count is positive. */

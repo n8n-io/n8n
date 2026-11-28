@@ -1,6 +1,6 @@
 import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
 import { OAuthClient } from '../entities/oauth-client.entity';
 import { UserConsent } from '../entities/oauth-user-consent.entity';
@@ -48,6 +48,15 @@ export class OAuthClientRepository {
 
 	async upsertVirtualClient(client: ClientRegistration, ctx: OperationContext): Promise<void> {
 		await this.table.managerFor(ctx).upsert(OAuthClient, client, ['id']);
+	}
+
+	/** The foreign keys cascade, so this also deletes the consents, codes and tokens of the clients. */
+	async removeVirtualClients(ids: string[], ctx: OperationContext): Promise<number> {
+		if (ids.length === 0) return 0;
+		const result = await this.table
+			.managerFor(ctx)
+			.delete(OAuthClient, { id: In(ids), isFirstParty: true });
+		return result.affected ?? 0;
 	}
 
 	async findRegisteredNames(

@@ -8,11 +8,12 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
-import { DbLock, DbLockService, type User } from '@n8n/db';
+import { DbLock, DbLockService, TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
 import type { AppActor } from './app-events';
+import { AppGrantRevocation } from './auth/app-grant-revocation';
 import { appStorageLockSubKey } from './storage/app-storage-lock';
 import { AppVersionRepository } from './versions/app-version.repository';
 import { AppWorkspaceService } from './build/app-workspace.service';
@@ -46,6 +47,8 @@ export class AppsService {
 		private readonly logger: Logger,
 		private readonly hosts: AppHostService,
 		private readonly events: EventService,
+		private readonly grants: AppGrantRevocation,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	async createApp(
@@ -104,11 +107,18 @@ export class AppsService {
 		}
 		this.assertValidAppId(appId);
 		if (dto.namespace !== undefined) this.assertValidNamespace(dto.namespace);
-		const before =
-			dto.visibility !== undefined
-				? await this.appRepository.findInProject(projectId, appId)
-				: null;
-		const app = await this.appRepository.updateApp(projectId, appId, dto);
+		const { before, app } = await this.txRunner.run({}, async (ctx) => {
+			const before =
+				dto.visibility !== undefined || dto.namespace !== undefined
+					? await this.appRepository.findInProject(projectId, appId, ctx)
+					: null;
+			const app = await this.appRepository.updateApp(projectId, appId, dto, ctx);
+			// The callback URLs change with the namespace. Revoke the clients of the old URLs.
+			if (app && before && before.namespace !== app.namespace) {
+				await this.grants.revokeApps([before], ctx);
+			}
+			return { before, app };
+		});
 		if (!app) throw new NotFoundError('App not found');
 		this.logger.debug('Updated app.', { projectId, appId });
 		if (before && before.visibility !== app.visibility) {
@@ -134,7 +144,9 @@ export class AppsService {
 						'The app has a running build. Wait for the build to finish before deleting it.',
 					);
 				}
-				return (await this.appRepository.deleteInProject(projectId, appId, ctx)) ? app : null;
+				if (!(await this.appRepository.deleteInProject(projectId, appId, ctx))) return null;
+				await this.grants.revokeApps([app], ctx);
+				return app;
 			},
 			{ subKey: appStorageLockSubKey(appId) },
 		);
