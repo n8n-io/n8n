@@ -1,4 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import isEqual from 'lodash/isEqual';
 import nock from 'nock';
 
 import { credentials } from '../../../credentials';
@@ -36,7 +37,7 @@ describe('Test MicrosoftTeamsV2, channelMessage => create adaptive card', () => 
 				attachment?.id === match[1] &&
 				attachment?.contentType === 'application/vnd.microsoft.card.adaptive' &&
 				attachment?.contentUrl === null &&
-				JSON.parse(attachment?.content ?? '{}').type === 'AdaptiveCard' &&
+				isEqual(JSON.parse(attachment?.content ?? '{}'), CARD) &&
 				!(envelope.body?.content ?? '').includes('Powered by')
 			);
 		})
