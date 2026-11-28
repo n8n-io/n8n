@@ -1,5 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
+import type { User } from '@n8n/db';
+import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { McpServerTool } from '../database/entities/mcp-server-tool.entity';
@@ -7,6 +9,8 @@ import type { McpServerToolRepository } from '../database/repositories/mcp-serve
 import { McpServerToolsService } from '../services/mcp-server-tools.service';
 import type { McpServer } from '../database/entities/mcp-server.entity';
 import type { McpServerRepository } from '../database/repositories/mcp-server.repository';
+import { McpServerToolNameTakenError } from '../errors/mcp-server-tool-name-taken.error';
+import { McpServerToolNotFoundError } from '../errors/mcp-server-tool-not-found.error';
 import type { WorkflowToolListItem } from '../ports/workflow-tool.port';
 import { mockMcpServerPorts } from './test-utils/ports';
 
@@ -199,5 +203,87 @@ describe('McpServerToolsService.updateTool', () => {
 			description: 'New',
 			draftSource: 'ai',
 		});
+	});
+});
+
+describe('McpServerToolsService.draftTool saves a drafted name', () => {
+	const TOOL_ID = '7b0c2a52-3c1f-4f53-9a51-0c0d8c3a0a03';
+	const ACTOR = { userId: 'user-1', source: 'ui' } as const;
+
+	function setupDraft() {
+		const servers = mock<McpServerRepository>();
+		const tools = mock<McpServerToolRepository>();
+		const { workflows, textDrafts } = mockMcpServerPorts();
+		const tool = mock<McpServerTool>({
+			id: TOOL_ID,
+			serverId: SERVER_ID,
+			kind: 'workflow',
+			targetId: 'workflow-1',
+			toolName: 'old_name',
+			description: 'Old text.',
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+		servers.findInProject.mockResolvedValue(mock<McpServer>({ id: SERVER_ID }));
+		tools.findInServer.mockResolvedValue(tool);
+		tools.listByServer.mockResolvedValue([]);
+		textDrafts.isAvailable.mockResolvedValue(true);
+		textDrafts.draft.mockResolvedValue({
+			status: 'drafted',
+			text: JSON.stringify({ toolName: 'get_campaign', description: 'Returns one campaign.' }),
+		});
+		workflows.describe.mockResolvedValue({
+			callable: true,
+			name: 'Campaign',
+			description: null,
+			inputSchema: { type: 'object', additionalProperties: true },
+			nodeNames: [],
+		});
+		const service = new McpServerToolsService(
+			servers,
+			tools,
+			workflows,
+			textDrafts,
+			mock<EventService>(),
+			mock<Logger>(),
+		);
+		const draft = async () =>
+			await service.draftTool(mock<User>(), PROJECT_ID, SERVER_ID, TOOL_ID, ACTOR);
+		return { draft, tools, tool };
+	}
+
+	it('tries again when another draft took the name first', async () => {
+		const { draft, tools, tool } = setupDraft();
+		tools.updateInServer
+			.mockRejectedValueOnce(new McpServerToolNameTakenError())
+			.mockResolvedValueOnce(tool);
+
+		await expect(draft()).resolves.toMatchObject({ status: 'drafted' });
+		expect(tools.updateInServer).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not try again on another conflict', async () => {
+		const { draft, tools } = setupDraft();
+		const conflict = new ConflictError('Another conflict');
+		tools.updateInServer.mockRejectedValue(conflict);
+
+		await expect(draft()).rejects.toBe(conflict);
+		expect(tools.updateInServer).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops after 10 tries when the name is taken each time', async () => {
+		const { draft, tools } = setupDraft();
+		tools.updateInServer.mockRejectedValue(new McpServerToolNameTakenError());
+
+		await expect(draft()).rejects.toBeInstanceOf(McpServerToolNameTakenError);
+		expect(tools.updateInServer).toHaveBeenCalledTimes(10);
+	});
+
+	it('gives a 404 when the tool is gone at save time', async () => {
+		const { draft, tools } = setupDraft();
+		tools.updateInServer.mockResolvedValue(null);
+
+		await expect(draft()).rejects.toBeInstanceOf(McpServerToolNotFoundError);
+		expect(tools.updateInServer).toHaveBeenCalledTimes(1);
 	});
 });
