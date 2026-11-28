@@ -1,4 +1,4 @@
-import { getBrowserId } from '@n8n/constants';
+import { getBrowserId, N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/constants';
 import { assert } from '@n8n/utils/assert';
 import type {
 	AxiosRequestConfig,
@@ -158,10 +158,12 @@ export async function requestResponse<T = unknown>(
 		method,
 		url: endpoint,
 		baseURL,
-		headers: headers ?? {},
+		headers: { ...headers },
 		responseType,
 	};
+	// Same-origin n8n calls only. External hosts get no extra header and no CORS preflight.
 	if (baseURL.startsWith('/')) {
+		options.headers![N8N_CLIENT_HEADER] = N8N_CLIENT_EDITOR_UI;
 		options.headers!['browser-id'] = getBrowserId();
 	}
 	if (
@@ -323,6 +325,10 @@ export async function streamRequest<T extends object>(
 		'browser-id': getBrowserId(),
 		'Content-Type': 'application/json',
 	};
+	// Same-origin n8n calls only, as in requestResponse.
+	if (context.baseUrl.startsWith('/')) {
+		headers[N8N_CLIENT_HEADER] = N8N_CLIENT_EDITOR_UI;
+	}
 	const assistantRequest: RequestInit = {
 		headers,
 		method: 'POST',

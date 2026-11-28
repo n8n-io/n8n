@@ -6,6 +6,8 @@ vi.mock('@n8n/backend-common', async () => {
 });
 
 import { Z } from '@n8n/api-types';
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/constants';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import {
 	ControllerRegistryMetadata,
@@ -41,6 +43,7 @@ describe('ControllerRegistry', () => {
 	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
 	const metadata = Container.get(ControllerRegistryMetadata);
 	const lastActiveAtService = mock<LastActiveAtService>();
+	const eventService = mock<EventService>();
 	let app: express.Express;
 	const authMiddleware = vi.fn().mockImplementation(async (_req, _res, next) => next());
 
@@ -56,6 +59,7 @@ describe('ControllerRegistry', () => {
 			metadata,
 			lastActiveAtService,
 			new RateLimitService(),
+			eventService,
 		).activate(app);
 	});
 
@@ -115,6 +119,7 @@ describe('ControllerRegistry', () => {
 				metadata,
 				lastActiveAtService,
 				new RateLimitService(),
+				eventService,
 			).activate(target);
 			expect(target.use.mock.calls.map(([prefix]) => prefix)).not.toContain('/apps-only');
 		});
@@ -134,6 +139,7 @@ describe('ControllerRegistry', () => {
 				metadata,
 				lastActiveAtService,
 				new RateLimitService(),
+				eventService,
 			).activate(target, { surface: 'apps' });
 
 			await request(target).get('/apps-only').expect(401);
@@ -522,6 +528,91 @@ describe('ControllerRegistry', () => {
 			expect(allowed('/bots.v2/Groups/1')).toBe(true);
 			expect(allowed('/botsXv2/Groups')).toBe(false);
 			expect(allowed('/bots.v2x')).toBe(false);
+		});
+	});
+
+	describe('internal API invocation event', () => {
+		@RestController('/test')
+		// @ts-expect-error tsc complains about unused class
+		class TestController {
+			@Get('/:widgetId')
+			widget(_req: express.Request, _res: express.Response, @Param('widgetId') widgetId: string) {
+				return { widgetId };
+			}
+
+			@Get('/open/:widgetId', { skipAuth: true })
+			open(_req: express.Request, _res: express.Response, @Param('widgetId') widgetId: string) {
+				return { widgetId };
+			}
+		}
+
+		beforeEach(() => {
+			authMiddleware.mockImplementation(async (req, _res, next) => {
+				req.user = { id: 'user-1' };
+				next();
+			});
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+		});
+
+		it('should emit the route and client of an editor call', async () => {
+			await request(app)
+				.get('/rest/test/widget-1')
+				.set(N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI)
+				.expect(200);
+
+			await vi.waitFor(() => {
+				expect(eventService.emit).toHaveBeenCalledWith('internal-api-invoked', {
+					route: 'GET /rest/test/{widgetId}',
+					client: 'editor_ui',
+				});
+			});
+		});
+
+		it.each([
+			{ description: 'without the client header', headers: {} },
+			{ description: 'from another n8n client', headers: { [N8N_CLIENT_HEADER]: 'n8n-cli' } },
+		])('should count a call $description as other', async ({ headers }) => {
+			await request(app).get('/rest/test/widget-1').set(headers).expect(200);
+
+			await vi.waitFor(() => {
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'internal-api-invoked',
+					expect.objectContaining({ client: 'other' }),
+				);
+			});
+		});
+
+		it('should name calls with different ids by one route template', async () => {
+			await request(app).get('/rest/test/widget-1').expect(200);
+			await request(app).get('/rest/test/widget-2').expect(200);
+
+			await vi.waitFor(() => {
+				expect(eventService.emit).toHaveBeenCalledTimes(2);
+			});
+			expect(eventService.emit).toHaveBeenNthCalledWith(
+				1,
+				'internal-api-invoked',
+				expect.objectContaining({ route: 'GET /rest/test/{widgetId}' }),
+			);
+			expect(eventService.emit).toHaveBeenNthCalledWith(
+				2,
+				'internal-api-invoked',
+				expect.objectContaining({ route: 'GET /rest/test/{widgetId}' }),
+			);
+		});
+
+		it('should not emit for a call without an authenticated user', async () => {
+			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+
+			await request(app).get('/rest/test/widget-1').expect(200);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('should not emit for a route that skips auth', async () => {
+			await request(app).get('/rest/test/open/widget-1').expect(200);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -2042,13 +2042,27 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('public-api-invoked', event);
 
-			expect(telemetry.trackApiInvocation).toHaveBeenCalledWith({
+			expect(telemetry.trackPublicApiInvocation).toHaveBeenCalledWith({
 				user_id: 'user123',
 				route: 'GET /workflows',
 				result: '2xx',
 				api_version: 'v1',
 				client: 'editor_ui',
 				user_agent: 'n8n-cli',
+			});
+		});
+
+		it('should buffer on `internal-api-invoked` event', () => {
+			const event: RelayEventMap['internal-api-invoked'] = {
+				route: 'GET /rest/workflows/{workflowId}',
+				client: 'other',
+			};
+
+			eventService.emit('internal-api-invoked', event);
+
+			expect(telemetry.trackInternalApiInvocation).toHaveBeenCalledWith({
+				route: 'GET /rest/workflows/{workflowId}',
+				client: 'other',
 			});
 		});
 

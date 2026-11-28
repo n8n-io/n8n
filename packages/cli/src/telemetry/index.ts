@@ -25,6 +25,7 @@ import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { N8N_VERSION } from '@/constants';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
+import type { InternalApiClient } from '@/internal-api-client';
 import type { PublicApiClient } from '@/public-api/public-api-client';
 import type { PublicApiResult } from '@/public-api/types';
 
@@ -58,7 +59,7 @@ interface IExecutionsBuffer {
 	[workflowId: string]: IExecutionsBufferEntry;
 }
 
-interface IApiInvocationProperties {
+interface IPublicApiInvocationProperties {
 	user_id: string;
 	route: string;
 	result: PublicApiResult;
@@ -68,25 +69,53 @@ interface IApiInvocationProperties {
 }
 
 /** One row for each route, result and caller. A flat list is easier to query in Hex. */
-interface IApiRouteCalls {
+interface IPublicApiRouteCalls {
 	route: string;
 	result: PublicApiResult;
 	caller: PublicApiClient;
 	calls: number;
 }
 
-interface IApiInvocationsBufferEntry {
+interface IPublicApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	endpoints: Record<string, number>;
 	endpoints_by_client: Record<Exclude<PublicApiClient, 'other'>, Record<string, number>>;
-	routes: IApiRouteCalls[];
+	routes: IPublicApiRouteCalls[];
 	user_agents: Record<string, number>;
 	clients: Record<PublicApiClient, number>;
 }
 
-interface IApiInvocationsBuffer {
-	[userId: string]: IApiInvocationsBufferEntry;
+interface IPublicApiInvocationsBuffer {
+	[userId: string]: IPublicApiInvocationsBufferEntry;
+}
+
+interface IInternalApiInvocationProperties {
+	route: string;
+	client: InternalApiClient;
+}
+
+/** One row for each route, with the calls from each client. A flat list is easier to query in Hex. */
+interface IInternalApiRouteCalls {
+	route: string;
+	editor_ui: number;
+	other: number;
+}
+
+interface IInternalApiInvocationsBufferEntry {
+	total_calls: number;
+	first: Date;
+	clients: Record<InternalApiClient, number>;
+	routeCalls: Map<string, IInternalApiRouteCalls>;
+}
+
+function newInternalApiInvocationsBuffer(): IInternalApiInvocationsBufferEntry {
+	return {
+		total_calls: 0,
+		first: new Date(),
+		clients: { editor_ui: 0, other: 0 },
+		routeCalls: new Map(),
+	};
 }
 
 @Service()
@@ -98,7 +127,9 @@ export class Telemetry implements TelemetryTracker {
 	// No prototype, so every workflow id is an own key.
 	private executionCountsBuffer: IExecutionsBuffer = Object.create(null);
 
-	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
+	private publicApiInvocationsBuffer: IPublicApiInvocationsBuffer = {};
+
+	private internalApiInvocationsBuffer = newInternalApiInvocationsBuffer();
 
 	private readonly bufferFlushers: (() => void)[] = [];
 
@@ -212,7 +243,8 @@ export class Telemetry implements TelemetryTracker {
 
 		this.flushWorkflowExecutionCounts();
 		for (const flush of this.bufferFlushers) flush();
-		this.flushApiInvocations();
+		this.flushPublicApiInvocations();
+		this.flushInternalApiInvocations();
 	}
 
 	/**
@@ -246,9 +278,9 @@ export class Telemetry implements TelemetryTracker {
 		this.track('pulse', pulsePacket);
 	}
 
-	private flushApiInvocations() {
-		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
-			const entry = this.apiInvocationsBuffer[userId];
+	private flushPublicApiInvocations() {
+		for (const userId of Object.keys(this.publicApiInvocationsBuffer)) {
+			const entry = this.publicApiInvocationsBuffer[userId];
 			if (entry.total_calls > 0) {
 				this.track(TELEMETRY_EVENT.PUBLIC_API.PUBLIC_API_USAGE, {
 					user_id: userId,
@@ -262,7 +294,23 @@ export class Telemetry implements TelemetryTracker {
 				});
 			}
 		}
-		this.apiInvocationsBuffer = {};
+		this.publicApiInvocationsBuffer = {};
+	}
+
+	private flushInternalApiInvocations() {
+		const entry = this.internalApiInvocationsBuffer;
+		if (entry.total_calls === 0) {
+			return;
+		}
+
+		this.track(TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE, {
+			total_calls: entry.total_calls,
+			first: entry.first.toISOString(),
+			routes: JSON.stringify([...entry.routeCalls.values()]),
+			clients: JSON.stringify(entry.clients),
+		});
+
+		this.internalApiInvocationsBuffer = newInternalApiInvocationsBuffer();
 	}
 
 	private flushWorkflowExecutionCounts() {
@@ -355,12 +403,12 @@ export class Telemetry implements TelemetryTracker {
 		}
 	}
 
-	trackApiInvocation(properties: IApiInvocationProperties) {
+	trackPublicApiInvocation(properties: IPublicApiInvocationProperties) {
 		if (!this.rudderStack) return;
 
 		const { user_id, route, result, user_agent, client } = properties;
 
-		const entry = (this.apiInvocationsBuffer[user_id] ??= {
+		const entry = (this.publicApiInvocationsBuffer[user_id] ??= {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
@@ -392,6 +440,20 @@ export class Telemetry implements TelemetryTracker {
 		if (user_agent) {
 			entry.user_agents[user_agent] = (entry.user_agents[user_agent] ?? 0) + 1;
 		}
+	}
+
+	trackInternalApiInvocation(properties: IInternalApiInvocationProperties) {
+		if (!this.rudderStack) return;
+
+		const { route, client } = properties;
+
+		const entry = this.internalApiInvocationsBuffer;
+		entry.total_calls++;
+		entry.clients[client]++;
+
+		const routeRow = entry.routeCalls.get(route) ?? { route, editor_ui: 0, other: 0 };
+		routeRow[client]++;
+		entry.routeCalls.set(route, routeRow);
 	}
 
 	isEnabled(): boolean {
@@ -587,7 +649,11 @@ export class Telemetry implements TelemetryTracker {
 		return this.executionCountsBuffer;
 	}
 
-	getApiInvocationsBuffer(): IApiInvocationsBuffer {
-		return this.apiInvocationsBuffer;
+	getPublicApiInvocationsBuffer(): IPublicApiInvocationsBuffer {
+		return this.publicApiInvocationsBuffer;
+	}
+
+	getInternalApiInvocationsBuffer(): IInternalApiInvocationsBufferEntry {
+		return this.internalApiInvocationsBuffer;
 	}
 }

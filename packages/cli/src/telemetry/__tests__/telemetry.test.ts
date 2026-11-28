@@ -11,6 +11,7 @@ import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n
 import type { WorkflowRepository } from '@n8n/db';
 import {
 	defineTelemetryEvents,
+	INTERNAL_API_USAGE_JSON_FIELDS,
 	PUBLIC_API_USAGE_JSON_FIELDS,
 	TELEMETRY_EVENT,
 } from '@n8n/telemetry';
@@ -548,7 +549,7 @@ describe('Telemetry', () => {
 		);
 	});
 
-	describe('trackApiInvocation', () => {
+	describe('trackPublicApiInvocation', () => {
 		beforeEach(() => {
 			vi.setSystemTime(testDateTime);
 		});
@@ -556,7 +557,7 @@ describe('Telemetry', () => {
 		test('should count calls per user', () => {
 			const execTime1 = fakeTestSystemTime('2022-01-01 12:00:00');
 
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user1',
 				route: 'GET /workflows',
 				result: '2xx',
@@ -565,7 +566,7 @@ describe('Telemetry', () => {
 				client: 'other',
 			});
 
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user1',
 				route: 'GET /workflows',
 				result: '2xx',
@@ -574,7 +575,7 @@ describe('Telemetry', () => {
 				client: 'other',
 			});
 
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user1',
 				route: 'POST /executions',
 				result: '2xx',
@@ -583,7 +584,7 @@ describe('Telemetry', () => {
 				client: 'other',
 			});
 
-			const buffer = telemetry.getApiInvocationsBuffer();
+			const buffer = telemetry.getPublicApiInvocationsBuffer();
 
 			expect(buffer['user1'].total_calls).toBe(3);
 			expect(buffer['user1'].first).toEqual(execTime1);
@@ -595,7 +596,7 @@ describe('Telemetry', () => {
 		});
 
 		test('should count calls per route, result and caller', () => {
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user1',
 				route: 'GET /workflows/{workflowId}',
 				result: '2xx',
@@ -603,7 +604,7 @@ describe('Telemetry', () => {
 				client: 'other',
 			});
 
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user1',
 				route: 'GET /workflows/{workflowId}',
 				result: '4xx',
@@ -611,7 +612,7 @@ describe('Telemetry', () => {
 				client: 'editor_ui',
 			});
 
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user1',
 				route: 'GET /workflows/{workflowId}',
 				result: '2xx',
@@ -619,7 +620,7 @@ describe('Telemetry', () => {
 				client: 'other',
 			});
 
-			const buffer = telemetry.getApiInvocationsBuffer();
+			const buffer = telemetry.getPublicApiInvocationsBuffer();
 
 			expect(buffer['user1'].routes).toStrictEqual([
 				{ route: 'GET /workflows/{workflowId}', result: '2xx', caller: 'other', calls: 2 },
@@ -628,7 +629,7 @@ describe('Telemetry', () => {
 		});
 
 		test('should handle missing user_agent', () => {
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user1',
 				route: 'GET /workflows',
 				result: '2xx',
@@ -636,14 +637,14 @@ describe('Telemetry', () => {
 				client: 'other',
 			});
 
-			const buffer = telemetry.getApiInvocationsBuffer();
+			const buffer = telemetry.getPublicApiInvocationsBuffer();
 
 			expect(buffer['user1'].total_calls).toBe(1);
 			expect(buffer['user1'].user_agents).toEqual({});
 		});
 
 		test('should track multiple users independently', () => {
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user1',
 				route: 'GET /workflows',
 				result: '2xx',
@@ -652,7 +653,7 @@ describe('Telemetry', () => {
 				client: 'other',
 			});
 
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user2',
 				route: 'POST /executions',
 				result: '2xx',
@@ -661,7 +662,7 @@ describe('Telemetry', () => {
 				client: 'other',
 			});
 
-			const buffer = telemetry.getApiInvocationsBuffer();
+			const buffer = telemetry.getPublicApiInvocationsBuffer();
 
 			expect(buffer['user1'].total_calls).toBe(1);
 			expect(buffer['user1'].endpoints['GET /workflows']).toBe(1);
@@ -703,7 +704,7 @@ describe('Telemetry', () => {
 		] as const)(
 			'should count endpoints for the $client client in the same entry',
 			({ client, clients, endpointsByClient, routes }) => {
-				telemetry.trackApiInvocation({
+				telemetry.trackPublicApiInvocation({
 					user_id: 'user1',
 					route: 'GET /workflows',
 					result: '2xx',
@@ -711,7 +712,7 @@ describe('Telemetry', () => {
 					client: 'other',
 				});
 
-				telemetry.trackApiInvocation({
+				telemetry.trackPublicApiInvocation({
 					user_id: 'user1',
 					route: 'GET /workflows',
 					result: '2xx',
@@ -719,7 +720,7 @@ describe('Telemetry', () => {
 					client,
 				});
 
-				telemetry.trackApiInvocation({
+				telemetry.trackPublicApiInvocation({
 					user_id: 'user1',
 					route: 'GET /executions',
 					result: '2xx',
@@ -727,7 +728,7 @@ describe('Telemetry', () => {
 					client: 'other',
 				});
 
-				const buffer = telemetry.getApiInvocationsBuffer();
+				const buffer = telemetry.getPublicApiInvocationsBuffer();
 
 				expect(buffer).toStrictEqual({
 					user1: {
@@ -750,7 +751,7 @@ describe('Telemetry', () => {
 			// @ts-expect-error Assigning to private property
 			telemetry.rudderStack = undefined;
 
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user1',
 				route: 'GET /workflows',
 				result: '2xx',
@@ -758,8 +759,66 @@ describe('Telemetry', () => {
 				client: 'other',
 			});
 
-			const buffer = telemetry.getApiInvocationsBuffer();
+			const buffer = telemetry.getPublicApiInvocationsBuffer();
 			expect(Object.keys(buffer)).toHaveLength(0);
+		});
+	});
+
+	describe('trackInternalApiInvocation', () => {
+		beforeEach(() => {
+			vi.setSystemTime(testDateTime);
+		});
+
+		test('should count calls per client', () => {
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'other' });
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'editor_ui' });
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/credentials', client: 'other' });
+
+			const buffer = telemetry.getInternalApiInvocationsBuffer();
+
+			expect(buffer).toMatchObject({
+				total_calls: 3,
+				clients: { editor_ui: 1, other: 2 },
+			});
+		});
+
+		test('should add one route row with the calls of each client', () => {
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'editor_ui' });
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'other' });
+
+			const buffer = telemetry.getInternalApiInvocationsBuffer();
+
+			expect([...buffer!.routeCalls.values()]).toStrictEqual([
+				{ route: 'GET /rest/workflows', editor_ui: 1, other: 1 },
+			]);
+		});
+
+		test('should add the calls to the same route row', () => {
+			telemetry.trackInternalApiInvocation({
+				route: 'GET /rest/workflows/{workflowId}',
+				client: 'other',
+			});
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/credentials', client: 'other' });
+			telemetry.trackInternalApiInvocation({
+				route: 'GET /rest/workflows/{workflowId}',
+				client: 'other',
+			});
+
+			const buffer = telemetry.getInternalApiInvocationsBuffer();
+
+			expect([...buffer!.routeCalls.values()]).toStrictEqual([
+				{ route: 'GET /rest/workflows/{workflowId}', editor_ui: 0, other: 2 },
+				{ route: 'GET /rest/credentials', editor_ui: 0, other: 1 },
+			]);
+		});
+
+		test('should not buffer when rudderStack is not initialized', () => {
+			// @ts-expect-error Assigning to private property
+			telemetry.rudderStack = undefined;
+
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'other' });
+
+			expect(telemetry.getInternalApiInvocationsBuffer().total_calls).toBe(0);
 		});
 	});
 
@@ -1249,7 +1308,7 @@ describe('Telemetry', () => {
 
 	describe('flushBuffers', () => {
 		test('should send the buffered events and empty the buffers', () => {
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user1',
 				route: 'GET /workflows',
 				result: '2xx',
@@ -1272,7 +1331,7 @@ describe('Telemetry', () => {
 				}),
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
-			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
+			expect(telemetry.getPublicApiInvocationsBuffer()).toEqual({});
 		});
 
 		test('should run the added flushers between the workflow counts and the API usage', () => {
@@ -1283,7 +1342,7 @@ describe('Telemetry', () => {
 			telemetry.addBufferFlusher(() => flushOrder.push('first flusher'));
 			telemetry.addBufferFlusher(() => flushOrder.push('second flusher'));
 			telemetry.trackWorkflowExecution({ workflow_id: '1', is_manual: true, success: true });
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user1',
 				route: 'GET /workflows',
 				result: '2xx',
@@ -1302,7 +1361,7 @@ describe('Telemetry', () => {
 		});
 
 		test('should send a Public API usage report that passes its registry schema', () => {
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user1',
 				route: 'GET /workflows/{workflowId}',
 				result: '4xx',
@@ -1319,6 +1378,69 @@ describe('Telemetry', () => {
 			expect(event.getValidationError(report)).toBeNull();
 			for (const [field, schema] of Object.entries(PUBLIC_API_USAGE_JSON_FIELDS)) {
 				expect(schema.safeParse(jsonParse(report[field] as string)).success).toBe(true);
+			}
+		});
+
+		test('should send an Internal API usage report that passes its registry schema', () => {
+			telemetry.trackInternalApiInvocation({
+				route: 'GET /rest/workflows/{workflowId}',
+				client: 'other',
+			});
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'editor_ui' });
+
+			telemetry.flushBuffers();
+
+			const [event, report] = spyTrack.mock.calls.find(
+				([e]) => e === TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE,
+			)!;
+			expect(event.getValidationError(report)).toBeNull();
+			for (const [field, schema] of Object.entries(INTERNAL_API_USAGE_JSON_FIELDS)) {
+				expect(schema.safeParse(jsonParse(report[field] as string)).success).toBe(true);
+			}
+			expect(report).toMatchObject({
+				total_calls: 2,
+				clients: JSON.stringify({ editor_ui: 1, other: 1 }),
+				routes: JSON.stringify([
+					{ route: 'GET /rest/workflows/{workflowId}', editor_ui: 0, other: 1 },
+					{ route: 'GET /rest/workflows', editor_ui: 1, other: 0 },
+				]),
+			});
+			expect(report).not.toHaveProperty('user_id');
+			expect(telemetry.getInternalApiInvocationsBuffer().total_calls).toBe(0);
+		});
+
+		test('should send no Internal API usage report for a window without calls', () => {
+			telemetry.flushBuffers();
+
+			expect(spyTrack).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE,
+				expect.anything(),
+			);
+		});
+
+		test('should send editor route rows when the editor is the only caller', () => {
+			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'editor_ui' });
+			telemetry.trackInternalApiInvocation({
+				route: 'GET /rest/workflows/{workflowId}',
+				client: 'editor_ui',
+			});
+
+			telemetry.flushBuffers();
+
+			const reports = spyTrack.mock.calls
+				.filter(([e]) => e === TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE)
+				.map(([, report]) => report);
+			expect(reports).toHaveLength(1);
+			expect(reports[0]).toMatchObject({
+				total_calls: 2,
+				routes: JSON.stringify([
+					{ route: 'GET /rest/workflows', editor_ui: 1, other: 0 },
+					{ route: 'GET /rest/workflows/{workflowId}', editor_ui: 1, other: 0 },
+				]),
+				clients: JSON.stringify({ editor_ui: 2, other: 0 }),
+			});
+			for (const [field, schema] of Object.entries(INTERNAL_API_USAGE_JSON_FIELDS)) {
+				expect(schema.safeParse(jsonParse(reports[0][field] as string)).success).toBe(true);
 			}
 		});
 
@@ -1350,7 +1472,7 @@ describe('Telemetry', () => {
 
 	describe('stopTracking', () => {
 		test('should send the buffered events before it drains the queue', async () => {
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user1',
 				route: 'GET /workflows',
 				result: '2xx',
@@ -1367,7 +1489,7 @@ describe('Telemetry', () => {
 			expect(mockRudderStack.track.mock.invocationCallOrder.at(-1)).toBeLessThan(
 				mockRudderStack.flush.mock.invocationCallOrder.at(-1)!,
 			);
-			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
+			expect(telemetry.getPublicApiInvocationsBuffer()).toEqual({});
 		});
 	});
 });
