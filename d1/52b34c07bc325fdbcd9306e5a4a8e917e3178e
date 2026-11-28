@@ -1,0 +1,16 @@
+packages/frontend/editor-ui/src/experiments/agentTestScenarios/useAgentTestScenariosExperiment.test.ts
+  h_8a472ace01776f 5-8,18,22-24,26-30,40-43,56-57,65-66,71
+packages/frontend/editor-ui/src/experiments/agentTestScenarios/useAgentTestScenariosExperiment.ts
+  h_8a472ace01776f 5,17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d152b34c07bc325fdbcd9306e5a4a8e917e3178e",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
