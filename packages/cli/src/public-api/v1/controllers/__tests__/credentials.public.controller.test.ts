@@ -7,7 +7,6 @@ import type { SecurityContext } from '@n8n/permissions';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CredentialsHelper } from '@/credentials-helper';
 import type { PublicApiRequest } from '@/public-api/public-api-client';
@@ -20,7 +19,6 @@ describe('CredentialsPublicController', () => {
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const credentialsHelper = mock<CredentialsHelper>();
 	const eventService = mock<EventService>();
-	const credentialDescriptions = mock<CredentialDescriptionsService>();
 
 	const credential = Object.assign(new CredentialsEntity(), {
 		id: 'credential-id',
@@ -38,7 +36,6 @@ describe('CredentialsPublicController', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		credentialsHelper.getCredentialsProperties.mockReturnValue([]);
-		credentialDescriptions.isEnabled.mockResolvedValue(false);
 		credentialsService.createUnmanagedCredential.mockResolvedValue({ ...credential, scopes: [] });
 		credentialsService.findCredentialOwningProject.mockResolvedValue(undefined);
 		credentialsService.update.mockResolvedValue(credential);
@@ -55,7 +52,6 @@ describe('CredentialsPublicController', () => {
 			mock<LicenseState>(),
 			eventService,
 			mock(), // enterpriseCredentialsService
-			credentialDescriptions,
 			mock(), // credentialsOverwrites
 			mock(), // workflowDependencyQueryService
 		);

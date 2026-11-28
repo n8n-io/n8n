@@ -5,7 +5,6 @@ import {
 	CreateAppDto,
 	ListAppsQueryDto,
 	SetAppBindingsDto,
-	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
@@ -881,7 +880,7 @@ export class InstanceAiAdapterService {
 		const setupPanelVariant = flags[INSTANCE_AI_SETUP_PANEL_FLAG];
 		const preferencesNoteVariant = flags[INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG];
 		return {
-			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
+			credentialDescriptionsEnabled: true,
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===

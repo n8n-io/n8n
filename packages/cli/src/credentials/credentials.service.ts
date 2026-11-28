@@ -83,7 +83,6 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
-import { CredentialDescriptionsService } from './credential-descriptions.service';
 import {
 	CredentialDependencyService,
 	type CredentialDependencyFilter,
@@ -283,7 +282,6 @@ export class CredentialsService {
 		private readonly eventService: EventService,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly policyEnforcementService: PolicyEnforcementService,
-		private readonly credentialDescriptions: CredentialDescriptionsService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly credentialRestrictions: CredentialRestrictionsProviderProxy,
 	) {}
@@ -354,10 +352,6 @@ export class CredentialsService {
 	): Promise<
 		CredentialsWithCount<ICredentialsDecrypted<ICredentialDataDecryptedObject> | CredentialsEntity>
 	> {
-		if (listQueryOptions.select?.description && !(await this.credentialDescriptions.isEnabled())) {
-			delete listQueryOptions.select.description;
-			if (Object.keys(listQueryOptions.select).length === 0) delete listQueryOptions.select;
-		}
 		const { externalSecretsStore } = filters;
 		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
@@ -577,7 +571,6 @@ export class CredentialsService {
 		listQueryOptions: ListQuery.Options,
 		onlySharedWithMe: boolean,
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
-		await this.credentialDescriptions.stripIfDisabled(credentials);
 		if (isDefaultSelect) {
 			// Since we're filtering using project ID as part of the relation,
 			// we end up filtering out all the other relations, meaning that if
@@ -741,12 +734,11 @@ export class CredentialsService {
 			ListQueryDb.Credentials.WithOwnedByAndSharedWith & ScopesField
 		>;
 
-		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
 		const result = enriched.map((c) => ({
 			id: c.id,
 			name: c.name,
 			type: c.type,
-			...(descriptionsEnabled && { description: c.description }),
+			description: c.description,
 			createdAt: c.createdAt.toISOString(),
 			updatedAt: c.updatedAt.toISOString(),
 			scopes: c.scopes,
@@ -873,7 +865,6 @@ export class CredentialsService {
 		const dataMerge = options?.dataMerge ?? 'unredact';
 
 		const mergedData = deepCopy(data);
-		await this.credentialDescriptions.stripIfDisabled(mergedData);
 		if (mergedData.description !== undefined) {
 			mergedData.description = parseCredentialDescription(mergedData.description);
 		}
@@ -1154,9 +1145,6 @@ export class CredentialsService {
 		description: string | null,
 		ctx: OperationContext = {},
 	): Promise<void> {
-		if (!(await this.credentialDescriptions.isEnabled())) {
-			throw new BadRequestError('Credential descriptions are not enabled');
-		}
 		const normalizedDescription = parseCredentialDescription(description);
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
@@ -1221,12 +1209,7 @@ export class CredentialsService {
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 		options?: UpdateOptions,
 	) {
-		// One flag lookup for the whole update, reused for the write payload and the response.
-		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
-		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
-		// The hook can set the field, so filter again before the write. This reuses the cached flag.
-		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
 
 		const cleared = await this.enforceCredentialUpdate(credentialId, newCredentialData.type, actor);
 		if (cleared === null) return null;
@@ -1279,7 +1262,6 @@ export class CredentialsService {
 		}
 
 		// Reflect connections cleared above by deleteUserEntries, not a stale pre-update value.
-		if (result && !descriptionsEnabled) this.credentialDescriptions.strip(result);
 		const enriched: (CredentialsEntity & CredentialConnectionStatus) | null = result;
 		if (enriched && options?.user) {
 			await this.populateConnectedByMe([enriched], options.user);
@@ -1351,7 +1333,6 @@ export class CredentialsService {
 		if (!options.skipExternalHooks) {
 			await this.externalHooks.run('credentials.update', [encrypted]);
 		}
-		await this.credentialDescriptions.stripIfDisabled(encrypted);
 		const hookedData = await this.getValidatedInstanceCredentialHookData(
 			encrypted,
 			credential.id,
@@ -1375,7 +1356,6 @@ export class CredentialsService {
 		if (!updated) {
 			throw new NotFoundError(`Credential with ID "${credentialId}" could not be found.`);
 		}
-		await this.credentialDescriptions.stripIfDisabled(updated);
 		return updated;
 	}
 
@@ -1407,9 +1387,7 @@ export class CredentialsService {
 		const newCredential = new CredentialsEntity();
 		Object.assign(newCredential, credential, encryptedData);
 
-		await this.credentialDescriptions.stripIfDisabled(encryptedData);
 		await this.externalHooks.run('credentials.create', [encryptedData]);
-		await this.credentialDescriptions.stripIfDisabled(newCredential);
 
 		// Authorize first: a caller without access to the project must not learn its policy verdict.
 		await this.assertCanCreateInProject(user, projectId);
@@ -1450,7 +1428,6 @@ export class CredentialsService {
 			credentialId: newCredential.id,
 			ownerId: user.id,
 		});
-		await this.credentialDescriptions.stripIfDisabled(result);
 		return result;
 	}
 
@@ -1509,9 +1486,7 @@ export class CredentialsService {
 		decryptedCredentialData: ICredentialDataDecryptedObject,
 	) {
 		const newCredential = this.credentialsRepository.create({ ...credential, ...encryptedData });
-		await this.credentialDescriptions.stripIfDisabled(encryptedData);
 		await this.externalHooks.run('credentials.create', [encryptedData]);
-		await this.credentialDescriptions.stripIfDisabled(newCredential);
 		const externalSecretProviderIds =
 			await this.credentialDependencyService.resolveProviderIdsFromCredentialData(
 				decryptedCredentialData,
@@ -1526,7 +1501,6 @@ export class CredentialsService {
 				ctx,
 			);
 		});
-		await this.credentialDescriptions.stripIfDisabled(saved);
 		return saved;
 	}
 
@@ -1995,7 +1969,6 @@ export class CredentialsService {
 			});
 			if (instanceCredential) {
 				const { data: _, ...rest } = instanceCredential;
-				await this.credentialDescriptions.stripIfDisabled(rest);
 				if (includeDecryptedData) {
 					const decryptedData = await this.decrypt(instanceCredential);
 					// We never want to expose the oauthTokenData to the frontend, but it
@@ -2044,7 +2017,6 @@ export class CredentialsService {
 		}
 
 		const { data: _, ...rest } = credential;
-		await this.credentialDescriptions.stripIfDisabled(rest);
 
 		const enriched: typeof rest & CredentialConnectionStatus = rest;
 		await this.populateConnectedByMe([enriched], user);
@@ -2204,7 +2176,7 @@ export class CredentialsService {
 			type: opts.type,
 			data,
 		});
-		if (opts.description !== undefined && (await this.credentialDescriptions.isEnabled())) {
+		if (opts.description !== undefined) {
 			encryptedCredential.description = parseCredentialDescription(opts.description);
 		}
 
@@ -2419,9 +2391,7 @@ export class CredentialsService {
 			data: opts.data as ICredentialDataDecryptedObject,
 		});
 
-		if (await this.credentialDescriptions.isEnabled()) {
-			encryptedCredential.description = parseCredentialDescription(opts.description);
-		}
+		encryptedCredential.description = parseCredentialDescription(opts.description);
 
 		// Set isGlobal if provided in the payload and user has permission
 		const isGlobal = opts.isGlobal;
@@ -2461,7 +2431,6 @@ export class CredentialsService {
 
 		const scopes = await this.getCredentialScopes(user, credential.id);
 
-		await this.credentialDescriptions.stripIfDisabled(credential);
 		return { ...credential, scopes };
 	}
 
@@ -2503,12 +2472,9 @@ export class CredentialsService {
 		);
 		this.validateInstanceCredentialData(hookedData);
 		this.validateCredentialData(opts.type, hookedData);
-		await this.credentialDescriptions.stripIfDisabled(encryptedCredential);
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,
-			...((await this.credentialDescriptions.isEnabled()) && {
-				description: parseCredentialDescription(opts.description),
-			}),
+			description: parseCredentialDescription(opts.description),
 			isManaged: false,
 			isResolvable: false,
 			usageScope: 'instance' as const,
@@ -2526,7 +2492,6 @@ export class CredentialsService {
 			ownerId: user.id,
 		});
 
-		await this.credentialDescriptions.stripIfDisabled(savedCredential);
 		return savedCredential;
 	}
 

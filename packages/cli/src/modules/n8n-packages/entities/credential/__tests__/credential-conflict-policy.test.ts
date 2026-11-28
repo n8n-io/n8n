@@ -407,7 +407,7 @@ describe('plannedCredentialUpdates', () => {
 	describe('description', () => {
 		const stored = { name: 'Same', data: {}, description: 'Old' };
 
-		it('detects a changed description when descriptions are on', () => {
+		it('detects a changed description', () => {
 			expect(credentialDiffers(stored, { name: 'Same', description: 'New' })).toBe(true);
 		});
 

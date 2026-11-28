@@ -83,15 +83,6 @@ describe('CredentialCard', () => {
 		mockIsOAuthCredentialType.mockReturnValue(true);
 	});
 
-	it.each([false, undefined])('hides stored descriptions when the flag is %s', (enabled) => {
-		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(Boolean(enabled));
-		const data = createCredential({ description: 'Stored description' });
-		const { queryByTestId } = renderComponent({ props: { data } });
-
-		expect(queryByTestId('credential-card-description')).not.toBeInTheDocument();
-		expect(data.description).toBe('Stored description');
-	});
-
 	it('shows the full description as plain text on hover', async () => {
 		const description = '<b>Production reports</b>. '.repeat(15);
 		const data = createCredential({ description });

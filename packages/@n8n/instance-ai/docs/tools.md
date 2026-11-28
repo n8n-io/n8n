@@ -872,10 +872,7 @@ Cancel a running execution.
 
 ## Credential tools
 
-Both builders use these five tools. The instance PostHog flag
-`120_credential_descriptions` controls description fields and selection
-guidance. Only boolean `true` enables them. When the flag is false or missing,
-`list_credentials` omits `description`, including managed entries.
+Both builders use these five tools.
 
 > **Security note**: The agent never handles raw credential secrets. Credential
 > creation and secret configuration is done through the n8n frontend UI (via
@@ -913,7 +910,7 @@ Pass `credentialId` and `description`.
 The description is a required string. It is trimmed and limited to 512 characters. Pass a blank string to clear it.
 Returns `{ success: true }`.
 
-The tool is available when credential descriptions are enabled. The user must have
+The user must have
 `credential:update` permission, and the credential must belong to the conversation's project.
 Managed credentials allow description updates. Description updates remain available on protected instances.
 The operation keeps credential secrets, names, and types unchanged.

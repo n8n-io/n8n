@@ -60,6 +60,7 @@ describe('workflow package export — with credentials', () => {
 				name: 'Header credential',
 				type: 'httpHeaderAuth',
 				data: { name: 'X-Auth', value: 'secret' },
+				description: 'Header for the reporting API',
 			},
 			{ project, role: 'credential:owner' },
 		);
@@ -100,9 +101,10 @@ describe('workflow package export — with credentials', () => {
 			id: credential.id,
 			name: credential.name,
 			type: 'httpHeaderAuth',
+			description: 'Header for the reporting API',
 		});
 		// Secret-adjacent fields must not appear on disk under any name.
-		expect(Object.keys(parsed).sort()).toEqual(['id', 'name', 'type']);
+		expect(Object.keys(parsed).sort()).toEqual(['description', 'id', 'name', 'type']);
 	});
 
 	it('omits the credential name from the workflow JSON so a rename cannot go stale', async () => {
@@ -208,7 +210,14 @@ describe('workflow package export — with credentials', () => {
 			(e) => e.name === `${manifest.credentials![0].target}/credential.json`,
 		);
 		const parsed = jsonParse<Record<string, unknown>>(credentialFile!.content.toString());
-		expect(Object.keys(parsed).sort()).toEqual(['data', 'dataIsComplete', 'id', 'name', 'type']);
+		expect(Object.keys(parsed).sort()).toEqual([
+			'data',
+			'dataIsComplete',
+			'description',
+			'id',
+			'name',
+			'type',
+		]);
 		expect(parsed.dataIsComplete).toBe(false);
 		expect(parsed.data).toEqual({ value: '={{ $secrets.api.key }}' });
 
@@ -246,7 +255,8 @@ describe('workflow package export — with credentials', () => {
 			(e) => e.name === `${manifest.credentials![0].target}/credential.json`,
 		);
 		const parsed = jsonParse<Record<string, unknown>>(credentialFile!.content.toString());
-		expect(Object.keys(parsed).sort()).toEqual(['id', 'name', 'type']);
+		expect(Object.keys(parsed).sort()).toEqual(['description', 'id', 'name', 'type']);
+		expect(parsed.description).toBeNull();
 	});
 
 	it('dedupes a credential referenced by two workflows in a single export', async () => {

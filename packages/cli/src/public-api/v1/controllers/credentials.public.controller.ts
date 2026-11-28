@@ -26,7 +26,6 @@ import {
 	Body,
 	Delete,
 	Get,
-	Middleware,
 	Param,
 	Patch,
 	Post,
@@ -36,10 +35,9 @@ import {
 	Query,
 } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
-import type { NextFunction, Request, Response } from 'express';
+import type { Response } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { getExternalSecretExpressionPaths } from '@/credentials/external-secrets.utils';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialTypes } from '@/credential-types';
@@ -80,14 +78,11 @@ type CredentialPublicDtoSource = Pick<
 	| 'updatedAt'
 >;
 
-function toCredentialPublicDto(
-	credential: CredentialPublicDtoSource,
-	includeDescription: boolean,
-): CredentialPublicDto {
+function toCredentialPublicDto(credential: CredentialPublicDtoSource): CredentialPublicDto {
 	return {
 		id: credential.id,
 		name: credential.name,
-		...(includeDescription && { description: credential.description ?? null }),
+		description: credential.description ?? null,
 		type: credential.type,
 		isManaged: credential.isManaged,
 		isGlobal: credential.isGlobal,
@@ -100,12 +95,9 @@ function toCredentialPublicDto(
 }
 
 /** The delete response adds `usageScope` to the standard credential fields. */
-function toDeleteCredentialPublicDto(
-	credential: CredentialsEntity,
-	includeDescription: boolean,
-): DeleteCredentialPublicDto {
+function toDeleteCredentialPublicDto(credential: CredentialsEntity): DeleteCredentialPublicDto {
 	return {
-		...toCredentialPublicDto(credential, includeDescription),
+		...toCredentialPublicDto(credential),
 		usageScope: credential.usageScope,
 	};
 }
@@ -135,21 +127,9 @@ export class CredentialsPublicController {
 		private readonly licenseState: LicenseState,
 		private readonly eventService: EventService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
-		private readonly credentialDescriptions: CredentialDescriptionsService,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
 	) {}
-
-	@Middleware()
-	async stripDisabledDescription(req: Request, _res: Response, next: NextFunction) {
-		try {
-			// Strip before DTO validation so disabled descriptions cannot reject a request.
-			if (req.body) await this.credentialDescriptions.stripIfDisabled(req.body);
-			next();
-		} catch (error) {
-			next(error);
-		}
-	}
 
 	@Get('/')
 	@ApiKeyScope('credential:list')
@@ -205,7 +185,7 @@ export class CredentialsPublicController {
 			throw new NotFoundError('Credential not found');
 		}
 
-		return toCredentialPublicDto(credential, await this.credentialDescriptions.isEnabled());
+		return toCredentialPublicDto(credential);
 	}
 
 	@Post('/')
@@ -240,16 +220,12 @@ export class CredentialsPublicController {
 
 		const project = await this.credentialsService.findCredentialOwningProject(credential.id);
 
-		const includeDescription = await this.credentialDescriptions.isEnabled();
-
 		this.eventService.emit('credentials-created', {
 			user: req.user,
 			credentialType: credential.type,
 			credentialId: credential.id,
 			credentialName: credential.name,
-			...(includeDescription && {
-				credentialDescriptionLength: credential.description?.length ?? 0,
-			}),
+			credentialDescriptionLength: credential.description?.length ?? 0,
 			publicApi: req.publicApiClient,
 			projectId: project?.id,
 			projectType: project?.type,
@@ -262,7 +238,7 @@ export class CredentialsPublicController {
 			loginId: loginIdOf(req.ctx),
 		});
 
-		return toCredentialPublicDto(credential, includeDescription);
+		return toCredentialPublicDto(credential);
 	}
 
 	@Patch('/:credentialId')
@@ -346,7 +322,6 @@ export class CredentialsPublicController {
 			throw new NotFoundError('Credential not found');
 		}
 
-		const includeDescription = await this.credentialDescriptions.isEnabled();
 		// Without `data` in the body the stored data is unchanged, so its flags still apply.
 		const credentialData =
 			decryptedDataForDeps ?? (await this.credentialsService.decrypt(existingCredential, true));
@@ -356,9 +331,7 @@ export class CredentialsPublicController {
 			credentialType: updatedCredential.type,
 			credentialId: updatedCredential.id,
 			credentialName: updatedCredential.name,
-			...(includeDescription && {
-				credentialDescriptionLength: updatedCredential.description?.length ?? 0,
-			}),
+			credentialDescriptionLength: updatedCredential.description?.length ?? 0,
 			isDynamic: updatedCredential.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(credentialData).length > 0,
 			jweEnabled: credentialData.jweEnabled === true,
@@ -374,7 +347,7 @@ export class CredentialsPublicController {
 			loginId: loginIdOf(req.ctx),
 		});
 
-		return toCredentialPublicDto(updatedCredential, includeDescription);
+		return toCredentialPublicDto(updatedCredential);
 	}
 
 	private assertKnownCredentialType(type: string): void {
@@ -484,7 +457,7 @@ export class CredentialsPublicController {
 
 		await this.credentialsService.delete(req.user, credentialId, {}, req.ctx);
 
-		return toDeleteCredentialPublicDto(credential, await this.credentialDescriptions.isEnabled());
+		return toDeleteCredentialPublicDto(credential);
 	}
 
 	@Put('/:credentialId/transfer')

@@ -23,37 +23,28 @@ function makeCredential(overrides: Partial<CredentialsEntity> = {}): Credentials
 describe('CredentialSerializer', () => {
 	const serializer = new CredentialSerializer();
 
-	it('returns exactly id, name, type', () => {
+	it('returns exactly id, name, type, description', () => {
 		const credential = makeCredential();
 
 		const serialized = serializer.serialize(credential);
 
-		expect(Object.keys(serialized).sort()).toEqual(['id', 'name', 'type']);
+		expect(Object.keys(serialized).sort()).toEqual(['description', 'id', 'name', 'type']);
 		expect(serialized).toEqual({
 			id: 'cred-1',
 			name: 'My Credential',
 			type: 'httpHeaderAuth',
+			description: null,
 		});
 	});
 
-	it('omits the description unless the source has descriptions on', () => {
+	it('emits the description', () => {
 		const serialized = serializer.serialize(makeCredential({ description: 'Prod key' }));
-
-		expect(serialized).not.toHaveProperty('description');
-	});
-
-	it('emits the description when the source has descriptions on', () => {
-		const serialized = serializer.serialize(makeCredential({ description: 'Prod key' }), {
-			includeDescription: true,
-		});
 
 		expect(serialized.description).toBe('Prod key');
 	});
 
 	it('emits an empty description as null, so an import can clear it', () => {
-		const serialized = serializer.serialize(makeCredential({ description: null }), {
-			includeDescription: true,
-		});
+		const serialized = serializer.serialize(makeCredential({ description: null }));
 
 		expect(serialized.description).toBeNull();
 	});
@@ -65,7 +56,7 @@ describe('CredentialSerializer', () => {
 			data: { value: '={{ $secrets.api.key }}' },
 		});
 
-		expect(Object.keys(serialized).sort()).toEqual(['data', 'id', 'name', 'type']);
+		expect(Object.keys(serialized).sort()).toEqual(['data', 'description', 'id', 'name', 'type']);
 		expect(serialized.data).toEqual({ value: '={{ $secrets.api.key }}' });
 	});
 

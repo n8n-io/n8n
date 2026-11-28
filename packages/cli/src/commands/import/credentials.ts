@@ -23,7 +23,6 @@ import { jsonParse, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
-import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
@@ -214,7 +213,6 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		credential: Partial<CredentialsEntity>,
 		project: Project,
 	): Promise<AdmittedCredential | SkippedCredential> {
-		await Container.get(CredentialDescriptionsService).stripIfDisabled(credential);
 		if (credential.description !== undefined) {
 			const parsed = credentialDescriptionSchema.safeParse(credential.description);
 

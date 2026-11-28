@@ -1,4 +1,3 @@
-import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
@@ -20,7 +19,7 @@ const denyGlobalScopes = (...denied: string[]) =>
 
 import type { McpConfig } from '../mcp.config';
 import type { McpSettingsService } from '../mcp.settings.service';
-import type { UrlService, PostHogClient } from '@n8n/backend-services';
+import type { UrlService } from '@n8n/backend-services';
 
 import { Container } from '@n8n/di';
 
@@ -50,7 +49,6 @@ describe('McpProtectedResource', () => {
 	const mcpConfig = mock<McpConfig>();
 	const moduleRegistry = mock<ModuleRegistry>({ settings: mock<ModuleRegistry['settings']>() });
 	const licenseState = mock<LicenseState>();
-	const postHogClient = mock<PostHogClient>();
 	const resource = new McpProtectedResource(
 		urlService,
 		mcpSettingsService,
@@ -58,7 +56,6 @@ describe('McpProtectedResource', () => {
 		makeGlobalConfig(),
 		moduleRegistry,
 		licenseState,
-		postHogClient,
 	);
 
 	function mockModuleSettings(overrides: Record<string, Record<string, unknown>>) {
@@ -71,8 +68,6 @@ describe('McpProtectedResource', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
-		postHogClient.getFeatureFlags.mockResolvedValue({});
 		mcpConfig.baseUrl = '';
 		moduleRegistry.isActive.mockReturnValue(true);
 		mockModuleSettings({});
@@ -90,13 +85,10 @@ describe('McpProtectedResource', () => {
 	});
 
 	describe('getScopeTools', () => {
-		it.each([true, false])('lists description updates only when enabled: %s', async (enabled) => {
-			postHogClient.getFeatureFlagForInstance.mockImplementation(async (flag) =>
-				flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : true,
-			);
-			expect((await resource.getScopeTools())['credential:update']).toEqual(
-				enabled ? ['update_credential_description'] : [],
-			);
+		it('lists description updates', async () => {
+			expect((await resource.getScopeTools())['credential:update']).toEqual([
+				'update_credential_description',
+			]);
 		});
 
 		it('withholds Agent scopes and tools when Agents is disabled', async () => {
@@ -217,7 +209,6 @@ describe('McpProtectedResource', () => {
 				makeGlobalConfig({ activityLogEnabled: false }),
 				moduleRegistry,
 				licenseState,
-				postHogClient,
 			).getScopeTools();
 
 			for (const tool of ACTIVITY_LOG_TOOLS) {
@@ -225,14 +216,6 @@ describe('McpProtectedResource', () => {
 			}
 			expect(scopeTools['workflow:read']).toContain('get_node_usage');
 			expect(scopeTools['workflow:read']).toContain('get_dependencies');
-		});
-
-		it('checks the credential descriptions flag once without a user argument', async () => {
-			await resource.getScopeTools();
-
-			expect(postHogClient.getFeatureFlagForInstance.mock.calls).toEqual([
-				[CREDENTIAL_DESCRIPTIONS_FLAG],
-			]);
 		});
 
 		it('should drop tools this instance does not expose', async () => {
@@ -243,7 +226,6 @@ describe('McpProtectedResource', () => {
 				makeGlobalConfig({ builderEnabled: false, tagsDisabled: true }),
 				moduleRegistry,
 				licenseState,
-				postHogClient,
 			);
 
 			const scopeTools = await limitedResource.getScopeTools();
@@ -301,7 +283,6 @@ describe('McpProtectedResource', () => {
 				makeGlobalConfig({ builderEnabled: false }),
 				moduleRegistry,
 				licenseState,
-				postHogClient,
 			);
 
 			expect((await withoutBuilder.getScopeTools())['aiPreference:read']).toEqual([
@@ -485,7 +466,6 @@ describe('McpProtectedResource', () => {
 				makeGlobalConfig({ managedByEnv: true }),
 				moduleRegistry,
 				licenseState,
-				postHogClient,
 			);
 
 			expect(await envManaged.getGrantableScopes(user)).not.toContain('communityPackage:install');
@@ -504,12 +484,11 @@ describe('McpProtectedResource', () => {
 				hasGlobalScope.mockReturnValue(true);
 			});
 
-			it('offers both preference scopes without a flag read', async () => {
+			it('offers both preference scopes', async () => {
 				const scopes = await resource.getGrantableScopes(user);
 
 				expect(scopes).toContain('aiPreference:read');
 				expect(scopes).toContain('aiPreference:write');
-				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
 			});
 
 			it('keeps the preference scopes when the install scope is narrowed', async () => {

@@ -7,6 +7,7 @@ export type CredentialPayload = {
 	name: string;
 	type: string;
 	data: ICredentialDataDecryptedObject;
+	description?: string | null;
 	isManaged?: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;

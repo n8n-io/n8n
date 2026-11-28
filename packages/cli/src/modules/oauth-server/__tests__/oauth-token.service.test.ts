@@ -11,7 +11,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { KeyObject } from 'node:crypto';
 import { createHmac, createPublicKey, generateKeyPairSync } from 'node:crypto';
 
-import { JwtService, type UrlService, type PostHogClient } from '@n8n/backend-services';
+import { JwtService, type UrlService } from '@n8n/backend-services';
 
 import type { AccessToken } from '../database/entities/oauth-access-token.entity';
 import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
@@ -992,7 +992,6 @@ describe('OAuthTokenService', () => {
 				mock<GlobalConfig>(),
 				mock<ModuleRegistry>(),
 				mock<LicenseState>(),
-				mock<PostHogClient>(),
 			);
 
 			const configuredRegistry = new ProtectedResourceRegistry(mock<Logger>());

@@ -28,16 +28,14 @@ import {
 	Body,
 	Param,
 	Query,
-	Middleware,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
-import type { NextFunction, Response } from 'express';
+import type { Response } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
-import { CredentialDescriptionsService } from './credential-descriptions.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
@@ -71,23 +69,7 @@ export class CredentialsController {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
-		private readonly credentialDescriptions: CredentialDescriptionsService,
 	) {}
-
-	@Middleware()
-	async stripDisabledDescription(
-		req: CredentialRequest.Update,
-		_res: Response,
-		next: NextFunction,
-	) {
-		try {
-			// Strip before DTO validation so disabled descriptions cannot reject a request.
-			if (req.body) await this.credentialDescriptions.stripIfDisabled(req.body);
-			next();
-		} catch (error) {
-			next(error);
-		}
-	}
 
 	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -199,8 +181,6 @@ export class CredentialsController {
 			req.params.credentialId,
 		);
 
-		await this.credentialDescriptions.stripIfDisabled(credential);
-
 		// Audit what the response carries, not what the request asked for, and only once the
 		// response is complete: a failure above must not log a read that never happened.
 		if ('data' in credential && credential.data !== undefined) {
@@ -288,9 +268,7 @@ export class CredentialsController {
 			credentialType: newCredential.type,
 			credentialId: newCredential.id,
 			credentialName: newCredential.name,
-			...((await this.credentialDescriptions.isEnabled()) && {
-				credentialDescriptionLength: newCredential.description?.length ?? 0,
-			}),
+			credentialDescriptionLength: newCredential.description?.length ?? 0,
 			publicApi: false,
 			projectId: project?.id,
 			projectType: project?.type,
@@ -463,9 +441,7 @@ export class CredentialsController {
 			credentialId: credential.id,
 			// The updated entity, so a rename records the new name rather than the one it replaced.
 			credentialName: responseData.name,
-			...((await this.credentialDescriptions.isEnabled()) && {
-				credentialDescriptionLength: responseData.description?.length ?? 0,
-			}),
+			credentialDescriptionLength: responseData.description?.length ?? 0,
 			isDynamic: newCredentialData.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(preparedCredentialData.data).length > 0,
 			jweEnabled: updatedData.jweEnabled === true,

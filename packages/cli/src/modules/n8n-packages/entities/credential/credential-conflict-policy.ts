@@ -74,8 +74,8 @@ export function mergeIntoStored(
 /**
  * Whether `overwrite` would change the destination credential: a different name, a different
  * description, or stored data that changes when the package values merge into it. Arrays never
- * count. The description counts only when the package decides it: the importer drops it from
- * the package credential when the instance has credential descriptions off.
+ * count. The description counts only when the package decides it: packages from older n8n
+ * versions do not carry one.
  */
 export function credentialDiffers(
 	stored: { name: string; data: ICredentialDataDecryptedObject; description?: string | null },

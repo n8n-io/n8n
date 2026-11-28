@@ -1,4 +1,4 @@
-import { CREDENTIAL_DESCRIPTION_MAX_LENGTH, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { PostHogClient } from '@n8n/backend-services';
 import { CredentialsEntity, DbLock, DbLockService, InstanceCredentialAssignment } from '@n8n/db';
@@ -40,7 +40,7 @@ const [credentialsFixture] = jsonParse<CredentialFixture[]>(
 
 mockInstance(LoadNodesAndCredentials);
 // Keep flag results independent of the live rollout and the PostHog cache.
-const postHogClient = mockInstance(PostHogClient);
+mockInstance(PostHogClient);
 const command = setupTestCommand(ImportCredentialsCommand);
 const IMPORT_CREDENTIAL_USE = {
 	id: 'test:credential-import',
@@ -55,9 +55,6 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-	postHogClient.getFeatureFlagForInstance.mockImplementation(async (flag) =>
-		flag === CREDENTIAL_DESCRIPTIONS_FLAG ? true : undefined,
-	);
 	await testDb.truncate([
 		'InstanceCredentialAssignment',
 		'CredentialsEntity',
@@ -270,48 +267,6 @@ test.each([
 
 		const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
 		expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
-	},
-);
-
-test.each([false, undefined])(
-	'import:credentials ignores descriptions and preserves stored values when the flag is %s',
-	async (enabled) => {
-		await createOwner();
-		await command.run([
-			'--input=./test/integration/commands/import-credentials/credentials-description.json',
-		]);
-		postHogClient.getFeatureFlagForInstance.mockImplementation(async (flag) =>
-			flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : undefined,
-		);
-		const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
-		const inputPath = path.join(temporaryDirectory, 'credentials.json');
-		fs.writeFileSync(
-			inputPath,
-			JSON.stringify(
-				['desc-untrimmed', 'desc-new'].map((id) => ({
-					id,
-					name: 'Reporting account',
-					type: 'aws',
-					data: { region: 'eu-west-1' },
-					description: 42,
-				})),
-			),
-		);
-
-		try {
-			await command.run([`--input=${inputPath}`]);
-		} finally {
-			fs.rmSync(temporaryDirectory, { recursive: true, force: true });
-		}
-
-		const byId = new Map(
-			(await getAllCredentials()).map((credential) => [credential.id, credential]),
-		);
-		expect(byId.get('desc-untrimmed')).toMatchObject({
-			name: 'Reporting account',
-			description: 'Read-only key for reporting.',
-		});
-		expect(byId.get('desc-new')?.description).toBeNull();
 	},
 );
 

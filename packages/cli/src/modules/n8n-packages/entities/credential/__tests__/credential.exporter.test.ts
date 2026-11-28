@@ -6,7 +6,6 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 
 import type { CredentialTypes } from '@/credential-types';
-import type { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import { CredentialExporter } from '../credential.exporter';
@@ -60,15 +59,8 @@ function makeRequirement(
 function makeExporter() {
 	const finder = mock<CredentialsFinderService>();
 	const credentialTypes = mock<CredentialTypes>();
-	const descriptions = mock<CredentialDescriptionsService>();
-	descriptions.isEnabled.mockResolvedValue(false);
-	const exporter = new CredentialExporter(
-		finder,
-		new CredentialSerializer(),
-		credentialTypes,
-		descriptions,
-	);
-	return { exporter, finder, credentialTypes, descriptions };
+	const exporter = new CredentialExporter(finder, new CredentialSerializer(), credentialTypes);
+	return { exporter, finder, credentialTypes };
 }
 
 describe('CredentialExporter', () => {
@@ -191,9 +183,8 @@ describe('CredentialExporter', () => {
 	});
 
 	describe('description', () => {
-		const exportDescription = async (enabled: boolean, description: string | null) => {
-			const { exporter, finder, descriptions } = makeExporter();
-			descriptions.isEnabled.mockResolvedValue(enabled);
+		const exportDescription = async (description: string | null) => {
+			const { exporter, finder } = makeExporter();
 			finder.findCredentialForUser.mockResolvedValue(makeCredential({ description }));
 			const writer = new CapturingWriter();
 
@@ -207,16 +198,12 @@ describe('CredentialExporter', () => {
 			return jsonParse<Record<string, unknown>>(writer.files[0].content);
 		};
 
-		it('writes the description when the source has descriptions on', async () => {
-			expect(await exportDescription(true, 'Prod key')).toMatchObject({ description: 'Prod key' });
+		it('writes the description', async () => {
+			expect(await exportDescription('Prod key')).toMatchObject({ description: 'Prod key' });
 		});
 
 		it('writes null for an empty description, so an import can clear it', async () => {
-			expect(await exportDescription(true, null)).toMatchObject({ description: null });
-		});
-
-		it('writes no description when the source has descriptions off', async () => {
-			expect(await exportDescription(false, 'Prod key')).not.toHaveProperty('description');
+			expect(await exportDescription(null)).toMatchObject({ description: null });
 		});
 	});
 
@@ -258,6 +245,7 @@ describe('CredentialExporter', () => {
 				id: 'cred_1',
 				name: 'My Credential',
 				type: 'httpHeaderAuth',
+				description: null,
 			});
 		});
 
@@ -446,6 +434,7 @@ describe('CredentialExporter', () => {
 				id: 'cred_1',
 				name: 'My Credential',
 				type: 'httpHeaderAuth',
+				description: null,
 			});
 		});
 

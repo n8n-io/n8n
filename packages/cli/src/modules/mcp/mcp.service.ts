@@ -1,6 +1,5 @@
 import type { InputRequiredResult, McpServer } from '@modelcontextprotocol/server';
 import {
-	CREDENTIAL_DESCRIPTIONS_FLAG,
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
@@ -315,7 +314,7 @@ export class McpService {
 		const preferencesNoteFlag = flags[MCP_EMPTY_PREFERENCES_NOTE_FLAG];
 
 		return {
-			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
+			credentialDescriptionsEnabled: true,
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			instanceContextEnabled: true,
 			skillsExtensionEnabled: flags[MCP_SKILLS_EXTENSION_FLAG] === true,
