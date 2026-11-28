@@ -234,3 +234,8 @@ the right `appId`.
 You cannot publish apps. Tell the user to publish with the Publish button of
 the app. The app uses the visibility that the user approved in the blueprint.
 The user can change it in the app settings.
+
+`create_app`, `get_app` and `list_apps` return `url`, the address of the app.
+Use it when a workflow, an agent or a message must link to the app. The link
+works only after the user publishes the app, so tell the user to publish it.
+If the user changes the namespace, the address changes and old links break.

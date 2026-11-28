@@ -10301,9 +10301,25 @@ describe('createContext: customMcpServerService', () => {
 
 describe('createContext: appService', () => {
 	const APP_ID = '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f70';
+	const APP: AppResponse = {
+		id: APP_ID,
+		projectId: 'project-1',
+		name: 'Todos',
+		namespace: 'todos',
+		visibility: 'project',
+		draftVersionId: null,
+		publishedVersionId: null,
+		publishedUrl: null,
+		createdAt: '2026-11-27T00:00:00.000Z',
+		updatedAt: '2026-11-27T00:00:00.000Z',
+	};
 
 	function mockAppsModule(active: boolean) {
 		const apps = mock<AppsService>();
+		apps.createApp.mockResolvedValue(APP);
+		apps.getApp.mockResolvedValue(APP);
+		apps.listApps.mockResolvedValue({ data: [APP], count: 1 });
+		apps.appUrl.mockImplementation((namespace) => `https://${namespace}.apps.example.com`);
 		const sources = mock<AppSourceArchiveService>();
 		const bindings = mock<AppBindingsService>();
 		const get = Container.get.bind(Container);
@@ -10372,7 +10388,11 @@ describe('createContext: appService', () => {
 
 		await expect(
 			context.appService?.createApp({ name: 'Todos', namespace: 'todos' }),
-		).resolves.toBe(created);
+		).resolves.toMatchObject({
+			id: APP_ID,
+			namespace: 'todos-3',
+			url: 'https://todos-3.apps.example.com',
+		});
 
 		expect(apps.createApp.mock.calls.map(([, dto]) => dto.namespace)).toEqual([
 			'todos',
@@ -10553,6 +10573,19 @@ describe('createContext: appService', () => {
 			'project-1',
 			expect.objectContaining({ name: 'Todo', take: 50 }),
 		);
+	});
+
+	it('adds the app address to each app, also before it is published', async () => {
+		mockAppsModule(true);
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+		const expected = { ...APP, url: 'https://todos.apps.example.com', publishedUrl: null };
+
+		expect(await context.appService?.createApp({ name: 'Todos', namespace: 'todos' })).toEqual(
+			expected,
+		);
+		expect(await context.appService?.getApp(APP_ID)).toEqual(expected);
+		expect(await context.appService?.findApp(APP_ID)).toEqual(expected);
+		expect(await context.appService?.listApps({})).toEqual({ data: [expected], count: 1 });
 	});
 
 	it('finds no app only when the app does not exist', async () => {

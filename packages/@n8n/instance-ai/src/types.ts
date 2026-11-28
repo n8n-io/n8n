@@ -26,7 +26,6 @@ import type {
 	AppBinding,
 	AppBindingsResponse,
 	AppBuildResponse,
-	AppListResponse,
 	AppResponse,
 	McpServerDetailResponse,
 	McpServerResponse,
@@ -1364,16 +1363,22 @@ export interface InstanceAiDataTableService {
 	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 
+/**
+ * An app with `url`, the address where it is served once published.
+ * `publishedUrl` stays null until then.
+ */
+export type InstanceAiApp = AppResponse & { url: string | null };
+
 export interface InstanceAiAppService {
 	createApp(input: {
 		name: string;
 		namespace: string;
 		visibility?: AppResponse['visibility'];
 		id?: string;
-	}): Promise<AppResponse>;
-	listApps(query: { name?: string }): Promise<AppListResponse>;
-	getApp(appId: string): Promise<AppResponse>;
-	findApp(appId: string): Promise<AppResponse | undefined>;
+	}): Promise<InstanceAiApp>;
+	listApps(query: { name?: string }): Promise<{ data: InstanceAiApp[]; count: number }>;
+	getApp(appId: string): Promise<InstanceAiApp>;
+	findApp(appId: string): Promise<InstanceAiApp | undefined>;
 	/** The draft source as a gzip tar archive, with the version it is based on. */
 	exportDraft(appId: string): Promise<{ baseVersionId: string | null; archive: Buffer }>;
 	commit(

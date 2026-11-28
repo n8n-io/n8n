@@ -777,6 +777,7 @@ export type {
 	ExecuteNodeResult,
 	InstanceAiCredentialService,
 	InstanceAiNodeService,
+	InstanceAiApp,
 	InstanceAiAppService,
 	CustomMcpServerCandidatePage,
 	CustomMcpServerCandidateQuery,

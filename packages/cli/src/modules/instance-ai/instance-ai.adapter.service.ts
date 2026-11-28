@@ -22,7 +22,7 @@ import {
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 } from '@n8n/api-types';
-import type { AiGatewayConfigDto } from '@n8n/api-types';
+import type { AiGatewayConfigDto, AppResponse } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import {
@@ -55,6 +55,7 @@ import {
 import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
+	InstanceAiApp,
 	InstanceAiAppService,
 	InstanceAiCustomMcpServerService,
 	InstanceAiContext,
@@ -3867,6 +3868,11 @@ export class InstanceAiAdapterService {
 			};
 		};
 
+		const withUrl = (
+			apps: { appUrl(namespace: string): string | null },
+			app: AppResponse,
+		): InstanceAiApp => ({ ...app, url: apps.appUrl(app.namespace) });
+
 		return {
 			createApp: async ({ name, namespace, visibility, id }) => {
 				const { apps } = await services('app:create');
@@ -3874,11 +3880,12 @@ export class InstanceAiAdapterService {
 				// namespace moves on to the next numbered one instead of failing.
 				for (const candidate of appNamespaceCandidates(namespace, apps.maxNamespaceLength())) {
 					try {
-						return await apps.createApp(
+						const app = await apps.createApp(
 							projectId,
 							CreateAppDto.parse({ name, namespace: candidate, visibility }),
 							{ id, actor },
 						);
+						return withUrl(apps, app);
 					} catch (error) {
 						// The namespace is the only unique field that the Assistant picks.
 						if (!(error instanceof ConflictError)) throw error;
@@ -3888,16 +3895,20 @@ export class InstanceAiAdapterService {
 			},
 			listApps: async ({ name }) => {
 				const { apps } = await services('app:list');
-				return await apps.listApps(projectId, ListAppsQueryDto.parse({ name, take: '50' }));
+				const { data, count } = await apps.listApps(
+					projectId,
+					ListAppsQueryDto.parse({ name, take: '50' }),
+				);
+				return { data: data.map((app) => withUrl(apps, app)), count };
 			},
 			getApp: async (appId) => {
 				const { apps } = await services('app:read');
-				return await apps.getApp(projectId, appId);
+				return withUrl(apps, await apps.getApp(projectId, appId));
 			},
 			findApp: async (appId) => {
 				const { apps } = await services('app:read');
 				try {
-					return await apps.getApp(projectId, appId);
+					return withUrl(apps, await apps.getApp(projectId, appId));
 				} catch (error) {
 					if (error instanceof NotFoundError) return undefined;
 					throw error;

@@ -190,6 +190,25 @@ describe('AppsService', () => {
 	});
 
 	it.each([
+		{ deploymentType: 'default', host: 'n8n.example.net', url: 'https://todos.apps.example.com' },
+		{
+			deploymentType: 'cloud',
+			host: 'test.app.n8n.cloud',
+			url: 'https://todos--test.apps.example.com',
+		},
+	])('returns the app URL of a namespace on a $deploymentType host', ({ url, ...config }) => {
+		const { service } = createService(config);
+
+		expect(service.appUrl('todos')).toBe(url);
+	});
+
+	it('returns no app URL for a namespace without a valid host', () => {
+		const { service } = createService({ deploymentType: 'cloud', host: 'foo-bar1.app.n8n.cloud' });
+
+		expect(service.appUrl('a'.repeat(54))).toBeNull();
+	});
+
+	it.each([
 		{ deploymentType: 'cloud', host: 'test.app.n8n.cloud', maxLength: 48 },
 		{ deploymentType: 'cloud', host: 'foo-bar1.app.n8n.cloud', maxLength: 44 },
 		{ deploymentType: 'default', host: 'test.app.n8n.cloud', maxLength: 54 },
