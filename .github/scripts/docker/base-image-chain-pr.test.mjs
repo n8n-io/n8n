@@ -118,7 +118,10 @@ describe('planPins', () => {
 
 	it('skips a pin that already points at the published image', async () => {
 		const pinned = /variable "RUNTIME_IMAGE" \{\s*default = "([^"@]+)@([^"]+)"/.exec(hcl);
+		const pinnedVersion = /:([0-9.]+)-/.exec(pinned[1])[1];
 		const changes = await planPins(hcl, 'build-base-image.yml', pinned[1].split('-').at(-1), {
+			// The pin keeps the old Node version until master publishes the new base.
+			publishedHcl: hcl.replaceAll(/dhi\.io\/node:[0-9.]+-/g, `dhi.io/node:${pinnedVersion}-`),
 			resolve: (tag) => (tag === pinned[1] ? pinned[2] : digest('d')),
 			contains: async () => true,
 		});
