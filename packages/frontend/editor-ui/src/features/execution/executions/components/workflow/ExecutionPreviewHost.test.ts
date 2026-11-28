@@ -146,6 +146,19 @@ describe('ExecutionPreviewHost', () => {
 		});
 	});
 
+	it('updates the preview expansion mode when the preference changes', async () => {
+		const { findByTestId, rerender } = renderComponent({
+			props: { workflowId: 'test-workflow', executionId: 'execution-1' },
+		});
+		await findByTestId('node-view-stub');
+
+		await rerender({ expandGroupsByDefault: true });
+		expect(injected.enabledFeatures?.value.expandGroups).toBe('all');
+
+		await rerender({ expandGroupsByDefault: false });
+		expect(injected.enabledFeatures?.value.expandGroups).toBe('errored');
+	});
+
 	it('renders the read-only logs panel once execution data is present', async () => {
 		const { getByTestId } = renderComponent({
 			props: { workflowId: 'test-workflow', executionId: 'execution-1' },

@@ -1,12 +1,20 @@
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
+import { createEmptyRunExecutionData } from 'n8n-workflow';
 import WorkflowCanvas from './WorkflowCanvas.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { STICKY_NODE_TYPE } from '@/app/constants';
 import { CANVAS_NODE_GROUP_ID_PREFIX, CanvasNodeRenderType } from '../canvas.types';
-import { createTestNode, createTestWorkflow, defaultNodeDescriptions } from '@/__tests__/mocks';
+import {
+	createTestNode,
+	createTestTaskData,
+	createTestWorkflow,
+	createTestWorkflowExecutionResponse,
+	defaultNodeDescriptions,
+} from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
@@ -143,6 +151,55 @@ describe('WorkflowCanvas', () => {
 			).toBeInTheDocument(),
 		);
 		expect(container.querySelector('[data-id="1"]')).not.toBeInTheDocument();
+	});
+
+	it('restores the selected expansion default when switching modes or reloading groups', async () => {
+		const workflow = createTestWorkflow({
+			nodes: [
+				createTestNode({ id: '1', name: 'Failed node' }),
+				createTestNode({ id: '2', name: 'Other node', position: [400, 0] }),
+			],
+			connections: { 'Failed node': { main: [[{ node: 'Other node', type: 'main', index: 0 }]] } },
+			nodeGroups: [
+				{ id: 'g1', name: 'Failed group', nodeIds: ['1'] },
+				{ id: 'g2', name: 'Other group', nodeIds: ['2'] },
+			],
+		});
+		setupWorkflow(workflow);
+		const data = createEmptyRunExecutionData();
+		data.resultData.runData['Failed node'] = [createTestTaskData({ executionStatus: 'error' })];
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData(
+			createTestWorkflowExecutionResponse({ workflowData: workflow, data }),
+		);
+
+		const { container, rerender } = renderComponent({
+			props: { readOnly: true, groupExpansionMode: 'errored' },
+		});
+		const failedNode = () => container.querySelector('[data-id="1"]');
+		const otherNode = () => container.querySelector('[data-id="2"]');
+		await waitFor(() => expect(failedNode()).toBeInTheDocument());
+		expect(otherNode()).not.toBeInTheDocument();
+
+		await rerender({ groupExpansionMode: 'all' });
+		await waitFor(() => expect(otherNode()).toBeInTheDocument());
+		await waitFor(() =>
+			expect(
+				container.querySelector('[data-id="[1/outputs/main/0][2/inputs/main/0]"]'),
+			).toBeInTheDocument(),
+		);
+		const otherGroup = container.querySelector<HTMLElement>(
+			`[data-id="${CANVAS_NODE_GROUP_ID_PREFIX}g2"]`,
+		)!;
+		await fireEvent.click(within(otherGroup).getByTestId('canvas-node-group-toggle'));
+		await waitFor(() => expect(otherNode()).not.toBeInTheDocument());
+
+		// Selecting another execution of the same version hydrates the same document.
+		setupWorkflow(workflow);
+		await waitFor(() => expect(otherNode()).toBeInTheDocument());
+
+		await rerender({ groupExpansionMode: 'errored' });
+		await waitFor(() => expect(otherNode()).not.toBeInTheDocument());
+		expect(failedNode()).toBeInTheDocument();
 	});
 
 	it('should handle empty nodes and connections gracefully', async () => {

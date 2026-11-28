@@ -19,6 +19,7 @@ const props = defineProps<{
 	workflowId: string;
 	executionId: string;
 	nodeId?: string;
+	expandGroupsByDefault?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -48,8 +49,7 @@ provide(
 		askAi: false,
 		executionSuccessToasts: false,
 		executionErrorToasts: false,
-		// Keep groups collapsed but surface the ones that contain a failed node.
-		expandGroups: 'errored',
+		expandGroups: props.expandGroupsByDefault ? 'all' : 'errored',
 	})),
 );
 

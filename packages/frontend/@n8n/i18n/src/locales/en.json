@@ -1934,6 +1934,8 @@
 	"executionDetails.runningMessage": "Execution is running. It will show here once finished.",
 	"executionDetails.versionAutosave": "Autosave",
 	"executionDetails.versionTooltip": "Created {date}",
+	"executionDetails.viewOptions.title": "View options",
+	"executionDetails.viewOptions.expandGroups": "Expand groups by default",
 	"executionDetails.startingSoon": "Starting soon",
 	"executionDetails.workflow": "workflow",
 	"executionsLandingPage.emptyState.noTrigger.heading": "Set up the first step. Then execute your workflow",
