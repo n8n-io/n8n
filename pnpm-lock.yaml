@@ -10776,6 +10776,9 @@ importers:
       oxlint-tsgolint:
         specifier: 'catalog:'
         version: 7.0.2007
+      tsx:
+        specifier: 'catalog:'
+        version: 4.19.3
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -10864,6 +10867,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
+      '@n8n/fault-harness':
+        specifier: workspace:*
+        version: link:../fault-harness
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../../../@n8n/oxlint-config

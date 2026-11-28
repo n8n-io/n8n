@@ -30,6 +30,19 @@ export const nodes = {
 		webhookId: path,
 	}),
 	code: (name: string, jsCode: string) => node(name, 'n8n-nodes-base.code', 2, { jsCode }),
+	noOp: (name: string) => node(name, 'n8n-nodes-base.noOp', 1),
+	stopAndError: (name: string, errorMessage: string) =>
+		node(name, 'n8n-nodes-base.stopAndError', 1, { errorMessage }),
+	errorTrigger: () => node('Error Trigger', 'n8n-nodes-base.errorTrigger', 1),
+	subWorkflowTrigger: () =>
+		node('When Executed by Another Workflow', 'n8n-nodes-base.executeWorkflowTrigger', 1),
+	executeWorkflow: (name: string, workflowId: string, waitForSubWorkflow: boolean) =>
+		node(name, 'n8n-nodes-base.executeWorkflow', 1.2, {
+			source: 'database',
+			workflowId: { __rl: true, value: workflowId, mode: 'id' },
+			mode: 'once',
+			options: { waitForSubWorkflow },
+		}),
 };
 
 /** Workflow settings that make `chain` build a workflow that runs on engine v2. */

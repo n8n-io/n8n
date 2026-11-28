@@ -1,5 +1,7 @@
 import { sleep } from '@n8n/utils/sleep';
 
+import { until } from './process';
+
 const OWNER = { email: 'owner@example.com', password: 'SuperSecret123' };
 
 /** REST and webhook calls against the stack's main instance or load balancer. */
@@ -42,18 +44,11 @@ export class N8nClient {
 		if (res.status !== 200) throw new Error(`login failed: ${res.status}`);
 	}
 
-	/**
-	 * Creates a workflow and returns its id. Activates it unless `activate` is false;
-	 * with 'try', an activation the version refuses is ignored.
-	 */
-	async createWorkflow(
-		workflow: Record<string, unknown>,
-		options: { activate?: boolean | 'try' } = {},
-	) {
+	/** Creates and activates a workflow and returns its id; with `activate: 'try'`, an activation the version refuses is ignored. */
+	async createWorkflow(workflow: Record<string, unknown>, options: { activate?: 'try' } = {}) {
 		const created = await this.request('POST', '/rest/workflows', workflow);
 		if (created.status !== 200) throw new Error(`create workflow: ${JSON.stringify(created.body)}`);
 		const { id, versionId } = (created.body as { data: { id: string; versionId: string } }).data;
-		if (options.activate === false) return id;
 		let res = await this.request('POST', `/rest/workflows/${id}/activate`, { versionId });
 		if (res.status === 404 || res.status === 405) {
 			res = await this.request('PATCH', `/rest/workflows/${id}`, { active: true, versionId });
@@ -78,5 +73,40 @@ export class N8nClient {
 				return { status: res.status, body };
 			await sleep(250);
 		}
+	}
+
+	/** Waits until a production webhook path is registered, without starting the workflow. */
+	async waitForWebhook(path: string, timeoutMs = 15_000) {
+		await until(
+			`webhook ${path} registered`,
+			async () => {
+				const res = await fetch(`${this.baseUrl}/webhook/${path}`, {
+					method: 'OPTIONS',
+					headers: { origin: this.baseUrl, 'access-control-request-method': 'POST' },
+				});
+				return !(await res.text()).includes('is not registered');
+			},
+			timeoutMs,
+			250,
+		);
+	}
+
+	/** Fires a webhook without waiting; `result` settles with the response or the abort. */
+	webhookInBackground(path: string, payload: unknown = {}) {
+		const controller = new AbortController();
+		const startedAt = Date.now();
+		const result = fetch(`${this.baseUrl}/webhook/${path}`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(payload),
+			signal: controller.signal,
+		})
+			.then(async (res) => ({
+				status: res.status,
+				body: await res.text(),
+				ms: Date.now() - startedAt,
+			}))
+			.catch((error: Error) => ({ status: 0, body: error.message, ms: Date.now() - startedAt }));
+		return { result, abort: () => controller.abort() };
 	}
 }

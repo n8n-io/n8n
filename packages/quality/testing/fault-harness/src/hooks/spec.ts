@@ -3,6 +3,14 @@ import { z } from 'zod';
 /** Compiled files the hooks patch, as path suffixes inside the n8n image. */
 export const FILES = {
 	jobProcessor: 'n8n/dist/scaling/job-processor.js',
+	scalingService: 'n8n/dist/scaling/scaling.service.js',
+	executionPersistence: 'n8n/dist/executions/execution-persistence.js',
+	taskRequester: 'n8n/dist/task-runners/task-managers/task-requester.js',
+	taskBroker: 'n8n/dist/task-runners/task-broker/task-broker.service.js',
+	workflowExecute: 'n8n-core/dist/execution-engine/workflow-execute.js',
+	bullQueue: 'bull/lib/queue.js',
+	bullJob: 'bull/lib/job.js',
+	bullScripts: 'bull/lib/scripts.js',
 	engineExecutionStart: '@n8n/engine/dist/execution/execution-start-handler.js',
 	engineStepReady: '@n8n/engine/dist/execution/step-ready-handler.js',
 	engineStepSettled: '@n8n/engine/dist/execution/step-settled-handler.js',
@@ -28,7 +36,7 @@ const roles = z.array(z.enum(ROLES)).min(1).optional();
 export const hookSpecSchema = methodRef
 	.extend({
 		point,
-		kind: z.enum(['pause', 'observe']).optional(),
+		kind: z.enum(['pause', 'observe', 'fault', 'drop']).optional(),
 		arm: z.enum(['file', 'always']).optional(),
 		once: z.boolean().optional(),
 		scope: methodRef.optional(),
@@ -49,13 +57,19 @@ export const hookSpecSchema = methodRef
 			.optional(),
 		detail: z.record(z.string()).optional(),
 		phase: z.enum(['before', 'after']).optional(),
+		returns: z.unknown().optional(),
+		preserve: z.array(z.string()).optional(),
 		roles,
 		/** Set when the patched file loads only on first use, so the install check skips it. */
 		lazy: z.boolean().optional(),
 		/** Set when older images lack the file; the install check then fails only when the file loads and the method is missing. */
 		optional: z.boolean().optional(),
 	})
-	.strict();
+	.strict()
+	.refine((spec) => spec.kind !== 'drop' || spec.phase !== 'after', {
+		message: 'a drop hook runs before the call',
+		path: ['phase'],
+	});
 
 /** Writes fixed values onto an exported object, or onto the exports with `target: ''`, when the file loads. */
 export const setHookSpecSchema = z
