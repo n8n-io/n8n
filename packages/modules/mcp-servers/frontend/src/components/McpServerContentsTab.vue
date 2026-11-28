@@ -9,7 +9,7 @@ import type {
 } from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nButton, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nLoading, N8nText } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -384,6 +384,26 @@ onMounted(load);
 	<div :class="$style.contents" data-test-id="mcp-server-contents">
 		<N8nLoading v-if="loading" :rows="3" />
 		<template v-else-if="server">
+			<McpServerPanel
+				v-if="server.tools.length === 0 && canBuildWithAssistant"
+				:header="i18n.baseText('mcpServers.assistant.build.title')"
+				:description="i18n.baseText('mcpServers.assistant.build.description')"
+				data-test-id="mcp-server-build-with-assistant"
+			>
+				<template #header-actions>
+					<N8nButton
+						variant="brand"
+						size="small"
+						icon="n8n-assistant"
+						:label="i18n.baseText('mcpServers.assistant.build.button')"
+						:disabled="assistantOpen"
+						data-test-id="mcp-server-build-with-assistant-button"
+						data-attr="mcp-server-build-with-assistant"
+						@click="emit('build-with-assistant')"
+					/>
+				</template>
+			</McpServerPanel>
+
 			<McpServerDescriptionPanel
 				:model-value="server.description"
 				:can-update="canUpdate"
@@ -432,31 +452,6 @@ onMounted(load);
 						</template>
 					</template>
 				</div>
-
-				<div
-					v-if="server.tools.length === 0 && canBuildWithAssistant"
-					:class="$style.assistantCard"
-					data-test-id="mcp-server-build-with-assistant"
-				>
-					<div :class="$style.assistantCopy">
-						<N8nHeading tag="h4" size="small" bold>
-							{{ i18n.baseText('mcpServers.assistant.build.title') }}
-						</N8nHeading>
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('mcpServers.assistant.build.description') }}
-						</N8nText>
-					</div>
-					<N8nButton
-						variant="brand"
-						size="small"
-						icon="n8n-assistant"
-						:label="i18n.baseText('mcpServers.assistant.build.button')"
-						:disabled="assistantOpen"
-						data-test-id="mcp-server-build-with-assistant-button"
-						data-attr="mcp-server-build-with-assistant"
-						@click="emit('build-with-assistant')"
-					/>
-				</div>
 			</McpServerPanel>
 
 			<McpServerToolDialog
@@ -499,26 +494,6 @@ onMounted(load);
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
-}
-
-.assistantCard {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	flex-wrap: wrap;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--sm) var(--spacing--md);
-	border: var(--border);
-	border-radius: var(--radius);
-	background-color: var(--background--subtle);
-}
-
-.assistantCopy {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
 }
 
 .toastToolName {

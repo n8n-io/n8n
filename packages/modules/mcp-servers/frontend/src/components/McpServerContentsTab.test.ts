@@ -1153,7 +1153,7 @@ describe('McpServerContentsTab', () => {
 	});
 
 	describe('the Assistant', () => {
-		it('offers "Build with Assistant" alongside the row add action on an empty server', async () => {
+		it('offers "Build with Assistant" as the first panel of an empty server', async () => {
 			api.getMcpServer.mockResolvedValue(server([]));
 			const { findByTestId, getByTestId, emitted } = await render({
 				props: { assistantAvailable: true },
@@ -1161,6 +1161,12 @@ describe('McpServerContentsTab', () => {
 
 			const card = await findByTestId('mcp-server-build-with-assistant');
 			expect(card).toHaveTextContent('Build with the Assistant');
+			expect(getByTestId('mcp-server-contents').firstElementChild).toBe(card);
+			expect(
+				within(getByTestId('mcp-server-capabilities-panel')).queryByTestId(
+					'mcp-server-build-with-assistant',
+				),
+			).not.toBeInTheDocument();
 			expect(
 				within(getByTestId('mcp-server-capabilities-panel')).getByTestId('mcp-server-add-workflow'),
 			).toHaveTextContent('Add workflow');
