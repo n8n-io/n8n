@@ -1,13 +1,19 @@
+import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { type DataSource, type EntityManager, In } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { EvaluationCollection } from '../../entities/evaluation-collection.ee';
 import { TestRun } from '../../entities/test-run.ee';
+import { TransactionRunner } from '../../services/transaction';
+import { TypeOrmTransactionRunner } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { EvaluationCollectionRepository } from '../evaluation-collection.repository';
 
 describe('EvaluationCollectionRepository', () => {
 	const entityManager = mockEntityManager(EvaluationCollection);
+	Container.set(TransactionRunner, mock<TransactionRunner>());
 	const repo = Container.get(EvaluationCollectionRepository);
 
 	beforeEach(() => {
@@ -21,14 +27,17 @@ describe('EvaluationCollectionRepository', () => {
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			await repo.createCollection({
-				id: 'col-1',
-				name: 'C',
-				description: null,
-				workflowId: 'wf-1',
-				evaluationConfigId: 'cfg-1',
-				createdById: 'user-1',
-			});
+			await repo.createCollection(
+				{
+					id: 'col-1',
+					name: 'C',
+					description: null,
+					workflowId: 'wf-1',
+					evaluationConfigId: 'cfg-1',
+					createdById: 'user-1',
+				},
+				{},
+			);
 
 			const savedEntity = entityManager.save.mock.calls[0]?.[1];
 			expect(savedEntity).toMatchObject({
@@ -47,7 +56,7 @@ describe('EvaluationCollectionRepository', () => {
 		it('scopes the lookup to the route workflowId so foreign-workflow ids 404 the same as missing ids', async () => {
 			entityManager.findOne.mockResolvedValueOnce(null);
 
-			const result = await repo.findByIdAndWorkflowId('col-x', 'wf-1');
+			const result = await repo.findByIdAndWorkflowId('col-x', 'wf-1', {});
 
 			expect(result).toBeNull();
 			const callArgs = entityManager.findOne.mock.calls[0];
@@ -74,7 +83,7 @@ describe('EvaluationCollectionRepository', () => {
 			};
 			entityManager.createQueryBuilder.mockReturnValueOnce(qb as never);
 
-			const result = await repo.listByWorkflowId('wf-1');
+			const result = await repo.listByWorkflowId('wf-1', {});
 
 			expect(entityManager.createQueryBuilder).toHaveBeenCalledTimes(1);
 			expect(result.map((c) => c.runCount)).toEqual([3, 0]);
@@ -83,10 +92,42 @@ describe('EvaluationCollectionRepository', () => {
 		it('returns an empty array without an aggregate query when no collections exist', async () => {
 			entityManager.find.mockResolvedValueOnce([]);
 
-			const result = await repo.listByWorkflowId('wf-1');
+			const result = await repo.listByWorkflowId('wf-1', {});
 
 			expect(result).toEqual([]);
 			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getDetailByIdAndWorkflowId', () => {
+		it('scopes the lookup to id and workflowId and returns runs ordered by createdAt ascending', async () => {
+			const collection = { id: 'col-1', workflowId: 'wf-1' } as EvaluationCollection;
+			const runs = [{ id: 'tr-1' }, { id: 'tr-2' }] as TestRun[];
+			entityManager.findOne.mockResolvedValueOnce(collection);
+			entityManager.find.mockResolvedValueOnce(runs);
+
+			const result = await repo.getDetailByIdAndWorkflowId('col-1', 'wf-1', {});
+
+			expect(result).toEqual({ collection, runs });
+			expect(entityManager.findOne).toHaveBeenCalledWith(EvaluationCollection, {
+				where: { id: 'col-1', workflowId: 'wf-1' },
+			});
+			expect(entityManager.find).toHaveBeenCalledWith(TestRun, {
+				where: { collectionId: 'col-1' },
+				order: { createdAt: 'ASC' },
+			});
+		});
+
+		it('returns null without loading runs when the collection does not exist', async () => {
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			const result = await repo.getDetailByIdAndWorkflowId('col-missing', 'wf-1', {});
+
+			expect(result).toBeNull();
+			expect(entityManager.findOne).toHaveBeenCalledWith(EvaluationCollection, {
+				where: { id: 'col-missing', workflowId: 'wf-1' },
+			});
+			expect(entityManager.find).not.toHaveBeenCalled();
 		});
 	});
 
@@ -94,15 +135,16 @@ describe('EvaluationCollectionRepository', () => {
 		it('updates TestRun.collectionId in bulk by id', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 2, generatedMaps: [], raw: [] });
 
-			await repo.addRunsToCollection('col-1', ['tr-a', 'tr-b']);
+			await repo.addRunsToCollection('col-1', ['tr-a', 'tr-b'], {});
 
 			const callArgs = entityManager.update.mock.calls[0];
 			expect(callArgs?.[0]).toBe(TestRun);
+			expect(callArgs?.[1]).toEqual({ id: In(['tr-a', 'tr-b']) });
 			expect(callArgs?.[2]).toEqual({ collectionId: 'col-1' });
 		});
 
 		it('is a no-op when given an empty id list', async () => {
-			await repo.addRunsToCollection('col-1', []);
+			await repo.addRunsToCollection('col-1', [], {});
 			expect(entityManager.update).not.toHaveBeenCalled();
 		});
 	});
@@ -111,7 +153,7 @@ describe('EvaluationCollectionRepository', () => {
 		it('only unlinks runs that are actually in the named collection', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
 
-			const affected = await repo.removeRunFromCollection('col-1', 'tr-a');
+			const affected = await repo.removeRunFromCollection('col-1', 'tr-a', {});
 
 			expect(affected).toBe(1);
 			const callArgs = entityManager.update.mock.calls[0];
@@ -122,7 +164,7 @@ describe('EvaluationCollectionRepository', () => {
 		it('returns 0 when the run is not part of the collection', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: [] });
 
-			expect(await repo.removeRunFromCollection('col-1', 'tr-missing')).toBe(0);
+			expect(await repo.removeRunFromCollection('col-1', 'tr-missing', {})).toBe(0);
 		});
 	});
 
@@ -130,7 +172,7 @@ describe('EvaluationCollectionRepository', () => {
 		it('unlinks runs in bulk with a single update scoped to the collection', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 2, generatedMaps: [], raw: [] });
 
-			await repo.removeRunsFromCollection('col-1', ['tr-a', 'tr-b']);
+			await repo.removeRunsFromCollection('col-1', ['tr-a', 'tr-b'], {});
 
 			expect(entityManager.update).toHaveBeenCalledTimes(1);
 			const callArgs = entityManager.update.mock.calls[0];
@@ -140,7 +182,7 @@ describe('EvaluationCollectionRepository', () => {
 		});
 
 		it('is a no-op when given an empty id list', async () => {
-			await repo.removeRunsFromCollection('col-1', []);
+			await repo.removeRunsFromCollection('col-1', [], {});
 			expect(entityManager.update).not.toHaveBeenCalled();
 		});
 	});
@@ -151,17 +193,27 @@ describe('EvaluationCollectionRepository', () => {
 			entityManager.count.mockResolvedValueOnce(4);
 			entityManager.delete.mockResolvedValueOnce({ affected: 1, raw: [] });
 
-			const result = await repo.deleteByIdAndWorkflowId('col-1', 'wf-1');
+			const result = await repo.deleteByIdAndWorkflowId('col-1', 'wf-1', {});
 
 			expect(result).toEqual({ deleted: true, runsUnlinked: 4 });
+			expect(entityManager.findOne).toHaveBeenCalledWith(EvaluationCollection, {
+				where: { id: 'col-1', workflowId: 'wf-1' },
+			});
+			expect(entityManager.count).toHaveBeenCalledWith(TestRun, {
+				where: { collectionId: 'col-1' },
+			});
+			expect(entityManager.delete).toHaveBeenCalledWith(EvaluationCollection, { id: 'col-1' });
 		});
 
 		it('returns { deleted: false } without touching delete when the collection does not exist', async () => {
 			entityManager.findOne.mockResolvedValueOnce(null);
 
-			const result = await repo.deleteByIdAndWorkflowId('col-missing', 'wf-1');
+			const result = await repo.deleteByIdAndWorkflowId('col-missing', 'wf-1', {});
 
 			expect(result).toEqual({ deleted: false, runsUnlinked: 0 });
+			expect(entityManager.findOne).toHaveBeenCalledWith(EvaluationCollection, {
+				where: { id: 'col-missing', workflowId: 'wf-1' },
+			});
 			expect(entityManager.delete).not.toHaveBeenCalled();
 		});
 	});
@@ -170,7 +222,7 @@ describe('EvaluationCollectionRepository', () => {
 		it('updates the insightsCache JSON column on the row', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
 
-			await repo.updateInsightsCache('col-1', { winner: { versionLabel: 'A' } } as never);
+			await repo.updateInsightsCache('col-1', { winner: { versionLabel: 'A' } } as never, {});
 
 			const callArgs = entityManager.update.mock.calls[0];
 			expect(callArgs?.[1]).toBe('col-1');
@@ -180,7 +232,7 @@ describe('EvaluationCollectionRepository', () => {
 		it('accepts null to clear the cache', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
 
-			await repo.updateInsightsCache('col-1', null);
+			await repo.updateInsightsCache('col-1', null, {});
 
 			const callArgs = entityManager.update.mock.calls[0];
 			expect(callArgs?.[2]).toEqual({ insightsCache: null });
@@ -191,7 +243,7 @@ describe('EvaluationCollectionRepository', () => {
 		it('returns null without writing when the collection does not exist', async () => {
 			entityManager.findOne.mockResolvedValueOnce(null);
 
-			const result = await repo.updateMeta('col-x', 'wf-1', { name: 'New' });
+			const result = await repo.updateMeta('col-x', 'wf-1', { name: 'New' }, {});
 
 			expect(result).toBeNull();
 			expect(entityManager.save).not.toHaveBeenCalled();
@@ -210,7 +262,7 @@ describe('EvaluationCollectionRepository', () => {
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			await repo.updateMeta('col-1', 'wf-1', { name: 'New', description: null });
+			await repo.updateMeta('col-1', 'wf-1', { name: 'New', description: null }, {});
 
 			const savedEntity = entityManager.save.mock.calls[0]?.[1];
 			expect(savedEntity).toMatchObject({
@@ -230,7 +282,7 @@ describe('EvaluationCollectionRepository', () => {
 			entityManager.findOne.mockResolvedValueOnce(existing);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			await repo.updateMeta('col-1', 'wf-1', { name: 'New' });
+			await repo.updateMeta('col-1', 'wf-1', { name: 'New' }, {});
 
 			const savedEntity = entityManager.save.mock.calls[0]?.[1] as EvaluationCollection;
 			expect(savedEntity.name).toBe('New');
@@ -247,11 +299,42 @@ describe('EvaluationCollectionRepository', () => {
 			entityManager.findOne.mockResolvedValueOnce(existing);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			await repo.updateMeta('col-1', 'wf-1', { name: undefined, description: undefined });
+			await repo.updateMeta('col-1', 'wf-1', { name: undefined, description: undefined }, {});
 
 			const savedEntity = entityManager.save.mock.calls[0]?.[1] as EvaluationCollection;
 			expect(savedEntity.name).toBe('Old');
 			expect(savedEntity.description).toBe('old desc');
+		});
+
+		it('reads and saves the collection within the supplied transaction', async () => {
+			const transactionManager = mock<EntityManager>();
+			const dataSource = mock<DataSource>({
+				transaction: async <T>(run: string | ((manager: EntityManager) => Promise<T>)) => {
+					if (typeof run === 'string') throw new Error('Unexpected isolation level');
+					return await run(transactionManager);
+				},
+			});
+			const runner = new TypeOrmTransactionRunner(dataSource, mock<Logger>());
+			const existing = mock<EvaluationCollection>({
+				id: 'col-1',
+				name: 'Old',
+				description: 'old desc',
+				workflowId: 'wf-1',
+			});
+			transactionManager.findOne.mockResolvedValueOnce(existing);
+			transactionManager.save.mockResolvedValueOnce(existing);
+
+			const result = await runner.run({}, async (ctx) => {
+				return await repo.updateMeta('col-1', 'wf-1', { name: 'New' }, ctx);
+			});
+
+			expect(result).toBe(existing);
+			expect(transactionManager.findOne).toHaveBeenCalledWith(EvaluationCollection, {
+				where: { id: 'col-1', workflowId: 'wf-1' },
+			});
+			expect(transactionManager.save).toHaveBeenCalledWith(EvaluationCollection, existing);
+			expect(entityManager.findOne).not.toHaveBeenCalled();
+			expect(entityManager.save).not.toHaveBeenCalled();
 		});
 	});
 });

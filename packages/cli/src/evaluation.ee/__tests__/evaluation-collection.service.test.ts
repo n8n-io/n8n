@@ -258,10 +258,11 @@ describe('EvaluationCollectionService', () => {
 		});
 
 		it('attaches existing runs and schedules new runs for missing versions', async () => {
-			await service.createCollection(
+			const { record } = await service.createCollection(
 				user,
 				'wf-1',
 				makePayload({
+					description: 'Baseline comparison',
 					versions: [
 						{ workflowVersionId: 'wfv-1', existingTestRunId: 'tr-existing' },
 						{ workflowVersionId: 'wfv-2' },
@@ -270,9 +271,22 @@ describe('EvaluationCollectionService', () => {
 			);
 
 			expect(collectionRepo.createCollection).toHaveBeenCalledTimes(1);
-			expect(collectionRepo.addRunsToCollection).toHaveBeenCalledWith(expect.any(String), [
-				'tr-existing',
-			]);
+			expect(collectionRepo.createCollection).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: 'My collection',
+					description: 'Baseline comparison',
+					workflowId: 'wf-1',
+					evaluationConfigId: 'cfg-1',
+					createdById: 'user-1',
+				}),
+				{},
+			);
+			expect(record.description).toBe('Baseline comparison');
+			expect(collectionRepo.addRunsToCollection).toHaveBeenCalledWith(
+				expect.any(String),
+				['tr-existing'],
+				{},
+			);
 			expect(testRunnerService.startTestRun).toHaveBeenCalledTimes(1);
 			expect(testRunnerService.startTestRun).toHaveBeenCalledWith(
 				user,
@@ -296,6 +310,10 @@ describe('EvaluationCollectionService', () => {
 				}),
 			);
 
+			expect(collectionRepo.createCollection).toHaveBeenCalledWith(
+				expect.objectContaining({ description: null }),
+				{},
+			);
 			expect(workflowHistoryService.snapshotCurrent).toHaveBeenCalledTimes(1);
 			expect(workflowHistoryService.snapshotCurrent).toHaveBeenCalledWith('wf-1');
 			expect(testRunnerService.startTestRun).toHaveBeenCalledWith(
@@ -430,11 +448,12 @@ describe('EvaluationCollectionService', () => {
 
 			// Old runs unlinked in one atomic call so the compare view shows only
 			// the fresh attempt; insights cache busted.
-			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledWith('col-1', [
-				'tr-old-a',
-				'tr-old-b',
-			]);
-			expect(collectionRepo.updateInsightsCache).toHaveBeenCalledWith('col-1', null);
+			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledWith(
+				'col-1',
+				['tr-old-a', 'tr-old-b'],
+				{},
+			);
+			expect(collectionRepo.updateInsightsCache).toHaveBeenCalledWith('col-1', null, {});
 
 			expect(runsStartedIds).toEqual(['tr-new-a', 'tr-new-b']);
 			expect(record.runCount).toBe(2);
@@ -557,7 +576,11 @@ describe('EvaluationCollectionService', () => {
 			// The one fresh run that started is cancelled and unlinked; the old runs
 			// are left untouched, and only that single cleanup unlink happens.
 			expect(testRunnerService.cancelTestRun).toHaveBeenCalledWith('tr-new-a');
-			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledWith('col-1', ['tr-new-a']);
+			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledWith(
+				'col-1',
+				['tr-new-a'],
+				{},
+			);
 			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledTimes(1);
 			// A failed re-run never busts the insights cache — the collection is
 			// unchanged, so the cached envelope is still valid.
@@ -595,10 +618,11 @@ describe('EvaluationCollectionService', () => {
 			// atomic unlink threw before changing anything); cache is not busted.
 			expect(testRunnerService.cancelTestRun).toHaveBeenCalledWith('tr-new-a');
 			expect(testRunnerService.cancelTestRun).toHaveBeenCalledWith('tr-new-b');
-			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledWith('col-1', [
-				'tr-new-a',
-				'tr-new-b',
-			]);
+			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledWith(
+				'col-1',
+				['tr-new-a', 'tr-new-b'],
+				{},
+			);
 			expect(collectionRepo.updateInsightsCache).not.toHaveBeenCalled();
 		});
 
@@ -717,8 +741,8 @@ describe('EvaluationCollectionService', () => {
 
 			await service.addRunToCollection('wf-1', 'col-1', 'tr-add');
 
-			expect(collectionRepo.addRunsToCollection).toHaveBeenCalledWith('col-1', ['tr-add']);
-			expect(collectionRepo.updateInsightsCache).toHaveBeenCalledWith('col-1', null);
+			expect(collectionRepo.addRunsToCollection).toHaveBeenCalledWith('col-1', ['tr-add'], {});
+			expect(collectionRepo.updateInsightsCache).toHaveBeenCalledWith('col-1', null, {});
 		});
 	});
 
@@ -733,8 +757,12 @@ describe('EvaluationCollectionService', () => {
 
 			await service.removeRunFromCollection('wf-1', 'col-1', 'tr-removed');
 
-			expect(collectionRepo.removeRunFromCollection).toHaveBeenCalledWith('col-1', 'tr-removed');
-			expect(collectionRepo.updateInsightsCache).toHaveBeenCalledWith('col-1', null);
+			expect(collectionRepo.removeRunFromCollection).toHaveBeenCalledWith(
+				'col-1',
+				'tr-removed',
+				{},
+			);
+			expect(collectionRepo.updateInsightsCache).toHaveBeenCalledWith('col-1', null, {});
 		});
 
 		it('does not bust the cache when the run was never part of the collection', async () => {
