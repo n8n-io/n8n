@@ -22,6 +22,8 @@ import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
 import { TabsContent, TabsIndicator, TabsList, TabsRoot, TabsTrigger } from './reka-ui';
 import type { TabsProps } from './Tabs.types';
 
+const OVERFLOW_TOLERANCE = 1; // Allow for sub-pixel rounding.
+
 const props = withDefaults(defineProps<TabsProps<Value>>(), {
 	options: () => [],
 	size: 'medium',
@@ -113,7 +115,6 @@ function updateScrollState() {
 
 	scrollPosition.value = container.scrollLeft;
 	canScrollRight.value = container.scrollWidth - container.clientWidth - container.scrollLeft > 1;
-
 	if (props.orientation === 'vertical') {
 		canScrollStart.value = container.scrollTop > 1;
 		canScrollEnd.value = container.scrollHeight - container.clientHeight - container.scrollTop > 1;
@@ -126,48 +127,14 @@ function updateScrollState() {
 	 * reserved controls stay stable when they appear.
 	 */
 	const available = (root.value?.clientWidth ?? 0) - (suffix.value?.offsetWidth ?? 0);
-	hasOverflow.value =
-		!props.justified && props.orientation === 'horizontal' && container.scrollWidth > available;
-}
-
-/**
- * Keep the tab that receives roving focus inside the visible area. Scroll only
- * the tab list, and only by the distance that puts the tab edge on the list edge.
- * `scrollIntoView` also scrolls ancestors, which makes the page jump.
- */
-function handleFocusIn(event: FocusEvent) {
-	const container = getTabsElement();
-	if (!container || !(event.target instanceof HTMLElement)) return;
-
-	const item = event.target.closest(`.${CSS.escape(tabItemClass.value)}`) ?? event.target;
-	const viewport = container.getBoundingClientRect();
-	const bounds = item.getBoundingClientRect();
-	const vertical = props.orientation === 'vertical';
-	const start = vertical ? bounds.top - viewport.top : bounds.left - viewport.left;
-	const end = vertical ? bounds.bottom - viewport.bottom : bounds.right - viewport.right;
-
-	let delta = 0;
-	if (start < 0) delta = start;
-	else if (end > 0) delta = Math.min(end, start);
-
-	/** Undo the native focus jump, then scroll from the previous position. */
-	const from = vertical ? settledScroll.top : settledScroll.left;
-	const current = vertical ? container.scrollTop : container.scrollLeft;
-	const target = current + delta;
-	if (Math.abs(target - from) < 1) {
-		if (Math.abs(current - from) >= 1) restoreScroll(container, vertical, from);
-		return;
+	/** Keep the current state inside the deadband so sub-pixel changes do not toggle the arrows. */
+	if (props.justified || props.orientation !== 'horizontal') {
+		hasOverflow.value = false;
+	} else if (container.scrollWidth > available + OVERFLOW_TOLERANCE) {
+		hasOverflow.value = true;
+	} else if (container.scrollWidth <= available - OVERFLOW_TOLERANCE) {
+		hasOverflow.value = false;
 	}
-
-	restoreScroll(container, vertical, from);
-	container.scrollTo({
-		[vertical ? 'top' : 'left']: target,
-		behavior: reducedMotion.value === 'reduce' ? 'instant' : 'smooth',
-	});
-}
-
-function restoreScroll(container: HTMLElement, vertical: boolean, position: number) {
-	container.scrollTo({ [vertical ? 'top' : 'left']: position, behavior: 'instant' });
 }
 
 onMounted(() => {
