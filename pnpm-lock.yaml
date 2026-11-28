@@ -1017,8 +1017,8 @@ catalogs:
       version: 6.0.2
   undici-v7:
     undici:
-      specifier: ^7.30.1
-      version: 7.30.1
+      specifier: ^7.30.2
+      version: 7.30.2
 
 overrides:
   libphonenumber-js: npm:empty-npm-package@1.0.0
@@ -1138,8 +1138,8 @@ overrides:
   ibm-cloud-sdk-core: ^5.5.0
   undici@5: ^6.29.1
   undici@6: ^6.29.1
-  undici@7: ^7.30.1
-  node-gyp>undici: ^7.30.1
+  undici@7: ^7.30.2
+  node-gyp>undici: ^7.30.2
   '@babel/traverse@<7.23.2': ^7.23.2
   '@vitest/browser@<4.1.10': 4.1.10
   immutable: 5.1.8
@@ -1372,7 +1372,7 @@ importers:
         version: 0.6.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       undici:
         specifier: catalog:undici-v7
-        version: 7.30.1
+        version: 7.30.2
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
@@ -1533,7 +1533,7 @@ importers:
         version: 3.0.3
       undici:
         specifier: catalog:undici-v7
-        version: 7.30.1
+        version: 7.30.2
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -1963,7 +1963,7 @@ importers:
         version: 6.16.0
       undici:
         specifier: catalog:undici-v7
-        version: 7.30.1
+        version: 7.30.2
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -3583,7 +3583,7 @@ importers:
         version: 7.0.2
       undici:
         specifier: catalog:undici-v7
-        version: 7.30.1
+        version: 7.30.2
       vite:
         specifier: 'catalog:'
         version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -10593,7 +10593,7 @@ importers:
         version: 11.13.0(supports-color@8.1.1)
       undici:
         specifier: catalog:undici-v7
-        version: 7.30.1
+        version: 7.30.2
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
@@ -27334,13 +27334,9 @@ packages:
     resolution: {integrity: sha512-EvRlUt/QqAEvXdQeRMYUfwOQsfzpDztykrG2owGEE/rBOBoYv9uF39ZzsNDh4lTFHhTr2XOZjKkYgueD12ZmGA==}
     engines: {node: '>=18.17'}
 
-  undici@7.30.1:
-    resolution: {integrity: sha512-03KrMbjIFDWQR5RNPrSw3bd1r12JpyFQl9/yxjUbJtqkjmllqC5lFjZh6ujeuJCKr8EOQvRW872Oy/az+nLYxg==}
+  undici@7.30.2:
+    resolution: {integrity: sha512-mLyPQnHwUxaM/rideoK/+KL8DaAJLRl4aBCfmX444aCSLnIaomqPLtNRe2jdCYcsk5wZzXrDIQC8ZeYNRAYyIA==}
     engines: {node: '>=20.18.1'}
-
-  undici@8.12.3:
-    resolution: {integrity: sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw==}
-    engines: {node: '>=22.19.0'}
 
   undici@8.12.4:
     resolution: {integrity: sha512-8Mx+uNKKER2bA4AdtedkqRbwUCIJFr2nJckXRe5yrDqzePqwLP7VNcctN8/XdmDSbF7mS+jJKIszlL+vbam1VA==}
@@ -28540,7 +28536,7 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.0.8
-      undici: 7.30.1
+      undici: 7.30.2
       zod: 3.25.76
 
   '@ai-sdk/provider-utils@5.0.67(zod@3.25.76)':
@@ -28549,7 +28545,7 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.0.8
-      undici: 7.30.1
+      undici: 7.30.2
       zod: 3.25.76
 
   '@ai-sdk/provider-utils@5.0.70(zod@3.25.76)':
@@ -28558,7 +28554,7 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.0.8
-      undici: 7.30.1
+      undici: 7.30.2
       zod: 3.25.76
 
   '@ai-sdk/provider@4.0.15':
@@ -34526,13 +34522,13 @@ snapshots:
     dependencies:
       '@qdrant/openapi-typescript-fetch': 1.2.6
       typescript: '@typescript/typescript6@6.0.2'
-      undici: 7.30.1
+      undici: 7.30.2
 
   '@qdrant/js-client-rest@1.19.0(typescript@7.0.2)':
     dependencies:
       '@qdrant/openapi-typescript-fetch': 1.2.6
       typescript: 7.0.2
-      undici: 7.30.1
+      undici: 7.30.2
 
   '@qdrant/openapi-typescript-fetch@1.2.6': {}
 
@@ -38771,7 +38767,7 @@ snapshots:
       parse5: 7.3.0
       parse5-htmlparser2-tree-adapter: 7.1.0
       parse5-parser-stream: 7.1.2
-      undici: 7.30.1
+      undici: 7.30.2
       whatwg-mimetype: 4.0.0
 
   chokidar@4.0.3:
@@ -44520,7 +44516,7 @@ snapshots:
       semver: 7.7.3
       tar: 7.5.21
       tinyglobby: 0.2.17
-      undici: 7.30.1
+      undici: 7.30.2
       which: 6.0.1
     optional: true
 
@@ -47748,7 +47744,7 @@ snapshots:
       ssh-remote-port-forward: 1.0.4
       tar-fs: 2.1.5
       tmp: 0.2.7
-      undici: 7.30.1
+      undici: 7.30.2
     transitivePeerDependencies:
       - supports-color
 
@@ -48292,9 +48288,7 @@ snapshots:
 
   undici@6.29.1: {}
 
-  undici@7.30.1: {}
-
-  undici@8.12.3: {}
+  undici@7.30.2: {}
 
   undici@8.12.4: {}
 
@@ -48315,7 +48309,7 @@ snapshots:
       css-tree: 3.1.0
       fnv1a-64: 0.1.2
       std-env: 4.2.0
-      undici: 8.12.3
+      undici: 8.12.4
 
   unist-util-is@6.0.1:
     dependencies:
