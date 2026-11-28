@@ -5,6 +5,7 @@
 // from importing these extension utilities directly from the runtime package. Fix by
 // splitting @n8n/expression-runtime into a browser-safe extensions subpath (not stubbed)
 // and a node-only VM entry (stubbed).
+import { extractUrl as extractUrlFromText } from '@n8n/utils/string/extract-url';
 import { toBase64, fromBase64 } from 'js-base64';
 import SHA from 'jssha';
 import { DateTime } from 'luxon';
@@ -117,13 +118,6 @@ const EMAIL_REGEXP_EXACT = new RegExp(`^\\s*(?:${EMAIL_REGEXP.source})\\s*$`);
 */
 const URL_REGEXP_EXACT =
 	/^(?:(?:https?|ftp):\/\/)(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?=([^\s]+#.*)?)#?[^\s]*$/i;
-
-/*
-	Same as URL_REGEXP_EXACT but without the strict beginning and end of the string checks to allow for
-	matching URLs in the middle of a string
-*/
-const URL_REGEXP =
-	/(?:(?:https?|ftp):\/\/)(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?=([^\s]+#.*)?)#?[^\s]*/i;
 
 const CHAR_TEST_REGEXP = /\p{L}/u;
 const PUNC_TEST_REGEXP = /[!?.]/;
@@ -393,11 +387,7 @@ function extractDomain(value: string) {
 }
 
 function extractUrl(value: string) {
-	const matched = URL_REGEXP.exec(value);
-	if (!matched) {
-		return undefined;
-	}
-	return matched[0];
+	return extractUrlFromText(value);
 }
 
 function extractUrlPath(value: string) {
