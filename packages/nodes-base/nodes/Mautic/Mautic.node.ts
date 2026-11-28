@@ -4,6 +4,7 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -18,6 +19,31 @@ import { contactFields, contactOperations } from './ContactDescription';
 import { contactSegmentFields, contactSegmentOperations } from './ContactSegmentDescription';
 import { mauticApiRequest, mauticApiRequestAllItems, validateJSON } from './GenericFunctions';
 import { segmentEmailFields, segmentEmailOperations } from './SegmentEmailDescription';
+
+const COMPANY_SEARCH_PAGE_SIZE = 50;
+
+/** One company as returned by Mautic's `GET /api/companies`. */
+interface MauticCompany {
+	fields?: { all?: { companyname?: unknown } };
+}
+
+/**
+ * Response of Mautic's `GET /api/companies`. `companies` is an object keyed by company id,
+ * or an empty array when nothing matches; `total` is the number of matches as a string.
+ */
+interface MauticCompanyListResponse {
+	total?: string | number;
+	companies?: Record<string, MauticCompany> | MauticCompany[];
+}
+
+/**
+ * Value of the Primary Company parameter as sent to Mautic, which matches the company by
+ * name. Strings and numbers (for example from an expression) pass through unchanged, as
+ * they did before the parameter became a resourceLocator.
+ */
+function toCompanyValue(value: unknown): string | number {
+	return typeof value === 'string' || typeof value === 'number' ? value : '';
+}
 
 export class Mautic implements INodeType {
 	description: INodeTypeDescription = {
@@ -126,25 +152,56 @@ export class Mautic implements INodeType {
 	};
 
 	methods = {
-		loadOptions: {
-			// Get all the available companies to display them to user so that they can
-			// select them easily
-			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const companies = await mauticApiRequestAllItems.call(
+		listSearch: {
+			// Server-side typeahead for the Primary Company selector. Fetches a single page per
+			// call; the pagination token is the Mautic `start` offset of the next page.
+			async searchCompanies(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				const start = Math.max(0, paginationToken ? parseInt(paginationToken, 10) || 0 : 0);
+				const qs: IDataObject = {
+					start,
+					limit: COMPANY_SEARCH_PAGE_SIZE,
+					orderBy: 'companyname',
+					orderByDir: 'ASC',
+				};
+				// Quote the term so Mautic's search syntax treats it as one phrase, even when it
+				// contains spaces or a colon (which would otherwise start a search command).
+				// Double quotes cannot be escaped in that syntax and are dropped; a company whose
+				// name contains them can still be set with the "By Name" mode.
+				const term = filter?.replace(/"/g, '').trim();
+				if (term) {
+					qs.search = `"${term}"`;
+				}
+				const response: MauticCompanyListResponse = await mauticApiRequest.call(
 					this,
-					'companies',
 					'GET',
 					requestPath`/companies`,
+					{},
+					qs,
 				);
-				for (const company of companies) {
-					returnData.push({
-						name: company.fields.all.companyname,
-						value: company.fields.all.companyname,
-					});
-				}
-				return returnData;
+				const companies = Object.values(response.companies ?? {});
+				const results = companies
+					.map((company) => company.fields?.all?.companyname)
+					.filter((name): name is string => typeof name === 'string' && name !== '')
+					.map((name) => ({ name, value: name }))
+					// Mautic sorts each page by name, but the response keys are numeric ids and
+					// JSON.parse re-orders those, so restore the order within the page.
+					.sort((a, b) => a.name.localeCompare(b.name));
+				const total = Number(response.total);
+				const next = start + companies.length;
+				return {
+					results,
+					paginationToken:
+						companies.length > 0 && Number.isFinite(total) && next < total
+							? String(next)
+							: undefined,
+				};
 			},
+		},
+		loadOptions: {
 			// Get all the available tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -639,7 +696,11 @@ export class Mautic implements INodeType {
 							body.email = this.getNodeParameter('email', i) as string;
 							body.firstname = this.getNodeParameter('firstName', i) as string;
 							body.lastname = this.getNodeParameter('lastName', i) as string;
-							body.company = this.getNodeParameter('company', i) as string;
+							// Primary Company is a resourceLocator; extractValue resolves it to the company
+							// name and passes through legacy raw-string values from older workflows.
+							body.company = toCompanyValue(
+								this.getNodeParameter('company', i, '', { extractValue: true }),
+							);
 							body.position = this.getNodeParameter('position', i) as string;
 							body.title = this.getNodeParameter('title', i) as string;
 						} else {
@@ -754,7 +815,12 @@ export class Mautic implements INodeType {
 							body.lastname = updateFields.lastName as string;
 						}
 						if (updateFields.company) {
-							body.company = updateFields.company as string;
+							const company = toCompanyValue(
+								this.getNodeParameter('updateFields.company', i, '', { extractValue: true }),
+							);
+							if (company !== '') {
+								body.company = company;
+							}
 						}
 						if (updateFields.position) {
 							body.position = updateFields.position as string;

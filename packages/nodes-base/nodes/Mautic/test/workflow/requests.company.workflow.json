@@ -1,0 +1,113 @@
+{
+	"name": "Mautic Primary Company",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0,600]
+		},
+		{
+			"parameters": {"email":"legacy-none@example.com","additionalFields":{},"options":{}},
+			"id": "mautic-company-1",
+			"name": "Create Legacy No Company",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300,150],
+			"credentials": {"mauticApi":{"id":"1","name":"Mautic account"}}
+		},
+		{
+			"parameters": {"email":"legacy-string@example.com","company":"Legacy Company","additionalFields":{},"options":{}},
+			"id": "mautic-company-2",
+			"name": "Create Legacy String",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300,300],
+			"credentials": {"mauticApi":{"id":"1","name":"Mautic account"}}
+		},
+		{
+			"parameters": {"email":"legacy-expression@example.com","company":"={{ 'Expression ' + 'Company' }}","additionalFields":{},"options":{}},
+			"id": "mautic-company-3",
+			"name": "Create Legacy Expression",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300,450],
+			"credentials": {"mauticApi":{"id":"1","name":"Mautic account"}}
+		},
+		{
+			"parameters": {"email":"rl-list@example.com","company":{"__rl":true,"mode":"list","value":"Acme: North Branch","cachedResultName":"Acme: North Branch"},"additionalFields":{},"options":{}},
+			"id": "mautic-company-4",
+			"name": "Create RL List",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300,600],
+			"credentials": {"mauticApi":{"id":"1","name":"Mautic account"}}
+		},
+		{
+			"parameters": {"email":"rl-name@example.com","company":{"__rl":true,"mode":"name","value":"={{ 'Typed ' + 'Company' }}"},"additionalFields":{},"options":{}},
+			"id": "mautic-company-5",
+			"name": "Create RL Name Expression",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300,750],
+			"credentials": {"mauticApi":{"id":"1","name":"Mautic account"}}
+		},
+		{
+			"parameters": {"operation":"update","contactId":"41","updateFields":{"company":"Legacy Company"},"options":{}},
+			"id": "mautic-company-6",
+			"name": "Update Legacy String",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300,900],
+			"credentials": {"mauticApi":{"id":"1","name":"Mautic account"}}
+		},
+		{
+			"parameters": {"operation":"update","contactId":"42","updateFields":{"company":{"__rl":true,"mode":"list","value":"Acme Corp"}},"options":{}},
+			"id": "mautic-company-7",
+			"name": "Update RL List",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300,1050],
+			"credentials": {"mauticApi":{"id":"1","name":"Mautic account"}}
+		},
+		{
+			"parameters": {"operation":"update","contactId":"43","updateFields":{"company":{"__rl":true,"mode":"list","value":""},"firstName":"Nathan"},"options":{}},
+			"id": "mautic-company-8",
+			"name": "Update RL Empty",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300,1200],
+			"credentials": {"mauticApi":{"id":"1","name":"Mautic account"}}
+		}
+	],
+	"pinData": {
+		"Create Legacy No Company": [{"json":{"id":1,"fields":{"all":{"id":1,"email":"legacy-none@example.com"}}}}],
+		"Create Legacy String": [{"json":{"id":2,"fields":{"all":{"id":2,"email":"legacy-string@example.com"}}}}],
+		"Create Legacy Expression": [{"json":{"id":3,"fields":{"all":{"id":3,"email":"legacy-expression@example.com"}}}}],
+		"Create RL List": [{"json":{"id":4,"fields":{"all":{"id":4,"email":"rl-list@example.com"}}}}],
+		"Create RL Name Expression": [{"json":{"id":5,"fields":{"all":{"id":5,"email":"rl-name@example.com"}}}}],
+		"Update Legacy String": [{"json":{"id":41,"fields":{"all":{"id":41}}}}],
+		"Update RL List": [{"json":{"id":42,"fields":{"all":{"id":42}}}}],
+		"Update RL Empty": [{"json":{"id":43,"fields":{"all":{"id":43}}}}]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{"node":"Create Legacy No Company","type":"main","index":0},
+					{"node":"Create Legacy String","type":"main","index":0},
+					{"node":"Create Legacy Expression","type":"main","index":0},
+					{"node":"Create RL List","type":"main","index":0},
+					{"node":"Create RL Name Expression","type":"main","index":0},
+					{"node":"Update Legacy String","type":"main","index":0},
+					{"node":"Update RL List","type":"main","index":0},
+					{"node":"Update RL Empty","type":"main","index":0}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {"executionOrder":"v1"}
+}
