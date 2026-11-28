@@ -4,7 +4,8 @@
  * Generates LLM-friendly SDK code from a composite tree.
  */
 
-import type { Schema } from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
+import { AGENT_LANGCHAIN_NODE_TYPE, type Schema } from 'n8n-workflow';
 
 import type {
 	CompositeTree,
@@ -66,6 +67,8 @@ export interface GenerateCodeOptions extends ExecutionContextOptions {
 	 * Emit each node's saved `id` into its config so a rebuild of the generated code
 	 * preserves node identity instead of minting fresh uuids. Off by default: only
 	 * surfaces that round-trip code back into a saved workflow should opt in.
+	 * Direct `ai_tool` nodes referenced by AI Agent `toolAvailability` rules still
+	 * emit their `id` when this option is off.
 	 */
 	includeNodeIds?: boolean;
 	/** Emit saved node positions. On by default; see `GenerateWorkflowCodeOptions`. */
@@ -90,7 +93,7 @@ interface GenerationContext {
 	workflowStatusJSDoc?: string;
 	valuesExcluded?: boolean;
 	pinnedNodes?: Set<string>;
-	/** Graph node names allowed to emit their id; absent when id emission is off */
+	/** Graph node names allowed to emit their id */
 	nodesWithEmittableId?: ReadonlySet<string>;
 	/** Leave `position` out of every node, subnode, and sticky note. */
 	omitPositions?: boolean;
@@ -115,6 +118,41 @@ function collectNodesWithEmittableId(graph: SemanticGraph): ReadonlySet<string> 
 		if (!id || claimedIds.has(id)) continue;
 		claimedIds.add(id);
 		nodeNames.add(nodeName);
+	}
+
+	return nodeNames;
+}
+
+/**
+ * Collect directly connected `ai_tool` nodes whose ids are referenced by an AI Agent's
+ * `toolAvailability.rules`. Emit those ids even when `includeNodeIds` is off so a round
+ * trip keeps each rule pointing at its tool node.
+ */
+function collectReferencedToolAvailabilityNodes(graph: SemanticGraph): ReadonlySet<string> {
+	const claimedIds = new Set<string>();
+	const nodeNames = new Set<string>();
+
+	for (const node of graph.nodes.values()) {
+		if (node.type !== AGENT_LANGCHAIN_NODE_TYPE) continue;
+		const availability = node.json.parameters?.toolAvailability;
+		if (!isRecord(availability) || !Array.isArray(availability.rules)) continue;
+
+		const referencedIds = new Set<string>();
+		for (const rule of availability.rules) {
+			if (isRecord(rule) && typeof rule.sourceNodeId === 'string' && rule.sourceNodeId) {
+				referencedIds.add(rule.sourceNodeId);
+			}
+		}
+		if (referencedIds.size === 0) continue;
+
+		for (const sub of node.subnodes) {
+			if (sub.connectionType !== 'ai_tool' || sub.subnodeName === node.name) continue;
+			const subnode = graph.nodes.get(sub.subnodeName);
+			const id = subnode?.json.id;
+			if (!id || !referencedIds.has(id) || claimedIds.has(id)) continue;
+			claimedIds.add(id);
+			nodeNames.add(subnode.name);
+		}
 	}
 
 	return nodeNames;
@@ -1421,7 +1459,7 @@ export function generateCode(
 		pinnedNodes: executionContext?.pinnedNodes,
 		nodesWithEmittableId: executionContext?.includeNodeIds
 			? collectNodesWithEmittableId(graph)
-			: undefined,
+			: collectReferencedToolAvailabilityNodes(graph),
 		omitPositions: executionContext?.includePositions === false,
 	};
 

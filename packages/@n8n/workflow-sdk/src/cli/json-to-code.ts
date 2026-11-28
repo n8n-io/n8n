@@ -3,6 +3,7 @@ import fs from 'fs';
 import { generateWorkflowCode } from '../codegen';
 import { generateOutputPath } from './utils';
 import { parseWorkflowCodeToBuilder } from '../codegen/parse-workflow-code';
+import type { WorkflowJSON } from '../types/base';
 
 /**
  * Convert workflow JSON to SDK code.
@@ -37,7 +38,10 @@ export function jsonToCode(filePath: string): void {
 	// 2. Generate SDK code
 	let code: string;
 	try {
-		code = generateWorkflowCode(json as Parameters<typeof generateWorkflowCode>[0]);
+		code = generateWorkflowCode({
+			workflow: json as WorkflowJSON,
+			includeNodeIds: true,
+		});
 	} catch (error) {
 		console.error('Failed to generate code:', error instanceof Error ? error.message : error);
 		process.exit(1);
