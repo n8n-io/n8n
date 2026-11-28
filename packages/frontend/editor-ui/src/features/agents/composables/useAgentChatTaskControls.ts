@@ -23,6 +23,8 @@ interface AgentChatTaskControlsOptions {
 	requestStop: (planId: string | null) => Promise<void>;
 	hasPendingApprovals: () => boolean;
 	focusInput: (options?: FocusOptions) => void;
+	/** The reader revealed the redacted turns of the thread. */
+	revealExecutionData?: () => boolean;
 }
 
 export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) {
@@ -80,6 +82,7 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 		threadId: options.threadId,
 		active: options.backgroundJobsActive,
 		channel: options.channel,
+		...(options.revealExecutionData ? { revealExecutionData: options.revealExecutionData } : {}),
 		receivedJobs: () =>
 			options.messages().flatMap((message) => message.backgroundJobSignal?.tasks ?? []),
 	});

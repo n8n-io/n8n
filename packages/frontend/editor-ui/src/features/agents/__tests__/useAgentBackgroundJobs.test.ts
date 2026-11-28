@@ -109,6 +109,35 @@ describe('useAgentBackgroundJobs', () => {
 		);
 	});
 
+	it('asks for the jobs unredacted after the reader revealed the thread', async () => {
+		vi.mocked(stopAgentBackgroundJobs).mockResolvedValue({ tasks: [] });
+		const revealExecutionData = ref(false);
+		scope = effectScope();
+		const result = scope.run(() =>
+			useAgentBackgroundJobs({
+				projectId: 'p1',
+				agentId: 'a1',
+				threadId,
+				active,
+				receivedJobs,
+				revealExecutionData,
+			}),
+		);
+		await flushPromises();
+		expect(getAgentBackgroundJobs).toHaveBeenLastCalledWith({}, 'p1', 'a1', 't1', undefined);
+
+		revealExecutionData.value = true;
+		await flushPromises();
+		expect(getAgentBackgroundJobs).toHaveBeenLastCalledWith({}, 'p1', 'a1', 't1', undefined, {
+			revealExecutionData: true,
+		});
+
+		await result?.stopAll();
+		expect(stopAgentBackgroundJobs).toHaveBeenCalledWith({}, 'p1', 'a1', 't1', undefined, {
+			revealExecutionData: true,
+		});
+	});
+
 	it('keeps accepted stops visible until settlement and ignores an earlier fetch', async () => {
 		const workflow = { ...job, id: 'workflow', kind: 'workflow' as const };
 		const sibling = { ...job, id: 'sibling' };

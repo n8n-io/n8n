@@ -222,6 +222,29 @@ describe('useAgentApi', () => {
 		);
 	});
 
+	it('asks for unredacted background tasks after a reveal', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValue({ tasks: [] });
+
+		await getAgentBackgroundJobs(restApiContext, 'p1', 'a1', 'th-1', 'chat', {
+			revealExecutionData: true,
+		});
+		await stopAgentBackgroundJobs(restApiContext, 'p1', 'a1', 'th-1', 'chat', {
+			revealExecutionData: true,
+		});
+
+		expect(vi.mocked(makeRestApiRequest).mock.calls.map((call) => call.slice(1))).toEqual([
+			[
+				'GET',
+				'/projects/p1/agents/v2/a1/chat/th-1/background-tasks',
+				{ redactExecutionData: 'false' },
+			],
+			[
+				'POST',
+				'/projects/p1/agents/v2/a1/chat/th-1/background-tasks/stop?redactExecutionData=false',
+			],
+		]);
+	});
+
 	describe('system channel', () => {
 		it('builds system-agent chat URLs without a project', async () => {
 			vi.mocked(makeRestApiRequest).mockResolvedValue({ items: [] });

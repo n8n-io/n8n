@@ -429,6 +429,99 @@ describe('AgentChatController background tasks', () => {
 		]);
 	});
 
+	it('leaves out the approval payload and files of jobs from turns that are redacted for the reader', async () => {
+		const { controller, agentsService, agentExecutionService, backgroundJobService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		agentExecutionService.findRedactionStart.mockResolvedValue({
+			startedAt: new Date('2026-09-09T10:00:30Z'),
+			redaction: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: false },
+			executionIds: new Set(['execution-1']),
+		});
+		const file = { fileId: 'file-1', fileName: 'report.txt', mimeType: 'text/plain', sizeBytes: 4 };
+		backgroundJobService.listCurrentGroupForThread.mockResolvedValue([
+			{
+				id: 'job-before',
+				kind: 'workflow',
+				title: 'Before',
+				status: 'completed',
+				createdAt: new Date('2026-09-09T10:00:00Z'),
+				notifiedAt: new Date('2026-09-09T10:00:10Z'),
+				files: [file],
+			},
+			{
+				id: 'job-after',
+				kind: 'approval',
+				title: 'After',
+				status: 'suspended',
+				createdAt: new Date('2026-09-09T10:01:00Z'),
+				approval: { toolCallId: 'call-1', suspendPayload: { text: 'HIDDEN-VALUE' } },
+				files: [file],
+			},
+		] as never);
+
+		const response = await controller.getBackgroundJobs(request as never);
+
+		expect(JSON.stringify(response)).not.toContain('HIDDEN-VALUE');
+		expect(response.tasks.find(({ id }) => id === 'job-before')?.files).toEqual([file]);
+		expect(response.tasks.find(({ id }) => id === 'job-after')?.files).toBeUndefined();
+	});
+
+	it('asks for a reveal of the background tasks when the query asks for it', async () => {
+		const { controller, agentsService, agentExecutionService, backgroundJobService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		agentExecutionService.findRedactionStart.mockResolvedValue(undefined);
+		backgroundJobService.listCurrentGroupForThread.mockResolvedValue([]);
+
+		await controller.getBackgroundJobs({
+			...request,
+			query: { redactExecutionData: 'false' },
+		} as never);
+
+		expect(agentExecutionService.findRedactionStart).toHaveBeenCalledWith(
+			'thread-1',
+			'project-1',
+			'agent-1',
+			expect.objectContaining({ user: request.user, revealExecutionData: true }),
+		);
+	});
+
+	it('leaves out the content of redacted jobs in a production n8n Chat thread', async () => {
+		const { controller, agentsService, agentExecutionService, backgroundJobService } =
+			makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
+		agentExecutionService.findRedactionStart.mockResolvedValue({
+			startedAt: new Date('2026-09-09T10:00:30Z'),
+			redaction: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: false },
+			executionIds: new Set(['execution-1']),
+		});
+		backgroundJobService.listCurrentGroupForThread.mockResolvedValue([
+			{
+				id: 'job-after',
+				kind: 'workflow',
+				title: 'HIDDEN-TITLE',
+				status: 'completed',
+				createdAt: new Date('2026-09-09T10:01:00Z'),
+				notifiedAt: new Date('2026-09-09T10:01:10Z'),
+			},
+		] as never);
+
+		const response = await controller.getProductionBackgroundJobs(request as never);
+
+		expect(JSON.stringify(response)).not.toContain('HIDDEN-TITLE');
+		expect(agentExecutionService.findRedactionStart).toHaveBeenCalledWith(
+			'thread-1',
+			'project-1',
+			'agent-1',
+			expect.objectContaining({ user: request.user }),
+		);
+	});
+
 	it('returns current group statuses without consuming results', async () => {
 		const { controller, agentsService, agentExecutionService, backgroundJobService } =
 			makeController();

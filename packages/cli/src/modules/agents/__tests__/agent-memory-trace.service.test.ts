@@ -177,6 +177,30 @@ describe('AgentMemoryTraceService', () => {
 		});
 	});
 
+	it('leaves out memory calls of a redacted turn', async () => {
+		const { service, candidateRepository, entryRepository } = makeService();
+
+		const result = await service.getThreadMemory({
+			...request,
+			executions: executions(
+				toolCall('flag_memory', 'hidden-flag', { redacted: true }),
+				toolCall('recall_memory', 'hidden-recall', {
+					redacted: true,
+					traceOutput: { entryIds: ['entry'] },
+				}),
+			),
+		});
+
+		expect(result).toEqual({ recalls: {}, flags: {} });
+		expect(candidateRepository.findByToolCalls).toHaveBeenCalledWith(
+			'agent-1',
+			'current-thread',
+			[],
+			{},
+		);
+		expect(entryRepository.findInAnyStatus).not.toHaveBeenCalledWith('agent-1', ['entry']);
+	});
+
 	describe('flags', () => {
 		it('reports each flag with the state of its capture and stored entry', async () => {
 			const { service, candidateRepository, sourceRepository, entryRepository } = makeService();

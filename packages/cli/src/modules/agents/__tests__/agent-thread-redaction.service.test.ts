@@ -15,6 +15,7 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import {
 	AgentThreadRedactionService,
+	isRedactedThreadFile,
 	threadReaderFromRequest,
 } from '../agent-thread-redaction.service';
 import type { AgentExecution } from '../entities/agent-execution.entity';
@@ -631,5 +632,22 @@ describe('threadReaderFromRequest', () => {
 		const reader = threadReaderFromRequest({ user: viewer, query: {}, ip: undefined });
 
 		expect(reader.revealExecutionData).toBeUndefined();
+	});
+});
+
+describe('isRedactedThreadFile', () => {
+	const start = { startedAt: new Date('2026-11-26T10:00:00.000Z') };
+
+	it.each([
+		['tool', '2026-11-26T10:00:01.000Z', true],
+		['sandbox', '2026-11-26T10:00:00.000Z', true],
+		['tool', '2026-11-26T09:59:59.000Z', false],
+		['chat', '2026-11-26T10:30:00.000Z', false],
+	])('should return the right result for a %s file created at %s', (source, createdAt, hidden) => {
+		expect(isRedactedThreadFile({ source, createdAt }, start)).toBe(hidden);
+	});
+
+	it('should keep every file when no turn is redacted', () => {
+		expect(isRedactedThreadFile({ source: 'tool', createdAt: new Date() }, undefined)).toBe(false);
 	});
 });

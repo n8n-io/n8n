@@ -618,6 +618,7 @@ const {
 	requestStop: requestTaskStop,
 	hasPendingApprovals: () => hasPendingApprovals.value,
 	focusInput,
+	revealExecutionData: () => revealExecutionData.value,
 });
 
 const backgroundRunningCount = computed(

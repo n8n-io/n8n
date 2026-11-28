@@ -30,7 +30,15 @@ export class SystemAgentTurnEventsService {
 		name: string,
 		key?: string,
 	): Promise<unknown> {
-		await this.systemAgents.getUsableThread(agentId, user, threadId);
+		const thread = await this.systemAgents.getUsableThread(agentId, user, threadId);
+		// The payload is turn content, so a turn that is redacted for the user has none.
+		const redactionStart = await this.agentExecutions.findRedactionStart(
+			thread.id,
+			thread.projectId,
+			agentId,
+			{ user },
+		);
+		if (redactionStart?.executionIds.has(executionId)) return undefined;
 		const timeline = await this.agentExecutions.findExecutionTimeline(
 			agentId,
 			threadId,

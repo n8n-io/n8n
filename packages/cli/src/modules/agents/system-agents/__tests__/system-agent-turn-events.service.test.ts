@@ -33,6 +33,24 @@ describe('SystemAgentTurnEventsService', () => {
 		agentExecutions.findExecutionTimeline.mockResolvedValue(timeline);
 	});
 
+	it('returns no payload for a turn that is redacted for the user', async () => {
+		agentExecutions.findRedactionStart.mockResolvedValueOnce({
+			startedAt: new Date(0),
+			redaction: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: false },
+			executionIds: new Set([EXECUTION_ID]),
+		});
+
+		await expect(
+			service.readHostEvent(AGENT_ID, user, THREAD_ID, EXECUTION_ID, 'trace'),
+		).resolves.toBeUndefined();
+		expect(agentExecutions.findRedactionStart).toHaveBeenCalledWith(
+			THREAD_ID,
+			'project-1',
+			AGENT_ID,
+			{ user },
+		);
+	});
+
 	it('checks access to the thread and returns the payload of the event', async () => {
 		await expect(
 			service.readHostEvent(AGENT_ID, user, THREAD_ID, EXECUTION_ID, 'trace'),
