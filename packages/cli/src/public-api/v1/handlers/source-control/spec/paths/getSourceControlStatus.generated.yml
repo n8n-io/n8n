@@ -154,6 +154,10 @@ responses:
                               type: number
                             resetsAt:
                               type: string
+                            policyId:
+                              type: string
+                            policyName:
+                              type: string
                           required:
                             - kind
                             - checkId

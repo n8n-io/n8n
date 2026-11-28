@@ -111,6 +111,8 @@ describe('ExecutionLimitPolicyCheck', () => {
 				scope: 'project',
 				limit: 10,
 				usage: 12,
+				policyId: 'policy-1',
+				policyName: 'Free tier',
 			},
 			{
 				...common,
@@ -130,6 +132,7 @@ describe('ExecutionLimitPolicyCheck', () => {
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0]).not.toHaveProperty('projectId');
+		expect(violations[0]).not.toHaveProperty('policyId');
 		expect(usageService.getCachedUsage).toHaveBeenCalledExactlyOnceWith({ type: 'instance' });
 	});
 

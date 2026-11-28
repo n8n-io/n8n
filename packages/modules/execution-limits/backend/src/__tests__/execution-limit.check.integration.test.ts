@@ -85,7 +85,8 @@ describe('ExecutionLimitPolicyCheck with a database', () => {
 
 	it('refuses a run of a project with a policy at its limit and allows a project with none', async () => {
 		const [limited, free] = [await createTeamProject(), await createTeamProject()];
-		await assignPolicyToProject(await insertPolicy({ maxExecutions: 5 }), limited.id);
+		const policyId = await insertPolicy({ name: 'Free tier', maxExecutions: 5 });
+		await assignPolicyToProject(policyId, limited.id);
 		const usageRows = Container.get(DataSource).getRepository(ExecutionLimitUsage);
 		await usageRows.insert([
 			{ ...usageRow(5), projectId: limited.id },
@@ -98,7 +99,14 @@ describe('ExecutionLimitPolicyCheck with a database', () => {
 		await usageRows.clear();
 
 		expect((await admit(limited.id)).violations).toEqual([
-			expect.objectContaining({ scope: 'project', projectId: limited.id, limit: 5, usage: 5 }),
+			expect.objectContaining({
+				scope: 'project',
+				projectId: limited.id,
+				limit: 5,
+				usage: 5,
+				policyId,
+				policyName: 'Free tier',
+			}),
 		]);
 		expect((await admit(free.id)).violations).toEqual([]);
 	});

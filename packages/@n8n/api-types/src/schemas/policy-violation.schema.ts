@@ -61,6 +61,12 @@ export const policyViolationSchema = z.object({
 
 	/** ISO 8601 time when the count starts again from zero. */
 	resetsAt: z.string().optional(),
+
+	/** Id of the policy that set `limit`. Absent when no policy did, as for the instance limit. */
+	policyId: z.string().optional(),
+
+	/** Name of the policy in `policyId`. Present when `policyId` is present. */
+	policyName: z.string().optional(),
 });
 
 export type PolicyViolation = z.infer<typeof policyViolationSchema>;
