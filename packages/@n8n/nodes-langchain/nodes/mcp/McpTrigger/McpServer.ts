@@ -631,8 +631,9 @@ export class McpServer {
 			const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
 
 			try {
-				if (!request.params?.name || !request.params?.arguments) {
-					throw new OperationalError('Require a name and arguments for the tool call');
+				// The MCP specification makes `arguments` optional. A call without it has no arguments.
+				if (!request.params?.name) {
+					throw new OperationalError('Require a name for the tool call');
 				}
 
 				const toolName = request.params.name;
