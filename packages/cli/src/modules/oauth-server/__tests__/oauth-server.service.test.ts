@@ -449,21 +449,112 @@ describe('OAuthServerService', () => {
 			});
 		});
 
-		describe('registered-client cap excludes first-party clients', () => {
-			it('counts only non-first-party clients for the limit check', async () => {
-				oauthClientRepository.countRegistered.mockResolvedValue(0);
+		describe('registered-client cap', () => {
+			const limit = 2;
+			const now = new Date('2026-11-24T12:00:00.000Z');
+			/** The session length (10 minutes) plus the 5-minute margin. */
+			const cutoff = new Date('2026-11-24T11:45:00.000Z');
+			let cappedService: OAuthServerService;
 
-				await service.isClientLimitReached();
-
-				expect(oauthClientRepository.countRegistered).toHaveBeenCalledWith({});
+			beforeEach(() => {
+				vi.useFakeTimers({ now, toFake: ['Date'] });
+				oauthClientRepository.countRegistered.mockReset();
+				oauthClientRepository.countRegisteredInUse.mockReset();
+				oauthClientRepository.deleteUnconsentedCreatedBefore.mockReset();
+				cappedService = new OAuthServerService(
+					logger,
+					mock<GlobalConfig>({ endpoints: { mcpMaxRegisteredClients: limit } }),
+					oauthSessionService,
+					oauthClientRepository,
+					tokenService,
+					authorizationCodeService,
+					userConsentRepository,
+					mock<ProtectedResourceRegistry>(),
+					mailer,
+					urlServiceMock,
+					eventService,
+					authService,
+					oauthConsentService,
+					grantService,
+				);
 			});
 
-			it('counts only non-first-party clients for the instance stats', async () => {
-				oauthClientRepository.countRegistered.mockResolvedValue(0);
+			afterEach(() => {
+				vi.useRealTimers();
+			});
 
-				await service.getInstanceClientStats();
+			it('has room below the cap without deleting any client', async () => {
+				oauthClientRepository.countRegistered.mockResolvedValue(limit - 1);
+
+				await expect(cappedService.hasRoomForNewClient()).resolves.toBe(true);
 
 				expect(oauthClientRepository.countRegistered).toHaveBeenCalledWith({});
+				expect(oauthClientRepository.deleteUnconsentedCreatedBefore).not.toHaveBeenCalled();
+			});
+
+			it('deletes clients that never received consent at the cap, then counts again', async () => {
+				oauthClientRepository.countRegistered
+					.mockResolvedValueOnce(limit)
+					.mockResolvedValueOnce(limit - 1);
+				oauthClientRepository.deleteUnconsentedCreatedBefore.mockResolvedValue(1);
+
+				await expect(cappedService.hasRoomForNewClient()).resolves.toBe(true);
+
+				expect(oauthClientRepository.deleteUnconsentedCreatedBefore).toHaveBeenCalledWith(
+					cutoff,
+					{},
+				);
+				expect(logger.info).toHaveBeenCalledWith(expect.any(String), { deleted: 1, limit });
+			});
+
+			it('has no room when no client can be deleted', async () => {
+				oauthClientRepository.countRegistered.mockResolvedValue(limit);
+				oauthClientRepository.deleteUnconsentedCreatedBefore.mockResolvedValue(0);
+
+				await expect(cappedService.hasRoomForNewClient()).resolves.toBe(false);
+
+				expect(logger.info).not.toHaveBeenCalled();
+			});
+
+			it('counts again after deleting nothing, because a concurrent request can free slots', async () => {
+				oauthClientRepository.countRegistered
+					.mockResolvedValueOnce(limit)
+					.mockResolvedValueOnce(limit - 1);
+				oauthClientRepository.deleteUnconsentedCreatedBefore.mockResolvedValue(0);
+
+				await expect(cappedService.hasRoomForNewClient()).resolves.toBe(true);
+			});
+
+			it('has no room when the deleted clients do not bring the count under the cap', async () => {
+				oauthClientRepository.countRegistered
+					.mockResolvedValueOnce(limit + 2)
+					.mockResolvedValueOnce(limit + 1);
+				oauthClientRepository.deleteUnconsentedCreatedBefore.mockResolvedValue(1);
+
+				await expect(cappedService.hasRoomForNewClient()).resolves.toBe(false);
+			});
+
+			it('has no room when deleting the clients fails', async () => {
+				const error = new Error('Database is locked');
+				oauthClientRepository.countRegistered.mockResolvedValue(limit);
+				oauthClientRepository.deleteUnconsentedCreatedBefore.mockRejectedValue(error);
+
+				await expect(cappedService.hasRoomForNewClient()).resolves.toBe(false);
+
+				expect(logger.error).toHaveBeenCalledWith(expect.any(String), { error });
+			});
+
+			it('leaves the clients that a registration would delete out of the instance stats', async () => {
+				oauthClientRepository.countRegisteredInUse.mockResolvedValue(limit - 1);
+
+				await expect(cappedService.getInstanceClientStats()).resolves.toEqual({
+					count: limit - 1,
+					limit,
+					atCapacity: false,
+				});
+
+				expect(oauthClientRepository.countRegisteredInUse).toHaveBeenCalledWith(cutoff, {});
+				expect(oauthClientRepository.countRegistered).not.toHaveBeenCalled();
 			});
 		});
 

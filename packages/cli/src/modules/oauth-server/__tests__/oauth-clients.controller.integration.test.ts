@@ -1,5 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, type Repository } from '@n8n/typeorm';
@@ -434,6 +435,35 @@ describe('GET /rest/mcp/oauth-clients/instance-stats', () => {
 				limit: 1,
 				atCapacity: true,
 			});
+		} finally {
+			globalConfig.endpoints.mcpMaxRegisteredClients = originalLimit;
+		}
+	});
+
+	test('should leave out clients that never received consent within the grace period', async () => {
+		const globalConfig = Container.get(GlobalConfig);
+		const originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
+		globalConfig.endpoints.mcpMaxRegisteredClients = 1;
+
+		try {
+			await oauthClientRepository.save({
+				id: 'abandoned-client',
+				name: 'Abandoned Client',
+				redirectUris: ['https://example.com/callback'],
+				grantTypes: ['authorization_code'],
+				tokenEndpointAuthMethod: 'none',
+			});
+			await oauthClientRepository.update(
+				{ id: 'abandoned-client' },
+				{ createdAt: new Date(Date.now() - 20 * Time.minutes.toMilliseconds) },
+			);
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get('/mcp/oauth-clients/instance-stats');
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toMatchObject({ count: 0, limit: 1, atCapacity: false });
 		} finally {
 			globalConfig.endpoints.mcpMaxRegisteredClients = originalLimit;
 		}

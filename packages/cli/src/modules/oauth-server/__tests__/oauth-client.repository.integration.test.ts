@@ -1,4 +1,5 @@
 import { testDb, testModules } from '@n8n/backend-test-utils';
+import { Time } from '@n8n/constants';
 import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, type Repository } from '@n8n/typeorm';
@@ -24,6 +25,13 @@ const registration = (id: string) => ({
 	clientSecretExpiresAt: null,
 	isFirstParty: false,
 });
+
+const minutesAgo = (minutes: number) =>
+	new Date(Date.now() - minutes * Time.minutes.toMilliseconds);
+
+/** Moves a client's creation time into the past. */
+const age = async (id: string, minutes: number) =>
+	await rows.update({ id }, { createdAt: minutesAgo(minutes) });
 
 beforeAll(async () => {
 	await testModules.loadModules(['oauth-server']);
@@ -100,9 +108,61 @@ test('conditional deletion keeps the client until the last consent is gone', asy
 	expect(await clients.deleteIfUnused(client.id, {})).toBe(false);
 });
 
+describe('clients that never received consent', () => {
+	beforeEach(async () => {
+		const user = await createUser();
+		await rows.save([
+			registration('old-unconsented'),
+			registration('recent-unconsented'),
+			registration('old-consented'),
+			registration('old-orphan'),
+			{ ...registration('old-first-party'), isFirstParty: true },
+		]);
+		await consents.save(
+			['old-consented', 'old-orphan'].map((clientId) => ({
+				userId: user.id,
+				clientId,
+				grantedAt: Date.now(),
+				scope: [],
+			})),
+		);
+		// The orphan loses its only consent, as when its user is deactivated.
+		await consents.delete({ clientId: 'old-orphan' });
+		for (const id of ['old-unconsented', 'old-consented', 'old-orphan', 'old-first-party']) {
+			await age(id, 20);
+		}
+		await age('recent-unconsented', 5);
+	});
+
+	test('deletion removes only registered clients without a consent created before the cutoff', async () => {
+		expect(await clients.deleteUnconsentedCreatedBefore(minutesAgo(15), {})).toBe(2);
+
+		const remaining = await rows.find({ select: { id: true }, order: { id: 'ASC' } });
+		expect(remaining.map(({ id }) => id)).toEqual([
+			'old-consented',
+			'old-first-party',
+			'recent-unconsented',
+		]);
+		expect(await consents.countBy({ clientId: 'old-consented' })).toBe(1);
+		expect(await clients.deleteUnconsentedCreatedBefore(minutesAgo(15), {})).toBe(0);
+	});
+
+	test('the in-use count leaves out registered clients that deletion would remove', async () => {
+		expect(await clients.countRegistered({})).toBe(4);
+		expect(await clients.countRegisteredInUse(minutesAgo(15), {})).toBe(2);
+		expect(await clients.countRegisteredInUse(minutesAgo(30), {})).toBe(4);
+	});
+});
+
 test('all methods use the supplied transaction context', async () => {
 	const original = registration('original-client');
-	await rows.save([original, registration('remove-client'), registration('unused-client')]);
+	await rows.save([
+		original,
+		registration('remove-client'),
+		registration('unused-client'),
+		registration('stale-client'),
+	]);
+	await age('stale-client', 20);
 	const rollback = new Error('Roll back test changes');
 
 	await expect(
@@ -110,10 +170,12 @@ test('all methods use the supplied transaction context', async () => {
 			await clients.registerClient(registration('new-client'), ctx);
 			await clients.upsertVirtualClient({ ...original, name: 'Updated name' }, ctx);
 			expect(await clients.findById(original.id, ctx)).toMatchObject({ name: 'Updated name' });
-			expect(await clients.countRegistered(ctx)).toBe(4);
-			expect(await clients.findRegisteredNames(ctx)).toHaveLength(4);
+			expect(await clients.countRegistered(ctx)).toBe(5);
+			expect(await clients.countRegisteredInUse(minutesAgo(15), ctx)).toBe(4);
+			expect(await clients.findRegisteredNames(ctx)).toHaveLength(5);
 			await clients.removeRegistration('remove-client', ctx);
 			expect(await clients.deleteIfUnused('unused-client', ctx)).toBe(true);
+			expect(await clients.deleteUnconsentedCreatedBefore(minutesAgo(15), ctx)).toBe(1);
 			throw rollback;
 		}),
 	).rejects.toBe(rollback);
@@ -122,4 +184,5 @@ test('all methods use the supplied transaction context', async () => {
 	expect(await rows.findOneBy({ id: 'new-client' })).toBeNull();
 	expect(await rows.findOneBy({ id: 'remove-client' })).not.toBeNull();
 	expect(await rows.findOneBy({ id: 'unused-client' })).not.toBeNull();
+	expect(await rows.findOneBy({ id: 'stale-client' })).not.toBeNull();
 });

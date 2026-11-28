@@ -19,7 +19,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry, type ProtectedResource } from '@n8n/backend-services/auth';
 import { GlobalConfig } from '@n8n/config';
-import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
+import { INSTANCE_MCP_RESOURCE_ID, Time } from '@n8n/constants';
 import { accountSummary, isPerson, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -34,7 +34,11 @@ import { OAuthClientRepository } from './database/repositories/oauth-client.repo
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
 import { OAuthConsentService } from './oauth-consent.service';
-import { OAuthSessionPayload, OAuthSessionService } from './oauth-session.service';
+import {
+	OAUTH_SESSION_EXPIRY_MS,
+	OAuthSessionPayload,
+	OAuthSessionService,
+} from './oauth-session.service';
 import { OAuthGrantService } from './oauth-grant.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
@@ -139,6 +143,14 @@ function sortOwners(owners: ConnectedOAuthClientOwner[]): ConnectedOAuthClientOw
 const MAX_REDIRECT_URI_LENGTH = 2048;
 
 /**
+ * How long a registered client may wait for its first consent before the
+ * client limit can reclaim its slot. A sign-in must reach consent within one
+ * session, which starts at /authorize, shortly after registration. The margin
+ * covers that gap.
+ */
+const UNCONSENTED_CLIENT_GRACE_MS = OAUTH_SESSION_EXPIRY_MS + 5 * Time.minutes.toMilliseconds;
+
+/**
  * OAuth 2.1 server implementation shared by all registered protected resources.
  * Implements MCP SDK OAuthServerProvider interface for client registration, authorization, and token management
  */
@@ -223,20 +235,60 @@ export class OAuthServerService implements OAuthServerProvider {
 		};
 	}
 
-	/** Returns true when the instance is already at or above the registered-client cap. */
-	async isClientLimitReached(): Promise<boolean> {
-		const clientCount = await this.oauthClientRepository.countRegistered({});
-		return clientCount >= this.globalConfig.endpoints.mcpMaxRegisteredClients;
+	/**
+	 * Returns true when one more client fits under the registered-client cap.
+	 * At the cap, it first deletes the clients that never received a consent
+	 * within the grace period, then counts again.
+	 */
+	async hasRoomForNewClient(): Promise<boolean> {
+		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
+		if ((await this.oauthClientRepository.countRegistered({})) < limit) {
+			return true;
+		}
+
+		let deleted: number;
+		try {
+			deleted = await this.oauthClientRepository.deleteUnconsentedCreatedBefore(
+				this.unconsentedClientCutoff(),
+				{},
+			);
+		} catch (error) {
+			// Reject as at the cap, rather than fail the registration request.
+			this.logger.error('Failed to delete OAuth clients that never received consent', { error });
+			return false;
+		}
+
+		if (deleted > 0) {
+			this.logger.info('Deleted OAuth clients that never received consent to free client slots', {
+				deleted,
+				limit,
+			});
+		}
+
+		// Count again even if this call deleted nothing: a concurrent request may have freed slots.
+		return (await this.oauthClientRepository.countRegistered({})) < limit;
 	}
 
+	/**
+	 * The count leaves out the clients that the next registration would delete,
+	 * so `atCapacity` is true only when a registration would be rejected.
+	 */
 	async getInstanceClientStats(): Promise<{
 		count: number;
 		limit: number;
 		atCapacity: boolean;
 	}> {
-		const count = await this.oauthClientRepository.countRegistered({});
+		const count = await this.oauthClientRepository.countRegisteredInUse(
+			this.unconsentedClientCutoff(),
+			{},
+		);
 		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
 		return { count, limit, atCapacity: count >= limit };
+	}
+
+	/** Clients without a consent that were created before this time can be deleted. */
+	private unconsentedClientCutoff(): Date {
+		return new Date(Date.now() - UNCONSENTED_CLIENT_GRACE_MS);
 	}
 
 	/**

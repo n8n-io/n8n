@@ -21,7 +21,9 @@ export type OAuthSessionPayload = z.infer<typeof oauthSessionPayloadSchema>;
 
 /** Each pending authorization request owns a cookie, named by its flow id. */
 export const OAUTH_SESSION_COOKIE_PREFIX = 'n8n-oauth-session-';
-const SESSION_EXPIRY_MS = 10 * Time.minutes.toMilliseconds; // 10 minutes
+
+/** How long a sign-in has from /authorize to the consent decision. */
+export const OAUTH_SESSION_EXPIRY_MS = 10 * Time.minutes.toMilliseconds;
 
 /**
  * Pending flows one browser may hold at once, which is what keeps the request
@@ -65,7 +67,7 @@ export class OAuthSessionService {
 
 		res.cookie(OAUTH_SESSION_COOKIE_PREFIX + flowId, sessionToken, {
 			...this.cookieOptions(),
-			maxAge: SESSION_EXPIRY_MS,
+			maxAge: OAUTH_SESSION_EXPIRY_MS,
 		});
 
 		return flowId;
