@@ -1392,6 +1392,102 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.get('srv-1')?.name).toBe('Revenue tools');
 			expect(linkableResourceNameIndex.get('revenue tools')?.id).toBe('srv-1');
 		});
+
+		test('registers name and projectId from tool-mutation server summary without a prior lookup', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-add',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'add-tools', serverId: 'srv-1', workflowIds: ['wf-1'] },
+								result: untrusted({
+									success: true,
+									serverMutated: true,
+									server: { id: 'srv-1', name: 'Marketing tools', projectId: 'project-1' },
+									tools: [],
+								}),
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('srv-1')).toEqual({
+				type: 'mcp-server',
+				id: 'srv-1',
+				name: 'Marketing tools',
+				projectId: 'project-1',
+			});
+			expect(linkableResourceNameIndex.get('marketing tools')?.id).toBe('srv-1');
+		});
+
+		test('marks a partial mutation entry as fallback name and replaces it when real metadata arrives', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-add-partial',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'add-tools', serverId: 'srv-1', workflowIds: ['wf-1'] },
+								result: untrusted({ success: true, serverMutated: true, tools: [] }),
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('srv-1')).toEqual({
+				type: 'mcp-server',
+				id: 'srv-1',
+				name: 'MCP server',
+				isFallbackName: true,
+			});
+			expect(linkableResourceNameIndex.size).toBe(0);
+
+			messages.value = [
+				...messages.value,
+				makeMessage({
+					id: 'msg-2',
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-get',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'get', serverId: 'srv-1' },
+								result: untrusted({
+									server: { id: 'srv-1', name: 'Marketing tools', projectId: 'project-1' },
+									tools: [],
+								}),
+							}),
+							makeToolCall({
+								toolCallId: 'tc-remove',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'remove-tool', serverId: 'srv-1', toolId: 't-1' },
+								result: untrusted({ success: true, serverMutated: true, toolId: 't-1' }),
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('srv-1')).toEqual({
+				type: 'mcp-server',
+				id: 'srv-1',
+				name: 'Marketing tools',
+				projectId: 'project-1',
+			});
+			expect(linkableResourceNameIndex.get('marketing tools')?.id).toBe('srv-1');
+		});
 	});
 
 	describe('list results do not populate producedArtifacts', () => {

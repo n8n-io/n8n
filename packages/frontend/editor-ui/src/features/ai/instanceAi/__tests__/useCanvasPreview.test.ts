@@ -1842,6 +1842,68 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeMcpServer.value).toEqual({ id: 'srv-1', projectId: 'project-1' });
 			expect(ctx.openMcpServerPreview('srv-1', 'project-1')).toBe(false);
 		});
+
+		test('preserves stored projectId and real name when live MCP server entry has none', async () => {
+			const ctx = setup({
+				tabsStorage: {
+					load: vi.fn().mockResolvedValue({
+						tabs: [
+							{ type: 'mcp-server', id: 'srv-1', name: 'Marketing tools', projectId: 'project-1' },
+						],
+						closedTabs: [],
+						activeTab: { type: 'mcp-server', id: 'srv-1' },
+						previewOpen: true,
+					}),
+					save: vi.fn().mockResolvedValue(undefined),
+				},
+			});
+			ctx.thread.producedArtifacts.set('srv-1', {
+				type: 'mcp-server',
+				id: 'srv-1',
+				name: 'MCP server',
+				isFallbackName: true,
+			});
+			await flushPromises();
+
+			expect(ctx.openTabs.value[0]?.name).toBe('Marketing tools');
+			expect(ctx.activeMcpServer.value).toEqual({ id: 'srv-1', projectId: 'project-1' });
+		});
+
+		test('openMcpServerPreview applies passed projectId to an existing projectless tab', async () => {
+			const ctx = setup();
+			ctx.thread.producedArtifacts.set('srv-1', {
+				type: 'mcp-server',
+				id: 'srv-1',
+				name: 'MCP server',
+				isFallbackName: true,
+			});
+			ctx.selectTab('srv-1');
+			await nextTick();
+			expect(ctx.activeMcpServer.value).toBeNull();
+
+			expect(ctx.openMcpServerPreview('srv-1', 'project-1')).toBe(true);
+			expect(ctx.activeMcpServer.value).toEqual({ id: 'srv-1', projectId: 'project-1' });
+			expect(ctx.openMcpServerPreview('srv-1', 'project-1')).toBe(false);
+		});
+
+		test('openMcpServerPreview applies passed projectId to a stored-only projectless tab', async () => {
+			const ctx = setup({
+				tabsStorage: {
+					load: vi.fn().mockResolvedValue({
+						tabs: [{ type: 'mcp-server', id: 'srv-1', name: 'Marketing tools' }],
+						closedTabs: [],
+						activeTab: { type: 'mcp-server', id: 'srv-1' },
+						previewOpen: true,
+					}),
+					save: vi.fn().mockResolvedValue(undefined),
+				},
+			});
+			await flushPromises();
+			expect(ctx.activeMcpServer.value).toBeNull();
+
+			expect(ctx.openMcpServerPreview('srv-1', 'project-1')).toBe(true);
+			expect(ctx.activeMcpServer.value).toEqual({ id: 'srv-1', projectId: 'project-1' });
+		});
 	});
 
 	describe('close data table on delete', () => {

@@ -44,6 +44,8 @@ export type ResourceEntry = {
 	 * it from a local default config and persists on the first real edit.
 	 */
 	pending?: boolean;
+	/** True when `name` is a generic placeholder because no real name is known yet. */
+	isFallbackName?: boolean;
 };
 
 /**
@@ -132,6 +134,7 @@ function recordProduced(
 				createdAt: entry.createdAt ?? existing.createdAt,
 				updatedAt: entry.updatedAt ?? existing.updatedAt,
 				projectId: entry.projectId ?? existing.projectId,
+				...(entry.isFallbackName ? { isFallbackName: true } : {}),
 			}
 		: entry;
 	col.produced.set(entry.id, merged);
@@ -294,7 +297,8 @@ function extractFromCustomMcpServersResult(tc: ArtifactToolCall, col: Collection
 	if (col.deletedMcpServerIds.has(event.serverId)) return;
 	const existing = col.produced.get(event.serverId);
 	const known = col.mcpServersById.get(event.serverId);
-	const resolvedName = event.name ?? existing?.name ?? known?.name;
+	const existingName = existing && !existing.isFallbackName ? existing.name : undefined;
+	const resolvedName = event.name ?? existingName ?? known?.name;
 	const projectId = event.projectId ?? existing?.projectId ?? known?.projectId;
 	recordProduced(
 		col,
@@ -302,6 +306,7 @@ function extractFromCustomMcpServersResult(tc: ArtifactToolCall, col: Collection
 			type: 'mcp-server',
 			id: event.serverId,
 			name: resolvedName ?? 'MCP server',
+			...(!resolvedName ? { isFallbackName: true } : {}),
 			...(projectId ? { projectId } : {}),
 		},
 		{ linkable: Boolean(resolvedName) },
@@ -653,16 +658,15 @@ function enrichMcpServerFromTarget(
 	const existing = col.produced.get(target.serverId);
 	if (existing && existing.type !== 'mcp-server') return;
 	const known = col.mcpServersById.get(target.serverId);
-	const resolvedName =
-		(existing?.name && existing.name !== 'MCP server' ? existing.name : undefined) ??
-		known?.name ??
-		target.name;
+	const existingName = existing && !existing.isFallbackName ? existing.name : undefined;
+	const resolvedName = existingName ?? known?.name ?? target.name;
 	recordProduced(
 		col,
 		{
 			type: 'mcp-server',
 			id: target.serverId,
 			name: resolvedName ?? 'MCP server',
+			...(!resolvedName ? { isFallbackName: true } : {}),
 			projectId: existing?.projectId ?? target.projectId,
 		},
 		{ linkable: Boolean(resolvedName) },

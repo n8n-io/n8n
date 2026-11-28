@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
+import { useInstanceAiStore } from '../instanceAi.store';
 import { useMcpServerAssistantHandoff } from '../composables/useMcpServerAssistantHandoff';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import {
@@ -87,7 +88,47 @@ describe('useMcpServerAssistantHandoff', () => {
 		await expect(useMcpServerAssistantHandoff().openServer(server)).resolves.toBe(true);
 
 		expect(clearPendingThreadHandoff).toHaveBeenCalledWith('thread-new');
+		expect(useInstanceAiStore().deleteThread).toHaveBeenCalledWith('thread-new', { silent: true });
 		expect(push).not.toHaveBeenCalled();
+	});
+
+	it('ignores a second click while a hand-off is already in flight', async () => {
+		let resolveThread!: (id: string) => void;
+		vi.mocked(provisionLaunchedSubjectThread).mockImplementationOnce(
+			async () =>
+				await new Promise<string>((resolve) => {
+					resolveThread = resolve;
+				}),
+		);
+		const handoff = useMcpServerAssistantHandoff();
+
+		const first = handoff.openServer(server);
+		const second = handoff.openServer(server);
+
+		await expect(second).resolves.toBe(false);
+		expect(provisionLaunchedSubjectThread).toHaveBeenCalledTimes(1);
+
+		resolveThread('thread-first');
+		await expect(first).resolves.toBe(true);
+		expect(push).toHaveBeenCalledWith({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'thread-first' },
+		});
+
+		// Once settled, a subsequent click works again.
+		await expect(handoff.openServer(server)).resolves.toBe(true);
+		expect(provisionLaunchedSubjectThread).toHaveBeenCalledTimes(2);
+	});
+
+	it('deletes the provisioned thread when navigation fails', async () => {
+		const error = new Error('Navigation failed');
+		push.mockRejectedValueOnce(error);
+
+		await expect(useMcpServerAssistantHandoff().openServer(server)).resolves.toBe(false);
+
+		expect(clearPendingThreadHandoff).toHaveBeenCalledWith('thread-new');
+		expect(useInstanceAiStore().deleteThread).toHaveBeenCalledWith('thread-new', { silent: true });
+		expect(showError).toHaveBeenCalledWith(error, expect.any(String));
 	});
 
 	it('shows an error toast when provisioning fails', async () => {

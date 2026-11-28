@@ -397,10 +397,9 @@ async function handleAddTools(
 		},
 		async () => {
 			const tools = (await service.addTools(toRef(input), input.workflowIds)).map(toolSummary);
-			if (context.onArtifactChanged) {
-				await reportServerArtifact(context, await service.getServer(toRef(input)));
-			}
-			return { tools };
+			const server = await service.getServer(toRef(input));
+			await reportServerArtifact(context, server);
+			return { server: summary(server), tools };
 		},
 	);
 }
@@ -437,7 +436,7 @@ async function handleUpdateTool(
 		async () => {
 			const updated = await service.updateTool(toRef(input), input.toolId, changes);
 			await reportServerArtifact(context, server);
-			return { tool: toolSummary(updated) };
+			return { server: summary(server), tool: toolSummary(updated) };
 		},
 	);
 }
@@ -477,7 +476,7 @@ async function handleGenerate(
 				return { success: false, refused: true, reason: DRAFTS_NOT_AVAILABLE };
 			}
 			await reportServerArtifact(context, server);
-			return { tool: toolSummary(result.tool) };
+			return { server: summary(server), tool: toolSummary(result.tool) };
 		},
 	);
 }
@@ -502,7 +501,7 @@ async function handleRemoveTool(
 		async () => {
 			await service.removeTool(toRef(input), input.toolId);
 			await reportServerArtifact(context, server);
-			return { toolId: input.toolId };
+			return { server: summary(server), toolId: input.toolId };
 		},
 	);
 }

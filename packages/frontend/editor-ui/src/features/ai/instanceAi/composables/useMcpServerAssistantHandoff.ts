@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 
 import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
+import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 
 import { useInstanceAiReady } from './useInstanceAiAvailability';
 import {
@@ -19,12 +20,21 @@ export function mcpServerThreadLaunch(serverId: string): InstanceAiThreadLaunch 
 	return { source: 'mcp_server_page', origin: 'internal', sourceContext: { serverId } };
 }
 
+// Guard against rapid repeat clicks while a thread is being provisioned.
+let handoffInFlight = false;
+
 /** Opens the Assistant view on a new thread with the custom MCP server as a tab. */
 export function useMcpServerAssistantHandoff(): McpServerAssistantHandoff {
 	const router = useRouter();
+	const instanceAiStore = useInstanceAiStore();
 	const toast = useToast();
 	const i18n = useI18n();
 	const available = useInstanceAiReady();
+
+	async function discardThread(threadId: string) {
+		clearPendingThreadHandoff(threadId);
+		await instanceAiStore.deleteThread(threadId, { silent: true });
+	}
 
 	async function openServer(input: {
 		serverId: string;
@@ -32,7 +42,8 @@ export function useMcpServerAssistantHandoff(): McpServerAssistantHandoff {
 		serverName?: string;
 		prefill?: InstanceAiPrefillPayload;
 	}): Promise<boolean> {
-		if (!available.value) return false;
+		if (!available.value || handoffInFlight) return false;
+		handoffInFlight = true;
 		const originRoute = router.currentRoute.value;
 		let threadId: string | undefined;
 		try {
@@ -46,19 +57,27 @@ export function useMcpServerAssistantHandoff(): McpServerAssistantHandoff {
 				mcpServerThreadLaunch(input.serverId),
 			);
 			if (router.currentRoute.value !== originRoute) {
-				clearPendingThreadHandoff(threadId);
+				await discardThread(threadId);
 				return true;
 			}
 			if (input.prefill) {
 				stashPendingComposerDraft(threadId, input.prefill);
 			}
-			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+			const failure = await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+			if (failure) {
+				await discardThread(threadId);
+				if (router.currentRoute.value !== originRoute) return true;
+				toast.showError(failure, i18n.baseText('instanceAi.handoff.openFailed.title'));
+				return false;
+			}
 			return true;
 		} catch (error) {
-			if (threadId) clearPendingThreadHandoff(threadId);
+			if (threadId) await discardThread(threadId);
 			if (router.currentRoute.value !== originRoute) return true;
 			toast.showError(error, i18n.baseText('instanceAi.handoff.openFailed.title'));
 			return false;
+		} finally {
+			handoffInFlight = false;
 		}
 	}
 

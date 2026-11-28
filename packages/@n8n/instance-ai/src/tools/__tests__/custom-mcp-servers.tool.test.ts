@@ -515,6 +515,7 @@ describe('custom-mcp-servers tool', () => {
 			expect(result).toMatchObject({
 				success: true,
 				serverMutated: true,
+				server: { id: SERVER_ID, projectId: 'project-1', name: 'Marketing Tools' },
 				tools: [{ id: TOOL_ID, toolName: 'get_campaign_stats' }],
 			});
 		});
@@ -538,12 +539,18 @@ describe('custom-mcp-servers tool', () => {
 			}),
 		);
 
-		await executeTool(tool, input, resumeCtx(true));
+		const result = await executeTool(tool, input, resumeCtx(true));
 		expect(service.updateTool).toHaveBeenCalledWith(
 			{ serverId: SERVER_ID, projectId: undefined },
 			TOOL_ID,
 			{ toolName: 'campaign_stats' },
 		);
+		expect(result).toMatchObject({
+			success: true,
+			serverMutated: true,
+			server: { id: SERVER_ID, projectId: 'project-1', name: 'Marketing Tools' },
+			tool: { id: TOOL_ID },
+		});
 	});
 
 	it('asks before it removes a tool', async () => {
@@ -565,7 +572,19 @@ describe('custom-mcp-servers tool', () => {
 			{ serverId: SERVER_ID, projectId: undefined },
 			TOOL_ID,
 		);
-		expect(result).toEqual({ success: true, serverMutated: true, toolId: TOOL_ID });
+		expect(result).toEqual({
+			success: true,
+			serverMutated: true,
+			server: {
+				id: SERVER_ID,
+				projectId: 'project-1',
+				projectName: 'Marketing',
+				name: 'Marketing Tools',
+				slug: 'marketing-tools',
+				description: 'Tools for the campaign team',
+			},
+			toolId: TOOL_ID,
+		});
 	});
 
 	it('asks before each removal, even after "Allow for this chat"', async () => {
@@ -665,6 +684,7 @@ describe('custom-mcp-servers tool', () => {
 			);
 			expect(result).toMatchObject({
 				success: true,
+				server: { id: SERVER_ID, projectId: 'project-1', name: 'Marketing Tools' },
 				tool: { description: 'Returns clicks and spend for one campaign' },
 			});
 		});

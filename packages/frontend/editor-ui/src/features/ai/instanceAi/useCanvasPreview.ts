@@ -50,6 +50,8 @@ export interface ArtifactTab {
 	waiting?: boolean;
 	/** An unsaved workflow from the builder's source file. Never stored with the thread's tabs. */
 	draft?: boolean;
+	/** True when `name` is a generic placeholder because no real name is known yet. */
+	isFallbackName?: boolean;
 }
 
 /** The live view of a running cloud browser task. Never stored with the thread. */
@@ -193,6 +195,8 @@ export function useCanvasPreview({
 
 	/** Manual renames made inside an open custom MCP server tab. */
 	const mcpServerNameOverrides = reactive(new Map<string, string>());
+	/** Project IDs learned from resource links when an MCP server tab had none. */
+	const linkedMcpServerProjectIds = reactive(new Map<string, string>());
 
 	// All previewable artifacts in the current thread, derived from resource registry.
 	const artifactTabs = computed((): ArtifactTab[] => {
@@ -207,21 +211,24 @@ export function useCanvasPreview({
 				entry.type === 'app' ||
 				entry.type === 'mcp-server'
 			) {
+				const mcpNameOverride =
+					entry.type === 'mcp-server' ? mcpServerNameOverrides.get(entry.id) : undefined;
+				const isFallbackName = mcpNameOverride ? false : entry.isFallbackName;
 				result.push({
 					id: entry.id,
 					type: entry.type,
-					name:
-						entry.type === 'mcp-server'
-							? (mcpServerNameOverrides.get(entry.id) ?? entry.name)
-							: entry.name,
+					name: mcpNameOverride ?? entry.name,
 					icon: ARTIFACT_TAB_ICONS[entry.type],
 					projectId:
 						entry.projectId ??
 						(entry.type === 'agent' && linkedAgent?.agentId === entry.id
 							? linkedAgent.projectId
-							: undefined),
+							: entry.type === 'mcp-server'
+								? linkedMcpServerProjectIds.get(entry.id)
+								: undefined),
 					pending: entry.pending,
 					building: buildingArtifactIds.value.has(entry.id),
+					...(isFallbackName ? { isFallbackName: true } : {}),
 				});
 			}
 		}
@@ -670,22 +677,33 @@ export function useCanvasPreview({
 	 * server is known in the thread (e.g. from a list call or link path).
 	 */
 	function openMcpServerPreview(serverId: string, projectId?: string): boolean {
-		if (tabs.hasTab(serverId)) {
-			if (activeTabId.value === serverId && isPreviewOpen.value) return false;
-			selectTab(serverId);
-			return true;
-		}
 		const indexed = [...thread.resourceNameIndex.values()].find(
 			(entry) => entry.type === 'mcp-server' && entry.id === serverId,
 		);
-		const resolvedProjectId = projectId ?? indexed?.projectId;
-		if (!resolvedProjectId) return false;
+		const passedProjectId = projectId ?? indexed?.projectId;
+		if (tabs.hasTab(serverId)) {
+			const hadActivePreview =
+				activeTabId.value === serverId && isPreviewOpen.value && activeMcpServer.value !== null;
+			if (passedProjectId) {
+				linkedMcpServerProjectIds.set(serverId, passedProjectId);
+				tabs.setTabProjectId(serverId, passedProjectId);
+			}
+			const hasProjectId =
+				passedProjectId !== undefined ||
+				openTabs.value.some((tab) => tab.id === serverId && Boolean(tab.projectId)) ||
+				artifactTabs.value.some((tab) => tab.id === serverId && Boolean(tab.projectId));
+			if (!hasProjectId) return false;
+			if (hadActivePreview) return false;
+			selectTab(serverId);
+			return true;
+		}
+		if (!passedProjectId) return false;
 		openTab({
 			type: 'mcp-server',
 			id: serverId,
 			name: indexed?.name ?? serverId,
 			icon: ARTIFACT_TAB_ICONS['mcp-server'],
-			projectId: resolvedProjectId,
+			projectId: passedProjectId,
 		});
 		return true;
 	}
@@ -886,6 +904,8 @@ export function useCanvasPreview({
 			}
 			for (const event of unseen) {
 				if (event.kind === 'deleted') {
+					mcpServerNameOverrides.delete(event.serverId);
+					linkedMcpServerProjectIds.delete(event.serverId);
 					if (tabs.hasTab(event.serverId)) closeTab(event.serverId);
 					continue;
 				}
