@@ -234,7 +234,7 @@ describe('NodeToolSettingsContent', () => {
 	let environmentsStore: ReturnType<typeof mockedStore<typeof useEnvironmentsStore>>;
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 	// The real action, captured before the suite replaces it with a resolved mock.
-	let realLoadNodeTypesIfNotLoaded: () => Promise<void>;
+	let realLoadNodeTypesIfNotLoaded: (typeof nodeTypesStore)['loadNodeTypesIfNotLoaded'];
 
 	beforeEach(() => {
 		vi.clearAllMocks();
