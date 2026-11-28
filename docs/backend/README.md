@@ -25,7 +25,7 @@ N8N_USER_FOLDER=$HOME/.n8n-onboarding pnpm start
 
 Open `http://localhost:5678` and create the owner account.
 
-You started one process that serves the editor in your browser and keeps its data in a SQLite file in the data folder.
+You started one process that serves the editor in your browser and keeps its data in a SQLite file in the data folder. For PostgreSQL, queue mode, multi-main, or engine v2, see [Run queue mode locally](how-to/run-queue-mode-locally.md) or the experimental [`rig`](../../scripts/experimental/rig/README.md) CLI.
 
 ## Build a workflow
 
