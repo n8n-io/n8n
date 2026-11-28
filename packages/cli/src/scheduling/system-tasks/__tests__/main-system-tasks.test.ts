@@ -1,6 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
+import { UnassignedBinaryDataBackfillTask } from '@/binary-data/unassigned-binary-data-backfill.task';
 import { PendingAuthorizationCleanupTask } from '@/credentials/pending-authorization-cleanup.task';
 import { LicenseRenewalTask } from '@/license/license-renewal.task';
 import { IdempotencyKeyCleanupTask } from '@/public-api/idempotency-key-cleanup.task';
@@ -43,6 +44,7 @@ it('should return every main task when all features are on', async () => {
 		WorkflowHistoryPruningTask,
 		PendingAuthorizationCleanupTask,
 		IdempotencyKeyCleanupTask,
+		UnassignedBinaryDataBackfillTask,
 		WorkflowHistoryCompactionTrimTask,
 		LicenseRenewalTask,
 		ExecutionPruningSoftDeleteTask,

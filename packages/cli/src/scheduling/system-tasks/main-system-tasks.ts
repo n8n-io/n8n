@@ -20,12 +20,17 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 		'@/credentials/pending-authorization-cleanup.task.js'
 	);
 
+	const { UnassignedBinaryDataBackfillTask } = await import(
+		'@/binary-data/unassigned-binary-data-backfill.task.js'
+	);
+
 	const tasks: SystemTaskClass[] = [
 		ActivityPruningTask,
 		WorkflowHistoryCompactionOptimizeTask,
 		WorkflowHistoryPruningTask,
 		PendingAuthorizationCleanupTask,
 		IdempotencyKeyCleanupTask,
+		UnassignedBinaryDataBackfillTask,
 	];
 
 	if (isTrimmingEnabled(globalConfig.workflowHistory, globalConfig.workflowHistoryCompaction)) {

@@ -762,6 +762,42 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return false;
 	}
 
+	/** Highest execution ID, or 0 when there is no execution. */
+	async findHighestId(): Promise<number> {
+		const row = await this.createQueryBuilder('execution')
+			.select('MAX(execution.id)', 'highestId')
+			.getRawOne<{ highestId: string | number | null }>();
+
+		return Number(row?.highestId ?? 0);
+	}
+
+	/**
+	 * IDs of the executions that ran in one of `modes` and whose ID is above `afterId`,
+	 * up to and including `throughId`, in ascending order. With `stoppedSince`,
+	 * only the executions that stopped at or after that time.
+	 */
+	async findIdsByModesInIdRange(
+		modes: WorkflowExecuteMode[],
+		afterId: number,
+		throughId: number,
+		stoppedSince?: Date,
+	): Promise<string[]> {
+		const query = this.createQueryBuilder('execution')
+			.select('execution.id')
+			.where('execution.mode IN (:...modes)', { modes })
+			.andWhere('execution.id > :afterId', { afterId })
+			.andWhere('execution.id <= :throughId', { throughId })
+			.orderBy('execution.id', 'ASC');
+
+		if (stoppedSince) {
+			query.andWhere('execution.stoppedAt >= :stoppedSince', { stoppedSince });
+		}
+
+		const executions = await query.getMany();
+
+		return executions.map(({ id }) => id);
+	}
+
 	async findExecutionsToDelete({
 		filters,
 		accessibleWorkflowIds,

@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { BinaryData } from 'n8n-core';
 import { BinaryDataConfig, BinaryDataService, TEMP_EXECUTION_ID } from 'n8n-core';
-import type { IBinaryData, IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import type { IBinaryData, IRun, IRunData, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { DatabaseManager } from '@/binary-data/database.manager';
 
@@ -65,8 +65,8 @@ function collectRenameEntries(run: IRun, executionId: string): RenameEntry[] {
 
 const DATABASE_ID_PREFIX = 'database:';
 
-function collectDatabaseFileIds(run: IRun): string[] {
-	const fileIds = Object.values(run.data.resultData.runData)
+export function collectDatabaseFileIds(runData: IRunData): string[] {
+	const fileIds = Object.values(runData)
 		.flatMap((nodeRuns) => nodeRuns ?? [])
 		.flatMap((nodeRun) => nodeRun.data?.main ?? [])
 		.flatMap((outputs) => outputs ?? [])
@@ -82,7 +82,7 @@ function collectDatabaseFileIds(run: IRun): string[] {
 
 export async function assignDatabaseFilesToExecution(run: IRun, executionId: string) {
 	try {
-		const fileIds = collectDatabaseFileIds(run);
+		const fileIds = collectDatabaseFileIds(run.data.resultData.runData);
 
 		if (fileIds.length > 0) {
 			await Container.get(DatabaseManager).assignToExecution(fileIds, executionId);
@@ -96,11 +96,16 @@ export async function assignDatabaseFilesToExecution(run: IRun, executionId: str
 }
 
 /**
- * True for a mode whose first node stores its files before the execution exists.
+ * Modes whose first node stores its files before the execution exists.
  * In another mode, a file under the temporary path can belong to another execution.
  */
+export const MODES_THAT_STORE_FILES_BEFORE_THEIR_EXECUTION: WorkflowExecuteMode[] = [
+	'webhook',
+	'trigger',
+];
+
 const storesFilesBeforeItsExecution = (mode: WorkflowExecuteMode) =>
-	mode === 'webhook' || mode === 'trigger';
+	MODES_THAT_STORE_FILES_BEFORE_THEIR_EXECUTION.includes(mode);
 
 const keepsBinaryDataInMemory = () => Container.get(BinaryDataConfig).mode === 'default';
 

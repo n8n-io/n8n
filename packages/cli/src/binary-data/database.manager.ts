@@ -171,6 +171,11 @@ export class DatabaseManager implements BinaryData.Manager {
 		await this.repository.moveExecutionFilesToSourceId(fileIds, TEMP_EXECUTION_ID, executionId);
 	}
 
+	/** Whether a file stored before its execution existed is still assigned to no execution. */
+	async hasUnassignedExecutionFiles() {
+		return await this.repository.hasExecutionFilesWithSourceId(TEMP_EXECUTION_ID);
+	}
+
 	private toSource(location: BinaryData.FileLocation): {
 		sourceType: SourceType;
 		sourceId: string;
