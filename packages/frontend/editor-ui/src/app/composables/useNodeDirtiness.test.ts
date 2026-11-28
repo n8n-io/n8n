@@ -3,7 +3,11 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
-import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '@/app/constants';
+import {
+	MANUAL_TRIGGER_NODE_TYPE,
+	SET_NODE_TYPE,
+	SPLIT_IN_BATCHES_NODE_TYPE,
+} from '@/app/constants';
 import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -433,7 +437,994 @@ describe(useNodeDirtiness, () => {
 				c: CanvasNodeDirtiness.PARAMETERS_UPDATED,
 			});
 		});
+
+		// CAP-232: Changing a node downstream of a completed loop must not mark the loop dirty.
+		it('should not mark a completed loop as dirty when a node directly downstream of the loop is modified', () => {
+			setupCompletedLoopWorkflow();
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.afterLoop.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				afterLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		// CAP-232: Changing a node further downstream of a completed loop must not mark the loop dirty.
+		it('should not mark a completed loop as dirty when a node further downstream of the loop is modified', () => {
+			setupCompletedLoopWorkflow();
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.finalNode.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				finalNode: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should mark the loop entry node as dirty when a node inside a completed loop is modified', () => {
+			setupCompletedLoopWorkflow();
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.inLoop.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				loop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				inLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should not mark a completed loop as dirty when an incoming connection is added downstream of the loop', () => {
+			setupCompletedLoopWorkflow();
+
+			canvasOperations.createConnection(
+				{
+					source: workflowDocumentStore.nodesByName.trigger.id,
+					target: workflowDocumentStore.nodesByName.afterLoop.id,
+				},
+				{ trackHistory: true },
+			);
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				afterLoop: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
+			});
+		});
+
+		it('should not mark a completed loop as dirty when a downstream node is disabled', () => {
+			setupCompletedLoopWorkflow();
+
+			canvasOperations.toggleNodesDisabled([workflowDocumentStore.nodesByName.afterLoop.id], {
+				trackHistory: true,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				finalNode: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
+			});
+		});
+
+		it('should not mark a completed loop as dirty when pinned data is updated downstream of the loop', () => {
+			setupCompletedLoopWorkflow();
+
+			workflowDocumentStore.pinNodeData('afterLoop', [{ json: { value: 1 } }]);
+			workflowDocumentStore.clearPinnedDataTimestamps('afterLoop');
+			workflowDocumentStore.touchPinnedDataLastUpdatedAt('afterLoop');
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				finalNode: CanvasNodeDirtiness.PINNED_DATA_UPDATED,
+			});
+		});
+
+		it('should not mark a completed loop as dirty when pinned data is removed downstream of the loop', () => {
+			setupCompletedLoopWorkflow();
+
+			workflowDocumentStore.pinNodeData('afterLoop', [{ json: { value: 1 } }]);
+			workflowDocumentStore.clearPinnedDataTimestamps('afterLoop');
+
+			canvasOperations.toggleNodesPinned(
+				[workflowDocumentStore.nodesByName.afterLoop.id],
+				'pin-icon-click',
+				{ trackHistory: true },
+			);
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				afterLoop: CanvasNodeDirtiness.PINNED_DATA_UPDATED,
+			});
+		});
+
+		it('should not mark a completed loop as dirty after copying execution data to the editor and editing a downstream node', () => {
+			setupCompletedLoopWorkflow();
+
+			// Copy to editor pins root trigger data and clears pinned data timestamps.
+			workflowDocumentStore.pinNodeData('trigger', [{ json: { value: 1 } }]);
+			workflowDocumentStore.clearPinnedDataTimestamps('trigger');
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.afterLoop.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				afterLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should mark the loop entry node as dirty when a dead-end side branch inside the loop body is modified', () => {
+			setupExecutedWorkflow(
+				[
+					createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'loop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+					createTestNode({ name: 'http', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'appendRow', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'afterLoop', type: SET_NODE_TYPE }),
+				],
+				{
+					trigger: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					loop: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'afterLoop', type: NodeConnectionTypes.Main, index: 0 }],
+							[{ node: 'http', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					http: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 },
+								{ node: 'appendRow', type: NodeConnectionTypes.Main, index: 0 },
+							],
+						],
+					},
+				},
+			);
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.appendRow.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				loop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				appendRow: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should mark the loop entry node as dirty when a dead-end secondary output branch inside the loop body is modified', () => {
+			setupExecutedWorkflow(
+				[
+					createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'loop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+					createTestNode({ name: 'inLoop', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'errorStep', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'errorSink', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'afterLoop', type: SET_NODE_TYPE }),
+				],
+				{
+					trigger: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					loop: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'afterLoop', type: NodeConnectionTypes.Main, index: 0 }],
+							[{ node: 'inLoop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					inLoop: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }],
+							[{ node: 'errorStep', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					errorStep: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'errorSink', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+			);
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.errorSink.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				loop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				errorSink: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should mark the loop entry node as dirty when a dead-end branch off the loop output is modified', () => {
+			setupExecutedWorkflow(
+				[
+					createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'loop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+					createTestNode({ name: 'inLoop', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'logBatch', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'afterLoop', type: SET_NODE_TYPE }),
+				],
+				{
+					trigger: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					loop: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'afterLoop', type: NodeConnectionTypes.Main, index: 0 }],
+							[
+								{ node: 'inLoop', type: NodeConnectionTypes.Main, index: 0 },
+								{ node: 'logBatch', type: NodeConnectionTypes.Main, index: 0 },
+							],
+						],
+					},
+					inLoop: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+			);
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.logBatch.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				loop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				logBatch: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should mark the loop entry node as dirty when a downstream node also receives input from inside the loop body', () => {
+			setupExecutedWorkflow(
+				[
+					createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'loop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+					createTestNode({ name: 'inLoop', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'merge', type: SET_NODE_TYPE }),
+				],
+				{
+					trigger: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					loop: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'merge', type: NodeConnectionTypes.Main, index: 0 }],
+							[{ node: 'inLoop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					inLoop: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 },
+								{ node: 'merge', type: NodeConnectionTypes.Main, index: 1 },
+							],
+						],
+					},
+				},
+			);
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.merge.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				loop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				merge: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should keep marking SplitInBatches v2 loops dirty when a downstream done branch changes', () => {
+			setupExecutedWorkflow(
+				[
+					createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'loop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 2 }),
+					createTestNode({ name: 'inLoop', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'afterLoop', type: SET_NODE_TYPE }),
+				],
+				{
+					trigger: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					loop: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'inLoop', type: NodeConnectionTypes.Main, index: 0 }],
+							[{ node: 'afterLoop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					inLoop: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+			);
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.afterLoop.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				loop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				afterLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should keep marking SplitInBatches v1 loops dirty when a downstream branch changes', () => {
+			setupExecutedWorkflow(
+				[
+					createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'loop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 1 }),
+					createTestNode({ name: 'inLoop', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'deadEnd', type: SET_NODE_TYPE }),
+				],
+				{
+					trigger: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					loop: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'inLoop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					inLoop: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 },
+								{ node: 'deadEnd', type: NodeConnectionTypes.Main, index: 0 },
+							],
+						],
+					},
+				},
+			);
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.deadEnd.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				loop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				deadEnd: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should not mark sequential completed loops as dirty when a downstream node changes', () => {
+			setupSequentialLoopsWorkflow();
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.afterSecond.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				afterSecond: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should only mark the containing loop entry node dirty in sequential loops', () => {
+			setupSequentialLoopsWorkflow();
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.inSecond.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				loop2: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				inSecond: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should only mark the containing loop entry node dirty for a dead-end branch in the second sequential loop', () => {
+			setupSequentialLoopsWorkflow();
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.deadEndInSecond.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				loop2: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				deadEndInSecond: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should not mark nested loops as dirty when a node downstream of the outer loop changes', () => {
+			setupNestedLoopsWorkflow();
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.afterOuter.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				afterOuter: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should mark the outer loop entry node dirty when a node in the outer loop body after an inner loop changes', () => {
+			setupNestedLoopsWorkflow();
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.afterInner.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				outerLoop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				afterInner: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should mark the outer loop entry node dirty when a node inside a nested inner loop changes', () => {
+			setupNestedLoopsWorkflow();
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.inInner.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				outerLoop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				inInner: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should mark the outer loop entry node dirty when a dead-end branch off an inner loop done output changes', () => {
+			setupNestedLoopsWorkflow();
+
+			canvasOperations.setNodeParameters(
+				workflowDocumentStore.nodesByName.deadEndAfterInnerDone.id,
+				{ foo: 1 },
+			);
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				outerLoop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				deadEndAfterInnerDone: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should mark the outer loop entry node dirty for a nested loop on a dead-end branch of an outer loop', () => {
+			setupExecutedWorkflow(
+				[
+					createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'outerLoop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+					createTestNode({ name: 'inOuter', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'innerLoop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+					createTestNode({ name: 'inInner', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'afterInnerDeadEnd', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'afterOuter', type: SET_NODE_TYPE }),
+				],
+				{
+					trigger: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'outerLoop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					outerLoop: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'afterOuter', type: NodeConnectionTypes.Main, index: 0 }],
+							[{ node: 'inOuter', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					inOuter: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{ node: 'outerLoop', type: NodeConnectionTypes.Main, index: 0 },
+								{ node: 'innerLoop', type: NodeConnectionTypes.Main, index: 0 },
+							],
+						],
+					},
+					innerLoop: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'afterInnerDeadEnd', type: NodeConnectionTypes.Main, index: 0 }],
+							[{ node: 'inInner', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					inInner: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'innerLoop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+			);
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.afterInnerDeadEnd.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				outerLoop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				afterInnerDeadEnd: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should mark both loop entry nodes dirty when dead-end branches from parallel loops converge', () => {
+			setupExecutedWorkflow(
+				[
+					createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'loop1', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+					createTestNode({ name: 'inLoop1', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'loop2', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+					createTestNode({ name: 'inLoop2', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'sharedDeadEnd', type: SET_NODE_TYPE }),
+				],
+				{
+					trigger: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{ node: 'loop1', type: NodeConnectionTypes.Main, index: 0 },
+								{ node: 'loop2', type: NodeConnectionTypes.Main, index: 0 },
+							],
+						],
+					},
+					loop1: {
+						[NodeConnectionTypes.Main]: [
+							null,
+							[{ node: 'inLoop1', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					inLoop1: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{ node: 'loop1', type: NodeConnectionTypes.Main, index: 0 },
+								{ node: 'sharedDeadEnd', type: NodeConnectionTypes.Main, index: 0 },
+							],
+						],
+					},
+					loop2: {
+						[NodeConnectionTypes.Main]: [
+							null,
+							[{ node: 'inLoop2', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					inLoop2: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{ node: 'loop2', type: NodeConnectionTypes.Main, index: 0 },
+								{ node: 'sharedDeadEnd', type: NodeConnectionTypes.Main, index: 1 },
+							],
+						],
+					},
+				},
+			);
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.sharedDeadEnd.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				loop1: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				loop2: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				sharedDeadEnd: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should handle self-loops without marking a SplitInBatches done branch dirty', () => {
+			setupExecutedWorkflow(
+				[
+					createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'loop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+					createTestNode({ name: 'afterLoop', type: SET_NODE_TYPE }),
+				],
+				{
+					trigger: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					loop: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'afterLoop', type: NodeConnectionTypes.Main, index: 0 }],
+							[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+			);
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.afterLoop.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				afterLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should choose the loop entry node with the shortest distance from the trigger', () => {
+			setupExecutedWorkflow(
+				[
+					createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'long1', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'long2', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'loopA', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'loopB', type: SET_NODE_TYPE }),
+				],
+				{
+					trigger: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{ node: 'long1', type: NodeConnectionTypes.Main, index: 0 },
+								{ node: 'loopB', type: NodeConnectionTypes.Main, index: 0 },
+							],
+						],
+					},
+					long1: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'long2', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					long2: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loopA', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					loopA: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loopB', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					loopB: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loopA', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+			);
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.loopA.id, { foo: 1 });
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				loopA: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+				loopB: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+			});
+		});
+
+		it('should compute loop entry depths in linear time across repeated diamond branches', () => {
+			const diamondCount = 30;
+			const nodes: INodeUi[] = [
+				createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+				createTestNode({ name: 'unrelated', type: SET_NODE_TYPE }),
+				createTestNode({ name: 'loop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+				createTestNode({ name: 'inLoop', type: SET_NODE_TYPE }),
+				createTestNode({ name: 'afterLoop', type: SET_NODE_TYPE }),
+			];
+			const connections: IConnections = {
+				trigger: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: 'split0', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'unrelated', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			};
+
+			for (let i = 0; i < diamondCount; i++) {
+				const split = `split${i}`;
+				const left = `left${i}`;
+				const right = `right${i}`;
+				const merge = `merge${i}`;
+				const nextTarget = i + 1 < diamondCount ? `split${i + 1}` : 'loop';
+
+				nodes.push(
+					createTestNode({ name: split, type: SET_NODE_TYPE }),
+					createTestNode({ name: left, type: SET_NODE_TYPE }),
+					createTestNode({ name: right, type: SET_NODE_TYPE }),
+					createTestNode({ name: merge, type: SET_NODE_TYPE }),
+				);
+
+				connections[split] = {
+					[NodeConnectionTypes.Main]: [
+						[{ node: left, type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: right, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				};
+				connections[left] = {
+					[NodeConnectionTypes.Main]: [[{ node: merge, type: NodeConnectionTypes.Main, index: 0 }]],
+				};
+				connections[right] = {
+					[NodeConnectionTypes.Main]: [[{ node: merge, type: NodeConnectionTypes.Main, index: 1 }]],
+				};
+				connections[merge] = {
+					[NodeConnectionTypes.Main]: [
+						[{ node: nextTarget, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				};
+			}
+
+			connections.loop = {
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'afterLoop', type: NodeConnectionTypes.Main, index: 0 }],
+					[{ node: 'inLoop', type: NodeConnectionTypes.Main, index: 0 }],
+				],
+			};
+			connections.inLoop = {
+				[NodeConnectionTypes.Main]: [[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }]],
+			};
+
+			setupExecutedWorkflow(nodes, connections);
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.unrelated.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				unrelated: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.inLoop.id, { foo: 1 });
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				unrelated: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+				loop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				inLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
 	});
+
+	function setupExecutedWorkflow(
+		nodes: INodeUi[],
+		connections: IConnections,
+		customRunData?: IRunData,
+	) {
+		const runData: IRunData = customRunData ?? {};
+
+		if (!customRunData) {
+			for (const node of nodes) {
+				runData[node.name] = [
+					{
+						startTime: +NODE_RUN_AT,
+						executionTime: 0,
+						executionIndex: 0,
+						executionStatus: 'success',
+						source: [],
+						data: {
+							[NodeConnectionTypes.Main]: [[{ json: { value: 1 } }]],
+						},
+					},
+				];
+			}
+		}
+
+		const workflow = createTestWorkflow({ nodes, connections });
+
+		const documentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		documentStore.setNodes(workflow.nodes);
+		documentStore.setConnections(workflow.connections);
+
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData({
+			id: workflow.id,
+			finished: true,
+			mode: 'manual',
+			status: 'success',
+			workflowData: workflow,
+			startedAt: NODE_RUN_AT,
+			createdAt: NODE_RUN_AT,
+			data: createRunExecutionData({ resultData: { runData } }),
+		});
+
+		vi.setSystemTime(WORKFLOW_UPDATED_AT);
+	}
+
+	function setupSequentialLoopsWorkflow() {
+		setupExecutedWorkflow(
+			[
+				createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+				createTestNode({ name: 'loop1', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+				createTestNode({ name: 'inFirst', type: SET_NODE_TYPE }),
+				createTestNode({ name: 'between', type: SET_NODE_TYPE }),
+				createTestNode({ name: 'loop2', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+				createTestNode({ name: 'inSecond', type: SET_NODE_TYPE }),
+				createTestNode({ name: 'deadEndInSecond', type: SET_NODE_TYPE }),
+				createTestNode({ name: 'afterSecond', type: SET_NODE_TYPE }),
+			],
+			{
+				trigger: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'loop1', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				loop1: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'between', type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: 'inFirst', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				inFirst: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'loop1', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				between: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'loop2', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				loop2: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'afterSecond', type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: 'inSecond', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				inSecond: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: 'loop2', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'deadEndInSecond', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			},
+		);
+	}
+
+	function setupNestedLoopsWorkflow() {
+		setupExecutedWorkflow(
+			[
+				createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+				createTestNode({ name: 'outerLoop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+				createTestNode({ name: 'innerLoop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+				createTestNode({ name: 'inInner', type: SET_NODE_TYPE }),
+				createTestNode({ name: 'afterInner', type: SET_NODE_TYPE }),
+				createTestNode({ name: 'deadEndAfterInnerDone', type: SET_NODE_TYPE }),
+				createTestNode({ name: 'afterOuter', type: SET_NODE_TYPE }),
+			],
+			{
+				trigger: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'outerLoop', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				outerLoop: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'afterOuter', type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: 'innerLoop', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				innerLoop: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: 'afterInner', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'deadEndAfterInnerDone', type: NodeConnectionTypes.Main, index: 0 },
+						],
+						[{ node: 'inInner', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				inInner: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'innerLoop', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				afterInner: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'outerLoop', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			},
+		);
+	}
+
+	/**
+	 * Sets up a workflow with a completed SplitInBatches loop and downstream nodes:
+	 * trigger -> loop --(done: 0)--> afterLoop -> finalNode
+	 *                 --(loop: 1)--> inLoop -> loop
+	 */
+	function setupCompletedLoopWorkflow() {
+		const trigger = createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE });
+		const loop = createTestNode({
+			name: 'loop',
+			type: SPLIT_IN_BATCHES_NODE_TYPE,
+			typeVersion: 3,
+		});
+		const inLoop = createTestNode({ name: 'inLoop', type: SET_NODE_TYPE });
+		const afterLoop = createTestNode({ name: 'afterLoop', type: SET_NODE_TYPE });
+		const finalNode = createTestNode({ name: 'finalNode', type: SET_NODE_TYPE });
+
+		const connections: IConnections = {
+			trigger: {
+				[NodeConnectionTypes.Main]: [[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }]],
+			},
+			loop: {
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'afterLoop', type: NodeConnectionTypes.Main, index: 0 }],
+					[{ node: 'inLoop', type: NodeConnectionTypes.Main, index: 0 }],
+				],
+			},
+			inLoop: {
+				[NodeConnectionTypes.Main]: [[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }]],
+			},
+			afterLoop: {
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'finalNode', type: NodeConnectionTypes.Main, index: 0 }],
+				],
+			},
+		};
+
+		const runData: IRunData = {
+			trigger: [
+				{
+					startTime: +NODE_RUN_AT,
+					executionTime: 0,
+					executionIndex: 0,
+					executionStatus: 'success',
+					source: [],
+					data: {
+						[NodeConnectionTypes.Main]: [[{ json: { value: 1 } }]],
+					},
+				},
+			],
+			loop: [
+				{
+					startTime: +NODE_RUN_AT,
+					executionTime: 0,
+					executionIndex: 1,
+					executionStatus: 'success',
+					source: [{ previousNode: 'trigger' }],
+					data: {
+						[NodeConnectionTypes.Main]: [[], [{ json: { value: 1 } }]],
+					},
+				},
+				{
+					startTime: +NODE_RUN_AT,
+					executionTime: 0,
+					executionIndex: 3,
+					executionStatus: 'success',
+					source: [{ previousNode: 'inLoop' }],
+					data: {
+						[NodeConnectionTypes.Main]: [[{ json: { value: 1 } }], []],
+					},
+				},
+			],
+			inLoop: [
+				{
+					startTime: +NODE_RUN_AT,
+					executionTime: 0,
+					executionIndex: 2,
+					executionStatus: 'success',
+					source: [{ previousNode: 'loop', previousNodeOutput: 1, previousNodeRun: 0 }],
+					data: {
+						[NodeConnectionTypes.Main]: [[{ json: { value: 1 } }]],
+					},
+				},
+			],
+			afterLoop: [
+				{
+					startTime: +NODE_RUN_AT,
+					executionTime: 0,
+					executionIndex: 4,
+					executionStatus: 'success',
+					source: [{ previousNode: 'loop', previousNodeOutput: 0, previousNodeRun: 1 }],
+					data: {
+						[NodeConnectionTypes.Main]: [[{ json: { value: 1 } }]],
+					},
+				},
+			],
+			finalNode: [
+				{
+					startTime: +NODE_RUN_AT,
+					executionTime: 0,
+					executionIndex: 5,
+					executionStatus: 'success',
+					source: [{ previousNode: 'afterLoop' }],
+					data: {
+						[NodeConnectionTypes.Main]: [[{ json: { value: 1 } }]],
+					},
+				},
+			],
+		};
+
+		setupExecutedWorkflow([trigger, loop, inLoop, afterLoop, finalNode], connections, runData);
+	}
 
 	/**
 	 * Setup test data in the workflow store using given diagram.
