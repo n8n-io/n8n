@@ -164,14 +164,17 @@ export class ChatHubChatPage extends BasePage {
 		return workflowPage;
 	}
 
-	async openAttachmentAt(messageIndex: number, attachmentIndex: number): Promise<Page> {
-		const [newPage] = await Promise.all([
+	async openAttachmentAt(messageIndex: number, attachmentIndex: number) {
+		const [preview] = await Promise.all([
 			this.page.context().waitForEvent('page'),
 			this.getAttachmentsAt(messageIndex).nth(attachmentIndex).click(),
 		]);
 
-		await newPage.waitForLoadState('load');
+		await preview.waitForLoadState('load');
 
-		return newPage;
+		return {
+			image: preview.locator('img'),
+			close: async () => await preview.close(),
+		};
 	}
 }

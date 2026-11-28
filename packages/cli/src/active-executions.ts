@@ -25,6 +25,7 @@ import type PCancelable from 'p-cancelable';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
+import { ExecutionCancelService } from '@/executions/execution-cancel.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type {
 	IExecutingWorkflowData,
@@ -63,6 +64,7 @@ export class ActiveExecutions {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly unsavedManualExecutionService: UnsavedManualExecutionService,
+		private readonly executionCancelService: ExecutionCancelService,
 	) {}
 
 	has(executionId: string) {
@@ -99,6 +101,7 @@ export class ActiveExecutions {
 				const fullExecutionData: CreateExecutionPayload = {
 					data: executionData.executionData!,
 					mode,
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 					finished: false,
 					workflowData: executionData.workflowData,
 					status: executionStatus,
@@ -113,7 +116,15 @@ export class ActiveExecutions {
 					fullExecutionData.workflowId = workflowId;
 				}
 
-				executionId = await this.executionPersistence.create(fullExecutionData);
+				executionId = await this.executionPersistence.create(
+					fullExecutionData,
+					{},
+					{
+						source: executionData.source,
+						// On an error workflow run, this is the project of the workflow that failed, not the owner.
+						projectId: mode === 'error' ? undefined : executionData.projectId,
+					},
+				);
 				assert(executionId);
 				await this.unsavedManualExecutionService.recordStarter(executionId, executionData);
 
@@ -386,7 +397,12 @@ export class ActiveExecutions {
 
 		try {
 			await Promise.race([
-				this.executionRepository.cancelManyRunning(executionIds),
+				(async () => {
+					const { recorded } = await this.executionCancelService.markAsCanceled(executionIds, [
+						'running',
+					]);
+					await recorded;
+				})(),
 				new Promise<never>((_, reject) => {
 					timeout = setTimeout(
 						() => reject(new OperationalError('Timed out writing the cancelled status')),

@@ -9,10 +9,7 @@ const mentionsTestConfig = {
 		...instanceAiTestConfig.capability,
 		env: {
 			...instanceAiTestConfig.capability.env,
-			N8N_FEATURE_FLAG_OVERRIDES: JSON.stringify({
-				'116_at_mentions_enabled': true,
-				'104_canvas_aia_node_context': false,
-			}),
+			N8N_FEATURE_FLAG_OVERRIDES: JSON.stringify({ '116_at_mentions_enabled': true }),
 		},
 	},
 } as const;
@@ -81,7 +78,7 @@ test.describe(
 				expect(violations).toEqual([]);
 
 				await n8n.instanceAi.selectMentionWithKeyboard(workflow.name);
-				await expect(input).toHaveValue(`"${workflow.name}"`);
+				await expect(input).toHaveValue('');
 				await expect(n8n.instanceAi.getComposerWorkflowChip(workflow.name)).toBeVisible();
 				expect(n8n.instanceAi.getCurrentPath()).toBe('/assistant');
 				await expect(n8n.instanceAi.getPreviewTabByName(workflow.name)).toBeHidden();

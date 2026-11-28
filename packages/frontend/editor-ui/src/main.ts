@@ -26,7 +26,7 @@ import { GlobalComponentsPlugin } from '@/app/plugins/components';
 import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
-import { ChartJSPlugin } from '@/app/plugins/chartjs';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { SentryPlugin } from '@/app/plugins/sentry';
 import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError';
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
@@ -69,9 +69,10 @@ app.use(PiniaVuePlugin);
 app.use(GlobalComponentsPlugin);
 app.use(GlobalDirectivesPlugin);
 app.use(pinia);
+// Settings embedded in the page are ready before the first request, so modules can use them
+useSettingsStore().applyEmbeddedSettings();
 app.use(router);
 app.use(i18nInstance);
-app.use(ChartJSPlugin);
 
 // Opt-in component re-render counter for the canvas performance benchmark.
 // No-op unless the N8N_RENDER_TRACKING localStorage flag is set, so it is

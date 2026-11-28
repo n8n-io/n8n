@@ -358,6 +358,43 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			status: agentStatus,
 		}),
 	},
+	AGENT_RAN_SKILL_WORKFLOW: {
+		name: 'Agent ran skill workflow',
+		description:
+			'An agent called the tool of a workflow that one of its skills mentions, and n8n started the workflow or failed to start it. Fires once for each call, when the tool returns. A workflow that the user attached to the agent as a tool sends no event, also when a skill mentions it. Fires only when the workflows in skills flag is on.',
+		properties: z.object({
+			agent_id: z.string(),
+			user_id: z
+				.string()
+				.optional()
+				.describe(
+					'Absent for runs without an n8n user, such as some chat integrations, and for agents that a workflow starts. PostHog drops events without a user, so count these runs in BigQuery',
+				),
+			workflow_id: z.string(),
+			skill_ids: z
+				.array(z.string())
+				.describe('The attached skills of the agent that mention the workflow'),
+			run_type: agentRunType,
+			status: z
+				.enum(['success', 'failure', 'pending'])
+				.describe(
+					'`success` is a finished execution. `failure` is an execution that failed or was canceled, or a workflow that n8n could not run. `pending` is an execution that waits, for example at a Wait node, or that runs in the background. The event does not report how a pending execution ends',
+				),
+			failure_reason: z
+				.enum([
+					'workflow_error',
+					'canceled',
+					'not_found',
+					'not_published',
+					'incompatible',
+					'unexpected',
+				])
+				.optional()
+				.describe(
+					'Only for `failure`. `workflow_error` is an execution that ended with an error. `canceled` is an execution or an agent run that was stopped. `not_found`, `not_published` and `incompatible` are workflows that n8n could not run. `unexpected` is any other error',
+				),
+		}),
+	},
 	AGENT_RUN_USED_KNOWLEDGE: {
 		name: 'Agent run used knowledge',
 		description:
@@ -445,6 +482,18 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.optional()
 				.describe(
 					'Error names of the failed search_text calls, each name once. Absent when no call finished.',
+				),
+			file_sandbox_wait_ms_first_25: z
+				.array(z.number())
+				.optional()
+				.describe(
+					'Time in ms that each search_text or read_file call waited for a running sandbox. The first 25 calls, in the order they started. A call that ended before the sandbox step is not in the list. Absent when no call reached the sandbox.',
+				),
+			file_mirror_wait_ms_first_25: z
+				.array(z.number())
+				.optional()
+				.describe(
+					'Time in ms that each call in file_sandbox_wait_ms_first_25 waited for the copy of the knowledge files in the sandbox, in the same order. 0 when the call did not wait for another sync of the copy and did not change the copy. Absent when no call reached the sandbox.',
 				),
 			vector_store_search_duration_ms_avg: z
 				.number()
@@ -672,6 +721,24 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		name: 'MCP unpublished agent',
 		description:
 			'An MCP client unpublished an agent through the `unpublish_agent` tool. One of three same-shaped unpublish events ("User unpublished agent", "Builder unpublished agent") — union them for total agent unpublishing, or read one for that surface alone. Emitted from `AgentPublishService.unpublishAgent`. Before this event existed these unpublishes were reported as "Agent unpublished" with source "builder", so they were indistinguishable from Instance AI builder unpublishes.',
+		properties: z.object({
+			...agentActorIdentity,
+			event_version: z.literal('1'),
+		}),
+	},
+	USER_ARCHIVED_AGENT: {
+		name: 'User archived agent',
+		description:
+			'A user archived an agent. The archive first unpublishes a published agent, which also emits "User unpublished agent". Emitted from `AgentPublishService.archiveAgent`.',
+		properties: z.object({
+			...agentActorIdentity,
+			event_version: z.literal('1'),
+		}),
+	},
+	USER_UNARCHIVED_AGENT: {
+		name: 'User unarchived agent',
+		description:
+			'A user restored an archived agent. The agent stays unpublished. Emitted from `AgentPublishService.unarchiveAgent`.',
 		properties: z.object({
 			...agentActorIdentity,
 			event_version: z.literal('1'),
@@ -1237,6 +1304,9 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.enum([
 					'incomplete',
 					'temporary_token',
+					'employee_system_user',
+					'missing_permissions',
+					'insufficient_access',
 					'mismatch',
 					'unreachable',
 					'not_found',
@@ -1245,7 +1315,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				])
 				.optional()
 				.describe(
-					'Only when status is failed. not_found: the user cannot use that credential; request_failed: the request to n8n failed, so Meta was never asked; save_failed: n8n could not save the new agent, so no check ran',
+					'Only when status is failed. employee_system_user: the token belongs to an Employee system user; missing_permissions: the token lacks a required WhatsApp permission; insufficient_access: the token cannot manage the Messaging account; not_found: the user cannot use that credential; request_failed: the request to n8n failed, so Meta was never asked; save_failed: n8n could not save the new agent, so no check ran',
 				),
 			push_ref: pushRef,
 		}),
@@ -1284,10 +1354,10 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_SELECTED_N8N_CHAT_AGENT: {
 		name: 'User selected n8n chat agent',
 		description:
-			'The user picked a published agent to chat with over n8n Chat, from a card, the agents library, or the chat-page agent picker dropdown.',
+			'The user picked a published agent to chat with over n8n Chat, from a card or the agents library.',
 		properties: z.object({
 			agent_id: z.string(),
-			source: z.enum(['card', 'library', 'dropdown']),
+			source: z.enum(['card', 'library']),
 			variant: n8nChatVariant,
 			push_ref: pushRef,
 		}),

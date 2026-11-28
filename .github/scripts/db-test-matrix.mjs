@@ -11,7 +11,7 @@ export const POSTGRES_VERSIONS_PATH =
 	'packages/quality/environments/containers/postgres-versions.json';
 
 /** The matrix wall is bounded by its slowest leg, so a larger runner buys nothing. */
-const RUNNER = 'blacksmith-4vcpu-ubuntu-2204';
+const RUNNER = 'blacksmith-4vcpu-bmi-n8n';
 
 // Each shard of a leg runs one suite on its own runner, so use every CPU. The CI
 // default (half the CPUs) is for jobs that run many suites at once. Every test file
@@ -37,22 +37,22 @@ export function readPostgresVersions(repoRoot = REPO_ROOT) {
 	return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-const SCOPES = new Set(['pr', 'full']);
+const SCOPES = new Set(['pr', 'queue', 'full']);
 
 /**
  * The schema-docs check runs on the primary Postgres leg only, since the
  * committed docs come from that one version. Scope 'pr' collects coverage on
- * that leg. Scope 'full' collects no coverage.
+ * that leg. Scopes 'queue' and 'full' collect no coverage.
  *
- * Scope 'pr' keeps SQLite plus the primary Postgres leg. Scope 'full' keeps
- * every Postgres major. CI runs DB tests on PRs only, with 'pr'.
+ * Scopes 'pr' and 'queue' keep SQLite plus the primary Postgres leg. Scope 'full'
+ * keeps every Postgres major. PRs run 'pr', the merge queue runs 'queue'.
  *
  * @param {PostgresVersions} versions
- * @param {'pr' | 'full'} scope
+ * @param {'pr' | 'queue' | 'full'} scope
  */
 export function buildMatrix(versions, scope = 'full') {
 	if (!SCOPES.has(scope)) {
-		throw new Error(`Unknown scope "${scope}", expected "pr" or "full"`);
+		throw new Error(`Unknown scope "${scope}", expected "pr", "queue" or "full"`);
 	}
 
 	const { primary, matrix } = versions;
@@ -92,7 +92,7 @@ export function buildMatrix(versions, scope = 'full') {
 	}
 
 	// Validation always runs on the full list; scope only trims the output.
-	const postgresLegs = scope === 'pr' ? matrix.filter(({ image }) => image === primary) : matrix;
+	const postgresLegs = scope === 'full' ? matrix : matrix.filter(({ image }) => image === primary);
 
 	return [
 		{
@@ -134,7 +134,7 @@ const PACKAGED_MODULES_CMD = `${TEST_RUN} --full-task=test:postgres --filter='./
  * Migration: one job per leg, not sharded.
  *
  * @param {PostgresVersions} versions
- * @param {'pr' | 'full'} scope
+ * @param {'pr' | 'queue' | 'full'} scope
  * @param {{ cliIntegrationRuns?: boolean }} [options] `cliIntegrationRuns`: the
  *   caller runs the CLI Integration Tests job in full on SQLite.
  */

@@ -16,6 +16,11 @@ import { TrustedSourceIdentityEntity } from '@/modules/inbound-auth-core/databas
 import { TrustedSourceEntity } from '@/modules/inbound-auth-core/database/entities/trusted-source.entity';
 import { TrustedSourceRepository } from '@/modules/inbound-auth-core/database/repositories/trusted-source.repository';
 import {
+	SYSTEM_TRUSTED_SOURCE_CONFIG,
+	SYSTEM_TRUSTED_SOURCE_ID,
+	SYSTEM_TRUSTED_SOURCE_NAME,
+} from '@/modules/inbound-auth-core/constants';
+import {
 	SystemTrustedSourceModificationError,
 	TrustedSourceDbStore,
 } from '@/modules/inbound-auth-core/trusted-source.store';
@@ -129,11 +134,11 @@ describe('TrustedSourceStore (integration)', () => {
 				type: 'oauth2',
 				managedBy: 'admin',
 				status: 'unchecked',
-				configVersion: 2,
+				configVersion: 3,
 			});
 			expect(row.config).not.toContain('oauth2');
 			expect(JSON.parse(await cipher.decryptV2(row.config))).toMatchObject({
-				version: 2,
+				version: 3,
 				authentication: { type: 'oauth2', clockSkewSeconds: 60 },
 				identity: { subject: 'binding' },
 			});
@@ -196,7 +201,7 @@ describe('TrustedSourceStore (integration)', () => {
 			expect(await store.getById(row.id)).toMatchObject({
 				id: row.id,
 				name: 'Acme',
-				config: { version: 2 },
+				config: { version: 3 },
 			});
 			expect(await store.getByIssuer('https://acme.example.com')).toMatchObject({ id: row.id });
 			expect(await store.getById('missing')).toBeUndefined();
@@ -267,6 +272,18 @@ describe('TrustedSourceStore (integration)', () => {
 	});
 
 	describe('update', () => {
+		it('hands the cache keys of one source under a single hash tag', async () => {
+			const row = await seedRow({ issuer: 'https://old.example.com' });
+			const deleteMany = vi.spyOn(cacheService, 'deleteMany');
+
+			await store.update(row.id, { issuer: 'https://new.example.com' });
+
+			// A multi-key DEL is valid on cluster-mode Redis only when every key hashes to one slot.
+			const keys = deleteMany.mock.calls.flat(2);
+			expect(keys.length).toBeGreaterThan(1);
+			for (const key of keys) expect(key).toMatch(/^\{trusted-source\}:/);
+		});
+
 		it('rewrites the row and invalidates id, old issuer, new issuer and the list', async () => {
 			const row = await seedRow({ name: 'Old', issuer: 'https://old.example.com' });
 			// Prime every entry the write must invalidate.
@@ -284,7 +301,7 @@ describe('TrustedSourceStore (integration)', () => {
 			expect(updated).toMatchObject({
 				name: 'New',
 				issuer: 'https://new.example.com',
-				configVersion: 2,
+				configVersion: 3,
 			});
 			expect(updated.config).not.toBe(row.config);
 
@@ -508,6 +525,22 @@ describe('TrustedSourceStore (integration)', () => {
 			expect((await rows.findOneByOrFail({ id: row.id })).discoveryClaimToken).toBe(second);
 		});
 
+		it('keeps the lease when the cache invalidation fails after the claim', async () => {
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+			vi.spyOn(cacheService, 'deleteMany').mockRejectedValueOnce(new Error('redis down'));
+
+			const token = await store.claimDiscovery(source);
+
+			expect(token).not.toBeNull();
+			expect((await rows.findOneByOrFail({ id: row.id })).discoveryClaimToken).toBe(token);
+			expect(warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ id: row.id }),
+			);
+		});
+
 		it('rejects a record whose token does not hold the lease and leaves the row alone', async () => {
 			const row = await seedRow();
 			const source = await loadSource(row.id);
@@ -620,6 +653,49 @@ describe('TrustedSourceStore (integration)', () => {
 		});
 	});
 
+	describe('seedSystemSource', () => {
+		const seedInput = (issuer: string) => ({
+			id: SYSTEM_TRUSTED_SOURCE_ID,
+			name: SYSTEM_TRUSTED_SOURCE_NAME,
+			issuer,
+			config: SYSTEM_TRUSTED_SOURCE_CONFIG,
+		});
+
+		it('reports the insert when the cache invalidation fails afterwards', async () => {
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+			vi.spyOn(cacheService, 'deleteMany').mockRejectedValueOnce(new Error('redis down'));
+
+			expect(await store.seedSystemSource(seedInput('https://n8n.example.com'))).toBe('inserted');
+
+			expect(await rows.findOneByOrFail({ id: SYSTEM_TRUSTED_SOURCE_ID })).toMatchObject({
+				managedBy: 'system',
+				issuer: 'https://n8n.example.com',
+			});
+			expect(warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ id: SYSTEM_TRUSTED_SOURCE_ID }),
+			);
+		});
+
+		it('reports the issuer move when the cache invalidation fails afterwards', async () => {
+			await store.seedSystemSource(seedInput('https://old.example.com'));
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+			vi.spyOn(cacheService, 'deleteMany').mockRejectedValueOnce(new Error('redis down'));
+
+			expect(await store.seedSystemSource(seedInput('https://new.example.com'))).toBe(
+				'issuer-updated',
+			);
+
+			expect((await rows.findOneByOrFail({ id: SYSTEM_TRUSTED_SOURCE_ID })).issuer).toBe(
+				'https://new.example.com',
+			);
+			expect(warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ id: SYSTEM_TRUSTED_SOURCE_ID }),
+			);
+		});
+	});
+
 	describe('listDue', () => {
 		it('returns only the due sources, unchecked first, then never checked, then oldest', async () => {
 			const healthyStale = await seedRow({
@@ -700,12 +776,12 @@ describe('TrustedSourceStore (integration)', () => {
 			for (const row of [admin, system]) {
 				const after = await rows.findOneByOrFail({ id: row.id });
 				expect(after).toMatchObject({
-					configVersion: 2,
+					configVersion: 3,
 					status: row.status,
 					lastCheckedAt: row.lastCheckedAt,
 					metadata: row.metadata,
 				});
-				expect(await storedDocument(row.id)).toMatchObject({ version: 2 });
+				expect(await storedDocument(row.id)).toMatchObject({ version: 3 });
 			}
 			const adminDocument = await storedDocument(admin.id);
 			expect(adminDocument.identity.provision).toEqual({ person: 'jit' });
@@ -714,16 +790,18 @@ describe('TrustedSourceStore (integration)', () => {
 				'public-api': {},
 				trigger: { audiences: ['custom-audience'] },
 				apps: {},
+				'mcp-servers': {},
 			});
 			expect(await bindings.countBy({ sourceId: admin.id })).toBe(1);
 		});
 
-		it('reads a system row without the apps surface as one that serves it', async () => {
+		it('reads a system row without the apps and mcp-servers surfaces as one that serves them', async () => {
 			const system = await seedRow({ managedBy: 'system', config: await v1SystemWithoutApps() });
 
 			expect((await loadSource(system.id)).config.surfaces).toEqual({
 				'public-api': {},
 				apps: {},
+				'mcp-servers': {},
 			});
 		});
 
@@ -736,9 +814,9 @@ describe('TrustedSourceStore (integration)', () => {
 
 			expect(deleteMany).toHaveBeenCalledWith(
 				expect.arrayContaining([
-					`trusted-source:id:${row.id}`,
-					`trusted-source:issuer:${row.issuer}`,
-					'trusted-source:all',
+					`{trusted-source}:id:${row.id}`,
+					`{trusted-source}:issuer:${row.issuer}`,
+					'{trusted-source}:all',
 				]),
 			);
 		});
@@ -752,7 +830,7 @@ describe('TrustedSourceStore (integration)', () => {
 			expect(await store.upgradeStoredConfigs()).toBe(2);
 
 			for (const row of [first, second]) {
-				expect((await rows.findOneByOrFail({ id: row.id })).configVersion).toBe(2);
+				expect((await rows.findOneByOrFail({ id: row.id })).configVersion).toBe(3);
 			}
 			expect(warn).toHaveBeenCalledWith(
 				'Config upgraded but the cache could not be invalidated',
@@ -793,7 +871,7 @@ describe('TrustedSourceStore (integration)', () => {
 				configVersion: 1,
 				config: 'garbage',
 			});
-			expect((await rows.findOneByOrFail({ id: good.id })).configVersion).toBe(2);
+			expect((await rows.findOneByOrFail({ id: good.id })).configVersion).toBe(3);
 			expect(warn).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({ id: bad.id }),

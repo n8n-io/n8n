@@ -2,6 +2,7 @@ import { INSTANCE_AI_TELEMETRY } from '../events/instance-ai';
 
 const segment = {
 	surface: 'aia',
+	runtime: 'instance-ai',
 	user_id: 'user-1',
 	run_id: 'run-1',
 	segment: 'whole',
@@ -54,6 +55,18 @@ describe('instance context turn properties', () => {
 				surface,
 			}).success,
 		).toBe(false);
+	});
+
+	it.each(['instance-ai', 'agents'])('accepts the assistant runtime %s', (runtime) => {
+		expect(
+			INSTANCE_AI_TELEMETRY.INSTANCE_CONTEXT_TURN.getValidationError({ ...absentSegment, runtime }),
+		).toBeNull();
+	});
+
+	it.each([undefined, 'v2'])('rejects an invalid assistant runtime: %s', (runtime) => {
+		expect(
+			INSTANCE_AI_TELEMETRY.INSTANCE_CONTEXT_TURN.getValidationError({ ...absentSegment, runtime }),
+		).not.toBeNull();
 	});
 
 	it('accepts a complete injected block', () => {

@@ -7,6 +7,15 @@ export const TYPE_AVAILABILITY_POLICIES_MODULE_ID = 'type-availability-policies'
 
 export const TYPE_AVAILABILITY_POLICIES_STORE_ID = 'typeAvailabilityPolicies';
 
+export const INSTANCE_POLICY_STORE_ID = 'typeAvailabilityInstancePolicy';
+
+export const RESTRICT_REVIEW_STORE_ID = 'typeAvailabilityRestrictReview';
+
+export const RESTRICTED_NODE_POPOVER_WIDTH = 254;
+
+/** The default gap between the popover card and the row it explains. */
+export const RESTRICTED_NODE_POPOVER_SIDE_OFFSET = 24;
+
 export const SCOPE_LABEL_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
 	instance: 'typeAvailabilityPolicies.restrictedNode.scope.instance',
 	project: 'typeAvailabilityPolicies.restrictedNode.scope.project',
@@ -36,6 +45,22 @@ export const POLICY_MANAGE_SCOPE = {
 	node: 'nodeTypePolicy:manage',
 	credential: 'credentialTypePolicy:manage',
 } as const satisfies Record<RestrictedTypeKind, Scope>;
+
+/** Owned by this module, so the shell links to the pages without holding one of their identifiers. */
+export const POLICIES_LANDING_VIEW = 'TypeAvailabilityPoliciesView';
+export const INSTANCE_POLICY_VIEW = 'TypeAvailabilityInstancePolicyView';
+export const PROJECT_POLICY_VIEW = 'TypeAvailabilityProjectPolicyView';
+
+export const INSTANCE_POLICY_DOCS_URL =
+	'https://docs.n8n.io/administer/manage-users-and-access/control-node-availability';
+
+/** The order of the tabs on the instance policy page. */
+export const POLICY_KINDS = ['node', 'credential'] as const satisfies RestrictedTypeKind[];
+
+export const POLICY_TAB_LABEL_KEY: Record<RestrictedTypeKind, BaseTextKey> = {
+	node: 'typeAvailabilityPolicies.instancePolicy.tabs.node',
+	credential: 'typeAvailabilityPolicies.instancePolicy.tabs.credential',
+};
 
 export type ContactAudience = NodeTypeAvailabilityScope;
 

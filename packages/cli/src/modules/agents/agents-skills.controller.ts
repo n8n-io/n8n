@@ -1,4 +1,8 @@
-import { CreateAgentSkillDto, UpdateAttachedAgentSkillDto } from '@n8n/api-types';
+import {
+	CreateAgentSkillDto,
+	UpdateAttachedAgentSkillDto,
+	type AgentSkillWorkflowAccessResponse,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -12,14 +16,16 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { AgentSkillWorkflowAccessService } from './agent-skill-workflow-access.service';
 import { AgentSkillsService } from './agent-skills.service';
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from './agent-write-lock.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsSkillsController {
 	constructor(
 		private readonly agentSkillsService: AgentSkillsService,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
+		private readonly skillWorkflowAccessService: AgentSkillWorkflowAccessService,
 	) {}
 
 	@Get('/:agentId/skills')
@@ -41,6 +47,26 @@ export class AgentsSkillsController {
 		return await this.agentSkillsService.getSkill(agentId, projectId, skillId);
 	}
 
+	@Get('/:agentId/skill-workflow-access/:skillId')
+	@ProjectScope('agent:read')
+	async getSkillWorkflowAccess(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; skillId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('skillId') skillId: string,
+	): Promise<AgentSkillWorkflowAccessResponse> {
+		const { projectId } = req.params;
+		return {
+			outsideProjectWorkflowIds:
+				await this.skillWorkflowAccessService.findOutsideProjectWorkflowIds(
+					req.user,
+					projectId,
+					agentId,
+					skillId,
+				),
+		};
+	}
+
 	@Post('/:agentId/skills')
 	@ProjectScope('agent:update')
 	async createSkill(
@@ -51,7 +77,7 @@ export class AgentsSkillsController {
 	) {
 		const { projectId } = req.params;
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			projectId,
@@ -85,7 +111,7 @@ export class AgentsSkillsController {
 		const { projectId } = req.params;
 		const { baseSkillHash, availableTo, ...updates } = payload;
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			projectId,
@@ -118,7 +144,7 @@ export class AgentsSkillsController {
 	) {
 		const { projectId } = req.params;
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			projectId,

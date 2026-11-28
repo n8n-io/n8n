@@ -8,8 +8,13 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { Project, User, ListQueryDb } from '@n8n/db';
-import { GLOBAL_MEMBER_ROLE, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
+import type { Person, Project, User, ListQueryDb } from '@n8n/db';
+import {
+	CredentialsRepository,
+	GLOBAL_MEMBER_ROLE,
+	ProjectRepository,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
@@ -20,7 +25,7 @@ import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleCacheService } from '@n8n/backend-services';
+import { EventService, RoleCacheService } from '@n8n/backend-services';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -35,6 +40,7 @@ import {
 	createAdmin,
 	createManyUsers,
 	createOwner,
+	createServiceAccountWithProject,
 	createUser,
 	createUserShell,
 } from '../shared/db/users';
@@ -49,7 +55,7 @@ const testServer = utils.setupTestServer({
 	},
 });
 
-let owner: User;
+let owner: Person;
 let admin: User;
 let ownerPersonalProject: Project;
 let member: User;
@@ -451,6 +457,33 @@ describe('GET /credentials/for-workflow', () => {
 		});
 	});
 
+	describe('forAssistant', () => {
+		test.each(['projectId', 'workflowId'])(
+			'offers the owner only own, shared, and global credentials in their personal project, if "%s" is used',
+			async (queryParam) => {
+				const ownerWorkflow = await createWorkflow({}, owner);
+				const ownCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+				const sharedWithOwner = await saveCredential(randomCredentialPayload(), { user: member });
+				await shareCredentialWithUsers(sharedWithOwner, [owner]);
+				const memberCredential = await saveCredential(randomCredentialPayload(), { user: member });
+				const globalCredential = await saveCredential(randomCredentialPayload(), { user: member });
+				await Container.get(CredentialsRepository).update(globalCredential.id, { isGlobal: true });
+
+				const response = await authOwnerAgent.get('/credentials/for-workflow').query({
+					[queryParam]: queryParam === 'projectId' ? ownerPersonalProject.id : ownerWorkflow.id,
+					forAssistant: 'true',
+				});
+
+				expect(response.statusCode).toBe(200);
+				const ids = response.body.data.map((c: { id: string }) => c.id);
+				expect(ids).toContain(ownCredential.id);
+				expect(ids).toContain(sharedWithOwner.id);
+				expect(ids).toContain(globalCredential.id);
+				expect(ids).not.toContain(memberCredential.id);
+			},
+		);
+	});
+
 	describe('for personal projects', () => {
 		test.each(['projectId', 'workflowId'])(
 			'it returns only personal credentials for a members, if "%s" is used as the query parameter',
@@ -662,6 +695,47 @@ describe('GET /credentials/for-workflow', () => {
 // GET /credentials/:id - fetch a certain credential
 // ----------------------------------------
 describe('GET /credentials/:id', () => {
+	test('should emit `credentials-data-read` when the owner reads the data of a shared credential', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		await shareCredentialWithUsers(savedCredential, [member]);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		try {
+			const response = await authOwnerAgent
+				.get(`/credentials/${savedCredential.id}`)
+				.query({ includeData: true })
+				.expect(200);
+
+			expect(response.body.data.data).toBeDefined();
+			expect(emitSpy).toHaveBeenCalledWith('credentials-data-read', {
+				user: expect.objectContaining({ id: owner.id }),
+				credentialType: savedCredential.type,
+				credentialId: savedCredential.id,
+				publicApi: false,
+			});
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	test('should not emit `credentials-data-read` for a member who may only read a shared credential', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		await shareCredentialWithUsers(savedCredential, [member]);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		try {
+			const response = await authMemberAgent
+				.get(`/credentials/${savedCredential.id}`)
+				.query({ includeData: true })
+				.expect(200);
+
+			expect(response.body.data.data).toBeUndefined();
+			expect(emitSpy).not.toHaveBeenCalledWith('credentials-data-read', expect.anything());
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
 	test('project viewers can view credentials', async () => {
 		const teamProject = await createTeamProject();
 		await linkUserToProject(member, teamProject, 'project:viewer');
@@ -820,12 +894,14 @@ describe('GET /credentials/:id', () => {
 					name: member2.createPersonalProjectName(),
 					icon: null,
 					type: member2PersonalProject.type,
+					accountKind: 'person',
 				},
 				{
 					id: member3PersonalProject.id,
 					name: member3.createPersonalProjectName(),
 					icon: null,
 					type: member3PersonalProject.type,
+					accountKind: 'person',
 				},
 			]),
 		});
@@ -1859,5 +1935,34 @@ describe('project role with credential visibility but not use', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(mockCredentialsTester.testCredentials).toHaveBeenCalled();
+	});
+});
+
+describe('credential shared with a service account', () => {
+	test('shows the service account share with its account kind and lets the owner revoke it', async () => {
+		const serviceAccount = await createServiceAccountWithProject();
+		const serviceAccountProject = await projectRepository.getPersonalProjectForUserOrFail(
+			serviceAccount.id,
+		);
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		await shareCredentialWithProjects(savedCredential, [serviceAccountProject]);
+
+		const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`).expect(200);
+
+		expect(response.body.data.homeProject).toMatchObject({
+			id: ownerPersonalProject.id,
+			accountKind: 'person',
+		});
+		expect(response.body.data.sharedWithProjects).toEqual([
+			expect.objectContaining({ id: serviceAccountProject.id, accountKind: 'service' }),
+		]);
+
+		await authOwnerAgent
+			.put(`/credentials/${savedCredential.id}/share`)
+			.send({ shareWithIds: [] })
+			.expect(200);
+
+		const sharings = await getCredentialSharings(savedCredential);
+		expect(sharings.map((sharing) => sharing.projectId)).toEqual([ownerPersonalProject.id]);
 	});
 });

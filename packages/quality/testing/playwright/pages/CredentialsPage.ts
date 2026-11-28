@@ -20,6 +20,28 @@ export class CredentialsPage extends BasePage {
 		return this.page.getByTestId('create-credential-button');
 	}
 
+	getFiltersTrigger() {
+		return this.getResourcesListFiltersTrigger();
+	}
+
+	getFiltersDropdown() {
+		return this.getResourcesListFiltersDropdown();
+	}
+
+	getTypeFilterSelect() {
+		return this.page.getByTestId('credential-filter-type');
+	}
+
+	getTypeFilterCombobox() {
+		// Multiple filterable ElSelect renders both a focusable combobox and a readonly tabindex="-1" display input.
+		return this.getTypeFilterSelect().locator('input[role="combobox"]:not([tabindex="-1"])');
+	}
+
+	/** The display input draws the focus outline of the select. */
+	getTypeFilterInput() {
+		return this.getTypeFilterSelect().locator('.el-input__inner');
+	}
+
 	/**
 	 * Create a credential from the credentials list, fill fields, save, and close the modal.
 	 * @param credentialType - The type of credential to create (e.g. 'Notion API')
@@ -47,6 +69,10 @@ export class CredentialsPage extends BasePage {
 		await this.getResourcesListSearch().clear();
 	}
 
+	async search(query: string) {
+		await this.getResourcesListSearch().fill(query);
+	}
+
 	async sortByNameDescending() {
 		await this.page.getByTestId('resources-list-sort').click();
 		await this.page.getByText('Name (Z-A)').click();
@@ -55,6 +81,21 @@ export class CredentialsPage extends BasePage {
 	async sortByNameAscending() {
 		await this.page.getByTestId('resources-list-sort').click();
 		await this.page.getByText('Name (A-Z)').click();
+	}
+
+	/** Types the search into the new-credential type list, which keeps the list open. */
+	async searchCredentialTypes(query: string): Promise<void> {
+		await this.page.getByRole('combobox', { name: 'Search for app...' }).fill(query);
+	}
+
+	/** The visible options of the new-credential type list. A search hides the options it does not match. */
+	getCredentialTypeOptions() {
+		return this.page.getByTestId('new-credential-type-select-option').filter({ visible: true });
+	}
+
+	/** The popover that explains a restricted type. It is teleported out of the dialog. */
+	getRestrictedTypePopover() {
+		return this.page.getByTestId('node-restricted-popover').filter({ visible: true });
 	}
 
 	/**

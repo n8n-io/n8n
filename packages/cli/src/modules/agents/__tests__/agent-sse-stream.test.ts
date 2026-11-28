@@ -1,4 +1,4 @@
-import type { StreamChunk } from '@n8n/agents';
+import { PromptCacheParamsError, type StreamChunk } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
 import { LoggerProxy } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
@@ -261,6 +261,25 @@ describe('agent-sse-stream — stringifyError (via error chunk)', () => {
 				type: 'error',
 				message:
 					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
+			},
+		]);
+	});
+
+	it('shows the prompt caching guidance instead of the provider body on its cause', async () => {
+		const responseBody = JSON.stringify({
+			error: { message: "bedrock does not support parameters: ['prompt_cache_key']" },
+		});
+		const error = new PromptCacheParamsError(
+			Object.assign(new Error('Bad Request'), { responseBody }),
+		);
+
+		const events = await collectEvents([{ type: 'error', error }]);
+
+		expect(events).toEqual([
+			{
+				type: 'error',
+				message:
+					"This model endpoint doesn't accept prompt caching parameters. Turn off Prompt caching in the agent's settings.",
 			},
 		]);
 	});
@@ -609,5 +628,31 @@ describe('agent-sse-stream — subagent-chunk', () => {
 		]);
 
 		expect(events).toEqual([]);
+	});
+});
+
+describe('emitChunkEvents — test runs', () => {
+	it('sends the route of a simulated tool call with its result', () => {
+		const events: AgentSseEvent[] = [];
+
+		emitChunkEvents(
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'Send_Slack',
+				output: { ok: true },
+				simulation: { route: 'blocked', reason: 'unsupported_by_simulator', detail: 'No Slack' },
+			},
+			(event) => events.push(event),
+		);
+
+		expect(events).toEqual([
+			expect.objectContaining({
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				output: { ok: true },
+				simulation: { route: 'blocked', reason: 'unsupported_by_simulator', detail: 'No Slack' },
+			}),
+		]);
 	});
 });

@@ -15,12 +15,14 @@ const CAPABILITY_SERVICES = {
 };
 
 const SERVICE_IMAGES = {
+	azurite: ['azurite'],
 	cadvisor: ['cadvisor'],
 	cloudflared: ['cloudflared'],
 	gitea: ['gitea'],
 	kafka: ['kafka'],
 	kent: [],
 	keycloak: ['keycloak'],
+	litellm: ['litellm', 'caddy'],
 	loadBalancer: ['caddy'],
 	localstack: ['localstack'],
 	mailpit: ['mailpit'],
@@ -28,10 +30,12 @@ const SERVICE_IMAGES = {
 	ngrok: ['ngrok'],
 	npmRegistry: ['verdaccio'],
 	enginePostgres: ['postgres'],
+	engineTaskRunner: ['taskRunner'],
 	postgres: ['postgres'],
 	postgresExporter: ['postgresExporter'],
 	proxy: ['mockserver'],
 	redis: ['redis'],
+	redisCluster: ['redis'],
 	sandbox: ['sandboxApi', 'sandboxRunner', 'sandboxSandbox'],
 	taskRunner: ['taskRunner'],
 	tracing: ['jaeger', 'n8nTracer'],

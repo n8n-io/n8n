@@ -10,9 +10,15 @@ import {
 	type PushMessage,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
+import { unsavedAgentIds } from '../composables/useCreateAgent';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { N8nToggle } from '@n8n/design-system';
+import { N8nButton } from '@n8n/design-system';
 import { AGENT_PROMPT_INSPIRATION_TIMING } from '@/app/constants/durations';
+import {
+	AGENT_SETUP_HEADER_EXPERIMENT,
+	AGENTS_INVOCATION_STEP_EXPERIMENT,
+} from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import {
 	forgetAssistantAgentThread,
@@ -36,6 +42,7 @@ import {
 } from '../components/agentBuilderInjectionKeys';
 import {
 	AGENT_BUILDER_VIEW,
+	AGENT_CONFIRMATION_MODAL_KEY,
 	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
 	NEW_SESSION_PARAM,
@@ -43,6 +50,13 @@ import {
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 } from '../constants';
+
+const setupHeaderVariant = ref<string | boolean>();
+vi.mock('@/experiments/agentSetupHeader/useAgentSetupHeaderExperiment', () => ({
+	useAgentSetupHeaderExperiment: () => ({
+		isEnabled: computed(() => setupHeaderVariant.value === AGENT_SETUP_HEADER_EXPERIMENT.variant),
+	}),
+}));
 
 const builderExperimentMock = reactive({
 	layout: { chatWidth: 'current', testChat: 'dock' },
@@ -67,7 +81,7 @@ const routeState = reactive({
 	params: routeParams,
 	query: routeQuery,
 });
-type RouteGuard = (to: { params: Record<string, string> }) => void | Promise<void>;
+type RouteGuard = (to: { params: Record<string, string> }) => unknown;
 const routeGuards: { leave?: RouteGuard; update?: RouteGuard } = {};
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
@@ -206,6 +220,7 @@ const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
 const repointConfigMock = vi.fn();
 const deleteAgentMock = vi.fn().mockResolvedValue(undefined);
+const archiveAgentMock = vi.fn();
 const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
@@ -267,20 +282,25 @@ const stopSessionAutoRefreshMock = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: getAgentMock,
 	createAgent: createAgentMock,
+	moveAgent: vi.fn(),
 	createAgentTask: createAgentTaskMock,
 	updateAgent: updateAgentMock,
 	updateAgentSkill: updateAgentSkillMock,
 	createAgentSkill: createAgentSkillMock,
 	deleteAgent: deleteAgentMock,
+	archiveAgent: archiveAgentMock,
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
 	getModelCatalog: vi.fn().mockResolvedValue({}),
+	getAgentConfigValidation: getAgentConfigValidationMock,
+	getAgentWriteLock: getAgentWriteLockMock,
+}));
+
+vi.mock('../composables/useKnowledgeApi', () => ({
 	listAgentFiles: listAgentFilesMock,
 	uploadAgentFiles: uploadAgentFilesMock,
 	deleteAgentFile: vi.fn(),
 	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
-	getAgentConfigValidation: getAgentConfigValidationMock,
-	getAgentWriteLock: getAgentWriteLockMock,
 }));
 
 const generateDraftCasesMock = vi.fn();
@@ -343,12 +363,14 @@ interface TestAgentConfig {
 	credential?: string;
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
+	integrations?: AgentJsonConfig['integrations'];
+	tasks?: AgentJsonConfig['tasks'];
 	personalisation?: AgentJsonConfig['personalisation'];
 	config?: AgentJsonConfig['config'];
 }
 
 const defaultLlmConfig = {
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'cred-anthropic',
 } as const;
 
@@ -533,9 +555,20 @@ ${String(options?.interpolate?.diagnostics ?? '')}
 	return map[key] ?? key;
 }
 
+const { baseTextMock } = vi.hoisted(() => ({
+	baseTextMock: vi.fn(
+		(
+			key: string,
+			_options?: { adjustToNumber?: number; interpolate?: Record<string, string | number> },
+		) => key,
+	),
+}));
+
+baseTextMock.mockImplementation(baseTextFn);
+
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: baseTextFn }),
-	i18n: { baseText: baseTextFn },
+	useI18n: () => ({ baseText: baseTextMock }),
+	i18n: { baseText: baseTextMock },
 }));
 
 /** Shared stubs used by both mount helpers. */
@@ -696,6 +729,7 @@ const commonStubs = {
 			'reverted',
 			'switch-agent',
 			'open-publish-timeline',
+			'setup-task-action',
 			'toggle-instance-ai',
 		],
 	},
@@ -892,6 +926,7 @@ function mockPendingAgentRow(...pendingIds: string[]) {
 }
 
 function resetViewMocks() {
+	setupHeaderVariant.value = undefined;
 	vi.clearAllMocks();
 	for (let index = localStorage.length - 1; index >= 0; index--) {
 		const key = localStorage.key(index);
@@ -906,6 +941,8 @@ function resetViewMocks() {
 	}
 	routerPush.mockReset();
 	routerReplace.mockReset();
+	baseTextMock.mockReset();
+	baseTextMock.mockImplementation(baseTextFn);
 	fetchSessionThreadsMock.mockReset();
 	fetchSessionThreadsMock.mockImplementation(fetchSessionThreads);
 	getSessionThreadDetailMock.mockReset();
@@ -933,6 +970,7 @@ function resetViewMocks() {
 	fetchedPreviewThreads.length = 0;
 	previewSessionsLoading.value = false;
 	history.replaceState({}, '');
+	unsavedAgentIds.clear();
 	sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
 	// Reset to a built agent; tests that need an unbuilt agent override locally.
 	intendedConfig = {
@@ -1034,6 +1072,103 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
 	});
 
+	it.each([false, true])(
+		'keeps every tab selectable for a new agent (artifact: %s)',
+		async (artifactMode) => {
+			if (!artifactMode) history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+			else mockPendingAgentRow('a1');
+			const wrapper = await renderView({
+				waitForAsyncSetup: true,
+				props: artifactMode
+					? {
+							artifactMode: true,
+							artifactProjectId: 'p1',
+							artifactAgentId: 'a1',
+							artifactAgentPending: true,
+						}
+					: {},
+			});
+			const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
+
+			expect(editor.props('mainTabOptions')).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ value: 'agent' }),
+					expect.objectContaining({ value: 'knowledge' }),
+					expect.objectContaining({ value: 'sessions' }),
+					expect.objectContaining({ value: 'settings' }),
+				]),
+			);
+			for (const tab of ['knowledge', 'sessions', 'settings', 'agent']) {
+				editor.vm.$emit('update:activeMainTab', tab);
+				await flushPromises();
+				expect(editor.props('activeMainTab')).toBe(tab);
+			}
+			expect(editor.props('agentUnsaved')).toBe(true);
+			expect(createAgentMock).not.toHaveBeenCalled();
+			expect(fetchSessionThreadsMock).not.toHaveBeenCalled();
+			expect(listAgentFilesMock).not.toHaveBeenCalled();
+			expect(showErrorMock).not.toHaveBeenCalled();
+		},
+	);
+
+	it('keeps unsaved Agents out of the folder move flow', async () => {
+		const { useSettingsStore } = await import('@n8n/stores/settings.store');
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView({
+			seedStores: () => {
+				vi.spyOn(useSettingsStore(), 'isFoldersFeatureEnabled', 'get').mockReturnValue(true);
+			},
+			stubs: {
+				AgentFolderDialog: {
+					name: 'AgentFolderDialog',
+					props: ['projectId', 'action'],
+					template: '<div />',
+				},
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		expect(header.props('headerActions')).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'move-folder' })]),
+		);
+
+		header.vm.$emit('header-action', 'move-folder');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentFolderDialog' }).props('action')).toBeNull();
+		expect(createAgentMock).not.toHaveBeenCalled();
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('update:config', { instructions: 'Answer support mail' });
+
+		await vi.waitFor(() => {
+			expect(header.props('headerActions')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'move-folder' })]),
+			);
+		});
+	});
+
+	it('includes the Agent name when opening the move dialog from the builder', async () => {
+		const wrapper = await renderView({
+			stubs: {
+				AgentFolderDialog: {
+					name: 'AgentFolderDialog',
+					props: ['projectId', 'action'],
+					template: '<div />',
+				},
+			},
+		});
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'move-folder');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentFolderDialog' }).props('action')).toMatchObject({
+			mode: 'moveAgent',
+			id: 'a1',
+			name: 'Agent One',
+		});
+	});
+
 	it('persists a route-backed agent only after its first configuration change', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		const wrapper = await renderView();
@@ -1058,6 +1193,64 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(fetchSessionThreadsMock).toHaveBeenCalledWith('p1', 'a1');
 	});
 
+	it('keeps a new agent as a draft when it is re-entered without its history marker', async () => {
+		// The Settings back link pushes a fresh history entry, which has no marker.
+		unsavedAgentIds.add('a1');
+		getAgentMock.mockRejectedValue(notFoundError());
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		expect(editor.props('agentUnsaved')).toBe(true);
+		expect(fetchConfigMock).not.toHaveBeenCalled();
+		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('loads a re-entered new agent that was saved while the user was away', async () => {
+		unsavedAgentIds.add('a1');
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		await vi.waitFor(() => expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1'));
+		expect(editor.props('agentUnsaved')).toBe(false);
+		expect(unsavedAgentIds.has('a1')).toBe(false);
+	});
+
+	it('keeps folder placement before and after the first save of a pending Agent', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		routeQuery.folderId = 'support-folder';
+		getAgentMock.mockResolvedValue(makeAgentResponse({ parentFolderId: 'support-folder' }));
+		createAgentMock.mockResolvedValueOnce(
+			makeCreationResponse(undefined, { parentFolderId: 'support-folder' }),
+		);
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		expect(header.props('agent')).toMatchObject({ parentFolderId: 'support-folder' });
+		expect(header.props('isUnsaved')).toBe(true);
+		expect(createAgentMock).not.toHaveBeenCalled();
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
+
+		expect(createAgentMock.mock.calls[0]?.[3]).toMatchObject({
+			id: 'a1',
+			parentFolderId: 'support-folder',
+		});
+		await vi.waitFor(() => expect(header.props('isUnsaved')).toBe(false));
+		expect(header.props('agent')).toMatchObject({ parentFolderId: 'support-folder' });
+	});
+
+	it('uses the saved folder placement when the URL has an old folder ID', async () => {
+		routeQuery.folderId = 'old-folder';
+		getAgentMock.mockResolvedValue(makeAgentResponse({ parentFolderId: null }));
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		expect(header.props('isUnsaved')).toBe(false);
+		expect(header.props('agent')).toMatchObject({ parentFolderId: null });
+	});
+
 	it('does not persist a pending agent for an auto-applied default model', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		routeQuery.assistantThread = 'thread-abc';
@@ -1077,16 +1270,41 @@ describe('AgentBuilderView — preview routing', () => {
 		editor.vm.$emit('update:config', { instructions: 'x' });
 		await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
 
-		expect(createAgentMock).not.toHaveBeenCalled();
-		expect(persistPendingAgentMock).toHaveBeenCalledOnce();
-		expect(persistPendingAgentMock).toHaveBeenCalledWith(
+		expect(persistPendingAgentMock).not.toHaveBeenCalled();
+		expect(createAgentMock).toHaveBeenCalledExactlyOnceWith(
 			expect.anything(),
-			'thread-abc',
-			expect.objectContaining({
+			'p1',
+			expect.any(String),
+			{
+				id: 'a1',
 				config: expect.objectContaining({ model: 'openai/gpt-5-mini', instructions: 'x' }),
-			}),
+			},
 		);
 		expect(updateConfigMock).not.toHaveBeenCalled();
+	});
+
+	it('saves manual instructions while the assistant thread is only a local draft', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		routeQuery.assistantThread = 'local-draft';
+		persistPendingAgentMock.mockRejectedValue(new Error('Thread does not exist'));
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
+
+		expect(createAgentMock).toHaveBeenCalledExactlyOnceWith(
+			expect.anything(),
+			'p1',
+			expect.any(String),
+			{
+				id: 'a1',
+				config: expect.objectContaining({ instructions: 'Answer support mail' }),
+			},
+		);
+		expect(persistPendingAgentMock).not.toHaveBeenCalled();
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(showErrorMock).not.toHaveBeenCalled();
 	});
 
 	it('creates a pending agent itself when the panel thread runs on the Assistant agent', async () => {
@@ -1107,6 +1325,7 @@ describe('AgentBuilderView — preview routing', () => {
 	it('uses the agent the Assistant agent already created under the pending id', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		routeQuery.assistantThread = 'assistant-agent-thread';
+		routeQuery.folderId = 'support-folder';
 		rememberAssistantAgentThread('assistant-agent-thread', 'p1');
 		createAgentMock.mockRejectedValueOnce(
 			new ResponseError('An agent with this id already exists', { httpStatusCode: 409 }),
@@ -1120,6 +1339,8 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 
 		expect(createAgentMock).toHaveBeenCalledOnce();
+		const { moveAgent } = await import('../composables/useAgentApi');
+		expect(moveAgent).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', 'support-folder');
 		expect(updateConfigMock).not.toHaveBeenCalled();
 		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
 		expect(editor.props('agentUnsaved')).toBe(false);
@@ -1216,19 +1437,12 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
-	it('adopts the agent through its bound assistant thread instead of a strict create', async () => {
-		// A thread is already bound (the embedded assistant panel minted one) —
-		// persist through it so a race with the assistant's own create converges
-		// on one row instead of failing with a conflict.
+	it('adopts an agent created concurrently without depending on the assistant thread API', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		routeQuery.assistantThread = 'thread-abc';
-		persistPendingAgentMock.mockResolvedValueOnce({
-			agent: makeCreationResponse(
-				{ name: 'Built by assistant', instructions: 'Keep this configuration' },
-				{ adopted: true },
-			),
-			thread: { id: 'thread-abc' },
-		});
+		createAgentMock.mockRejectedValueOnce(
+			new ResponseError('An agent with this id already exists', { httpStatusCode: 409 }),
+		);
 		const wrapper = await renderView();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
@@ -1237,13 +1451,16 @@ describe('AgentBuilderView — preview routing', () => {
 			expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' })),
 		);
 
-		expect(persistPendingAgentMock).toHaveBeenCalledWith(expect.anything(), 'thread-abc', {
-			projectId: 'p1',
-			agentId: 'a1',
-			name: expect.any(String),
-			config: expect.objectContaining({ instructions: 'Answer support mail' }),
-		});
-		expect(createAgentMock).not.toHaveBeenCalled();
+		expect(createAgentMock).toHaveBeenCalledExactlyOnceWith(
+			expect.anything(),
+			'p1',
+			expect.any(String),
+			{
+				id: 'a1',
+				config: expect.objectContaining({ instructions: 'Answer support mail' }),
+			},
+		);
+		expect(persistPendingAgentMock).not.toHaveBeenCalled();
 		expect(updateConfigMock).not.toHaveBeenCalled();
 		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
 		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
@@ -1445,6 +1662,82 @@ describe('AgentBuilderView — preview routing', () => {
 		await expect(
 			routeGuards.update?.({ params: { projectId: 'p1', agentId: 'a2' } }),
 		).rejects.toThrow('save failed');
+	});
+
+	describe('when a never-saved agent fails to save', () => {
+		async function renderWithFailedCreate() {
+			history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+			createAgentMock.mockRejectedValue(new Error('Skill is not available to this agent'));
+			const wrapper = await renderView();
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { instructions: 'Imported' });
+			await nextTick();
+			return wrapper;
+		}
+
+		function answerLeaveConfirmation(answer: 'onConfirm' | 'onCancel') {
+			const modal = openModalWithDataMock.mock.calls
+				.map((call) => call[0] as { name?: string; data: Record<typeof answer, () => void> })
+				.find(({ name }) => name === AGENT_CONFIRMATION_MODAL_KEY);
+			expect(modal).toBeDefined();
+			modal?.data[answer]();
+		}
+
+		it('asks before leaving, and leaves without retrying the save on confirm', async () => {
+			const wrapper = await renderWithFailedCreate();
+
+			const navigation = routeGuards.leave?.({ params: {} });
+			await vi.waitFor(() => answerLeaveConfirmation('onConfirm'));
+
+			await expect(navigation).resolves.toBe(true);
+			const createCalls = createAgentMock.mock.calls.length;
+			wrapper.unmount();
+			await flushPromises();
+			expect(createAgentMock).toHaveBeenCalledTimes(createCalls);
+		});
+
+		it('stays on the agent when the user keeps editing', async () => {
+			await renderWithFailedCreate();
+
+			const navigation = routeGuards.update?.({ params: { projectId: 'p1', agentId: 'a2' } });
+			await vi.waitFor(() => answerLeaveConfirmation('onCancel'));
+
+			await expect(navigation).resolves.toBe(false);
+		});
+
+		it('still lets the embedded AI panel start a thread', async () => {
+			const wrapper = await renderWithFailedCreate();
+			const beforeNewThread = wrapper
+				.findComponent({ name: 'InstanceAiChatPanel' })
+				.props('beforeNewThread') as () => Promise<void>;
+
+			await expect(beforeNewThread()).resolves.toBeUndefined();
+			expect(createAgentMock).toHaveBeenCalled();
+		});
+
+		// The usual path: the debounced save fails first, so later flushes find no queued
+		// edit and must still report the failure instead of resolving as if all was saved.
+		it('starts a thread and asks before leaving after the debounced save already failed', async () => {
+			const wrapper = await renderWithFailedCreate();
+			await vi.waitFor(() =>
+				expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), 'agents.builder.saveError'),
+			);
+			createAgentMock.mockClear();
+
+			const beforeNewThread = wrapper
+				.findComponent({ name: 'InstanceAiChatPanel' })
+				.props('beforeNewThread') as () => Promise<void>;
+			await expect(beforeNewThread()).resolves.toBeUndefined();
+
+			const navigation = routeGuards.leave?.({ params: {} });
+			await vi.waitFor(() => answerLeaveConfirmation('onConfirm'));
+			await expect(navigation).resolves.toBe(true);
+
+			wrapper.unmount();
+			await flushPromises();
+			expect(createAgentMock).not.toHaveBeenCalled();
+		});
 	});
 
 	it('loads node types when the page opens', async () => {
@@ -2294,6 +2587,20 @@ describe('AgentBuilderView — preview routing', () => {
 		});
 	});
 
+	it('does not generate eval cases for an unsaved agent', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView({ waitForAsyncSetup: true });
+		const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('agentUnsaved')).toBe(true);
+
+		editor.vm.$emit('generate-eval-cases');
+		await flushPromises();
+
+		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+		expect(createAgentMock).not.toHaveBeenCalled();
+		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
 	it('generates eval cases and confirms the result with a toast', async () => {
 		generateDraftCasesMock.mockResolvedValue({
 			datasetId: 'd1',
@@ -2529,7 +2836,7 @@ describe('AgentBuilderView — preview routing', () => {
 	});
 
 	it('disables legacy Test entries while the embedded Assistant works', async () => {
-		const wrapper = await renderView();
+		const wrapper = await renderView({ stubs: { N8nButton } });
 		async function setWorking(working: boolean) {
 			if (!wrapper.findComponent({ name: 'InstanceAiChatPanel' }).exists()) {
 				await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
@@ -2541,17 +2848,23 @@ describe('AgentBuilderView — preview routing', () => {
 		const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
 		expect(editor.props('previewDisabledReason')).toBe('agents.builder.chatMode.building');
 		const trigger = wrapper.get('[data-testid="agent-triggers-preview-chat-button"]');
-		expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(true);
 		const primary = wrapper.get('[data-testid="agent-header-preview-btn"]');
-		expect(primary.attributes('disabled')).toBeDefined();
 		editor.vm.$emit('open-preview');
-		await trigger.trigger('click');
 		await flushPromises();
 		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+		for (const button of [primary, trigger]) {
+			expect(button.attributes('aria-disabled')).toBe('true');
+			expect(button.attributes('disabled')).toBeUndefined();
+			await button.trigger('click');
+			await flushPromises();
+			expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+		}
 		await setWorking(false);
 		expect(editor.props('previewDisabledReason')).toBeUndefined();
-		expect(primary.attributes('disabled')).toBeUndefined();
-		expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(false);
+		for (const button of [primary, trigger]) {
+			expect(button.attributes('aria-disabled')).toBeUndefined();
+			expect(button.attributes('disabled')).toBeUndefined();
+		}
 		await trigger.trigger('click');
 		await flushPromises();
 		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
@@ -3291,6 +3604,7 @@ describe('AgentBuilderView — preview routing', () => {
 describe('AgentBuilderView — configuration validation', () => {
 	beforeEach(() => {
 		resetViewMocks();
+		setupHeaderVariant.value = AGENT_SETUP_HEADER_EXPERIMENT.variant;
 		vi.restoreAllMocks();
 		createObjectURLSpy?.mockRestore();
 		revokeObjectURLSpy?.mockRestore();
@@ -3323,6 +3637,53 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(header.attributes('data-config-validation-status')).toBe('invalid');
 	});
 
+	it.each(
+		[undefined, false, true, 'control', 'variant'].flatMap((variant) =>
+			[false, true].map((artifactMode) => ({ variant, artifactMode })),
+		),
+	)(
+		'places setup tasks for flag $variant (artifact mode: $artifactMode)',
+		async ({ variant, artifactMode }) => {
+			setupHeaderVariant.value = variant;
+			const wrapper = await renderView({
+				props: { artifactMode, artifactProjectId: 'p1', artifactAgentId: 'a1' },
+			});
+			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			const host = variant === 'variant' ? editor : header;
+			const other = variant === 'variant' ? header : editor;
+
+			expect(host.props('tasks')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'add-tool' })]),
+			);
+			expect(other.props('tasks')).toBeUndefined();
+			const tasks = host.props('tasks') as SetupTask[];
+			host.vm.$emit(
+				'setup-task-action',
+				tasks.find((task) => task.id === 'test-agent'),
+			);
+			await flushPromises();
+			expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
+			await wrapper.setProps({ artifactEditingLocked: true });
+			expect(host.props('tasks')).toBeUndefined();
+			expect(other.props('tasks')).toBeUndefined();
+		},
+	);
+
+	it('moves setup tasks when the flag loads after the view', async () => {
+		setupHeaderVariant.value = undefined;
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(header.props('tasks')).toBeDefined();
+		expect(editor.props('tasks')).toBeUndefined();
+
+		setupHeaderVariant.value = AGENT_SETUP_HEADER_EXPERIMENT.variant;
+		await nextTick();
+		expect(header.props('tasks')).toBeUndefined();
+		expect(editor.props('tasks')).toBeDefined();
+	});
+
 	it('shows setup tasks after the assistant finishes building an agent artifact', async () => {
 		const wrapper = await renderView({
 			props: {
@@ -3332,17 +3693,17 @@ describe('AgentBuilderView — configuration validation', () => {
 				artifactEditingLocked: true,
 			},
 		});
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
-		expect(header.props('tasks')).toBeUndefined();
+		expect(editor.props('tasks')).toBeUndefined();
 
 		await wrapper.setProps({ artifactEditingLocked: false });
-		expect(header.props('tasks')).toEqual(
+		expect(editor.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
 		);
 
 		await wrapper.setProps({ artifactEditingLocked: true });
-		expect(header.props('tasks')).toBeUndefined();
+		expect(editor.props('tasks')).toBeUndefined();
 	});
 
 	it.each([false, true])(
@@ -3357,20 +3718,20 @@ describe('AgentBuilderView — configuration validation', () => {
 			};
 
 			const wrapper = await renderView();
-			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 			const vm = wrapper.vm as unknown as { setupTasks: SetupTask[] };
 			const testTask = vm.setupTasks.find((task) => task.id === 'test-agent');
 
-			expect(header.props('agent').isRunnable).toBe(isRunnable);
+			expect(editor.props('agent').isRunnable).toBe(isRunnable);
 			expect(preview.props('isOpen')).toBe(false);
 
-			header.vm.$emit('setup-task-action', testTask);
+			editor.vm.$emit('setup-task-action', testTask);
 			await flushPromises();
 
 			expect(preview.props('isOpen')).toBe(isRunnable);
 			expect(testTask).toEqual(expect.objectContaining({ state: 'todo', visible: isRunnable }));
-			const visibleTasks: SetupTask[] = header.props('tasks') ?? [];
+			const visibleTasks: SetupTask[] = editor.props('tasks') ?? [];
 			expect(visibleTasks.some((task) => task.id === 'test-agent' && task.visible)).toBe(
 				isRunnable,
 			);
@@ -3385,31 +3746,34 @@ describe('AgentBuilderView — configuration validation', () => {
 				props: { artifactMode, artifactProjectId: 'p1', artifactAgentId: 'a1' },
 			});
 
-			expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).props('tasks')).toBeUndefined();
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('tasks'),
+			).toBeUndefined();
 		},
 	);
 
 	it('hides setup tasks when the agent is published', async () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
-		expect(header.props('tasks')).toBeDefined();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('tasks')).toBeDefined();
 
 		header.vm.$emit('published', makeAgentResponse({ activeVersionId: 'v1' }));
 		await flushPromises();
 
-		expect(header.props('tasks')).toBeUndefined();
+		expect(editor.props('tasks')).toBeUndefined();
 	});
 
 	it('hides setup tasks while the embedded assistant builds the agent', async () => {
 		const wrapper = await renderView();
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
-		expect(header.props('tasks')).toBeDefined();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('tasks')).toBeDefined();
 
 		await wrapper.find('[data-testid="ai-panel-emit-building"]').trigger('click');
-		expect(header.props('tasks')).toBeUndefined();
+		expect(editor.props('tasks')).toBeUndefined();
 
 		await wrapper.find('[data-testid="ai-panel-stop-building"]').trigger('click');
-		expect(header.props('tasks')).toEqual(
+		expect(editor.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
 		);
 	});
@@ -3428,7 +3792,9 @@ describe('AgentBuilderView — configuration validation', () => {
 				},
 			});
 
-			expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).props('tasks')).toBeUndefined();
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('tasks'),
+			).toBeUndefined();
 			expect(createAgentMock).not.toHaveBeenCalled();
 		},
 	);
@@ -3437,12 +3803,12 @@ describe('AgentBuilderView — configuration validation', () => {
 		'completes the add-tool setup task when adding %s',
 		async (kind) => {
 			const wrapper = await renderView();
-			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 			const vm = wrapper.vm as unknown as {
 				onConfigFieldUpdate: (updates: Partial<AgentJsonConfig>) => void;
 			};
 
-			expect(header.props('tasks')).toEqual(
+			expect(editor.props('tasks')).toEqual(
 				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
 			);
 
@@ -3462,14 +3828,14 @@ describe('AgentBuilderView — configuration validation', () => {
 			});
 			await nextTick();
 
-			expect(header.props('tasks')).toEqual(
+			expect(editor.props('tasks')).toEqual(
 				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'complete' })]),
 			);
 
 			vm.onConfigFieldUpdate({ tools: [], mcpServers: [] });
 			await nextTick();
 
-			expect(header.props('tasks')).toEqual(
+			expect(editor.props('tasks')).toEqual(
 				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
 			);
 		},
@@ -3479,24 +3845,133 @@ describe('AgentBuilderView — configuration validation', () => {
 		fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
 
 		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
 
-		expect(header.props('tasks')).toEqual(
+		expect(editor.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: false })]),
 		);
 
 		header.vm.$emit('publish-ready', true);
 		await nextTick();
 
-		expect(header.props('tasks')).toEqual(
+		expect(editor.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: true })]),
 		);
 
 		header.vm.$emit('publish-ready', false);
 		await nextTick();
 
-		expect(header.props('tasks')).toEqual(
+		expect(editor.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: false })]),
+		);
+	});
+
+	it('shows the trigger step and gates publish behind it when the experiment is enabled', async () => {
+		fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
+		intendedConfig = {
+			name: 'Agent One',
+			...defaultLlmConfig,
+			instructions: 'Help the user',
+			integrations: [{ type: 'slack', credentialId: '' }],
+			tasks: [{ type: 'task', id: 'schedule-1', enabled: false }],
+		};
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = {
+					[AGENTS_INVOCATION_STEP_EXPERIMENT.name]: {
+						value: AGENTS_INVOCATION_STEP_EXPERIMENT.variant,
+					},
+				};
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		header.vm.$emit('publish-ready', true);
+		await nextTick();
+
+		expect(editor.props('tasks')).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: 'add-trigger',
+					visible: true,
+					state: 'todo',
+				}),
+				expect.objectContaining({ id: 'publish-agent', visible: false }),
+			]),
+		);
+	});
+
+	it.each([
+		{
+			label: 'a connected channel',
+			configPatch: { integrations: [{ type: 'slack' as const, credentialId: 'cred-1' }] },
+		},
+		{
+			label: 'an enabled schedule',
+			configPatch: { tasks: [{ type: 'task' as const, id: 'schedule-1', enabled: true }] },
+		},
+	])(
+		'completes the trigger step and reveals publish with $label when the experiment is enabled',
+		async ({ configPatch }) => {
+			fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
+			intendedConfig = {
+				name: 'Agent One',
+				...defaultLlmConfig,
+				instructions: 'Help the user',
+				...configPatch,
+			};
+
+			const wrapper = await renderView({
+				seedStores: () => {
+					usePostHog().overrides = {
+						[AGENTS_INVOCATION_STEP_EXPERIMENT.name]: {
+							value: AGENTS_INVOCATION_STEP_EXPERIMENT.variant,
+						},
+					};
+				},
+			});
+			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			header.vm.$emit('publish-ready', true);
+			await nextTick();
+
+			expect(editor.props('tasks')).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						id: 'add-trigger',
+						visible: true,
+						state: 'complete',
+					}),
+					expect.objectContaining({ id: 'publish-agent', visible: true }),
+				]),
+			);
+		},
+	);
+
+	it('keeps the trigger step hidden in the control arm', async () => {
+		fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = {
+					[AGENTS_INVOCATION_STEP_EXPERIMENT.name]: {
+						value: AGENTS_INVOCATION_STEP_EXPERIMENT.control,
+					},
+				};
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		header.vm.$emit('publish-ready', true);
+		await nextTick();
+
+		expect(editor.props('tasks')).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: 'add-trigger', visible: false }),
+				expect.objectContaining({ id: 'publish-agent', visible: true }),
+			]),
 		);
 	});
 
@@ -3765,6 +4240,41 @@ describe('AgentBuilderView — configuration validation', () => {
 		},
 	);
 
+	it('archives only after a skipped save persists', async () => {
+		archiveAgentMock.mockReset();
+		archiveAgentMock.mockResolvedValue(makeAgentResponse({ isArchived: true }));
+		agentPermissionsMock.canDelete.value = true;
+		const wrapper = await renderView();
+		agentPermissionsMock.canDelete.value = false;
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		const header = wrapper.getComponent({ name: 'AgentBuilderHeader' });
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<string | undefined>;
+		};
+		vm.onConfigFieldUpdate({ instructions: 'Local edit' });
+		const saving = vm.flushAutosave();
+		assistant.vm.$emit('update:building', true);
+		await expect(saving).resolves.toBe('skipped');
+		assistant.vm.$emit('update:building', false);
+		await nextTick();
+
+		updateConfigMock.mockRejectedValueOnce(new Error('Save failed'));
+		header.vm.$emit('header-action', 'archive');
+		await flushPromises();
+		expect(archiveAgentMock).not.toHaveBeenCalled();
+
+		header.vm.$emit('header-action', 'archive');
+		await flushPromises();
+		expect(updateConfigMock).toHaveBeenLastCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ instructions: 'Local edit' }),
+			'hash-1',
+		);
+		expect(archiveAgentMock).toHaveBeenCalledTimes(1);
+	});
+
 	it('surfaces unpublished workflow tools in a modal and aborts the publish', async () => {
 		const notPublished = {
 			code: 'incompatible_reference',
@@ -3885,6 +4395,9 @@ describe('AgentBuilderView — three-column shell', () => {
 
 	beforeEach(() => {
 		resetViewMocks();
+		agentPermissionsMock.canDelete.value = false;
+		deleteAgentMock.mockReset();
+		deleteAgentMock.mockResolvedValue(undefined);
 		favoritesStoreMock.toggleFavorite.mockClear();
 		favoritesStoreMock.renameFavorite.mockClear();
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
@@ -5102,14 +5615,24 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 	});
 
-	it('passes a flushAutosave guard as before-send to the embedded AI panel', async () => {
-		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+	it('flushes the config before an embedded AI panel send, and still sends when the save fails', async () => {
 		const wrapper = await renderView();
-		const panel = wrapper.findComponent({ name: 'InstanceAiChatPanel' });
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+		};
+		const beforeSend = wrapper
+			.findComponent({ name: 'InstanceAiChatPanel' })
+			.props('beforeSend') as () => Promise<void>;
+		updateConfigMock.mockRejectedValueOnce(new Error('Skill is not available to this agent'));
 
-		expect(panel.props('beforeSend')).toBe(
-			(wrapper.vm as unknown as { flushAutosaveIgnoringResult: () => Promise<void> })
-				.flushAutosaveIgnoringResult,
+		vm.onConfigFieldUpdate({ instructions: 'Imported' });
+
+		await expect(beforeSend()).resolves.toBeUndefined();
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ instructions: 'Imported' }),
+			expect.anything(),
 		);
 	});
 
@@ -5731,6 +6254,88 @@ describe('AgentBuilderView — three-column shell', () => {
 		wrapper.unmount();
 	});
 
+	it('opens an archived agent read-only and offers Unarchive and Delete', async () => {
+		getAgentMock.mockImplementation(async () => makeAgentResponse({ isArchived: true }));
+		agentPermissionsMock.canDelete.value = true;
+
+		const wrapper = await renderView();
+		agentPermissionsMock.canDelete.value = false;
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		const actionIds = wrapper
+			.findComponent({ name: 'AgentBuilderHeader' })
+			.props('headerActions')
+			.map((item: { id: string }) => item.id);
+
+		expect(editor.props('canEditAgent')).toBe(false);
+		expect(editor.props('canExecuteAgent')).toBe(false);
+		expect(actionIds).toEqual(expect.arrayContaining(['unarchive', 'delete']));
+		expect(actionIds).not.toContain('archive');
+		expect(actionIds).not.toContain('import-json');
+	});
+
+	it('deletes an archived agent after confirmation and navigates to the project agents list', async () => {
+		getAgentMock.mockImplementation(async () => makeAgentResponse({ isArchived: true }));
+		agentPermissionsMock.canDelete.value = true;
+		routerReplace.mockImplementationOnce(async () => {
+			routeParams.agentId = '';
+		});
+
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'delete');
+		await flushPromises();
+
+		const confirmCall = openModalWithDataMock.mock.calls.find(
+			(call) => (call[0] as { name?: string } | undefined)?.name === AGENT_CONFIRMATION_MODAL_KEY,
+		);
+		expect(confirmCall).toBeDefined();
+		(confirmCall?.[0] as { data: { onConfirm: () => void } }).data.onConfirm();
+		await flushPromises();
+
+		expect(deleteAgentMock).toHaveBeenCalledWith(rootStoreMock.restApiContext, 'p1', 'a1');
+		expect(favoritesStoreMock.removeFavoriteLocally).toHaveBeenCalledWith('a1', 'agent');
+		expect(showErrorMock).not.toHaveBeenCalled();
+		expect(routerReplace).toHaveBeenCalledWith('/projects/p1/agents');
+	});
+
+	it('localizes the error toast title when deleting an archived agent fails', async () => {
+		// AGENT-1618: Delete error toast in the agent builder is hardcoded English
+		getAgentMock.mockImplementation(async () => makeAgentResponse({ isArchived: true }));
+		agentPermissionsMock.canDelete.value = true;
+		const deleteError = new Error('delete failed');
+		deleteAgentMock.mockRejectedValueOnce(deleteError);
+
+		const wrapper = await renderView();
+
+		// Simulate a non-English locale so any hardcoded English string stands out
+		// from titles resolved through useI18n().baseText().
+		baseTextMock.mockImplementation((key: string) => `localized:${key}`);
+
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'delete');
+		await flushPromises();
+
+		const confirmCall = openModalWithDataMock.mock.calls.find(
+			(call) => (call[0] as { name?: string } | undefined)?.name === AGENT_CONFIRMATION_MODAL_KEY,
+		);
+		expect(confirmCall).toBeDefined();
+		(confirmCall?.[0] as { data: { onConfirm: () => void } }).data.onConfirm();
+		await flushPromises();
+
+		expect(deleteAgentMock).toHaveBeenCalledWith(rootStoreMock.restApiContext, 'p1', 'a1');
+		expect(showErrorMock).toHaveBeenCalledTimes(1);
+		const [actualError, actualTitle] = showErrorMock.mock.calls[0];
+		expect(actualError).toBe(deleteError);
+		expect(actualTitle).toBe('localized:agents.builder.deleteError');
+		const i18nKey = String(actualTitle).slice('localized:'.length);
+		const actualI18nModule = await vi.importActual<typeof import('@n8n/i18n')>('@n8n/i18n');
+		expect(actualI18nModule.i18n.exists(i18nKey)).toBe(true);
+		expect(actualI18nModule.i18n.baseText('agents.builder.deleteError')).toBe(
+			'Could not delete agent',
+		);
+		expect(routerReplace).not.toHaveBeenCalled();
+		expect(favoritesStoreMock.removeFavoriteLocally).not.toHaveBeenCalled();
+	});
+
 	it('adds JSON import and export actions to the header menu', async () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
@@ -5860,7 +6465,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				name: 'Support Agent',
 				instructions: 'Answer support mail',
 			});
-			editor.vm.$emit('update:config', { model: 'anthropic/claude-sonnet-4-5' });
+			editor.vm.$emit('update:config', { model: 'anthropic/claude-sonnet-5-5' });
 			await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
 
 			expect(createAgentMock).toHaveBeenCalledTimes(1);
@@ -6018,7 +6623,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			await wrapper.setProps({ artifactAgentPending: false });
 			await nextTick();
 
-			expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
+			expect(wrapper.find('[data-spinner="brand"]').exists()).toBe(false);
 			expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(true);
 
 			finishHydrating();
@@ -6706,7 +7311,7 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		// initialize() hasn't resolved yet → spinner visible, content hidden.
 		await nextTick();
-		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(true);
+		expect(wrapper.find('[data-spinner="brand"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 
 		// Let initialize() complete.
@@ -6714,7 +7319,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		// Spinner gone, content rendered.
-		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
+		expect(wrapper.find('[data-spinner="brand"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
 	});
 
@@ -6726,7 +7331,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		// initialized is set in the `finally` block, so the spinner must be gone.
-		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
+		expect(wrapper.find('[data-spinner="brand"]').exists()).toBe(false);
 		// The catch block must have surfaced the error to the user.
 		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 	});
@@ -6820,8 +7425,7 @@ describe('AgentBuilderView — evals focus request', () => {
 	});
 
 	it('ignores the request while the agent is still unsaved', async () => {
-		// Unsaved narrows the row to Agent only, so honouring the request here
-		// would render evals content with no Evals tab visible to match it.
+		// Keep the Assistant generation request pending until the Agent exists.
 		mockPendingAgentRow('aBcDeFgHiJkLmNoP');
 		const wrapper = await seedFocusRequest('aBcDeFgHiJkLmNoP', true, {
 			artifactMode: true,

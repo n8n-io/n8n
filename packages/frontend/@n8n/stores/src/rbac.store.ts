@@ -14,6 +14,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 	const scopesByProjectId = ref<Record<string, Scope[]>>({});
 	const scopesByResourceId = ref<Record<Resource, Record<string, Scope[]>>>({
 		app: {},
+		mcpServer: {},
 		agent: {},
 		aiAssistant: {},
 		aiPreference: {},
@@ -52,6 +53,8 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		insights: {},
 		dataTable: {},
 		execution: {},
+		executionLimit: {},
+		projectExecutionLimit: {},
 		testRun: {},
 		workflowTags: {},
 		role: {},
@@ -67,6 +70,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		securitySettings: {},
 		roleMappingRule: {},
 		otel: {},
+		workflowSettings: {},
 		scim: {},
 		trustedSource: {},
 	});

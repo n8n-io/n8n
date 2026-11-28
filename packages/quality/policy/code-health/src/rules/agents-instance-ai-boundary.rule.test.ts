@@ -70,6 +70,8 @@ describe('AgentsInstanceAiBoundaryRule', () => {
 		"const domain = import('@agents/agents.service');",
 		"type Service = import('../agents/agents.service').Service;",
 		"import { repository } from '@/modules/agents/repositories/agent.repository';",
+		"import { AgentPublishService } from '@/modules/agents/agent-publish.service';",
+		"import { AgentWriteLockService } from '@/modules/agents/agent-write-lock.service';",
 		"import { tools } from '@/modules/agents/builder/agents-builder-tools.service';",
 		"import { api } from '@/modules/agents/public-api';",
 		"export * from '../agents/agent-context.service/private';",
@@ -88,6 +90,7 @@ describe('AgentsInstanceAiBoundaryRule', () => {
 			`
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import { AgentDraftService } from '../agents/agent-draft.service.js';
+import { AgentArchiveService } from '../agents/agent-archive.service.js';
 const context = import('@agents/agent-context.service');
 const evaluation = import(\`../agents/evaluation/agent-evaluation.service\`);
 export type { AgentSessionDetail } from '../agents/agent-context.contracts';
@@ -98,6 +101,7 @@ export type { AgentEvaluationPreparation } from '../agents/evaluation/agent-eval
 export { pruneConfigForEval } from '../agents/evaluation/evaluation-config';
 import type { SystemAgentProvider } from '@/modules/agents/system-agents/system-agent.types';
 import { SystemAgentRegistrationService } from '../agents/system-agents/system-agent-registration.service';
+import { SystemAgentEvalService } from '@/modules/agents/system-agents/system-agent-eval.service';
 import { Agent } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import '@n8n/agents/catalog';

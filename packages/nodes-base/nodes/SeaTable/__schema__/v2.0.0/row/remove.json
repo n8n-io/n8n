@@ -1,0 +1,8 @@
+{
+	"properties": {
+		"deleted_rows": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

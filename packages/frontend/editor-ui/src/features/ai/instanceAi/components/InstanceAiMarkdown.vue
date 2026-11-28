@@ -3,7 +3,7 @@ import ChatMarkdown from '@/features/ai/shared/components/ChatMarkdown/ChatMarkd
 import type { AgentTestTarget } from '@/features/agents/utils/agentTestUrl';
 import { inject } from 'vue';
 import { useThread } from '../instanceAi.store';
-import { appHref, skillsHubHref } from '../canvasPreview.utils';
+import { useArtifactLinks } from '../artifactLinks';
 
 const props = defineProps<{
 	content: string;
@@ -19,6 +19,7 @@ const props = defineProps<{
 	streaming?: boolean;
 }>();
 const thread = useThread();
+const artifactLinks = useArtifactLinks();
 const openWorkflowPreview = inject<((id: string) => boolean) | undefined>(
 	'openWorkflowPreview',
 	undefined,
@@ -54,8 +55,7 @@ const openAppPreview = inject<((id: string) => boolean) | undefined>('openAppPre
 		:open-agent-chat-preview="openAgentChatPreview"
 		:open-skill-preview="openSkillPreview"
 		:open-app-preview="openAppPreview"
-		:build-app-href="appHref"
-		:build-skill-href="skillsHubHref"
+		:artifact-links="artifactLinks"
 		:options="{ math: true, footnotes: 'pill' }"
 		:filter-internal-blocks="true"
 	/>

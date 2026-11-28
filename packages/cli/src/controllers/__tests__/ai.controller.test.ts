@@ -12,6 +12,7 @@ import { mock } from 'vitest-mock-extended';
 
 import {
 	BadRequestError,
+	ForbiddenError,
 	InternalServerError,
 	NotFoundError,
 	ServiceUnavailableError,
@@ -499,6 +500,23 @@ describe('AiController', () => {
 		});
 	});
 
+	describe('aiCredits', () => {
+		it('keeps the 403 when a service account claims the free credits', async () => {
+			const forbidden = new ForbiddenError('Only a person can do this action');
+			freeAiCreditsService.claim.mockRejectedValue(forbidden);
+
+			await expect(controller.aiCredits(request, response, {})).rejects.toBe(forbidden);
+		});
+
+		it('turns an unexpected failure into a 500', async () => {
+			freeAiCreditsService.claim.mockRejectedValue(new Error('Something went wrong'));
+
+			await expect(controller.aiCredits(request, response, {})).rejects.toThrow(
+				InternalServerError,
+			);
+		});
+	});
+
 	describe('getBuilderCredits', () => {
 		it('should return builder instance credits successfully', async () => {
 			const expectedCredits: AiAssistantSDK.BuilderInstanceCreditsResponse = {
@@ -748,6 +766,14 @@ describe('AiController', () => {
 			});
 
 			expect(aiUsageService.updateAiUsageSettings).toHaveBeenCalledWith(true);
+		});
+	});
+
+	describe('updateModelTrainingSettings', () => {
+		it.each([true, false])('should store allowModelTraining=%s', async (allowModelTraining) => {
+			await controller.updateModelTrainingSettings(request, response, { allowModelTraining });
+
+			expect(aiUsageService.updateModelTrainingSetting).toHaveBeenCalledWith(allowModelTraining);
 		});
 	});
 });

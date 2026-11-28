@@ -14,11 +14,14 @@ import {
 	type AssistantSkillFileContent,
 	type AssistantSkillSummary,
 	type ResolvedSkillRow,
+	type SkillFileReadOptions,
 	type RuntimeVersion,
 	type SkillRef,
 	type SkillTarget,
 } from '../utils/skill-content';
+import { withSkillWorkflowMentionHint } from '../utils/skill-workflow-mention-hint';
 import { SkillAccessService } from './skill-access.service';
+import { WorkflowsInSkillsFlagGate } from './workflows-in-skills-flag-gate';
 
 /**
  * What agents and n8n Assistant read to run skills. Agent reads have no permission check:
@@ -31,6 +34,7 @@ export class SkillRuntimeService {
 		private readonly skillRepository: SkillRepository,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly skillAccess: SkillAccessService,
+		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 	) {}
 
 	async listForAssistant(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
@@ -57,7 +61,8 @@ export class SkillRuntimeService {
 			description: version.description,
 			versionId: version.id,
 			version: version.version,
-			instructions: version.instructions,
+			instructions: (await this.withWorkflowMentionHint({ instructions: version.instructions }))
+				.instructions,
 			frontmatter: version.frontmatter,
 			files: files.map(({ path }) => ({ path })),
 		};
@@ -77,7 +82,20 @@ export class SkillRuntimeService {
 			path,
 		);
 		if (!row || !(await this.canReadForAssistant(context, row.skill, projectId))) return null;
-		return { skillId, versionId, path: row.file.path, content: row.file.content };
+		return {
+			skillId,
+			versionId,
+			path: row.file.path,
+			content: (await this.withWorkflowMentionHint({ instructions: row.file.content }))
+				.instructions,
+		};
+	}
+
+	async withWorkflowMentionHint<T extends Pick<AgentSkill, 'instructions' | 'references'>>(
+		skill: T,
+	): Promise<T> {
+		if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return skill;
+		return withSkillWorkflowMentionHint(skill);
 	}
 
 	/**
@@ -87,8 +105,9 @@ export class SkillRuntimeService {
 	async resolveForAgentDraft(
 		refs: SkillRef[],
 		ctx: OperationContext = {},
+		options: SkillFileReadOptions = {},
 	): Promise<Record<string, AgentSkill>> {
-		const rows = await this.resolveRows(refs, ctx);
+		const rows = await this.resolveRows(refs, ctx, options);
 		return Object.fromEntries([...rows].map(([refId, row]) => [refId, toAgentSkill(row)]));
 	}
 
@@ -109,8 +128,12 @@ export class SkillRuntimeService {
 		await this.skillRepository.lockForPublish(skillIds, ctx);
 	}
 
-	async resolveVersions(versionIds: string[], ctx: OperationContext = {}) {
-		const rows = await this.skillRepository.findVersionsByIds(versionIds, ctx);
+	async resolveVersions(
+		versionIds: string[],
+		ctx: OperationContext = {},
+		options: SkillFileReadOptions = {},
+	) {
+		const rows = await this.skillRepository.findVersionsByIds(versionIds, ctx, options);
 		return new Map(
 			[...rows].map(([versionId, row]) => [
 				versionId,
@@ -203,13 +226,15 @@ export class SkillRuntimeService {
 	private async resolveRows(
 		refs: SkillRef[],
 		ctx: OperationContext,
+		options: SkillFileReadOptions,
 	): Promise<Map<string, ResolvedSkillRow>> {
 		const latest = await this.skillRepository.findLatestSaved(
 			refs.map((ref) => ref.id),
 			ctx,
+			options,
 		);
 		const pinnedIds = refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : []));
-		const pinned = await this.skillRepository.findVersionsByIds(pinnedIds, ctx);
+		const pinned = await this.skillRepository.findVersionsByIds(pinnedIds, ctx, options);
 		const rows = new Map<string, ResolvedSkillRow>();
 		for (const ref of refs) {
 			const pin = ref.versionId ? pinned.get(ref.versionId) : undefined;

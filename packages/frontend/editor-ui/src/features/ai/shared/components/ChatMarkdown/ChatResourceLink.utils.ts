@@ -20,6 +20,26 @@ export const INTERNAL_ROUTE_PATTERNS = [
 	{ pattern: /^\/projects\/[^/]+\/apps(?:\/|$)/, type: 'app' },
 ];
 
+/**
+ * A resource that an app path points to, with its project when the path has one. Only
+ * the root path of a resource counts: a sub-page, such as a workflow execution, keeps
+ * its own link.
+ */
+export function parseResourceRoute(
+	pathname: string,
+): { type: string; id: string; projectId?: string } | undefined {
+	const workflow = /^\/workflow\/([a-zA-Z0-9]+)\/?$/.exec(pathname);
+	if (workflow) return { type: 'workflow', id: workflow[1] };
+
+	const projectResource = /^\/projects\/([^/]+)\/(datatables|agents|apps)\/([^/]+)\/?$/.exec(
+		pathname,
+	);
+	if (!projectResource) return undefined;
+	const [, projectId, segment, id] = projectResource;
+	const type = { datatables: 'data-table', agents: 'agent', apps: 'app' }[segment];
+	return type ? { type, id: decodeResourceId(id), projectId } : undefined;
+}
+
 export function getResourceLinkIcon(href: string, origin = window.location.origin) {
 	try {
 		const url = new URL(href, origin);
@@ -57,24 +77,16 @@ export function decodeResourceId(value: string): string {
 	}
 }
 
-export function buildResourceUrl(
-	type: string,
-	id: string,
-	projectId: string | undefined,
-	buildAppHref?: (projectId: string, id: string) => string,
-	buildSkillHref?: (id: string) => string,
-): string {
+export function buildResourceUrl(type: string, id: string, projectId: string | undefined): string {
 	const encodedId = encodeURIComponent(id);
 	if (projectId) {
 		if (type === 'data-table') return `/projects/${projectId}/datatables/${encodedId}`;
 		if (type === 'credential') return `/projects/${projectId}/credentials/${encodedId}`;
 		if (type === 'agent') return `/projects/${projectId}/agents/${encodedId}`;
-		if (type === 'app' && buildAppHref) return buildAppHref(projectId, id);
 	}
 	if (type === 'workflow') return `/workflow/${encodedId}`;
 	if (type === 'credential') return `/home/credentials/${encodedId}`;
 	if (type === 'data-table') return '/home/datatables';
 	if (type === 'agent') return '/home/agents';
-	if (type === 'skill' && buildSkillHref) return buildSkillHref(id);
 	return '#';
 }

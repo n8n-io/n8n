@@ -29,33 +29,27 @@ describe('useAgentsN8nChatVariant', () => {
 	});
 
 	it.each([
-		['variant-a', true, false],
-		['variant-b', false, true],
-		['control', false, false],
-		[undefined, false, false],
-	])('for %s, isVariantA=%s and isVariantB=%s', (value, expectedA, expectedB) => {
+		['variant-a', true],
+		['variant-b', false],
+		['control', false],
+		[undefined, false],
+	])('for %s, isVariantA=%s', (value, expected) => {
 		const posthog = usePostHog();
 		posthog.overrides = value === undefined ? {} : { [AGENTS_N8N_CHAT_FLAG]: { value } };
-		const { isVariantA, isVariantB } = useAgentsN8nChatVariant();
-		expect(isVariantA.value).toBe(expectedA);
-		expect(isVariantB.value).toBe(expectedB);
+		expect(useAgentsN8nChatVariant().isVariantA.value).toBe(expected);
 	});
 
-	it('turns both variants off while the agents module is inactive', () => {
+	it('turns variant A off while the agents module is inactive', () => {
 		useSettingsStore().settings.activeModules = [];
 		usePostHog().overrides = { [AGENTS_N8N_CHAT_FLAG]: { value: 'variant-a' } };
-		const { isVariantA, isVariantB } = useAgentsN8nChatVariant();
-		expect(isVariantA.value).toBe(false);
-		expect(isVariantB.value).toBe(false);
+		expect(useAgentsN8nChatVariant().isVariantA.value).toBe(false);
 	});
 
-	it('turns both variants off while Agents is turned off in the settings', () => {
+	it('turns variant A off while Agents is turned off in the settings', () => {
 		useSettingsStore().moduleSettings = {
 			agents: { enabled: false, modules: [], knowledgeBaseEnabled: false, proxyEnabled: false },
 		};
-		usePostHog().overrides = { [AGENTS_N8N_CHAT_FLAG]: { value: 'variant-b' } };
-		const { isVariantA, isVariantB } = useAgentsN8nChatVariant();
-		expect(isVariantA.value).toBe(false);
-		expect(isVariantB.value).toBe(false);
+		usePostHog().overrides = { [AGENTS_N8N_CHAT_FLAG]: { value: 'variant-a' } };
+		expect(useAgentsN8nChatVariant().isVariantA.value).toBe(false);
 	});
 });

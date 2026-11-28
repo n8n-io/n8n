@@ -8,7 +8,7 @@ import {
 	createCustomRoleWithScopes,
 	createTestScopes,
 } from '../../shared/db/roles';
-import { createUser } from '../../shared/db/users';
+import { createServiceAccountWithProject, createUser } from '../../shared/db/users';
 
 describe('RoleRepository', () => {
 	let roleRepository: RoleRepository;
@@ -256,7 +256,7 @@ describe('RoleRepository', () => {
 			expect(foundRole).toBeNull();
 
 			// Verify scopes still exist (should not cascade delete)
-			const foundScopes = await scopeRepository.findByList([readScope.slug, writeScope.slug]);
+			const foundScopes = await scopeRepository.findByList([readScope.slug, writeScope.slug], {});
 			expect(foundScopes).toHaveLength(2);
 		});
 	});
@@ -642,10 +642,42 @@ describe('RoleRepository', () => {
 							lastName: u.lastName,
 							email: u.email,
 							role: globalRole.slug,
+							kind: 'person',
 						}),
 					),
 				),
 			);
+		});
+
+		it('returns a service account with its name and kind', async () => {
+			//
+			// ARRANGE
+			//
+			const globalRole = await createRole({
+				slug: 'global-service-members-role',
+				displayName: 'Global Service Members Role',
+				roleType: 'global',
+			});
+			const serviceAccount = await createServiceAccountWithProject(globalRole);
+
+			//
+			// ACT
+			//
+			const members = await roleRepository.findUsersWithGlobalRole(globalRole.slug);
+
+			//
+			// ASSERT
+			//
+			expect(members).toEqual([
+				{
+					userId: serviceAccount.id,
+					firstName: 'Deploy bot',
+					lastName: null,
+					email: '',
+					role: globalRole.slug,
+					kind: 'service',
+				},
+			]);
 		});
 
 		it('returns an empty array when no users hold the global role', async () => {

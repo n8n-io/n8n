@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import type { INodeExecutionData, IRedactedFieldMarker, ITaskDataConnections } from 'n8n-workflow';
 
 import type { RedactableExecution } from '@n8n/backend-services';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProviderMissingError, NodeTypesProxy } from '@n8n/backend-services';
 
 import type {
 	IExecutionRedactionStrategy,
@@ -32,7 +32,7 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 	) {}
 
 	requiresRedaction(execution: RedactableExecution, context: RedactionContext): boolean {
@@ -114,7 +114,8 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 			let description;
 			try {
 				description = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
-			} catch {
+			} catch (error) {
+				if (error instanceof NodeTypesProviderMissingError) throw error;
 				this.logger.warn(
 					`[NodeDefinedFieldRedactionStrategy] Could not load type for node "${node.name}" (${node.type} v${node.typeVersion}) — redacting all outputs conservatively`,
 				);

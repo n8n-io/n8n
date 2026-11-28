@@ -15,10 +15,17 @@ import {
 import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm';
+import { createReadStream } from 'fs';
 import { readdir, readFile } from 'fs/promises';
 import { Cipher } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
+import { createInterface } from 'readline';
+import {
+	pickVersionedSettings,
+	type INode,
+	type INodeCredentialsDetails,
+	type IWorkflowBase,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -42,22 +49,11 @@ import {
 	sanitizeNodeGroupDescriptions,
 } from '@/workflow-helpers';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
+import { sortSubWorkflowsFirst } from '@/workflows/sub-workflow-order';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
-
-/**
- * Archive file names of entity classes that were renamed while their table kept
- * its name. The exporter names each file after the entity class, so an archive
- * written before a rename still carries the old name, and an importer that only
- * knows the new class would skip it silently. Keyed by the old lowercase name,
- * the value is the current one. An entry applies only while no entity carries
- * the old name itself.
- */
-const LEGACY_ENTITY_FILE_NAMES: Readonly<Record<string, string>> = {
-	// `AgentFile` became `KnowledgeFile` when it moved into the knowledge module.
-	agentfile: 'knowledgefile',
-};
+import { restoreBinaryColumns } from './entity-archive-binary';
 
 /** The entity name an archive file was written for: `user.2.jsonl` is `user`. */
 function toArchiveBaseName(file: string): string {
@@ -316,6 +312,7 @@ export class ImportService {
 					connections: workflow.connections,
 					nodeGroups: workflow.nodeGroups,
 					authors: 'import',
+					settings: pickVersionedSettings(workflow.settings),
 					name: versionMetadata?.name ?? null,
 					description: versionMetadata?.description ?? null,
 				});
@@ -339,86 +336,21 @@ export class ImportService {
 		return { violations };
 	}
 
-	/**
-	 * Sorts workflows to activate in dependency order so that subworkflows are activated
-	 * before the workflows that call them. Uses Kahn's topological sort algorithm.
-	 */
 	private sortWorkflowsForActivation(
 		allImportedWorkflows: IWorkflowWithVersionMetadata[],
 		toActivate: Array<{ workflowId: string; versionId: string }>,
 	): Array<{ workflowId: string; versionId: string }> {
-		if (toActivate.length <= 1) return toActivate;
-
 		const nodesByWorkflowId = new Map(allImportedWorkflows.map((w) => [w.id, w.nodes]));
-		const activateIds = new Set(toActivate.map((w) => w.workflowId));
-
-		// Fast path: skip the full graph build if no workflow in the batch references
-		// another batch workflow via an active executeWorkflow node.
-		const hasCrossReference = toActivate.some(({ workflowId }) =>
-			(nodesByWorkflowId.get(workflowId) ?? []).some(
-				(node) =>
-					!node.disabled &&
-					node.type === 'n8n-nodes-base.executeWorkflow' &&
-					activateIds.has(this.extractSubworkflowId(node) ?? ''),
-			),
-		);
-		if (!hasCrossReference) return toActivate;
-
-		const toActivateByWorkflowId = new Map(toActivate.map((w) => [w.workflowId, w]));
-		// callee id → set of caller ids that depend on it being activated first
-		const dependents = new Map<string, Set<string>>(
-			toActivate.map(({ workflowId }) => [workflowId, new Set()]),
-		);
-		// caller id → how many of its subworkflow dependencies in this batch are not yet activated
-		const unresolvedDepsCount = new Map<string, number>(
-			toActivate.map(({ workflowId }) => [workflowId, 0]),
-		);
-
-		for (const { workflowId } of toActivate) {
-			for (const node of nodesByWorkflowId.get(workflowId) ?? []) {
-				if (node.disabled || node.type !== 'n8n-nodes-base.executeWorkflow') continue;
-				const calleeId = this.extractSubworkflowId(node);
-				if (!calleeId || !activateIds.has(calleeId) || calleeId === workflowId) continue;
-				dependents.get(calleeId)!.add(workflowId);
-				unresolvedDepsCount.set(workflowId, unresolvedDepsCount.get(workflowId)! + 1);
-			}
-		}
-
-		const queue = toActivate.filter((w) => unresolvedDepsCount.get(w.workflowId) === 0);
-		const result: Array<{ workflowId: string; versionId: string }> = [];
-
-		while (queue.length > 0) {
-			const item = queue.shift()!;
-			result.push(item);
-			for (const callerId of dependents.get(item.workflowId)!) {
-				const remaining = unresolvedDepsCount.get(callerId)! - 1;
-				unresolvedDepsCount.set(callerId, remaining);
-				if (remaining === 0) queue.push(toActivateByWorkflowId.get(callerId)!);
-			}
-		}
-
-		if (result.length < toActivate.length) {
-			// Any workflow still with unresolvedDepsCount > 0 was never enqueued by the
-			// sort — it's part of a cycle (its dependency also waits on it). Append these
-			// so they still get activated rather than being silently dropped.
-			const cycleWorkflows = toActivate.filter(
-				(w) => Number(unresolvedDepsCount.get(w.workflowId)) > 0,
-			);
+		const { ordered, cyclic } = sortSubWorkflowsFirst(toActivate, ({ workflowId }) => ({
+			id: workflowId,
+			nodes: nodesByWorkflowId.get(workflowId) ?? [],
+		}));
+		if (cyclic.length > 0) {
 			this.logger.warn(
-				`Detected circular subworkflow references among workflows: [${cycleWorkflows.map((w) => w.workflowId).join(', ')}]. Activating them in original order.`,
+				`Detected circular subworkflow references among workflows: [${cyclic.map((w) => w.workflowId).join(', ')}]. Activating them in original order.`,
 			);
-			result.push(...cycleWorkflows);
 		}
-
-		return result;
-	}
-
-	private extractSubworkflowId(node: INode): string | undefined {
-		const source = node.parameters?.['source'];
-		if (source === 'parameter' || source === 'localFile' || source === 'url') return undefined;
-		const wfId = node.parameters?.['workflowId'];
-		const rawId = typeof wfId === 'string' ? wfId : (wfId as { value?: unknown } | null)?.value;
-		return typeof rawId === 'string' && !rawId.startsWith('=') ? rawId : undefined;
+		return ordered;
 	}
 
 	private async activateWorkflow(
@@ -432,7 +364,8 @@ export class ImportService {
 				source: 'import',
 			});
 		} catch (e) {
-			this.logger.error(`Failed to activate workflow ${workflowId}`, { error: ensureError(e) });
+			const error = ensureError(e);
+			this.logger.error(`Failed to activate workflow ${workflowId}: ${error.message}`, { error });
 		}
 	}
 
@@ -528,9 +461,6 @@ export class ImportService {
 		const entityTableNamesMap: Record<string, string> = {};
 		const entityFiles: Record<string, string[]> = {};
 		const dataTableFiles: Record<string, string[]> = {};
-		const presentBaseNames = new Set(
-			files.filter((file) => file.endsWith('.jsonl')).map(toArchiveBaseName),
-		);
 
 		for (const file of files) {
 			if (!file.endsWith('.jsonl')) continue;
@@ -550,8 +480,7 @@ export class ImportService {
 				continue;
 			}
 
-			const entityName = this.resolveArchiveEntityName(file, baseName, presentBaseNames);
-			if (entityName === null) continue;
+			const entityName = baseName;
 
 			// Build table names map (only need to do this once per entity)
 			if (!entityTableNamesMap[entityName]) {
@@ -581,53 +510,22 @@ export class ImportService {
 		};
 	}
 
-	/**
-	 * The entity an archive file belongs to. A file written under the old name of a
-	 * renamed entity maps to the current name, unless an entity carries the old name
-	 * again. It is skipped (null) when the directory also holds files under the
-	 * current name: one export never writes both, so the old files are leftovers of
-	 * an earlier run in the same directory.
-	 */
-	private resolveArchiveEntityName(
-		file: string,
-		baseName: string,
-		presentBaseNames: Set<string>,
-	): string | null {
-		const currentName = LEGACY_ENTITY_FILE_NAMES[baseName];
-		if (!currentName) return baseName;
-
-		const hasEntityWithOldName = this.dataSource.entityMetadatas.some(
-			(meta) => meta.name.toLowerCase() === baseName,
-		);
-		if (hasEntityWithOldName) return baseName;
-
-		if (presentBaseNames.has(currentName)) {
-			this.logger.warn(
-				`⚠️  Skipping ${file}: the directory also holds ${currentName} files, so it is a leftover of an earlier export`,
-			);
-			return null;
-		}
-
-		this.logger.info(`   ℹ️  Reading ${file} as ${currentName} (entity renamed since the export)`);
-		return currentName;
-	}
-
-	/**
-	 * Read and parse JSONL file content
-	 * @param filePath - Path to the JSONL file
-	 * @param customEncryptionKey - Optional custom encryption key
-	 * @returns Array of parsed entity objects
-	 */
-	async readEntityFile(
+	/** Rows of each encrypted line of an archive file, read one line at a time. */
+	async *readEntityBlocks(
 		filePath: string,
 		customEncryptionKey?: string,
-	): Promise<Array<Record<string, unknown>>> {
-		const content = await readFile(filePath, 'utf8');
-		const entities: Array<Record<string, unknown>> = [];
+	): AsyncGenerator<Array<Record<string, unknown>>> {
 		const entitySchema = z.record(z.string(), z.unknown());
+		const blocks = createInterface({
+			input: createReadStream(filePath, 'utf8'),
+			crlfDelay: Infinity,
+		});
 
-		for (const block of content.split('\n')) {
+		for await (const block of blocks) {
+			if (!block) continue;
+
 			const lines = (await this.cipher.decryptV2(block, customEncryptionKey)).split(/\r?\n/);
+			const entities: Array<Record<string, unknown>> = [];
 
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i].trim();
@@ -646,8 +544,19 @@ export class ImportService {
 					);
 				}
 			}
-		}
 
+			yield entities;
+		}
+	}
+
+	async readEntityFile(
+		filePath: string,
+		customEncryptionKey?: string,
+	): Promise<Array<Record<string, unknown>>> {
+		const entities: Array<Record<string, unknown>> = [];
+		for await (const block of this.readEntityBlocks(filePath, customEncryptionKey)) {
+			entities.push(...block);
+		}
 		return entities;
 	}
 
@@ -814,19 +723,18 @@ export class ImportService {
 				this.logger.info(`   📋 Target table: ${tableName}`);
 
 				let entityCount = 0;
-				await Promise.all(
-					files.map(async (filePath) => {
-						this.logger.info(`   📁 Reading file: ${filePath}`);
+				for (const filePath of files) {
+					this.logger.info(`   📁 Reading file: ${filePath}`);
 
-						const entities: Array<Record<string, unknown>> = await this.readEntityFile(
-							filePath,
-							customEncryptionKey,
-						);
+					for await (const entities of this.readEntityBlocks(filePath, customEncryptionKey)) {
 						this.logger.info(`      Found ${entities.length} entities`);
 
 						await Promise.all(
 							entities.map(async (entity) => {
-								const normalizedEntity = this.normalizeEntityJsonColumns(entity, entityMetadata);
+								const normalizedEntity = this.normalizeEntityJsonColumns(
+									restoreBinaryColumns(entity, entityMetadata),
+									entityMetadata,
+								);
 								const columns = Object.keys(normalizedEntity);
 								const columnNames = columns.map(this.dataSource.driver.escape).join(', ');
 								const columnValues = columns.map((key) => `:${key}`).join(', ');
@@ -842,8 +750,8 @@ export class ImportService {
 						);
 
 						entityCount += entities.length;
-					}),
-				);
+					}
+				}
 
 				this.logger.info(`   ✅ Completed ${entityName}: ${entityCount} entities imported`);
 				totalEntitiesImported += entityCount;

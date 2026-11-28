@@ -308,6 +308,26 @@ describe('Expression', () => {
 			it('should not throw for a plain object that carries the luxon DateTime flag', () => {
 				expect(() => evaluateAsString('={{ { isLuxonDateTime: true } }}')).not.toThrow();
 			});
+
+			it('should add spaces after keys and between object entries', () => {
+				expect(evaluateAsString('={{ { a: 1, b: [1, 2], c: "d" } }}')).toBe(
+					'[Object: {"a": 1, "b": [1,2], "c": "d"}]',
+				);
+			});
+
+			it('should keep a string value that starts with a colon unchanged', () => {
+				expect(evaluateAsString('={{ { text: ":no_entry: foo" } }}')).toBe(
+					'[Object: {"text": ":no_entry: foo"}]',
+				);
+			});
+
+			it('should keep a string value that contains a quote and a colon unchanged', () => {
+				expect(evaluateAsString("={{ { text: 'x\":y' } }}")).toBe('[Object: {"text": "x\\":y"}]');
+			});
+
+			it('should keep a string value that ends with a comma unchanged', () => {
+				expect(evaluateAsString('={{ ["a,", "b"] }}')).toBe('[Array: ["a,", "b"]]');
+			});
 		});
 
 		describe('SafeObject security wrapper', () => {
@@ -1457,8 +1477,8 @@ describe('Expression', () => {
 			await workflow.expression.releaseIsolate();
 		});
 
-		const evaluate = (expr: string, data: INodeExecutionData[]) =>
-			workflow.expression.getParameterValue(expr, null, 0, 0, 'node', data, 'manual', {});
+		const evaluate = (expr: string, data: INodeExecutionData[], itemIndex = 0) =>
+			workflow.expression.getParameterValue(expr, null, 0, itemIndex, 'node', data, 'manual', {});
 
 		// The inner expression must be wrapped in `{{ ... }}` for the host to
 		// evaluate it (without those, the host strips `=` and the rest is
@@ -1482,6 +1502,16 @@ describe('Expression', () => {
 					{ json: { value: 'second' } },
 				]),
 			).toBe('second');
+		});
+
+		it('resolves itemIndex 0 against the first item while on a later item (parity)', () => {
+			expect(
+				evaluate(
+					`={{ $evaluateExpression(${buildInnerTemplate('$json.value')}, 0) }}`,
+					[{ json: { value: 'first' } }, { json: { value: 'second' } }],
+					1,
+				),
+			).toBe('first');
 		});
 	});
 

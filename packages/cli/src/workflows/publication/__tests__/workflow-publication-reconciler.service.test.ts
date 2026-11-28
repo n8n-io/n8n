@@ -68,6 +68,8 @@ beforeEach(() => {
 	outboxRepository.findVersionSkewedWorkflowIds.mockResolvedValue([]);
 	outboxRepository.findTriggerStatusDriftedWorkflowIds.mockResolvedValue([]);
 	outboxRepository.findUnreportedPublishedWorkflowIds.mockResolvedValue([]);
+	outboxRepository.findRetryDueWorkflowIds.mockResolvedValue([]);
+	outboxRepository.findRetryScheduledWorkflowIds.mockResolvedValue([]);
 	outboxConsumer.drainPending.mockResolvedValue();
 	setRegistered({});
 	activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue([]);

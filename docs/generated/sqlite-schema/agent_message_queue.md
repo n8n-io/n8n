@@ -70,7 +70,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "agent_execution" {
-  BOOLEAN acceptsSteering
+  boolean acceptsSteering
   TEXT attachments
   TEXT author
   INTEGER cacheReadTokens
@@ -81,8 +81,8 @@ erDiagram
   INTEGER duration
   TEXT error
   TEXT failureSummary
-  VARCHAR_32_ finishReason
-  VARCHAR_64_ guardrailCode
+  varchar_32_ finishReason
+  varchar_64_ guardrailCode
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
@@ -120,6 +120,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_8_ emoji
   varchar_128_ id PK
+  boolean isTestChat
   varchar ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId

@@ -57,7 +57,7 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
 
 	if (genericType === 'httpBasicAuth' || genericType === 'httpDigestAuth') {
-		const basicAuth = await ctx.getCredentials('httpBasicAuth', itemIndex);
+		const basicAuth = await ctx.getCredentials(genericType, itemIndex);
 		const sendImmediately = genericType === 'httpDigestAuth' ? false : undefined;
 
 		return async (options: IHttpRequestOptions) => {
@@ -67,6 +67,17 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 				password: basicAuth.password as string,
 				sendImmediately,
 			};
+			return await ctx.helpers.httpRequest(options);
+		};
+	}
+
+	if (genericType === 'httpBearerAuth') {
+		const bearerAuth = await ctx.getCredentials('httpBearerAuth', itemIndex);
+
+		return async (options: IHttpRequestOptions) => {
+			assertCredentialUrlAllowed(ctx, bearerAuth, options);
+			if (!options.headers) options.headers = {};
+			options.headers.Authorization = `Bearer ${String(bearerAuth.token)}`;
 			return await ctx.helpers.httpRequest(options);
 		};
 	}
@@ -114,16 +125,12 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 		};
 	}
 
-	if (genericType === 'httpTemplatedCustomAuth') {
-		const templatedAuth = await ctx.getCredentials('httpTemplatedCustomAuth', itemIndex);
+	if (genericType === 'httpTemplatedCustomAuth' || genericType === 'httpMultipleHeadersAuth') {
+		const credentials = await ctx.getCredentials(genericType, itemIndex);
 
 		return async (options: IHttpRequestOptions) => {
-			assertCredentialUrlAllowed(ctx, templatedAuth, options);
-			return await ctx.helpers.httpRequestWithAuthentication.call(
-				ctx,
-				'httpTemplatedCustomAuth',
-				options,
-			);
+			assertCredentialUrlAllowed(ctx, credentials, options);
+			return await ctx.helpers.httpRequestWithAuthentication.call(ctx, genericType, options);
 		};
 	}
 

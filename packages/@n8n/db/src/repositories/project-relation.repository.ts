@@ -92,21 +92,40 @@ export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
 		return projectRelations.map((pr) => pr.projectId);
 	}
 
+	async hasAnyRoleInProject(
+		userId: string,
+		projectId: string,
+		roleSlugs: string[],
+	): Promise<boolean> {
+		if (roleSlugs.length === 0) return false;
+		return await this.existsBy({ userId, projectId, role: { slug: In(roleSlugs) } });
+	}
+
 	/**
 	 * Find the role of a user in a project.
 	 */
 	async findProjectRole({ userId, projectId }: { userId: string; projectId: string }) {
-		const relation = await this.findOneBy({ projectId, userId });
+		// `role` is a relation with no plain column, so it loads only when asked for.
+		const relation = await this.findOne({
+			where: { projectId, userId },
+			relations: { role: true },
+		});
 
 		return relation?.role ?? null;
 	}
 
-	/** Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }` */
-	async countUsersByRole() {
-		const rows = (await this.createQueryBuilder()
-			.select(['role', 'COUNT(role) as count'])
-			.groupBy('role')
-			.execute()) as Array<{ role: ProjectRole; count: string }>;
+	/**
+	 * Counts the people in each project role, e.g. `{ 'project:admin': 2 }`.
+	 * Service accounts are left out, because each agent has one with a personal project.
+	 */
+	async countPeopleByRole() {
+		const rows = await this.createQueryBuilder('relation')
+			.innerJoin('relation.user', 'user')
+			.select('relation.role', 'role')
+			.addSelect('COUNT(*)', 'count')
+			.where('user.kind = :kind', { kind: 'person' })
+			.groupBy('relation.role')
+			.getRawMany<{ role: ProjectRole; count: string }>();
 		return rows.reduce(
 			(acc, row) => {
 				acc[row.role] = parseInt(row.count, 10);

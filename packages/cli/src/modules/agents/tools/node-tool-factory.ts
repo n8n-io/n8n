@@ -3,6 +3,7 @@ import { Tool } from '@n8n/agents/tool';
 import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import type { AgentJsonToolConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
+import { collectBinaryDataIds } from 'n8n-core';
 import type { JSONSchema7 } from 'json-schema';
 import type {
 	IDataObject,
@@ -14,7 +15,7 @@ import { nodeNameToToolName } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProviderMissingError, NodeTypesProxy } from '@n8n/backend-services';
 
 import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
@@ -105,11 +106,12 @@ async function resolveInputSchema(
 		toolSchema.node.nodeTypeVersion,
 	);
 	try {
-		nodeType = Container.get(NodeTypes).getByNameAndVersion(
+		nodeType = Container.get(NodeTypesProxy).getByNameAndVersion(
 			nodeTypeName,
 			toolSchema.node.nodeTypeVersion,
 		);
-	} catch {
+	} catch (error) {
+		if (error instanceof NodeTypesProviderMissingError) throw error;
 		// If the node type can't be resolved here, fall through — the executor
 		// will surface a clearer error at invocation time.
 		return { schema: { type: 'object', properties: {} }, acceptsFiles: false };
@@ -182,14 +184,16 @@ export async function resolveNodeTool(
 							threadId: toolCtx.persistence?.threadId,
 						})
 					: undefined;
+			const inputData = [
+				{ json: input as IDataObject, ...(inputFiles && { binary: inputFiles.binary }) },
+			];
 			const result = await ctx.executor.executeInline({
 				nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
 				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
-				inputData: [
-					{ json: input as IDataObject, ...(inputFiles && { binary: inputFiles.binary }) },
-				],
+				binaryDataAccess: collectBinaryDataIds(inputData),
+				inputData,
 				projectId: ctx.projectId,
 				...instrumentedExecution,
 			});
@@ -207,11 +211,12 @@ export async function resolveNodeTool(
 			if (result.status === 'error') {
 				throw new Error(result.error ?? `Node "${toolSchema.node.nodeType}" failed to execute`);
 			}
-			if (!result.data.some((item) => item.binary)) return result;
+			const { binaryDataAccess, ...toolResult } = result;
+			if (!result.data.some((item) => item.binary)) return toolResult;
 			// Without a thread there is no scope for the files, so the binary is dropped.
 			const persistence = toolCtx.persistence;
 			if (!persistence?.threadId || !persistence.resourceId)
-				return { ...result, data: result.data.map(({ json }) => ({ json })) };
+				return { ...toolResult, data: result.data.map(({ json }) => ({ json })) };
 			const adopted = await Container.get(AgentFileBridge).adoptFromItems(
 				result.data,
 				{
@@ -219,11 +224,12 @@ export async function resolveNodeTool(
 					projectId: ctx.projectId,
 					threadId: persistence.threadId,
 					resourceId: persistence.resourceId,
+					...(binaryDataAccess?.length ? { binaryDataAccess } : {}),
 				},
 				inputFiles?.stored,
 			);
 			return {
-				...result,
+				...toolResult,
 				data: adopted.items,
 				files: adopted.files,
 				...(adopted.skippedFiles.length > 0 && { skippedFiles: adopted.skippedFiles }),

@@ -1,10 +1,5 @@
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-} from 'n8n-workflow';
+import { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from '@n8n/api-types';
+import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 /**
  * TELEMETRY EVENTS - backend
@@ -36,6 +31,10 @@ export const MCP_CLIENT_INFO_META_KEY = 'io.modelcontextprotocol/clientInfo';
 export const MCP_DISCOVER_METHOD = 'server/discover';
 
 export { MCP_SKILLS_EXTENSION_FLAG } from '@n8n/api-types';
+
+export const MCP_EMPTY_PREFERENCES_NOTE_FLAG = '140_mcp_empty_preferences_note';
+export const MCP_EMPTY_PREFERENCES_NOTE_MAX_IMPRESSIONS = 3;
+export const MCP_EMPTY_PREFERENCES_NOTE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Message constants
@@ -81,14 +80,15 @@ export const MCP_CALL_AGENT_TOOL_NAME = 'call_agent';
 export const MCP_CREATE_AGENT_TOOL_NAME = 'create_agent';
 
 /**
- * Triggers supported in production mode for MCP execution
+ * Migration report tools. Reading needs the `breakingChanges:list` scope; a fix or a status
+ * needs `breakingChanges:migrate`.
  */
-export const SUPPORTED_PRODUCTION_MCP_TRIGGERS = {
-	[SCHEDULE_TRIGGER_NODE_TYPE]: 'Schedule Trigger',
-	[WEBHOOK_NODE_TYPE]: 'Webhook Trigger',
-	[FORM_TRIGGER_NODE_TYPE]: 'Form Trigger',
-	[CHAT_TRIGGER_NODE_TYPE]: 'Chat Trigger',
-};
+export const MCP_GET_MIGRATION_REPORT_TOOL_NAME = 'get_migration_report';
+export const MCP_GET_MIGRATION_FINDINGS_TOOL_NAME = 'get_migration_findings';
+export const MCP_MIGRATE_WORKFLOW_TOOL_NAME = 'migrate_workflow';
+export const MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME = 'set_migration_finding_status';
+
+export { SUPPORTED_PRODUCTION_MCP_TRIGGERS };
 
 /**
  * All triggers supported for MCP (production + manual mode)

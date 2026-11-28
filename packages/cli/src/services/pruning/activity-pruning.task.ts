@@ -24,6 +24,7 @@ export class ActivityPruningTask implements SystemTask {
 			/** Deleting rows already deleted is a no-op, so a repeated or retried run is harmless. */
 			retryOnFailure: true,
 		},
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: {
 			/** A new leader inherits whatever backlog built up while nobody was sweeping. */
 			runOnTakeover: true,
@@ -38,11 +39,7 @@ export class ActivityPruningTask implements SystemTask {
 		this.logger = this.logger.scoped('activity-log');
 	}
 
-	/**
-	 * Deliberately not gated on the write flag. Turning the flag off stops new rows, not the ones
-	 * already there — and disabling the feature is exactly when a leftover backlog of workflow and
-	 * credential names should still age out. Both sweeps cost one indexed read on an empty table.
-	 */
+	/** Both sweeps cost one indexed read on an empty table. */
 	async run(signal: AbortSignal): Promise<void> {
 		const { retentionDays, maxEntries } = this.activityLogConfig;
 

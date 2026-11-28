@@ -1,7 +1,10 @@
-export { createEngineRuntime } from './runtime';
-export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
+export { createEngineRuntime, ENGINE_ROLES } from './runtime';
+export type { EngineRole, EngineRuntime, EngineRuntimeOptions } from './runtime';
 
 export type { EngineLogger } from './logging';
+
+export { assertSecureTransport, createEngineHttpServer, openEngineTls } from './tls';
+export type { EngineTls, EngineTlsFiles, EngineTlsSource } from './tls';
 
 export {
 	ACTION_TOKEN_SPEC,
@@ -25,6 +28,7 @@ export type {
 	EngineErrorResponse,
 	ExecutionSnapshot,
 	StepDetail,
+	SubExecutionDetail,
 } from './server';
 export type {
 	FindLatestExecutionRequest,
@@ -84,7 +88,12 @@ export type {
 export { jsonObjectSchema, UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 
-export { deriveLoops, isBatchStepConfig } from './graph';
+export {
+	compareByConcatenationOrder,
+	deriveLoops,
+	isBatchStepConfig,
+	validateExecutableGraph,
+} from './graph';
 export type {
 	BatchStepConfig,
 	GraphEdge,
@@ -103,10 +112,12 @@ export type {
 	IStepExecutor,
 	StepExecutionContext,
 	StepExecutionRequest,
+	StepInputSources,
 	StepExecutionResult,
 	SubExecutionDeclaration,
 	SubExecutionMode,
 } from './dependencies';
+export { noopExecutionFilesDeleter } from './dependencies';
 
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
 export type {
@@ -116,20 +127,31 @@ export type {
 } from './admittance';
 
 export type {
+	EngineWorkQueues,
 	ExecutionEnqueuedEvent,
 	OrchestrationMessage,
 	StepSettledEvent,
 	StepMessage,
 	StepReadyEvent,
 	WorkQueue,
+	RedisWorkQueues,
+	WorkQueuePublisherClient,
 } from './queue';
+export { createInMemoryWorkQueues, createRedisWorkQueues } from './queue';
 
-export { ExecutionNotFoundError, InvalidParentLinkError, StepNotFoundError } from './execution';
+export {
+	attachStepErrorDetails,
+	ExecutionNotFoundError,
+	InvalidParentLinkError,
+	StepNotFoundError,
+	stepErrorDetails,
+} from './execution';
 export type {
 	CallerContext,
 	SubExecutionOutcome,
 	SubExecutionResult,
 	SubExecutionResumeCause,
+	CreateExecutionResult,
 	ExecutionMode,
 	ExecutionViewStore,
 	ExecutionRecord,
@@ -139,6 +161,7 @@ export type {
 	ExecutionView,
 	NewExecutionRecord,
 	NewStepRecord,
+	ErrorSourceLink,
 	ParentLink,
 	InvalidParentLinkReason,
 	StartExecutionRequest,
@@ -149,6 +172,8 @@ export type {
 	StepRecord,
 	ResumeCause,
 	StepSlots,
+	ItemSource,
+	StepOutputSources,
 	StepStatus,
 	StepStore,
 	StepView,
@@ -159,5 +184,13 @@ export type {
 	WorkflowDocument,
 } from './execution';
 
-export { createDataSource, WorkflowExecution, WorkflowStepExecution } from './database';
+export { retentionPolicyFromHours } from './retention';
+export type { ExecutionRetentionPolicy } from './retention';
+
+export {
+	createDataSource,
+	runMigrations,
+	WorkflowExecution,
+	WorkflowStepExecution,
+} from './database';
 export type { EngineStores } from './database';

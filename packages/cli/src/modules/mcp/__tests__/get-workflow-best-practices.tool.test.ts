@@ -1,3 +1,4 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import {
 	bestPracticesRegistry,
@@ -6,8 +7,6 @@ import {
 } from '@n8n/workflow-sdk/prompts/best-practices';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createGetWorkflowBestPracticesTool } from '../tools/workflow-builder/get-workflow-best-practices.tool';
@@ -25,11 +24,11 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 
 describe('get-workflow-best-practices MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
-	let telemetry: Mocked<Telemetry>;
+	let telemetry: Mocked<TelemetryProxy>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		telemetry = mock<Telemetry>();
+		telemetry = mock<TelemetryProxy>();
 	});
 
 	const createTool = () => createGetWorkflowBestPracticesTool(user, telemetry);

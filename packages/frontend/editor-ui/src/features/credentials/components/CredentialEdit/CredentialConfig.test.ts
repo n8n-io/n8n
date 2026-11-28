@@ -11,6 +11,8 @@ import { createTestingPinia } from '@pinia/testing';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { STORES } from '@n8n/stores';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import type { QuickConnectOption } from '@n8n/api-types';
 import { vi } from 'vitest';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -20,6 +22,8 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import { addCredentialTranslation } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
+import { computed, toValue } from 'vue';
+import { useGatewayCreditsPromotion } from '../../gatewayCreditsPromotion/useGatewayCreditsPromotion';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -30,6 +34,12 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 		useRouteWorkflowId: () => computed(() => ''),
 	};
 });
+
+vi.mock('../../gatewayCreditsPromotion/useGatewayCreditsPromotion', () => ({
+	useGatewayCreditsPromotion: vi.fn(() => ({
+		promotionText: computed<string | undefined>(() => undefined),
+	})),
+}));
 
 vi.mock('@n8n/i18n', async () => {
 	const actual = await vi.importActual('@n8n/i18n');
@@ -135,6 +145,44 @@ describe('CredentialConfig', () => {
 		);
 
 		expect(screen.queryByTestId('gateway-credits-credential-error-nudge')).not.toBeInTheDocument();
+	});
+
+	describe('Gateway credits promotion', () => {
+		const promotionOptions = () => vi.mocked(useGatewayCreditsPromotion).mock.lastCall?.[0];
+
+		it('looks up the promotion by the node that opened the modal and shows it', () => {
+			vi.mocked(useGatewayCreditsPromotion).mockReturnValueOnce({
+				promotionText: computed<string | undefined>(() => 'Free until December 1, 2026.'),
+			});
+			// Without `merge`, so the context node does not leak into the shared default props.
+			renderComponent({
+				props: {
+					...defaultRenderOptions.props,
+					isManaged: false,
+					contextNode: {
+						id: 'node-1',
+						name: 'Google Gemini',
+						type: '@n8n/n8n-nodes-langchain.googleGemini',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				},
+			});
+
+			expect(toValue(promotionOptions()?.nodeType)).toBe('@n8n/n8n-nodes-langchain.googleGemini');
+			expect(toValue(promotionOptions()?.credentialType)).toBe('testCredential');
+			expect(screen.getByTestId('gateway-credits-promotion')).toHaveTextContent(
+				'Free until December 1, 2026.',
+			);
+		});
+
+		it('looks up the promotion without a node when no node opened the modal', () => {
+			renderComponent({ props: { isManaged: false } }, { merge: true });
+
+			expect(toValue(promotionOptions()?.nodeType)).toBeUndefined();
+			expect(screen.queryByTestId('gateway-credits-promotion')).not.toBeInTheDocument();
+		});
 	});
 
 	it('should not call addCredentialTranslation when getCredentialTranslation returns null', async () => {
@@ -362,6 +410,44 @@ describe('CredentialConfig', () => {
 
 			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
+
+		it.each(['new', 'edit'])(
+			'hides credential type selection for fixed-only %s modals',
+			async (mode) => {
+				const { rerender } = renderComponent({
+					pinia: createPiniaWithStoredCredential('team'),
+					props: {
+						isManaged: false,
+						mode,
+						credentialId: 'cred-1',
+						credentialType: mockCredentialType,
+						credentialProperties: [],
+						credentialData: {},
+						isPrivateCredentialsEnabled: true,
+						isOAuthType: true,
+						isNewCredential: mode === 'new',
+						newCredentialProjectType: 'team',
+						fixedCredentialsOnly: true,
+						credentialPermissions: {
+							create: true,
+							createEndUser: true,
+							update: true,
+							read: true,
+							delete: false,
+							share: false,
+							list: true,
+							move: false,
+						},
+					},
+				});
+
+				expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+
+				await rerender({ fixedCredentialsOnly: false });
+
+				expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			},
+		);
 
 		it('should display dynamic credentials section when all conditions are met for new credential', async () => {
 			renderComponent({
@@ -1148,6 +1234,117 @@ describe('CredentialConfig', () => {
 			});
 
 			expect(screen.queryByTestId('credential-mode-selector')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Quick connect on node-less surfaces', () => {
+		const pineconeCredentialType: ICredentialType = {
+			name: 'pineconeApi',
+			displayName: 'Pinecone API',
+			properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+		};
+
+		const pineconeOption: QuickConnectOption = {
+			packageName: '@n8n/n8n-nodes-langchain',
+			credentialType: 'pineconeApi',
+			text: 'Connect to Pinecone in one click',
+			quickConnectType: 'pinecone',
+			config: { integrationId: 'test-integration-id' },
+		};
+
+		const writePermissions = {
+			create: true,
+			update: true,
+			read: true,
+			delete: false,
+			share: false,
+			list: true,
+			move: false,
+		};
+
+		function renderInQuickConnectMode(quickConnectOptions?: { options: QuickConnectOption[] }) {
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: { enterprise: { sharing: false, externalSecrets: false } },
+					},
+				},
+			});
+
+			if (quickConnectOptions) {
+				const settingsStore = mockedStore(useSettingsStore);
+				settingsStore.moduleSettings['quick-connect'] = quickConnectOptions;
+			}
+
+			return renderComponent({
+				pinia,
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: pineconeCredentialType,
+					credentialProperties: pineconeCredentialType.properties ?? [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isQuickConnectMode: true,
+					credentialPermissions: writePermissions,
+				},
+			});
+		}
+
+		it('shows the quick connect banner from a credential-type match without an active node', () => {
+			renderInQuickConnectMode({ options: [pineconeOption] });
+
+			expect(screen.getByTestId('quick-connect-banner')).toHaveTextContent(
+				'Connect to Pinecone in one click',
+			);
+			expect(screen.getByTestId('quick-connect-modal-button')).toBeInTheDocument();
+		});
+
+		it('shows no quick connect banner when no option is configured for the credential type', () => {
+			renderInQuickConnectMode();
+
+			expect(screen.queryByTestId('quick-connect-banner')).not.toBeInTheDocument();
+		});
+
+		it('keeps the node-scoped package match when an active node is present', () => {
+			const pinia = createTestingPinia({
+				stubActions: false,
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: { enterprise: { sharing: false, externalSecrets: false } },
+					},
+				},
+			});
+
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.setWorkflowId('test-workflow-id');
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
+			ndvStore.activeNode = {
+				parameters: {},
+				type: 'other-package.pinecone',
+				typeVersion: 1,
+				position: [0, 0],
+				id: 'test-node-id',
+				name: 'Test Node',
+				credentials: {},
+			} as INodeUi;
+
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.moduleSettings['quick-connect'] = { options: [pineconeOption] };
+
+			renderComponent({
+				pinia,
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: pineconeCredentialType,
+					credentialProperties: pineconeCredentialType.properties ?? [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isQuickConnectMode: true,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.queryByTestId('quick-connect-banner')).not.toBeInTheDocument();
 		});
 	});
 

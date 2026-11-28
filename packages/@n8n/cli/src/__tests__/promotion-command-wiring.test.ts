@@ -18,6 +18,11 @@ import PromotionProviderList from '../commands/promotion-provider/list';
 import PromotionProviderListBranches from '../commands/promotion-provider/list-branches';
 import PromotionProviderListRepositories from '../commands/promotion-provider/list-repositories';
 import PromotionProviderUpdate from '../commands/promotion-provider/update';
+import PromotionReviewGet from '../commands/promotion-review/get';
+import PromotionReviewList from '../commands/promotion-review/list';
+import PromotionSettingsGet from '../commands/promotion-settings/get';
+import PromotionSettingsUpdate from '../commands/promotion-settings/update';
+import { commands } from '../index';
 
 type CommandClass = new (argv: string[], config: Config) => { run: () => Promise<void> };
 
@@ -93,6 +98,20 @@ const CASES: WiringCase[] = [
 		callArgs: ['prov-1'],
 	},
 	{
+		title: 'promotion-review list',
+		commandClass: PromotionReviewList,
+		flags: { state: 'closed', limit: 5 },
+		method: 'listPromotionReviews',
+		callArgs: ['closed', 5],
+	},
+	{
+		title: 'promotion-review get',
+		commandClass: PromotionReviewGet,
+		args: { id: 'rev-1' },
+		method: 'getPromotionReview',
+		callArgs: ['rev-1'],
+	},
+	{
 		title: 'promotion-environment get',
 		commandClass: PromotionEnvironmentGet,
 		args: { id: 'env-1' },
@@ -161,6 +180,12 @@ const CASES: WiringCase[] = [
 		method: 'removeProjectFromPromotionEnvironment',
 		callArgs: ['env-1', 'proj-1'],
 	},
+	{
+		title: 'promotion-settings get',
+		commandClass: PromotionSettingsGet,
+		method: 'getPromotionSettings',
+		callArgs: [],
+	},
 ];
 
 /**
@@ -188,5 +213,37 @@ describe('promotion commands call the client method that belongs to them', () =>
 		await command.run();
 
 		expect(call).toHaveBeenCalledWith(...callArgs);
+	});
+});
+
+describe('promotion-settings', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('registers both commands', () => {
+		expect(commands['promotion-settings:get']).toBe(PromotionSettingsGet);
+		expect(commands['promotion-settings:update']).toBe(PromotionSettingsUpdate);
+	});
+
+	it('update sends only the settings of the flags that were given', async () => {
+		const command = instantiate(PromotionSettingsUpdate);
+		const internals = command as unknown as Internals;
+		const updatePromotionSettings = vi.fn().mockResolvedValue({});
+		const client = { updatePromotionSettings };
+		vi.spyOn(internals, 'parse').mockResolvedValue({
+			args: {},
+			flags: { 'who-can-promote': 'projectAdminsAndEditors', 'require-approval': 'alwaysRequired' },
+		});
+		vi.spyOn(internals, 'getClient').mockReturnValue(client as unknown as N8nClient);
+		vi.spyOn(internals, 'output').mockImplementation(() => {});
+
+		await command.run();
+
+		// The API keeps the other settings, so a newer change by another admin stays.
+		expect(updatePromotionSettings).toHaveBeenCalledWith({
+			whoCanPromote: 'projectAdminsAndEditors',
+			requireApproval: 'alwaysRequired',
+		});
 	});
 });

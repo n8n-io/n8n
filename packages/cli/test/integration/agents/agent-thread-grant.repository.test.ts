@@ -1,3 +1,4 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { DbConnection, TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -5,14 +6,14 @@ import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentToolApprovalService } from '@/modules/agents/agent-tool-approval.service';
 import { buildAgentConfigurationTelemetryFromConfig } from '@/modules/agents/agent-telemetry';
-import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentThreadGrantRepository } from '@/modules/agents/repositories/agent-thread-grant.repository';
-import type { Telemetry } from '@/telemetry';
 
-const telemetry = mock<Telemetry>();
+const telemetry = mock<TelemetryProxy>();
 const configuration = buildAgentConfigurationTelemetryFromConfig(null);
 
 describe('Agent thread grants', () => {
@@ -21,7 +22,6 @@ describe('Agent thread grants', () => {
 	let grants: AgentThreadGrantRepository;
 	let peerGrants: AgentThreadGrantRepository;
 	let threads: AgentExecutionThreadRepository;
-	let agents: AgentRepository;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['agents']);
@@ -29,7 +29,6 @@ describe('Agent thread grants', () => {
 		source = Container.get(DataSource);
 		grants = Container.get(AgentThreadGrantRepository);
 		threads = Container.get(AgentExecutionThreadRepository);
-		agents = Container.get(AgentRepository);
 		peer = await new DataSource({
 			...source.options,
 			synchronize: false,
@@ -46,15 +45,13 @@ describe('Agent thread grants', () => {
 
 	it('persists shared allowances, isolates threads, and cascades deletion across connections', async () => {
 		const project = await createTeamProject();
-		const agent = await agents.save(
-			agents.create({
-				id: randomUUID(),
-				name: 'Agent',
-				projectId: project.id,
-				integrations: [],
-				tools: {},
-			}),
-		);
+		const agent = await createAgent({
+			id: randomUUID(),
+			name: 'Agent',
+			projectId: project.id,
+			integrations: [],
+			tools: {},
+		});
 		for (const id of ['parent', 'child', 'sibling', 'new-thread']) {
 			await threads.save(
 				threads.create({

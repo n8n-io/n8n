@@ -21,10 +21,10 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useAssistantCreditsStore } from '../assistantCredits.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT } from '@/app/constants/experiments';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
-import { consumePendingN8nChatMessage } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 import { defaultModuleSettings } from './createThreadComponentRenderer';
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
@@ -56,8 +56,7 @@ const {
 		workflowPreviewsAboveAssistantEnabled: { value: false },
 		workflowPreviewsAboveAssistantVariant: { value: null as 'control' | 'variant' | null },
 		// EOF Experiment cleanup
-		splitBelowInputVariant: { value: false },
-		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		inspirationFromTaxonomyVariant: { value: undefined as string | undefined },
 		inspirationFromTaxonomyTreatmentEnabled: { value: false },
 		// EOF Experiment cleanup
@@ -100,6 +99,8 @@ const {
 	appSettingsStoreMock: {
 		isCloudDeployment: false,
 		settings: { releaseChannel: 'stable' },
+		// The input menu reads it to decide whether to show skills.
+		isModuleActive: (_name: string) => false,
 	},
 	agentsN8nChatVariant: { value: undefined as string | undefined },
 	promptSuggestionsV2: Array.from({ length: 12 }, (_, index) => ({
@@ -173,64 +174,6 @@ vi.mock('@/experiments/workflowPreviewsAboveAssistant', async () => {
 });
 // EOF Experiment cleanup
 
-vi.mock('@/experiments/instanceAiSplitEmptyState', async () => {
-	const { computed, h } = await import('vue');
-	type VueSetupContext = {
-		emit: (event: string, ...args: unknown[]) => void;
-		slots: Record<string, (() => import('vue').VNode[]) | undefined>;
-	};
-	return {
-		useInstanceAiSplitEmptyStateExperiment: () => ({
-			isVariantEnabled: computed(() => experimentMocks.splitBelowInputVariant.value),
-		}),
-		INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION: 'v2-cycling-preview',
-		InstanceAiSplitEmptyState: {
-			name: 'InstanceAiSplitEmptyStateStub',
-			props: {
-				projectId: { type: String, required: false },
-				disabled: { type: Boolean, required: false },
-				writing: { type: Boolean, required: false },
-			},
-			emits: ['submit-suggestion', 'insert-suggestion', 'example-change'],
-			setup(_props: Record<string, unknown>, { emit, slots }: VueSetupContext) {
-				return () =>
-					h('div', { 'data-test-id': 'instance-ai-split-empty-state' }, [
-						...(slots.header?.() ?? []),
-						...(slots.input?.() ?? []),
-						h(
-							'button',
-							{
-								'data-test-id': 'instance-ai-split-stub-submit',
-								onClick: () =>
-									emit('submit-suggestion', {
-										promptKey:
-											'experiments.instanceAiWorkflowPreviewSuggestions.suggestions.scoreMyLeads.prompt',
-										suggestionId: 'score-my-leads',
-										suggestionKind: 'quick_example',
-										position: 1,
-										prefillType: 'suggestion_catalog',
-									}),
-							},
-							'submit',
-						),
-						h(
-							'button',
-							{
-								'data-test-id': 'instance-ai-split-stub-example-change',
-								onClick: () =>
-									emit(
-										'example-change',
-										0,
-										'experiments.instanceAiWorkflowPreviewSuggestions.suggestions.scoreMyLeads.prompt',
-									),
-							},
-							'example-change',
-						),
-					]);
-			},
-		},
-	};
-});
 vi.mock('@/experiments/instanceAiPersonalizedPromptSuggestions', () => ({
 	useInstanceAiPersonalizedPromptSuggestionsExperiment: () => ({
 		currentVariant: experimentMocks.personalizedPromptVariant,
@@ -269,16 +212,14 @@ vi.mock('@/experiments/instanceAiPersonalizedPromptSuggestions', () => ({
 	resolvePersonalizedPromptSuggestions: experimentMocks.resolvePersonalizedPromptSuggestions,
 }));
 
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 vi.mock('@/experiments/instanceAiInspirationFromTaxonomy', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	useInstanceAiInspirationFromTaxonomyExperiment: () => ({
 		currentVariant: experimentMocks.inspirationFromTaxonomyVariant,
 		isTreatmentVariant: experimentMocks.inspirationFromTaxonomyTreatmentEnabled,
 		isRowsVariant: computed(
-			() =>
-				experimentMocks.inspirationFromTaxonomyVariant.value === 'variant' ||
-				experimentMocks.inspirationFromTaxonomyVariant.value === 'variant-bis',
+			() => experimentMocks.inspirationFromTaxonomyVariant.value === 'variant',
 		),
 	}),
 }));
@@ -322,7 +263,6 @@ vi.mock('@/features/agents/composables/useAgentsN8nChatFlag', () => ({
 	// object would always be truthy there.
 	useAgentsN8nChatVariant: () => ({
 		isVariantA: computed(() => agentsN8nChatVariant.value === 'variant-a'),
-		isVariantB: computed(() => agentsN8nChatVariant.value === 'variant-b'),
 	}),
 	// Pulled in transitively through `InstanceAiViewHeader` -> `InstanceAiThreadList`.
 	useAgentsN8nChatFlag: () => computed(() => agentsN8nChatVariant.value !== undefined),
@@ -335,50 +275,8 @@ vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentSection.vue', () =
 	},
 }));
 
-vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue', () => ({
-	default: {
-		name: 'N8nChatAgentPickerStub',
-		props: {
-			modelValue: { required: false, default: null },
-			projectId: { required: false },
-			disabled: { type: Boolean, required: false, default: false },
-		},
-		emits: ['update:modelValue'],
-		data: () => ({
-			agent: {
-				id: 'agent-1',
-				name: 'Support Agent',
-				project: { id: 'project-1', name: 'Project' },
-				attachments: { image: true, pdf: false, audio: false },
-				availableInChat: true,
-			},
-		}),
-		template: `
-			<div
-				data-test-id="n8n-chat-agent-picker-stub"
-				:data-disabled="String(disabled)"
-				:data-project-id="projectId"
-			>
-				<button
-					data-test-id="n8n-chat-agent-picker-stub-select-agent"
-					:disabled="disabled"
-					@click="$emit('update:modelValue', agent)"
-				>select agent</button>
-				<button
-					data-test-id="n8n-chat-agent-picker-stub-select-assistant"
-					:disabled="disabled"
-					@click="$emit('update:modelValue', null)"
-				>select assistant</button>
-			</div>
-		`,
-	},
-}));
-
-// Not otherwise exercised by this view's tests; defaults on so the mentions-gating
-// tests below can prove the agent-selection gate rather than a flag that's already off.
-const mentionsFlagEnabled = { value: true };
 vi.mock('@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled', () => ({
-	useIsAssistantAtMentionsEnabled: () => computed(() => mentionsFlagEnabled.value),
+	useIsAssistantAtMentionsEnabled: () => computed(() => true),
 }));
 
 vi.mock('uuid', () => ({
@@ -404,12 +302,8 @@ const InstanceAiInputStub = defineComponent({
 		isStreaming: { type: Boolean, required: false },
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
-		fixedRows: { type: Number, required: false },
 		contextualSuggestion: { type: String, required: false, default: null },
-		placeholder: { type: String, required: false },
-		mentionsEnabled: { type: Boolean, required: false },
 		isOutOfCredits: { type: Boolean, required: false },
-		attachOnlyMimeTypes: { type: String, required: false },
 		acceptedMimeTypes: { type: String, required: false },
 	},
 	emits: ['submit'],
@@ -425,9 +319,6 @@ const InstanceAiInputStub = defineComponent({
 		// Staged by the "attach" test button below; mirrors the real composer's
 		// encoded file attachments.
 		const stagedFileAttachments = ref<InstanceAiAttachment[]>([]);
-		// Toggled by a test button below; mirrors the real composer's own flag while
-		// it awaits file encoding before a submit.
-		const isPreparingSubmission = ref(false);
 		const submit = (message: string) => {
 			const prefill = activePrefill.value;
 			// Mirrors the real composer: the restore callback is always provided, and
@@ -467,22 +358,6 @@ const InstanceAiInputStub = defineComponent({
 			setPrefill: (prefill: { text: string; prefillType: InstanceAiPrefillType }) => {
 				currentText.value = prefill.text;
 				activePrefill.value = { ...prefill };
-			},
-			isPreparingSubmission,
-			// Mirror the real submitSuggestion: resolve the prompt + emit submit.
-			submitSuggestion: (payload: {
-				promptKey: BaseTextKey;
-				suggestionId: string;
-				prefillType: InstanceAiPrefillType;
-			}) => {
-				const prompt = i18n.baseText(payload.promptKey);
-				// Mirrors the real submitSuggestion, which reports the entry id.
-				activePrefill.value = {
-					text: prompt,
-					prefillType: payload.prefillType,
-					prefillId: payload.suggestionId,
-				};
-				submit(prompt);
 			},
 			insertSuggestion: async (payload: {
 				promptKey: BaseTextKey;
@@ -556,33 +431,13 @@ const InstanceAiInputStub = defineComponent({
 				// EOF Experiment cleanup
 				h(
 					'span',
-					{ 'data-test-id': 'instance-ai-input-fixed-rows' },
-					props.fixedRows == null ? 'unset' : String(props.fixedRows),
-				),
-				h(
-					'span',
 					{ 'data-test-id': 'instance-ai-input-availability' },
 					props.isWorkflowBuilderAvailable === false ? 'unavailable' : 'available',
 				),
 				h(
 					'span',
-					{ 'data-test-id': 'instance-ai-input-placeholder' },
-					props.placeholder ?? 'unset',
-				),
-				h(
-					'span',
-					{ 'data-test-id': 'instance-ai-input-mentions-enabled' },
-					String(props.mentionsEnabled),
-				),
-				h(
-					'span',
 					{ 'data-test-id': 'instance-ai-input-out-of-credits' },
 					String(Boolean(props.isOutOfCredits)),
-				),
-				h(
-					'span',
-					{ 'data-test-id': 'instance-ai-input-attach-only' },
-					props.attachOnlyMimeTypes ?? 'unset',
 				),
 				h(
 					'span',
@@ -660,16 +515,6 @@ const InstanceAiInputStub = defineComponent({
 					},
 					'attach workflow',
 				),
-				h(
-					'button',
-					{
-						'data-test-id': 'instance-ai-input-stub-toggle-preparing',
-						onClick: () => {
-							isPreparingSubmission.value = !isPreparingSubmission.value;
-						},
-					},
-					'toggle preparing',
-				),
 				...(slots.footer?.() ?? []),
 			]);
 	},
@@ -743,8 +588,7 @@ describe('InstanceAiEmptyView', () => {
 		experimentMocks.workflowPreviewsAboveAssistantEnabled.value = false;
 		experimentMocks.workflowPreviewsAboveAssistantVariant.value = null;
 		// EOF Experiment cleanup
-		experimentMocks.splitBelowInputVariant.value = false;
-		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		experimentMocks.inspirationFromTaxonomyVariant.value = undefined;
 		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = false;
 		// EOF Experiment cleanup
@@ -757,7 +601,6 @@ describe('InstanceAiEmptyView', () => {
 		cloudPlanStoreMock.state.initialized = false;
 		cloudPlanStoreMock.currentUserCloudInfo = null;
 		appSettingsStoreMock.isCloudDeployment = false;
-		mentionsFlagEnabled.value = true;
 	});
 
 	afterEach(() => {
@@ -881,9 +724,7 @@ describe('InstanceAiEmptyView', () => {
 
 	it.each([
 		['proactive starter', () => (experimentMocks.proactiveAgentEnabled.value = true)],
-		['split layout', () => (experimentMocks.splitBelowInputVariant.value = true)],
 		['n8n Chat variant A', () => (agentsN8nChatVariant.value = 'variant-a')],
-		['n8n Chat variant B', () => (agentsN8nChatVariant.value = 'variant-b')],
 	])('does not report the empty state view when the %s replaces the layout', (_, arrange) => {
 		experimentMocks.workflowPreviewsAboveAssistantVariant.value = 'control';
 		arrange();
@@ -910,21 +751,6 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
 			'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder',
 		);
-	});
-
-	it('lets n8n Chat variant B replace the workflow previews with its picker and suggestions', () => {
-		experimentMocks.workflowPreviewsAboveAssistantEnabled.value = true;
-		agentsN8nChatVariant.value = 'variant-b';
-
-		const { getByTestId, queryByTestId } = renderView();
-
-		expect(queryByTestId('workflow-previews-above-assistant-slot')).not.toBeInTheDocument();
-		expect(getByTestId('instance-ai-empty-layout').className).not.toContain(
-			'workflowPreviewsLayout',
-		);
-		expect(getByTestId('n8n-chat-agent-picker-stub')).toBeInTheDocument();
-		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
-		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
 	});
 
 	it('previews the example prompt in the placeholder and puts it in the composer on click', async () => {
@@ -1095,7 +921,7 @@ describe('InstanceAiEmptyView', () => {
 		vi.useRealTimers();
 	});
 
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	it('shows taxonomy row suggestions and exposes the variant for a sales respondent', () => {
 		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
 		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
@@ -1109,7 +935,7 @@ describe('InstanceAiEmptyView', () => {
 
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('6');
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
-			'v6-taxonomy',
+			'v7-taxonomy',
 		);
 		expect(getByTestId('instance-ai-input-suggestions-component-name')).toHaveTextContent(
 			'TaxonomyPromptSuggestions',
@@ -1121,34 +947,7 @@ describe('InstanceAiEmptyView', () => {
 			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
 			{
 				variant: 'variant',
-				'$feature/129_aia_inspiration_from_taxonomy_v2': 'variant',
-			},
-		);
-		expect(usePostHog().setTaxonomyInspirationEligible).toHaveBeenCalledWith(true);
-	});
-
-	it('shows the alternate suggestion catalog for variant-bis', () => {
-		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant-bis';
-		appSettingsStoreMock.isCloudDeployment = true;
-		cloudPlanStoreMock.state.initialized = true;
-		cloudPlanStoreMock.currentUserCloudInfo = {
-			information: { what_team_are_you_on: 'Marketing' },
-		};
-
-		const { getByTestId } = renderView();
-
-		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('6');
-		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
-			'v6-taxonomy-bis',
-		);
-		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
-			'"suggestion_catalog_version":"v6-taxonomy-bis"',
-		);
-		expect(telemetryTrack).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
-			{
-				variant: 'variant-bis',
-				'$feature/129_aia_inspiration_from_taxonomy_v2': 'variant-bis',
+				'$feature/142_aia_inspiration_from_taxonomy_v3': 'variant',
 			},
 		);
 		expect(usePostHog().setTaxonomyInspirationEligible).toHaveBeenCalledWith(true);
@@ -1232,7 +1031,7 @@ describe('InstanceAiEmptyView', () => {
 		const { getByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
-			'v6-taxonomy',
+			'v7-taxonomy',
 		);
 		expect(experimentMocks.resolvePersonalizedPromptSuggestions).not.toHaveBeenCalled();
 	});
@@ -1287,121 +1086,14 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent('unset');
 	});
 
-	it('renders the split layout and hides the default empty state for the examples-below-input variant', () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-
-		const { getByTestId, queryByTestId } = renderView();
-
-		expect(getByTestId('instance-ai-split-empty-state')).toBeInTheDocument();
-		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
-		expect(queryByTestId('instance-ai-free-nudge-stub')).not.toBeInTheDocument();
-	});
-
-	// The split layout's input is detached and fully rounded, so a banner styled to
-	// fuse onto a sidebar input reads as a stray inset box floating above it.
-	it('renders the credit banner as a self-contained card in the split layout', () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-		creditsStore.isLowCredits = true;
-
-		const { getByTestId } = renderView();
-
-		expect(getByTestId('credit-warning-banner')).toHaveClass('standalone');
-	});
-
-	it('passes the experiment placeholder key and fixed-rows to the input inside the split layout', () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-
-		const { getByTestId } = renderView();
-
-		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
-			'experiments.instanceAiSplitEmptyState.input.placeholder',
-		);
-		expect(getByTestId('instance-ai-input-fixed-rows')).toHaveTextContent('5');
-	});
-
-	it('shows the project selector in the split layout when the user has more than the personal project', () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-		const projectsStore = mockedStore(useProjectsStore);
-		projectsStore.myProjects = [
-			{ id: PERSONAL_PROJECT_ID, type: 'personal' },
-			{ id: 'team-project', type: 'team', name: 'Team project' },
-		] as ProjectListItem[];
-
-		const { getByTestId } = renderView();
-
-		expect(getByTestId('instance-ai-split-project-select')).toBeInTheDocument();
-	});
-
-	it('hides the project selector in the split layout when team projects are not licensed', () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-		const projectsStore = mockedStore(useProjectsStore);
-		projectsStore.isTeamProjectFeatureEnabled = false;
-		projectsStore.myProjects = [
-			{ id: PERSONAL_PROJECT_ID, type: 'personal' },
-			{ id: 'team-project', type: 'team', name: 'Team project' },
-		] as ProjectListItem[];
-
-		const { queryByTestId } = renderView();
-
-		expect(queryByTestId('instance-ai-split-project-select')).not.toBeInTheDocument();
-	});
-
-	it('hides the project selector in the split layout when only the personal project exists', () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-		const projectsStore = mockedStore(useProjectsStore);
-		projectsStore.myProjects = [{ id: PERSONAL_PROJECT_ID, type: 'personal' }] as ProjectListItem[];
-
-		const { queryByTestId } = renderView();
-
-		expect(queryByTestId('instance-ai-split-project-select')).not.toBeInTheDocument();
-	});
-
-	it('resolves the promptKey and creates a thread when the shelf emits submit-suggestion (split enabled)', async () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-		store.syncThread.mockResolvedValue(undefined);
-
-		const { getByTestId } = renderView();
-
-		await fireEvent.click(getByTestId('instance-ai-split-stub-submit'));
-		await flushPromises();
-
-		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID, {
-			source: 'assistant_page',
-			origin: 'internal',
-		});
-		expect(store.getOrCreateRuntime).toHaveBeenCalledWith(
-			'thread-placeholder',
-			PERSONAL_PROJECT_ID,
-		);
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'When a new lead is created in my CRM, enrich it with Lemlist, score it based on fit, then update the lead if qualified and notify the sales team on Slack.',
-			{
-				authorship: {
-					kind: 'prefill',
-					prefillType: 'suggestion_catalog',
-					prefillId: 'score-my-leads',
-					promptModified: false,
-				},
-				attachments: undefined,
-				pushRef: 'test-push-ref',
-			},
-		);
-		expect(replaceMock).toHaveBeenCalledWith({
-			name: INSTANCE_AI_THREAD_VIEW,
-			params: { threadId: 'thread-placeholder' },
-		});
-		expect(showErrorMock).not.toHaveBeenCalled();
-	});
-
 	it('renders the default empty state for the control variant', () => {
-		const { getByTestId, queryByTestId } = renderView();
+		const { getByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-empty-state')).toBeInTheDocument();
 		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
 		expect(getByTestId('instance-ai-free-nudge-stub').parentElement).toContainElement(
 			getByTestId('instance-ai-input-stub'),
 		);
-		expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
 	});
 
 	it('keeps the free nudge ineligible until credits are loaded', async () => {
@@ -1424,7 +1116,9 @@ describe('InstanceAiEmptyView', () => {
 		const { getByTestId, queryByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-input-out-of-credits')).toHaveTextContent('true');
-		expect(getByTestId('credit-warning-banner')).toHaveTextContent("You've run out of AI credits");
+		expect(getByTestId('credit-warning-banner')).toHaveTextContent(
+			"You've run out of Assistant credits",
+		);
 		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
 	});
 
@@ -1457,7 +1151,9 @@ describe('InstanceAiEmptyView', () => {
 		await flushPromises();
 
 		expect(nudge).toHaveAttribute('data-eligible', 'false');
-		expect(getByTestId('credit-warning-banner')).toHaveTextContent("You've run out of AI credits");
+		expect(getByTestId('credit-warning-banner')).toHaveTextContent(
+			"You've run out of Assistant credits",
+		);
 		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
 	});
 
@@ -1496,18 +1192,6 @@ describe('InstanceAiEmptyView', () => {
 		);
 	});
 
-	it('does not track personalized prompt suggestions exposure when split empty state is active', () => {
-		experimentMocks.personalizedPromptVariant.value = 'control';
-		experimentMocks.splitBelowInputVariant.value = true;
-
-		renderView();
-
-		expect(telemetryTrack).not.toHaveBeenCalledWith(
-			'Instance AI personalized prompt suggestions exposed',
-			expect.anything(),
-		);
-	});
-
 	it('does not track personalized prompt suggestions exposure when the proactive starter is active', () => {
 		experimentMocks.personalizedPromptVariant.value = 'control';
 		experimentMocks.proactiveAgentEnabled.value = true;
@@ -1534,7 +1218,7 @@ describe('InstanceAiEmptyView', () => {
 	});
 	// EOF Experiment cleanup
 
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	it('keeps the default empty state for a sales-and-marketing control user and still records exposure', () => {
 		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
 		appSettingsStoreMock.isCloudDeployment = true;
@@ -1552,7 +1236,7 @@ describe('InstanceAiEmptyView', () => {
 			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
 			{
 				variant: 'control',
-				'$feature/129_aia_inspiration_from_taxonomy_v2': 'control',
+				'$feature/142_aia_inspiration_from_taxonomy_v3': 'control',
 			},
 		);
 		expect(usePostHog().setTaxonomyInspirationEligible).toHaveBeenCalledWith(true);
@@ -1576,12 +1260,6 @@ describe('InstanceAiEmptyView', () => {
 	});
 
 	it.each([
-		{
-			name: 'split empty state',
-			setup: () => {
-				experimentMocks.splitBelowInputVariant.value = true;
-			},
-		},
 		{
 			name: 'the proactive starter',
 			setup: () => {
@@ -1644,22 +1322,26 @@ describe('InstanceAiEmptyView', () => {
 		);
 	});
 
-	it('renders the proactive starter and hides the split layout when both 082 and 089 are enabled', () => {
-		experimentMocks.proactiveAgentEnabled.value = true;
-		experimentMocks.splitBelowInputVariant.value = true;
-
-		const { getByTestId, queryByTestId } = renderView();
-
-		expect(getByTestId('instance-ai-proactive-starter')).toHaveTextContent('starter');
-		expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
-		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
-	});
-
 	describe('Assistant agent threads', () => {
 		beforeEach(() => {
 			useSettingsStore().moduleSettings = {
 				'instance-ai': { ...defaultModuleSettings, assistantAgentEnabled: true },
 			};
+			vi.mocked(usePostHog().isFeatureEnabled).mockImplementation(
+				(flag) => flag === INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name,
+			);
+		});
+
+		it('starts a current Assistant thread for a user outside the rollout', async () => {
+			vi.mocked(usePostHog().isFeatureEnabled).mockReturnValue(false);
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('instance-ai-input-accepted-mime-types')).toHaveTextContent('unset');
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(store.syncThread).toHaveBeenCalled();
+			expect(thread.sendMessage).toHaveBeenCalledWith('hello', expect.anything());
 		});
 
 		it('restricts the composer to the file types of the Assistant agent', () => {
@@ -1708,6 +1390,38 @@ describe('InstanceAiEmptyView', () => {
 			expect(pendingMessage?.text).toBe('hello');
 			expect(pendingMessage?.files.map((file) => file.name)).toEqual(['screenshot.png']);
 			expect(pendingMessage?.references).toEqual([]);
+			expect(pendingMessage?.authorship).toEqual(USER_TYPED_MESSAGE);
+		});
+
+		it('starts the App creation on the Assistant agent with the pending App', async () => {
+			const appId = '019a4012-272c-7313-91af-5c94a3d819a9';
+			routeQuery.pendingAppId = appId;
+			routeQuery.projectId = 'project-1';
+			routeQuery.source = 'app_builder_page';
+			pushMock.mockResolvedValue(undefined);
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(store.syncThread).not.toHaveBeenCalled();
+			expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+			expect(pushMock).toHaveBeenCalledWith({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: 'thread-placeholder' },
+			});
+			expect(localStorage.setItem).toHaveBeenCalledWith(
+				'n8n-assistant-agent-launch:thread-placeholder',
+				JSON.stringify({
+					projectId: 'project-1',
+					subject: { type: 'app', id: appId, projectId: 'project-1', pending: true },
+				}),
+			);
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User launched Instance AI thread',
+				expect.objectContaining({ source: 'app_builder_page', runtime: 'agents' }),
+			);
+			expect(consumePendingAssistantAgentMessage('thread-placeholder')?.text).toBe('hello');
 		});
 
 		it('drops the first message and restores the draft when the navigation fails', async () => {
@@ -2072,230 +1786,23 @@ describe('InstanceAiEmptyView', () => {
 			);
 		});
 
-		it('forces the default layout, even with the proactive starter and split-layout experiments on', () => {
+		it('forces the default layout, even with the proactive starter experiment on', () => {
 			agentsN8nChatVariant.value = 'variant-a';
 			experimentMocks.proactiveAgentEnabled.value = true;
-			experimentMocks.splitBelowInputVariant.value = true;
 
 			const { getByTestId, queryByTestId } = renderView();
 
 			expect(queryByTestId('instance-ai-proactive-starter')).not.toBeInTheDocument();
-			expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
 			expect(getByTestId('n8n-chat-agent-section-stub')).toBeInTheDocument();
 			expect(getByTestId('instance-ai-empty-state')).toBeInTheDocument();
 		});
 
-		it.each([undefined, 'variant-b'])(
-			'does not render the agent section for variant %s, leaving the default suggestions in place',
-			(variant) => {
-				agentsN8nChatVariant.value = variant;
-				const { queryByTestId, getByTestId } = renderView();
+		it('does not render the agent section without a variant, leaving the default suggestions in place', () => {
+			const { queryByTestId, getByTestId } = renderView();
 
-				expect(queryByTestId('n8n-chat-agent-section-stub')).not.toBeInTheDocument();
-				expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
-				expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
-			},
-		);
-	});
-
-	describe('n8n Chat variant B', () => {
-		beforeEach(() => {
-			agentsN8nChatVariant.value = 'variant-b';
-		});
-
-		it('renders the picker instead of the empty-state title', () => {
-			const { getByTestId, queryByTestId } = renderView();
-
-			expect(getByTestId('n8n-chat-agent-picker-stub')).toBeInTheDocument();
-			expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
-		});
-
-		it("selects the agent's project, and resets to the entry project on the Assistant", async () => {
-			routeQuery.projectId = 'team-project-42';
-			const { getByTestId } = renderView();
-			const picker = getByTestId('n8n-chat-agent-picker-stub');
-
-			expect(picker).toHaveAttribute('data-project-id', 'team-project-42');
-
-			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
-			await nextTick();
-			expect(picker).toHaveAttribute('data-project-id', 'project-1');
-
-			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-assistant'));
-			await nextTick();
-			expect(picker).toHaveAttribute('data-project-id', 'team-project-42');
-		});
-
-		it('disables the picker while the input is preparing a submission, and re-enables it after', async () => {
-			const { getByTestId } = renderView();
-
-			expect(getByTestId('n8n-chat-agent-picker-stub')).toHaveAttribute('data-disabled', 'false');
-
-			await fireEvent.click(getByTestId('instance-ai-input-stub-toggle-preparing'));
-			await nextTick();
-			expect(getByTestId('n8n-chat-agent-picker-stub')).toHaveAttribute('data-disabled', 'true');
-
-			await fireEvent.click(getByTestId('instance-ai-input-stub-toggle-preparing'));
-			await nextTick();
-			expect(getByTestId('n8n-chat-agent-picker-stub')).toHaveAttribute('data-disabled', 'false');
-		});
-
-		it('forces the default layout, even with the proactive starter and split-layout experiments on', () => {
-			experimentMocks.proactiveAgentEnabled.value = true;
-			experimentMocks.splitBelowInputVariant.value = true;
-
-			const { getByTestId, queryByTestId } = renderView();
-
-			expect(queryByTestId('instance-ai-proactive-starter')).not.toBeInTheDocument();
-			expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
-			expect(getByTestId('n8n-chat-agent-picker-stub')).toBeInTheDocument();
-		});
-
-		it('shows the control suggestions with the Assistant label, and the Assistant placeholder, by default', () => {
-			const { getByTestId } = renderView();
-
+			expect(queryByTestId('n8n-chat-agent-section-stub')).not.toBeInTheDocument();
 			expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
 			expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
-			expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
-				'"label":"Try asking n8n Assistant"',
-			);
-			expect(getByTestId('instance-ai-input-placeholder')).toHaveTextContent('Ask n8n Assistant…');
-		});
-
-		it('hides suggestions and shows the agent name in the placeholder once an agent is selected', async () => {
-			const { getByTestId } = renderView();
-
-			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
-			await nextTick();
-
-			expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('unset');
-			expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
-			expect(getByTestId('instance-ai-input-placeholder')).toHaveTextContent('Ask Support Agent…');
-		});
-
-		it('keeps the composer usable for a selected agent when the workflow builder is unavailable', async () => {
-			useSettingsStore().moduleSettings = {
-				'instance-ai': {
-					...defaultModuleSettings,
-					sandboxEnabled: false,
-					workflowBuilderAvailable: false,
-				},
-			};
-			const { getByTestId, queryByTestId } = renderView();
-			expect(getByTestId('instance-ai-input-availability')).toHaveTextContent('unavailable');
-
-			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
-			await nextTick();
-
-			expect(getByTestId('instance-ai-input-availability')).toHaveTextContent('available');
-			expect(queryByTestId('instance-ai-workflow-builder-unavailable')).not.toBeInTheDocument();
-		});
-
-		it('disables mentions once an agent is selected, and re-enables them back on the Assistant', async () => {
-			const { getByTestId } = renderView();
-
-			expect(getByTestId('instance-ai-input-mentions-enabled')).toHaveTextContent('true');
-
-			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
-			await nextTick();
-			expect(getByTestId('instance-ai-input-mentions-enabled')).toHaveTextContent('false');
-
-			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-assistant'));
-			await nextTick();
-			expect(getByTestId('instance-ai-input-mentions-enabled')).toHaveTextContent('true');
-		});
-
-		it("switches the composer to attach-only with the agent's file types, and back to the full menu on the Assistant", async () => {
-			const { getByTestId } = renderView();
-
-			expect(getByTestId('instance-ai-input-attach-only')).toHaveTextContent('unset');
-			// The current Assistant runtime accepts every file type.
-			expect(getByTestId('instance-ai-input-accepted-mime-types')).toHaveTextContent('unset');
-
-			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
-			await nextTick();
-			expect(getByTestId('instance-ai-input-attach-only')).toHaveTextContent('image/png');
-
-			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-assistant'));
-			await nextTick();
-			expect(getByTestId('instance-ai-input-attach-only')).toHaveTextContent('unset');
-		});
-
-		it('navigates to the agent chat route on submit, without starting an Assistant thread', async () => {
-			const { getByTestId } = renderView();
-
-			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
-			await nextTick();
-			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
-			await flushPromises();
-
-			expect(pushMock).toHaveBeenCalledWith({
-				name: 'AgentN8nChatView',
-				params: { agentId: 'agent-1' },
-			});
-			expect(store.syncThread).not.toHaveBeenCalled();
-			expect(thread.sendMessage).not.toHaveBeenCalled();
-		});
-
-		it('stores the hand-off with the typed text and converted file attachments, and does not start an Assistant thread', async () => {
-			const { getByTestId } = renderView();
-
-			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
-			await nextTick();
-			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
-			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
-			await flushPromises();
-
-			expect(pushMock).toHaveBeenCalledWith({
-				name: 'AgentN8nChatView',
-				params: { agentId: 'agent-1' },
-			});
-			expect(store.syncThread).not.toHaveBeenCalled();
-			expect(thread.sendMessage).not.toHaveBeenCalled();
-
-			const pendingMessage = consumePendingN8nChatMessage('agent-1');
-			expect(pendingMessage?.text).toBe('hello');
-			expect(pendingMessage?.files).toHaveLength(1);
-			expect(pendingMessage?.files[0].name).toBe('context.txt');
-			expect(pendingMessage?.files[0].type).toBe('text/plain');
-			expect(pendingMessage?.files[0].size).toBe('file content'.length);
-		});
-
-		it('drops the hand-off when the navigation to the agent fails', async () => {
-			pushMock.mockResolvedValueOnce(new Error('navigation aborted'));
-			const { getByTestId } = renderView();
-
-			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
-			await nextTick();
-			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
-			await flushPromises();
-
-			expect(consumePendingN8nChatMessage('agent-1')).toBeUndefined();
-		});
-
-		it('keeps a second hand-off when the first submission fails navigation after the second was stashed', async () => {
-			const firstPush = createDeferredPromise<unknown>();
-			pushMock.mockImplementationOnce(async () => await firstPush.promise);
-			const { getByTestId } = renderView();
-
-			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
-			await nextTick();
-			// First submission: push 1 stays pending, no files.
-			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
-
-			// Second submission lands while push 1 is still pending — the composer
-			// stays live, so nothing blocks it. A file tells the two apart.
-			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
-			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
-			await flushPromises();
-
-			// Push 1 fails after the second stash is in place.
-			firstPush.resolve(new Error('navigation aborted'));
-			await flushPromises();
-
-			const pendingMessage = consumePendingN8nChatMessage('agent-1');
-			expect(pendingMessage?.files).toHaveLength(1);
-			expect(pendingMessage?.files[0]?.name).toBe('context.txt');
 		});
 	});
 });

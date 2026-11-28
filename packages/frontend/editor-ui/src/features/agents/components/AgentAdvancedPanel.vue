@@ -5,10 +5,12 @@ import { useDebounceFn } from '@vueuse/core';
 import {
 	AGENT_REASONING_LEVELS,
 	getModelPromptCachingCapability,
+	resolveAgentSandboxEgressEnabled,
 	type AgentReasoningLevel,
 } from '@n8n/api-types';
 import { N8nInputNumber, N8nOption, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentMemoryModelSetting from './AgentMemoryModelSetting.vue';
 import AgentPanel from './AgentPanel.vue';
 
@@ -19,6 +21,7 @@ import { modelToString, parseModelString } from '../utils/model-string';
 import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 const { catalog, ensureLoaded } = useModelCatalog();
 
 function normalizeReasoningLevel(value: unknown): AgentReasoningLevel {
@@ -148,7 +151,7 @@ function makeNumberField(key: NumberConfigKey, options: NumberFieldOptions) {
 
 const CONCURRENCY_MIN = 1;
 const CONCURRENCY_MAX = 100;
-const CONCURRENCY_DEFAULT = 5;
+const CONCURRENCY_DEFAULT = 1;
 const MAX_ITERATIONS_MIN = 1;
 const MAX_ITERATIONS_MAX = 200;
 const MAX_ITERATIONS_DEFAULT = 100;
@@ -180,6 +183,8 @@ function anthropicTtlFrom(cfg: AgentJsonConfig | null): AnthropicCacheTtl {
 }
 
 const anthropicTtl = ref<AnthropicCacheTtl>(anthropicTtlFrom(props.config));
+// Caching is on by default for supported models; only an explicit `enabled: false` turns it off.
+const promptCachingEnabled = computed(() => props.config?.config?.promptCaching?.enabled !== false);
 
 watch(
 	() => props.config,
@@ -216,12 +221,52 @@ function onReasoningLevelChange(value: AgentReasoningLevel) {
 	emitReasoning();
 }
 
+function emitPromptCaching(enabled: boolean) {
+	const ttl = props.config?.config?.promptCaching?.anthropic?.ttl;
+	emit('update:config', {
+		config: {
+			...props.config?.config,
+			promptCaching: { enabled, ...(ttl ? { anthropic: { ttl } } : {}) },
+		},
+	});
+}
+
 function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 	anthropicTtl.value = value;
 	emit('update:config', {
 		config: {
 			...props.config?.config,
 			promptCaching: { enabled: true, anthropic: { ttl: value } },
+		},
+	});
+}
+
+// ---------------------------------------------------------------------------
+// Sandbox internet access
+// ---------------------------------------------------------------------------
+
+const isSandboxEnabled = computed(
+	() => settingsStore.moduleSettings.agents?.sandboxEnabled === true,
+);
+const sandboxEgressPolicy = computed(
+	() => settingsStore.moduleSettings.agents?.sandboxEgressPolicy ?? 'opt-in',
+);
+const isSandboxEgressLockedByInstance = computed(() => sandboxEgressPolicy.value === 'disabled');
+const sandboxEgressEnabled = computed(() =>
+	resolveAgentSandboxEgressEnabled(sandboxEgressPolicy.value, props.config?.config?.sandboxEgress),
+);
+const sandboxEgressHintKey = computed(() =>
+	isSandboxEgressLockedByInstance.value
+		? 'agents.builder.advanced.sandboxEgress.disabledHint'
+		: 'agents.builder.advanced.sandboxEgress.hint',
+);
+
+function onSandboxEgressToggle(enabled: boolean) {
+	if (isSandboxEgressLockedByInstance.value) return;
+	emit('update:config', {
+		config: {
+			...props.config?.config,
+			sandboxEgress: enabled,
 		},
 	});
 }
@@ -294,31 +339,52 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 					</div>
 				</div>
 
-				<div v-if="promptCachingCapability === 'ttl'" :class="$style.settingGroup">
+				<div v-if="promptCachingCapability" :class="$style.settingGroup">
 					<div :class="shared.settingRow">
 						<div :class="shared.settingLabel">
 							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
-								i18n.baseText('agents.builder.advanced.promptCachingTtl.label')
+								i18n.baseText('agents.builder.advanced.promptCaching.label')
 							}}</N8nText>
 							<N8nText size="small" :class="shared.dataEntrySubLabel">
 								{{ i18n.baseText('agents.builder.advanced.promptCaching.hint') }}
 							</N8nText>
 						</div>
-						<N8nSelect
-							:model-value="anthropicTtl"
-							size="small"
+						<N8nSwitch2
+							:model-value="promptCachingEnabled"
 							:disabled="props.disabled"
-							:class="shared.settingControlShort"
-							data-testid="agent-prompt-caching-ttl-select"
-							@update:model-value="(v) => onAnthropicTtlChange(v as AnthropicCacheTtl)"
-						>
-							<N8nOption
-								v-for="opt in ANTHROPIC_CACHE_TTL_OPTIONS"
-								:key="opt"
-								:value="opt"
-								:label="opt"
-							/>
-						</N8nSelect>
+							:class="[$style.switchControl, shared.settingControl]"
+							data-testid="agent-prompt-caching-toggle"
+							data-attr="agent-prompt-caching-toggle"
+							@update:model-value="(v) => emitPromptCaching(Boolean(v))"
+						/>
+					</div>
+
+					<div
+						v-if="promptCachingEnabled && promptCachingCapability === 'ttl'"
+						:class="$style.subSettings"
+					>
+						<div :class="shared.settingRow">
+							<div :class="shared.settingLabel">
+								<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+									i18n.baseText('agents.builder.advanced.promptCachingTtl.label')
+								}}</N8nText>
+							</div>
+							<N8nSelect
+								:model-value="anthropicTtl"
+								size="small"
+								:disabled="props.disabled"
+								:class="shared.settingControlShort"
+								data-testid="agent-prompt-caching-ttl-select"
+								@update:model-value="(v) => onAnthropicTtlChange(v as AnthropicCacheTtl)"
+							>
+								<N8nOption
+									v-for="opt in ANTHROPIC_CACHE_TTL_OPTIONS"
+									:key="opt"
+									:value="opt"
+									:label="opt"
+								/>
+							</N8nSelect>
+						</div>
 					</div>
 				</div>
 
@@ -363,6 +429,33 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						:class="shared.settingControlShort"
 						data-testid="agent-max-iterations-input"
 						@update:model-value="onMaxIterationsChange"
+					/>
+				</div>
+
+				<div
+					v-if="isSandboxEnabled"
+					:class="shared.settingRow"
+					data-testid="agent-sandbox-egress-row"
+				>
+					<div :class="shared.settingLabel">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+							i18n.baseText('agents.builder.advanced.sandboxEgress.label')
+						}}</N8nText>
+						<N8nText
+							size="small"
+							:class="shared.dataEntrySubLabel"
+							data-testid="agent-sandbox-egress-hint"
+						>
+							{{ i18n.baseText(sandboxEgressHintKey) }}
+						</N8nText>
+					</div>
+					<N8nSwitch2
+						:model-value="sandboxEgressEnabled"
+						:disabled="props.disabled || isSandboxEgressLockedByInstance"
+						:class="[$style.switchControl, shared.settingControl]"
+						data-testid="agent-sandbox-egress-toggle"
+						data-attr="agent-sandbox-egress-toggle"
+						@update:model-value="(v) => onSandboxEgressToggle(Boolean(v))"
 					/>
 				</div>
 			</div>

@@ -45,6 +45,16 @@ export type RuntimeBinding =
 	| { key: string; kind: 'dataTable'; permissions: Array<'read' | 'insert' | 'update' | 'delete'> }
 	| { key: string; kind: 'agent'; permissions: Array<'chat' | 'history'> };
 
+/** An account that a workflow run needs from the visitor. */
+export interface CredentialConnection {
+	name: string;
+	type: string;
+	status: 'missing' | 'configured' | 'resolver_missing';
+	/** Opens n8n to connect the visitor's account. Set when `status` is `missing`. */
+	connectUrl?: string;
+	iconUrl?: string;
+}
+
 export type RunStatus = 'success' | 'error' | 'waiting' | 'canceled' | 'running' | 'unknown';
 
 export interface RunResult<T> {
@@ -143,7 +153,7 @@ export type AgentSseEvent =
 	| { type: 'reasoning-end'; id: string }
 	| { type: 'tool-input-start'; toolCallId: string; toolName: string }
 	| { type: 'tool-input-delta'; toolCallId: string; delta: string }
-	| { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
+	| { type: 'tool-call'; toolCallId: string; toolName: string; input?: unknown }
 	| { type: 'tool-execution-start'; toolCallId: string; toolName: string; startTime: number }
 	| {
 			type: 'tool-execution-end';
@@ -156,7 +166,7 @@ export type AgentSseEvent =
 			type: 'tool-result';
 			toolCallId: string;
 			toolName: string;
-			output: unknown;
+			output?: unknown;
 			isError?: boolean;
 			canceled?: boolean;
 	  }

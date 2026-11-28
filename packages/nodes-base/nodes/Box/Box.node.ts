@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
@@ -94,7 +94,7 @@ export class Box implements INodeType {
 						responseData = await boxApiRequest.call(
 							this,
 							'POST',
-							`/files/${fileId}/copy`,
+							requestPath`/files/${fileId}/copy`,
 							body,
 							qs,
 						);
@@ -102,14 +102,14 @@ export class Box implements INodeType {
 					// https://developer.box.com/reference/delete-files-id
 					if (operation === 'delete') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						responseData = await boxApiRequest.call(this, 'DELETE', `/files/${fileId}`);
+						responseData = await boxApiRequest.call(this, 'DELETE', requestPath`/files/${fileId}`);
 						responseData = { success: true };
 					}
 					// https://developer.box.com/reference/get-files-id-content
 					if (operation === 'download') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
 						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
-						responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}`);
+						responseData = await boxApiRequest.call(this, 'GET', requestPath`/files/${fileId}`);
 
 						const fileName = responseData.name;
 
@@ -118,7 +118,7 @@ export class Box implements INodeType {
 						responseData = await boxApiRequest.call(
 							this,
 							'GET',
-							`/files/${fileId}/content`,
+							requestPath`/files/${fileId}/content`,
 							{},
 							{},
 							undefined,
@@ -158,7 +158,13 @@ export class Box implements INodeType {
 						if (additionalFields.fields) {
 							qs.fields = additionalFields.fields as string;
 						}
-						responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}`, {}, qs);
+						responseData = await boxApiRequest.call(
+							this,
+							'GET',
+							requestPath`/files/${fileId}`,
+							{},
+							qs,
+						);
 					}
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
@@ -178,8 +184,8 @@ export class Box implements INodeType {
 							const createdRangeValues = (additionalFields.createdRangeUi as IDataObject)
 								.createdRangeValuesUi as IDataObject;
 							if (createdRangeValues) {
-								const from = moment.tz(createdRangeValues.from, tz).format();
-								const to = moment.tz(createdRangeValues.to, tz).format();
+								const from = moment.tz(createdRangeValues.from as string, tz).format();
+								const to = moment.tz(createdRangeValues.to as string, tz).format();
 								qs.created_at_range = `${from},${to}`;
 							}
 							delete qs.createdRangeUi;
@@ -189,8 +195,8 @@ export class Box implements INodeType {
 							const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject)
 								.updatedRangeValuesUi as IDataObject;
 							if (updateRangeValues) {
-								qs.updated_at_range = `${moment.tz(updateRangeValues.from, tz).format()},${moment
-									.tz(updateRangeValues.to, tz)
+								qs.updated_at_range = `${moment.tz(updateRangeValues.from as string, tz).format()},${moment
+									.tz(updateRangeValues.to as string, tz)
 									.format()}`;
 							}
 							delete qs.updatedRangeUi;
@@ -201,13 +207,13 @@ export class Box implements INodeType {
 								this,
 								'entries',
 								'GET',
-								'/search',
+								requestPath`/search`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await boxApiRequest.call(this, 'GET', '/search', {}, qs);
+							responseData = await boxApiRequest.call(this, 'GET', requestPath`/search`, {}, qs);
 							responseData = responseData.entries;
 						}
 					}
@@ -253,7 +259,13 @@ export class Box implements INodeType {
 							body.accessible_by.id = this.getNodeParameter('groupId', i) as string;
 						}
 
-						responseData = await boxApiRequest.call(this, 'POST', '/collaborations', body, qs);
+						responseData = await boxApiRequest.call(
+							this,
+							'POST',
+							requestPath`/collaborations`,
+							body,
+							qs,
+						);
 					}
 					// https://developer.box.com/reference/post-files-content
 					if (operation === 'upload') {
@@ -295,10 +307,10 @@ export class Box implements INodeType {
 							responseData = await boxApiRequest.call(
 								this,
 								'POST',
-								'',
+								requestPath``,
 								{},
 								{},
-								'https://upload.box.com/api/2.0/files/content',
+								requestUrl`https://upload.box.com/api/2.0/files/content`,
 								{ formData: body },
 							);
 							responseData = responseData.entries;
@@ -327,10 +339,10 @@ export class Box implements INodeType {
 							responseData = await boxApiRequest.call(
 								this,
 								'POST',
-								'',
+								requestPath``,
 								{},
 								{},
-								'https://upload.box.com/api/2.0/files/content',
+								requestUrl`https://upload.box.com/api/2.0/files/content`,
 								{ formData: body },
 							);
 							responseData = responseData.entries;
@@ -363,7 +375,7 @@ export class Box implements INodeType {
 							qs.fields = options.fields as string;
 						}
 
-						responseData = await boxApiRequest.call(this, 'POST', '/folders', body, qs);
+						responseData = await boxApiRequest.call(this, 'POST', requestPath`/folders`, body, qs);
 					}
 					// https://developer.box.com/reference/delete-folders-id
 					if (operation === 'delete') {
@@ -371,13 +383,23 @@ export class Box implements INodeType {
 						const recursive = this.getNodeParameter('recursive', i) as boolean;
 						qs.recursive = recursive;
 
-						responseData = await boxApiRequest.call(this, 'DELETE', `/folders/${folderId}`, qs);
+						responseData = await boxApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/folders/${folderId}`,
+							qs,
+						);
 						responseData = { success: true };
 					}
 					// https://developer.box.com/reference/get-folders-id/
 					if (operation === 'get') {
 						const folderId = this.getNodeParameter('folderId', i) as string;
-						responseData = await boxApiRequest.call(this, 'GET', `/folders/${folderId}`, qs);
+						responseData = await boxApiRequest.call(
+							this,
+							'GET',
+							requestPath`/folders/${folderId}`,
+							qs,
+						);
 					}
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
@@ -397,8 +419,8 @@ export class Box implements INodeType {
 							const createdRangeValues = (additionalFields.createdRangeUi as IDataObject)
 								.createdRangeValuesUi as IDataObject;
 							if (createdRangeValues) {
-								qs.created_at_range = `${moment.tz(createdRangeValues.from, tz).format()},${moment
-									.tz(createdRangeValues.to, tz)
+								qs.created_at_range = `${moment.tz(createdRangeValues.from as string, tz).format()},${moment
+									.tz(createdRangeValues.to as string, tz)
 									.format()}`;
 							}
 							delete qs.createdRangeUi;
@@ -408,8 +430,8 @@ export class Box implements INodeType {
 							const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject)
 								.updatedRangeValuesUi as IDataObject;
 							if (updateRangeValues) {
-								qs.updated_at_range = `${moment.tz(updateRangeValues.from, tz).format()},${moment
-									.tz(updateRangeValues.to, tz)
+								qs.updated_at_range = `${moment.tz(updateRangeValues.from as string, tz).format()},${moment
+									.tz(updateRangeValues.to as string, tz)
 									.format()}`;
 							}
 							delete qs.updatedRangeUi;
@@ -420,13 +442,13 @@ export class Box implements INodeType {
 								this,
 								'entries',
 								'GET',
-								'/search',
+								requestPath`/search`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await boxApiRequest.call(this, 'GET', '/search', {}, qs);
+							responseData = await boxApiRequest.call(this, 'GET', requestPath`/search`, {}, qs);
 							responseData = responseData.entries;
 						}
 					}
@@ -472,7 +494,13 @@ export class Box implements INodeType {
 							body.accessible_by.id = this.getNodeParameter('groupId', i) as string;
 						}
 
-						responseData = await boxApiRequest.call(this, 'POST', '/collaborations', body, qs);
+						responseData = await boxApiRequest.call(
+							this,
+							'POST',
+							requestPath`/collaborations`,
+							body,
+							qs,
+						);
 					}
 					//https://developer.box.com/guides/folders/single/move/
 					if (operation === 'update') {
@@ -499,7 +527,13 @@ export class Box implements INodeType {
 							body.tags = (body.tags as string).split(',');
 						}
 
-						responseData = await boxApiRequest.call(this, 'PUT', `/folders/${folderId}`, body, qs);
+						responseData = await boxApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/folders/${folderId}`,
+							body,
+							qs,
+						);
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(

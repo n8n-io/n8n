@@ -1,9 +1,10 @@
-import type { WorkflowData } from '../types';
+import type { NodeProxy } from '../types/evaluator';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import {
 	isEscapedTransferValue,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_VALUE_KEY,
+	unboxPrimitive,
 } from '../runtime/transfer';
 import { bridgeMessageSchema } from './bridge-messages';
 import { prepareForGuest } from './guest-transfer';
@@ -12,10 +13,10 @@ import type { HostDataResolver } from './host-data-resolver';
 // ============================================================================
 // Host-side functions shared by the expression bridges.
 //
-// Both IsolatedVmBridge and QuickJsBridge expose the same three host
-// callbacks to the guest — getValueAtPath, getArrayElement, callHost — plus
-// the error-sentinel helpers and bundle loader around them. The logic is
-// engine-agnostic: each bridge wraps these functions in its own
+// Both IsolatedVmBridge and QuickJsBridge expose the same four host
+// callbacks to the guest — getValueAtPath, getArrayElement, callHost,
+// readBatch — plus the error-sentinel helpers and bundle loader around them.
+// The logic is engine-agnostic: each bridge wraps these functions in its own
 // callback mechanism (ivm.Callback / vm.newFunction) and marshals the
 // plain, JSON-shaped return values across its own boundary.
 // ============================================================================
@@ -59,9 +60,10 @@ export function serializeError(err: unknown): ErrorSentinel {
 			message: err.message,
 			stack: err.stack,
 			extra,
+			fromHost: true,
 		};
 	}
-	return { __isError: true, name: 'Error', message: String(err), extra: {} };
+	return { __isError: true, name: 'Error', message: String(err), extra: {}, fromHost: true };
 }
 
 /**
@@ -109,8 +111,51 @@ export function getArrayElement(
 	return toHostMetadata(arr[index]);
 }
 
+/** Own string keys of a boxed primitive other than a String's indices and `length`. */
+function ownFieldsOf(
+	value: object,
+	primitive: string | number | boolean | bigint,
+): { keys: string[]; hiddenKeys: string[] } {
+	const isString = typeof primitive === 'string';
+	const indexCount = isString ? primitive.length : 0;
+	const names = Object.getOwnPropertyNames(value);
+	if (names.length <= (isString ? indexCount + 1 : 0)) {
+		return { keys: [], hiddenKeys: [] };
+	}
+	const keys: string[] = [];
+	const hiddenKeys: string[] = [];
+	for (let i = indexCount; i < names.length; i++) {
+		const key = names[i];
+		if (isString && key === 'length') continue;
+		if (Object.getOwnPropertyDescriptor(value, key)?.enumerable === true) {
+			keys.push(key);
+		} else {
+			hiddenKeys.push(key);
+		}
+	}
+	return { keys, hiddenKeys };
+}
+
+/**
+ * Describe a boxed primitive without reading its own fields. Without own fields
+ * it goes across as it is. With own fields it goes across with their key lists,
+ * because a direct transfer copies only the primitive.
+ */
+function boxedPrimitiveToHostMetadata(
+	value: object,
+	primitive: string | number | boolean | bigint,
+): unknown {
+	const { keys, hiddenKeys } = ownFieldsOf(value, primitive);
+	if (keys.length === 0 && hiddenKeys.length === 0) {
+		return value;
+	}
+	return hiddenKeys.length === 0
+		? { __isBoxed: true, __value: value, __keys: keys }
+		: { __isBoxed: true, __value: value, __keys: keys, __hiddenKeys: hiddenKeys };
+}
+
 /** Describe objects and arrays without reading their contents. */
-function toHostMetadata(value: unknown): unknown {
+export function toHostMetadata(value: unknown): unknown {
 	// Host functions use the callHost channel, not the lazy data path.
 	if (typeof value === 'function') {
 		return undefined;
@@ -134,10 +179,13 @@ function toHostMetadata(value: unknown): unknown {
 	}
 
 	if (value !== null && typeof value === 'object') {
-		return {
-			__isObject: true,
-			__keys: Object.keys(value),
-		};
+		const primitive = unboxPrimitive(value);
+		return primitive === undefined
+			? {
+					__isObject: true,
+					__keys: Object.keys(value),
+				}
+			: boxedPrimitiveToHostMetadata(value, primitive);
 	}
 
 	return value;
@@ -170,12 +218,19 @@ function toHostMetadata(value: unknown): unknown {
  * values must not be returned. An Error in a result crosses as a marker
  * (see `prepareForGuest`).
  */
-export function dispatchHostCall(rawMsg: unknown, data: WorkflowData): unknown {
-	return prepareForGuest(dispatchHostMessage(rawMsg, data));
+export function dispatchHostCall(rawMsg: unknown, resolver: HostDataResolver): unknown {
+	return prepareForGuest(dispatchHostMessage(rawMsg, resolver));
 }
 
-function dispatchHostMessage(rawMsg: unknown, data: WorkflowData): unknown {
+/** Return the host node proxy of `$(nodeName)` from the resolver cache. */
+function resolveNode(resolver: HostDataResolver, nodeName: string): NodeProxy | undefined {
+	const node = resolver.resolve(['$', nodeName]);
+	return typeof node === 'object' && node !== null ? node : undefined;
+}
+
+function dispatchHostMessage(rawMsg: unknown, resolver: HostDataResolver): unknown {
 	const msg = bridgeMessageSchema.parse(rawMsg);
+	const data = resolver.getData();
 	switch (msg.type) {
 		// The `$('Foo').{first,last,all}` typed RPCs.
 		//
@@ -189,11 +244,11 @@ function dispatchHostMessage(rawMsg: unknown, data: WorkflowData): unknown {
 		// same observable result the runtime's `E()` handler produces from any
 		// thrown error here.
 		case 'getNodeFirst':
-			return data.$?.(msg.nodeName)?.first?.(msg.branchIndex, msg.runIndex);
+			return resolveNode(resolver, msg.nodeName)?.first?.(msg.branchIndex, msg.runIndex);
 		case 'getNodeLast':
-			return data.$?.(msg.nodeName)?.last?.(msg.branchIndex, msg.runIndex);
+			return resolveNode(resolver, msg.nodeName)?.last?.(msg.branchIndex, msg.runIndex);
 		case 'getNodeAll':
-			return data.$?.(msg.nodeName)?.all?.(msg.branchIndex, msg.runIndex);
+			return resolveNode(resolver, msg.nodeName)?.all?.(msg.branchIndex, msg.runIndex);
 		// The `$input.{first,last,all}` typed RPCs.
 		//
 		// Each reads a fixed literal property name off `data.$input` (the
@@ -240,14 +295,18 @@ function dispatchHostMessage(rawMsg: unknown, data: WorkflowData): unknown {
 		// those host-side branches fire exactly as they do in the legacy
 		// engine; no in-guest validation needed.
 		case 'getNodePairedItem':
-			return data.$?.(msg.nodeName)?.pairedItem?.(msg.itemIndex);
+			return resolveNode(resolver, msg.nodeName)?.pairedItem?.(msg.itemIndex);
 		case 'getNodeItemMatching':
-			return data.$?.(msg.nodeName)?.itemMatching?.(msg.itemIndex);
+			return resolveNode(resolver, msg.nodeName)?.itemMatching?.(msg.itemIndex);
 		case 'getNodeItem':
 			// `.item` is a host getter — accessing it invokes the resolver and
 			// returns the value immediately. Optional chaining only short-
 			// circuits on null/undefined; the getter still fires on access.
-			return data.$?.(msg.nodeName)?.item;
+			return resolveNode(resolver, msg.nodeName)?.item;
+		// The host node proxy cannot cross the boundary, so only its errors are returned.
+		case 'checkNode':
+			resolveNode(resolver, msg.nodeName);
+			return undefined;
 		// `$evaluateExpression(expression, itemIndex?)`. Forwards the string
 		// to the host's nested-evaluation helper, which re-enters the
 		// expression engine on the inner expression. Under the VM engine this

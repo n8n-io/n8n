@@ -1,7 +1,9 @@
+import { StatisticsNames } from '@n8n/db';
 import {
 	ExecutionStatusList,
 	isCompletedExecutionStatus,
 	WorkflowExecuteModeList,
+	type ExecutionBlockedReason,
 	type ExecutionStatus,
 	type WorkflowExecuteMode,
 	type WorkflowExecutionSource,
@@ -16,10 +18,12 @@ import {
 	isLedgerFact,
 	savesTime,
 	toLedgerOutcome,
+	toWorkflowStatisticsCount,
 } from '../counting-rules';
 import type {
 	CompletedRun,
 	LedgerEntityType,
+	LedgerBlockedBy,
 	LedgerEvent,
 	LedgerFact,
 	LedgerOutcome,
@@ -102,15 +106,30 @@ const expectSavesTime = (f: LedgerFact) =>
 	['cli', 'retry', 'trigger', 'webhook', 'evaluation'].includes(f.mode);
 
 const expectLimit = (f: LedgerFact) =>
+	f.entityType === 'workflow' &&
 	f.event === 'started' &&
 	f.outcome === 'none' &&
 	f.source !== 'instance_ai' &&
-	['cli', 'retry', 'trigger', 'webhook', 'evaluation', 'internal', 'agent'].includes(f.mode);
+	['cli', 'retry', 'trigger', 'webhook', 'evaluation'].includes(f.mode);
 
 const expectDelta = (f: LedgerFact) => {
 	if (expectLimit(f)) return 1;
 	const wouldHaveCounted = expectLimit({ ...f, event: 'started', outcome: 'none' });
 	return f.event === 'ended' && f.outcome === 'blocked' && wouldHaveCounted ? -1 : 0;
+};
+
+const expectStatisticsName = (f: LedgerFact): StatisticsNames | null => {
+	const counted =
+		f.entityType === 'workflow' &&
+		f.event === 'ended' &&
+		['success', 'error', 'crashed'].includes(f.outcome) &&
+		f.mode !== 'chat';
+	if (!counted) return null;
+	const isManual = f.mode === 'manual' || f.source === 'instance_ai';
+	if (f.outcome === 'success') {
+		return isManual ? StatisticsNames.manualSuccess : StatisticsNames.productionSuccess;
+	}
+	return isManual ? StatisticsNames.manualError : StatisticsNames.productionError;
 };
 
 function fact(overrides: Partial<LedgerFact> = {}): LedgerFact {
@@ -174,6 +193,17 @@ describe('countsTowardExecutionLimit', () => {
 		const start = fact({ mode: 'integrated', event: 'started', outcome: 'none' });
 		expect(countsTowardExecutionLimit(start)).toBe(false);
 	});
+
+	test('an agent run never counts toward the limit', () => {
+		const agentFacts = allFacts.filter((f) => f.entityType === 'agent' || f.mode === 'agent');
+		expect(agentFacts.filter(countsTowardExecutionLimit).map(describeFact)).toEqual([]);
+	});
+
+	test.each(allModes)('a workflow run in %s mode counts only if billing counts it', (mode) => {
+		const started = fact({ mode, event: 'started', outcome: 'none' });
+		const ended = fact({ mode, event: 'ended', outcome: 'success' });
+		expect(countsTowardExecutionLimit(started)).toBe(isBillableExecution(ended));
+	});
 });
 
 describe('executionLimitDelta', () => {
@@ -191,6 +221,10 @@ describe('executionLimitDelta', () => {
 
 	test('is 0 when a run ends normally', () => {
 		expect(executionLimitDelta(fact({ event: 'ended', outcome: 'success' }))).toBe(0);
+	});
+
+	test('is 0 when a run ends canceled, so a canceled run keeps its slot', () => {
+		expect(executionLimitDelta(fact({ event: 'ended', outcome: 'canceled' }))).toBe(0);
 	});
 
 	test('is 0 when a sub-workflow run ends blocked', () => {
@@ -255,33 +289,101 @@ describe('toLedgerOutcome', () => {
 		['running', 'none'],
 		['unknown', 'none'],
 		['waiting', 'none'],
-	])('maps status %s to outcome %s', (status, expected) => {
-		expect(toLedgerOutcome({ mode: 'webhook', status, startedAt })).toBe(expected);
+	])('maps status %s to outcome %s with no blocker', (status, outcome) => {
+		expect(toLedgerOutcome({ mode: 'webhook', status, startedAt })).toEqual({
+			outcome,
+			blockedBy: 'none',
+		});
 	});
 
-	test('returns blocked for an error that failed before start', () => {
+	test.each<[ExecutionBlockedReason, LedgerBlockedBy]>([
+		['policy', 'policy'],
+		['credentialAccess', 'credentialAccess'],
+		['invalidWorkflow', 'invalidWorkflow'],
+		['contextHook', 'contextHook'],
+		['startFailed', 'startFailed'],
+	])('returns blocked by the stored value of reason %s', (reason, blockedBy) => {
+		const data = { resultData: { failedBeforeStart: reason } };
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'error', startedAt, data })).toEqual({
+			outcome: 'blocked',
+			blockedBy,
+		});
+	});
+
+	test('returns blocked for a crash that carries a reason', () => {
+		const data = { resultData: { failedBeforeStart: 'policy' as const } };
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'crashed', startedAt, data })).toEqual({
+			outcome: 'blocked',
+			blockedBy: 'policy',
+		});
+	});
+
+	test('treats the legacy true marker as start failed', () => {
 		const data = { resultData: { failedBeforeStart: true as const } };
-		expect(toLedgerOutcome({ mode: 'webhook', status: 'error', startedAt, data })).toBe('blocked');
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'error', startedAt, data })).toEqual({
+			outcome: 'blocked',
+			blockedBy: 'startFailed',
+		});
 	});
 
-	test('returns blocked for a crash that no runner took', () => {
-		expect(toLedgerOutcome({ mode: 'webhook', status: 'crashed', startedAt: null })).toBe(
-			'blocked',
-		);
+	test('returns blocked as start failed for a crash that no runner took', () => {
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'crashed', startedAt: null })).toEqual({
+			outcome: 'blocked',
+			blockedBy: 'startFailed',
+		});
+	});
+
+	test('keeps the marker reason over the missing start time', () => {
+		const data = { resultData: { failedBeforeStart: 'credentialAccess' as const } };
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'error', startedAt: null, data })).toEqual({
+			outcome: 'blocked',
+			blockedBy: 'credentialAccess',
+		});
 	});
 
 	test('keeps canceled when no runner took the run', () => {
-		expect(toLedgerOutcome({ mode: 'webhook', status: 'canceled', startedAt: null })).toBe(
-			'canceled',
-		);
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'canceled', startedAt: null })).toEqual({
+			outcome: 'canceled',
+			blockedBy: 'none',
+		});
 	});
 
-	test('keeps success when the run carries failedBeforeStart', () => {
-		const data = { resultData: { failedBeforeStart: true as const } };
-		expect(toLedgerOutcome({ mode: 'webhook', status: 'success', startedAt, data })).toBe(
-			'success',
-		);
+	test.each<[ExecutionStatus, LedgerOutcome]>([
+		['success', 'success'],
+		['canceled', 'canceled'],
+		['running', 'none'],
+		['waiting', 'none'],
+	])('maps status %s to outcome %s when the run carries a reason', (status, outcome) => {
+		const data = { resultData: { failedBeforeStart: 'policy' as const } };
+		expect(toLedgerOutcome({ mode: 'webhook', status, startedAt, data })).toEqual({
+			outcome,
+			blockedBy: 'none',
+		});
 	});
+
+	test('treats a reason this version does not know as start failed', () => {
+		const data = { resultData: { failedBeforeStart: 'futureReason' as never } };
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'error', startedAt, data })).toEqual({
+			outcome: 'blocked',
+			blockedBy: 'startFailed',
+		});
+	});
+
+	test('does not bill a run that carries a reason this version does not know', () => {
+		const data = { resultData: { failedBeforeStart: 'futureReason' as never } };
+		expect(isBillableExecution({ mode: 'webhook', status: 'error', startedAt, data })).toBe(false);
+	});
+
+	test.each([() => true, 1, false])(
+		'does not block on a marker value that is not a reason (%s)',
+		(marker) => {
+			const data = { resultData: { failedBeforeStart: marker as never } };
+			expect(toLedgerOutcome({ mode: 'webhook', status: 'error', startedAt, data })).toEqual({
+				outcome: 'error',
+				blockedBy: 'none',
+			});
+		},
+	);
 });
 
 describe('isBillableExecution (run)', () => {
@@ -289,7 +391,7 @@ describe('isBillableExecution (run)', () => {
 		expect(
 			isBillableExecution({
 				...run('webhook', 'error'),
-				data: { resultData: { failedBeforeStart: true } },
+				data: { resultData: { failedBeforeStart: 'policy' } },
 			}),
 		).toBe(false);
 	});
@@ -365,5 +467,94 @@ describe('run form equivalence with the previous per-service rules', () => {
 		const previous = ({ mode, status, source }: RunCase) =>
 			source !== 'instance_ai' && billableMode[mode] && isCompletedExecutionStatus(status);
 		expect(findRunMismatches(isBillableExecution, previous)).toEqual([]);
+	});
+});
+
+describe('toWorkflowStatisticsCount (fact)', () => {
+	test('matches the expected counter and root flag for every fact', () => {
+		const mismatches = allFacts
+			.filter((f) => {
+				const actual = toWorkflowStatisticsCount(f);
+				const name = expectStatisticsName(f);
+				if (name === null) return actual !== null;
+				return actual?.name !== name || actual.isRoot !== expectBillable(f);
+			})
+			.map(describeFact);
+		expect(mismatches).toEqual([]);
+	});
+
+	test('does not count a blocked run', () => {
+		expect(toWorkflowStatisticsCount(fact({ outcome: 'blocked' }))).toBeNull();
+	});
+
+	test('an Instance AI run in trigger mode counts as a manual success outside the root count', () => {
+		const instanceAi = fact({ mode: 'trigger', source: 'instance_ai' });
+		expect(toWorkflowStatisticsCount(instanceAi)).toEqual({
+			name: StatisticsNames.manualSuccess,
+			isRoot: false,
+		});
+	});
+});
+
+describe('toWorkflowStatisticsCount (run)', () => {
+	const sources: Array<WorkflowExecutionSource | undefined> = [undefined, 'user', 'instance_ai'];
+
+	// Re-implementation of the previous private rule in the statistics service.
+	const previousName = (
+		mode: WorkflowExecuteMode,
+		status: ExecutionStatus,
+		source?: WorkflowExecutionSource,
+	): StatisticsNames | null => {
+		if (mode === 'chat' || !isCompletedExecutionStatus(status)) return null;
+		const isManual = mode === 'manual' || source === 'instance_ai';
+		if (isManual) {
+			return status === 'success' ? StatisticsNames.manualSuccess : StatisticsNames.manualError;
+		}
+		return status === 'success'
+			? StatisticsNames.productionSuccess
+			: StatisticsNames.productionError;
+	};
+
+	test('matches the previous name and root rules for every mode, status and source', () => {
+		const mismatches = allModes.flatMap((mode) =>
+			allStatuses.flatMap((status) =>
+				sources
+					.filter((source) => {
+						const input = run(mode, status);
+						const actual = toWorkflowStatisticsCount(input, source);
+						const name = previousName(mode, status, source);
+						if (name === null) return actual !== null;
+						return actual?.name !== name || actual.isRoot !== isBillableExecution(input, source);
+					})
+					.map((source) => `${mode}/${status}/${String(source)}`),
+			),
+		);
+		expect(mismatches).toEqual([]);
+	});
+
+	test('does not count a run that failed before its first node started', () => {
+		const blocked = {
+			...run('webhook', 'error'),
+			data: { resultData: { failedBeforeStart: 'policy' as const } },
+		};
+		expect(toWorkflowStatisticsCount(blocked)).toBeNull();
+	});
+
+	test('does not count a crashed run that no runner took', () => {
+		const crashed = { mode: 'trigger' as const, status: 'crashed' as const, startedAt: null };
+		expect(toWorkflowStatisticsCount(crashed)).toBeNull();
+	});
+
+	test('does not count a trigger error saved without a start', () => {
+		const triggerError = { mode: 'trigger' as const, status: 'error' as const, startedAt: null };
+		expect(toWorkflowStatisticsCount(triggerError)).toBeNull();
+	});
+
+	test('does not count a canceled run', () => {
+		expect(toWorkflowStatisticsCount(run('webhook', 'canceled'))).toBeNull();
+	});
+
+	test('does not throw for a deep mock', () => {
+		expect(() => toWorkflowStatisticsCount(mock<CompletedRun>())).not.toThrow();
 	});
 });

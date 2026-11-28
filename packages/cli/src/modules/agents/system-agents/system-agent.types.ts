@@ -1,27 +1,38 @@
 import type {
 	Agent as RuntimeAgent,
+	AgentMessage,
 	CheckpointStore,
 	ExecutionOptions,
 	JSONObject,
 	ObservationLogObserverMemory,
 	ResumeOptions,
 	RunOptions,
+	SerializableAgentState,
 	SideCallUsageReport,
 	TokenUsage,
+	Workspace,
 } from '@n8n/agents';
+import type { AgentToolOutputFile } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 
+import type { ImportedSandboxFile } from '../agent-sandbox-files.service';
 import type { AgentTurnRequest } from '../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { ToolRegistry } from '../tool-registry';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
+import type { AgentCompletingBoundaryHook } from '../types/agent-host-instruction';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type {
 	AgentTurnFinalizeOutcome,
 	AgentTurnStatus,
 	FormattedTurnError,
 } from '../types/agent-turn-outcome';
-import type { SystemAgentHostEventEmitter } from './system-agent-host-events';
+import type {
+	SystemAgentHostEventEmitter,
+	SystemAgentTransientHostEventEmitter,
+} from './system-agent-host-events';
+
+export type { AgentHostInstruction as SystemAgentHostInstruction } from '../types/agent-host-instruction';
 
 /** The stream chunks that a system-agent provider sees through `onChunk`. */
 export type { AgentExecutionStreamChunk, SteeredMessageEvent } from '../types/agent-steering';
@@ -69,10 +80,70 @@ interface SystemAgentTurnBase<TLease> {
 	 */
 	emitHostEvent: SystemAgentHostEventEmitter;
 	/**
+	 * Send a custom event that the chat shows live, such as a preview. The
+	 * runtime streams it as a `transient-host-event` SSE event and does not
+	 * record it, so history does not show it after a reload. Events after the
+	 * turn closed are dropped. It throws when the payload is larger than 1 MiB
+	 * as JSON. Do not put secrets in it.
+	 */
+	emitTransientHostEvent: SystemAgentTransientHostEventEmitter;
+	/**
 	 * Find a file that the user attached to any message of this thread, by id.
 	 * Gives `undefined` for a file of another thread.
 	 */
 	readFile(fileId: string): Promise<SystemAgentFile | undefined>;
+	/**
+	 * The sandbox files of project agents, for this turn. It is set only when
+	 * the sandbox files flag is on.
+	 */
+	sandboxFiles?: SystemAgentSandboxFiles;
+}
+
+/** The sandbox files feature of project agents, as a system-agent turn uses it. */
+export interface SystemAgentSandboxFiles {
+	/** The largest import into the sandbox, in bytes (`N8N_AGENTS_FILES_MAX_IMPORT_MB`). */
+	maxImportBytes: number;
+	/**
+	 * Copy files of the thread into `inputs/` of the workspace, as `import_files`
+	 * of project agents does. Each key is a path relative to `inputs/`, each
+	 * value a fileId. Nothing is written when a check fails.
+	 * @throws {UserError} with a message for the model, when a file is not in
+	 * the thread, a path leaves `inputs/`, the files are over the import cap, or
+	 * the copy fails. The message of a failed copy names the files that were
+	 * copied before it.
+	 */
+	importFiles(
+		workspace: Workspace,
+		files: Record<string, string>,
+		abortSignal?: AbortSignal,
+	): Promise<ImportedSandboxFile[]>;
+	/**
+	 * Store a file of `outputs/` of the workspace as a file of the thread, in
+	 * the system chat of the user. The chat and `readFile` can then find it.
+	 * @throws {UserError} with a message for the model, when the file is not
+	 * in `outputs/`, is too large or cannot be read.
+	 */
+	storeOutput(
+		workspace: Workspace,
+		path: string,
+		abortSignal?: AbortSignal,
+	): Promise<SystemAgentStoredFile>;
+	/**
+	 * The files of this thread, newest first: uploads of every turn and files
+	 * from the sandbox. `readFile` finds each listed file.
+	 */
+	listFiles(): Promise<SystemAgentListedFile[]>;
+}
+
+/** A file that a system-agent turn stored in its thread. */
+export type SystemAgentStoredFile = AgentToolOutputFile;
+
+/** A file of a system-agent thread, as `listFiles` gives it. */
+export interface SystemAgentListedFile extends SystemAgentStoredFile {
+	/** `upload` for a file that the user attached, `sandbox` for a file that the agent stored. */
+	origin: 'upload' | 'sandbox';
+	/** ISO 8601 time when the file was stored. */
+	createdAt: string;
 }
 
 /** A stored file of a system-agent thread. */
@@ -80,6 +151,8 @@ export interface SystemAgentFile {
 	fileName: string;
 	mimeType: string;
 	sizeBytes: number;
+	/** Checks that storage still has the bytes, without loading them. */
+	hasContent(): Promise<boolean>;
 	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
 	readContent(): Promise<Buffer | undefined>;
 }
@@ -105,8 +178,19 @@ export interface SystemAgentResumeTurn<TLease = unknown>
 	type: 'resume';
 	/** Host metadata the suspended run stored in its checkpoint. */
 	checkpointHostMetadata: JSONObject;
+	/**
+	 * The tool calls that the checkpoint holds open, the resumed one included.
+	 * The runtime can send them again as suspensions during the resume.
+	 */
+	openSuspensions: Array<Pick<SuspendedToolCall, 'toolCallId' | 'toolName' | 'suspendPayload'>>;
 	resumeData: unknown;
 }
+
+/** A tool call that a suspended run still waits on. */
+export type SuspendedToolCall = Extract<
+	SerializableAgentState['pendingToolCalls'][string],
+	{ suspended: true }
+>;
 
 export type SystemAgentTurn<TLease = unknown> =
 	| SystemAgentStartTurn<TLease>
@@ -145,6 +229,18 @@ export interface SystemAgentTurnHandle {
 	 * call `run` exactly once and return or throw its result.
 	 */
 	withTurnContext?: <T>(run: () => Promise<T>) => Promise<T>;
+	/**
+	 * Called when the agent tries to end the turn and the turn can continue.
+	 * Return an instruction to give the model one more step in the same turn,
+	 * for example to finish a step that the agent skipped. Input that the user
+	 * steered into the turn goes first; the hook runs again at the next stop.
+	 *
+	 * The runtime adds at most one instruction for each turn. The provider
+	 * must still make sure that a later turn does not add the same instruction
+	 * again, for example with a stored marker. A failing hook only logs a
+	 * warning, and the turn ends.
+	 */
+	onCompletingBoundary?: AgentCompletingBoundaryHook;
 	/**
 	 * Called once for each model call that runs beside the turn: title
 	 * generation, the observation-log observer and reflector, and episodic
@@ -201,6 +297,27 @@ export interface SystemAgentWorkspaceDestroyScope {
 	threadId: string;
 	userId?: string;
 }
+
+/** The thread that a user deletes, with the Agents memory that still holds its state. */
+export interface SystemAgentThreadDeletionScope {
+	agentId: string;
+	threadId: string;
+	/** The working project of the thread. */
+	projectId: string;
+	/** The user who deletes the thread. Account cleanup also deletes threads. */
+	userId: string;
+	memory: ObservationLogObserverMemory;
+}
+
+/** The thread of a turn that a user stopped. */
+export interface SystemAgentUserStopScope {
+	agentId: string;
+	threadId: string;
+	userId: string;
+}
+
+/** Work that runs after the thread deletion commits. */
+export type SystemAgentAfterThreadDeletion = () => Promise<void>;
 
 /**
  * Supplies the sandbox workspace of a system agent. The provider keeps its own
@@ -264,6 +381,30 @@ export interface SystemAgentProvider<TLease = unknown> {
 	): Promise<SystemAgentTurnOptions>;
 	/** Convert a resume payload from a client into the tool's resume data. */
 	normalizeResumeData?(resumeData: unknown): unknown;
+	/**
+	 * The resources that a stored user message sent, such as mentioned
+	 * workflows. The chat history returns them as the `references` of the
+	 * message. `modelInput` is the stored model input of the message, that is
+	 * the `input` of the turn handle. Return an empty list when there are none.
+	 */
+	readMessageReferences?(modelInput: AgentMessage): unknown[];
+	/**
+	 * Called before a user deletes a thread of this agent, while the thread
+	 * state can still be read. Do not change data here: the deletion can still
+	 * fail, for example while a turn runs. Return the cleanup that must run
+	 * after the deletion commits. A failure is logged and does not stop the
+	 * deletion.
+	 */
+	onBeforeThreadDeletion?(
+		scope: SystemAgentThreadDeletionScope,
+	): Promise<SystemAgentAfterThreadDeletion | undefined>;
+	/**
+	 * Called after a user stopped a turn of this agent through a chat route.
+	 * The runtime calls it only when the stop took effect: a turn was running,
+	 * or a suspended run was cancelled. A failure is logged and does not change
+	 * the stop result.
+	 */
+	onUserStoppedTurn?(scope: SystemAgentUserStopScope): void | Promise<void>;
 	/**
 	 * Called once for each execution of a run that a turn of this agent
 	 * delegated, foreground or background, after the runner tries to store

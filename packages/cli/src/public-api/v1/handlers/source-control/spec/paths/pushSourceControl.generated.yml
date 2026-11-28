@@ -2,7 +2,10 @@ operationId: pushSourceControl
 tags:
   - SourceControl
 summary: Push local source control changes
-description: Commits and pushes the selected files to the connected Git branch. Each entry in `fileNames` is resolved against a fresh preview of the pending changes.
+description: |-
+  Commits and pushes the selected files to the connected Git branch. Each entry in `fileNames` is resolved against a fresh preview of the pending changes.
+
+  Requires the `sourceControl:push` API key scope.
 x-required-scope: sourceControl:push
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
@@ -139,6 +142,7 @@ responses:
                         enum:
                           - review_pending
                           - changes_requested
+                          - review_required
                           - insufficient_api_key_scope
                           - insufficient_permissions
                       workflowReviewRequestId:
@@ -176,6 +180,12 @@ responses:
                               type: string
                             optInAvailable:
                               type: boolean
+                            limit:
+                              type: number
+                            usage:
+                              type: number
+                            resetsAt:
+                              type: string
                           required:
                             - kind
                             - checkId
@@ -307,6 +317,7 @@ responses:
                         enum:
                           - review_pending
                           - changes_requested
+                          - review_required
                           - insufficient_api_key_scope
                           - insufficient_permissions
                       workflowReviewRequestId:
@@ -344,6 +355,12 @@ responses:
                               type: string
                             optInAvailable:
                               type: boolean
+                            limit:
+                              type: number
+                            usage:
+                              type: number
+                            resetsAt:
+                              type: string
                           required:
                             - kind
                             - checkId

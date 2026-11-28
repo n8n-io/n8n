@@ -28,7 +28,9 @@ type TestSuspendedRun = {
 	abortController: AbortController;
 };
 
-function createLivenessService() {
+function createLivenessService(
+	options: { isTaskWaitingForUser?: (taskId: string) => boolean } = {},
+) {
 	const policyConfig = createInstanceAiLivenessPolicyConfig();
 	const policy = new InstanceAiLivenessPolicy(policyConfig);
 	const runState = {
@@ -91,6 +93,7 @@ function createLivenessService() {
 		finalizeCancelledSuspendedRun,
 		onPendingConfirmationRejected,
 		logger,
+		...options,
 	});
 
 	return {
@@ -206,6 +209,42 @@ describe('InstanceAiLivenessService', () => {
 			details: suspendedTimeout,
 		});
 		expect(service.hasTimedOutActiveRunThread('thread-active')).toBe(true);
+	});
+
+	describe('background task skip', () => {
+		const task = { threadId: 'thread-bg', taskId: 'task-1', role: 'cloud-browser' };
+
+		async function sweepAndGetSkip(
+			options: Parameters<typeof createLivenessService>[0],
+		): Promise<(t: typeof task) => boolean> {
+			const { service, backgroundTasks } = createLivenessService(options);
+			await service.sweepTimedOutWork(123_456);
+			const shouldSkipTask =
+				backgroundTasks.timeoutTimedOutTasks.mock.calls[0]?.[2]?.shouldSkipTask;
+			if (!shouldSkipTask) throw new Error('No shouldSkipTask option');
+			return shouldSkipTask;
+		}
+
+		it('skips a task that waits for the user', async () => {
+			const isTaskWaitingForUser = vi.fn((_taskId: string) => true);
+
+			const shouldSkipTask = await sweepAndGetSkip({ isTaskWaitingForUser });
+
+			expect(shouldSkipTask(task)).toBe(true);
+			expect(isTaskWaitingForUser).toHaveBeenCalledWith('task-1');
+		});
+
+		it('does not skip a task that does not wait for the user', async () => {
+			const shouldSkipTask = await sweepAndGetSkip({ isTaskWaitingForUser: () => false });
+
+			expect(shouldSkipTask(task)).toBe(false);
+		});
+
+		it('does not skip a task when no wait check is given', async () => {
+			const shouldSkipTask = await sweepAndGetSkip({});
+
+			expect(shouldSkipTask(task)).toBe(false);
+		});
 	});
 
 	it('lets suspended-run finalization own the timeout notice', () => {

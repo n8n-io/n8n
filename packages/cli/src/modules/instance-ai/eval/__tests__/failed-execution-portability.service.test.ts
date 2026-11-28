@@ -296,6 +296,12 @@ describe('FailedExecutionPortabilityService', () => {
 			sourceStartedAt.getTime() - 10 + offset,
 		);
 		expect(restoredData.resultData.runData.Prepare[0].executionTime).toBe(5);
+		// A restored run is a copy, not a run of this instance.
+		expect(executionPersistence.create).toHaveBeenCalledWith(
+			expect.anything(),
+			{},
+			{ skipLedger: true },
+		);
 	});
 
 	it('compensates the native row and blob when exact readback differs', async () => {

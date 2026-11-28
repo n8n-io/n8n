@@ -1,3 +1,4 @@
+import type { RowDataPacket } from 'mysql2/promise';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,8 +7,14 @@ import type {
 	IPairedItemData,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
-import { NodeOperationError, UserError } from 'n8n-workflow';
+import { isExpression, NodeOperationError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
+import {
+	assertCursorColumnNotNull,
+	assertCursorColumnType,
+	assertUniqueCursorColumn,
+} from '@utils/sql-keyset-paging';
 import { isInsideQuotes } from '@utils/sql-query-parameters';
 
 import type {
@@ -34,7 +41,7 @@ function toIdentifierText(value: unknown, paramNumber: string): string {
 }
 
 export function escapeSqlIdentifier(identifier: string): string {
-	const parts = identifier.match(/(`[^`]*`|[^.`]+)/g) ?? [];
+	const parts = identifier.match(/(`(?:[^`]|``)*`|[^.`]+)/g) ?? [];
 
 	return parts
 		.map((part) => {
@@ -47,6 +54,47 @@ export function escapeSqlIdentifier(identifier: string): string {
 			return `\`${trimmedPart}\``;
 		})
 		.join('.');
+}
+
+// Quotes a value as one identifier. A dot or a backtick in the value stays part of the name.
+export function quoteSqlIdentifier(name: string): string {
+	return `\`${name.trim().replace(/`/g, '``')}\``;
+}
+
+// The raw read does not depend on the item, so index 0 is enough.
+export function isDatabaseExpression(ctx: IExecuteFunctions): boolean {
+	const raw = ctx.getNodeParameter('database', 0, '', { rawExpressions: true });
+	// No `__rl` check: extractValueRLC also resolves a locator without it.
+	return isExpression(typeof raw === 'object' && raw !== null && 'value' in raw ? raw.value : raw);
+}
+
+// Returns the raw table when Database is empty and an escaped `db`.`tbl` when it is set.
+// Callers still pass the result through escapeSqlIdentifier.
+export function getTableName(ctx: IExecuteFunctions, itemIndex: number): string {
+	const table = ctx.getNodeParameter('table', itemIndex, '', { extractValue: true }) as string;
+	const database = ctx.getNodeParameter('database', itemIndex, '', { extractValue: true });
+	// A literal empty Database keeps the unqualified table name.
+	if (!database && !isDatabaseExpression(ctx)) return table;
+
+	const databaseName =
+		typeof database === 'string' && database.trim() ? quoteSqlIdentifier(database) : '';
+	const tableName = typeof table === 'string' ? escapeSqlIdentifier(table) : '';
+	// An empty part would collapse to a one-part name in the next escape pass.
+	if (!databaseName || !tableName) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`The ${databaseName ? 'Table' : 'Database'} value did not resolve to a name`,
+			{ itemIndex, description: 'Make sure the value is a non-empty string' },
+		);
+	}
+	if ((tableName.match(/`(?:[^`]|``)*`/g) ?? []).length > 1) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			'The Table value already contains a database name',
+			{ itemIndex, description: 'Remove the database from Table or clear Database' },
+		);
+	}
+	return `${databaseName}.${tableName}`;
 }
 
 function findParameterMatches(rawQuery: string, regex: RegExp): ParameterMatch[] {
@@ -585,6 +633,90 @@ export function addSortRules(
 	});
 
 	return [`${query}${orderByQuery}`, replacements.concat.apply(replacements, values)];
+}
+
+export async function getUniqueKeyColumns(
+	pool: Mysql2Pool,
+	table: string,
+): Promise<Array<{ column: string; nullable: boolean; type: string }>> {
+	const [rows] = await pool.query<RowDataPacket[]>(`SHOW INDEX FROM ${escapeSqlIdentifier(table)}`);
+	const [columns] = await pool.query<RowDataPacket[]>(
+		`SHOW COLUMNS FROM ${escapeSqlIdentifier(table)}`,
+	);
+	const typeOf = new Map(
+		columns.map((row) => [String(row.Field).toLowerCase(), String(row.Type).toLowerCase()]),
+	);
+	const columnsByKey = new Map<string, Array<{ column: string; nullable: boolean } | null>>();
+	for (const row of rows) {
+		if (Number(row.Non_unique) !== 0) continue;
+		const key = String(row.Key_name);
+		// A functional key part has no Column_name. It still counts as a part of the key
+		columnsByKey.set(key, [
+			...(columnsByKey.get(key) ?? []),
+			row.Column_name == null
+				? null
+				: { column: String(row.Column_name).toLowerCase(), nullable: row.Null === 'YES' },
+		]);
+	}
+	return [...columnsByKey.values()].flatMap((cols) =>
+		cols.length === 1 && cols[0] !== null
+			? [{ ...cols[0], type: typeOf.get(cols[0].column) ?? '' }]
+			: [],
+	);
+}
+
+/** LENGTH leaves out values of only spaces, which most collations see as equal to ''. */
+async function hasEmptyText(pool: Mysql2Pool, table: string, column: string): Promise<boolean> {
+	const [rows] = await pool.query<RowDataPacket[]>(
+		`SELECT 1 FROM ${escapeSqlIdentifier(table)} WHERE ${escapeSqlIdentifier(column)} = '' AND LENGTH(${escapeSqlIdentifier(column)}) = 0 LIMIT 1`,
+	);
+	return rows.length > 0;
+}
+
+const TEXT_TYPES = 'char|varchar|tinytext|text|mediumtext|longtext';
+const TEXT_TYPE = new RegExp(`^(${TEXT_TYPES})\\b`);
+// n8n outputs the other types as objects, or with another time zone or precision
+const START_AFTER_TYPE = new RegExp(
+	`^(tinyint|smallint|mediumint|int|bigint|decimal|${TEXT_TYPES})\\b`,
+);
+
+/**
+ * Throws if Start After cannot page by the column without skipped or repeated rows.
+ * `uniqueColumns` comes from getUniqueKeyColumns.
+ */
+export async function checkStartAfterColumn(
+	pool: Mysql2Pool,
+	node: INode,
+	itemIndex: number,
+	table: string,
+	column: string,
+	uniqueColumns: Awaited<ReturnType<typeof getUniqueKeyColumns>>,
+	decimalNumbers: boolean,
+	lookForEmptyText: boolean,
+) {
+	const key = uniqueColumns.find((unique) => unique.column === column.toLowerCase());
+	assertUniqueCursorColumn(node, itemIndex, key ? [column] : [], column);
+	if (!key) return;
+
+	assertCursorColumnNotNull(node, itemIndex, column, key.nullable);
+	assertCursorColumnType(node, itemIndex, column, key.type, START_AFTER_TYPE);
+	if (key.type.startsWith('decimal') && decimalNumbers) {
+		throw new NodeOperationError(
+			node,
+			`Turn off Output Decimals as Numbers to page by "${column}"`,
+			{
+				itemIndex,
+				description: `"${column}" is a DECIMAL column. As numbers, n8n can round its values in the output, so the next page can repeat or skip rows.`,
+			},
+		);
+	}
+	if (lookForEmptyText && TEXT_TYPE.test(key.type) && (await hasEmptyText(pool, table, column))) {
+		throw new NodeOperationError(node, `Column "${column}" has empty text in one row`, {
+			itemIndex,
+			description:
+				'An empty Value gets the first page. If a page ends on this row, the next page is the first page again, and the loop can repeat forever. With Sort DESC, the last page always ends on this row. Use another unique column, for example the primary key.',
+		});
+	}
 }
 
 export function replaceEmptyStringsByNulls(

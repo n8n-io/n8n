@@ -17,6 +17,7 @@ export type {
 	IExpressionEvaluator,
 	WorkflowData,
 	EvaluateOptions,
+	ExpressionEvaluationOutcome,
 	ObservabilityProvider,
 	MetricsAPI,
 	TracesAPI,
@@ -30,4 +31,6 @@ export {
 	TimeoutError,
 	SecurityViolationError,
 	SyntaxError,
+	HostCallError,
+	RuntimeRestartingError,
 } from './evaluator';

@@ -1,17 +1,15 @@
 import { randomUUID } from 'node:crypto';
-import { isDeepStrictEqual } from 'node:util';
 import {
 	type CredentialProvider,
 	type SerializableAgentState,
 	type StreamChunk,
 } from '@n8n/agents';
+import type { ApprovalSuspendPayload } from '@n8n/agents/tool';
 import {
-	APPROVAL_RESUME_SCHEMA,
-	APPROVAL_SUSPEND_SCHEMA,
-	type ApprovalSuspendPayload,
-} from '@n8n/agents/tool';
-import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+	N8N_CHAT_INTEGRATION_TYPE,
+	type AgentChatMode,
+	type ToolCallSimulation,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, UnexpectedError, UserError } from '@n8n/errors';
@@ -27,8 +25,11 @@ import {
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentValidationService } from './agent-validation.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import type { SimulationSession } from './simulation/simulation-session';
+import { SimulationSessionService } from './simulation/simulation-session.service';
+import { findPendingStandardApproval, parseStandardApprovalSuspension } from './standard-approval';
 import type { AgentExecutionStreamChunk } from './types/agent-steering';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import { draftChatMemoryResourceId, publicApiMemoryResourceId } from './utils/agent-memory-scope';
 import type { AgentSessionMode } from './utils/agent-thread-access';
 
 interface PrepareDraftRunInput {
@@ -48,6 +49,7 @@ export type PrepareDraftRunResult =
 
 interface DraftRunState {
 	response: string;
+	simulatedToolCalls: SimulatedToolCall[];
 	suspensions: AgentTestRunSuspension[];
 	maxIterations: boolean;
 	errorChunk?: Extract<StreamChunk, { type: 'error' }>;
@@ -60,10 +62,24 @@ interface DraftRunConsumptionOptions {
 	onChunk?: (chunk: AgentExecutionStreamChunk) => void;
 }
 
+export interface SimulatedToolCall extends ToolCallSimulation {
+	toolCallId: string;
+	toolName: string;
+}
+
+/** Absent for a live run. */
+export interface DraftRunSimulation {
+	/** Absent when the simulator was unavailable. */
+	worldId?: string;
+	toolCalls: SimulatedToolCall[];
+}
+
 export interface ExecutePreparedDraftRunInput
 	extends Omit<ExecuteForChatConfig, 'memory'>,
 		DraftRunConsumptionOptions {
 	sessionId: string;
+	/** `test` asks for a test run. Absent or `live` runs live, unless the chat is already a test run. */
+	chatMode?: AgentChatMode;
 }
 
 export interface ResumePreparedDraftRunInput
@@ -123,13 +139,25 @@ export type PreparedDraftRunResult = {
 	executionId: string;
 	/** The run stopped on the iteration cap. It did not finish its work. */
 	maxIterations?: true;
+	simulation?: DraftRunSimulation;
 } & ({ status: 'completed' } | { status: 'suspended'; suspensions: AgentTestRunSuspension[] });
 
 export type AgentTestRunResult =
 	| (PreparedDraftRunResult & { sessionId: string })
 	| Exclude<PrepareDraftRunResult, { status: 'ready' }>;
 
-const expectedApprovalResumeJsonSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA);
+export interface ExecutePublishedRunInput {
+	agentId: string;
+	projectId: string;
+	user: User;
+	sessionId?: string;
+	message: string;
+	abortSignal?: AbortSignal;
+}
+
+export type PublishedRunResult =
+	| (PreparedDraftRunResult & { sessionId: string })
+	| { status: 'session_not_found' };
 
 export class InvalidAgentTestRunCheckpointError extends UserError {
 	readonly code = 'invalid_checkpoint';
@@ -137,19 +165,6 @@ export class InvalidAgentTestRunCheckpointError extends UserError {
 	constructor() {
 		super('This test run can no longer be resumed.');
 	}
-}
-
-export function parseStandardApprovalSuspension(
-	suspension: AgentTestRunSuspension,
-): ApprovalSuspendPayload | undefined {
-	const payload = APPROVAL_SUSPEND_SCHEMA.safeParse(suspension.suspendPayload);
-	if (
-		!payload.success ||
-		!isDeepStrictEqual(suspension.resumeSchema, expectedApprovalResumeJsonSchema)
-	) {
-		return undefined;
-	}
-	return payload.data;
 }
 
 export function collectStandardApprovals(
@@ -179,6 +194,7 @@ export class AgentTestRunService {
 		private readonly agentValidationService: AgentValidationService,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
+		private readonly simulationSessions: SimulationSessionService,
 	) {}
 
 	async prepareDraftRun({
@@ -226,7 +242,7 @@ export class AgentTestRunService {
 	 * the `agent:execute` the routes check. A chat-only member reaches published
 	 * agents through n8n Chat instead.
 	 */
-	private async assertCanRunDraft(user: User, projectId: string): Promise<void> {
+	async assertCanRunDraft(user: User, projectId: string): Promise<void> {
 		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to run the draft of this agent.');
 		}
@@ -237,22 +253,29 @@ export class AgentTestRunService {
 		errorMode,
 		onChunk,
 		onExecutionRecorded,
+		chatMode,
 		...execution
 	}: ExecutePreparedDraftRunInput): Promise<PreparedDraftRunResult> {
 		let executionId: string | undefined;
+		const simulation = this.simulationResolver(execution, execution.message, chatMode === 'test');
 		const stream = this.agentExecutionOrchestratorService.executeForChat({
 			...execution,
 			memory: {
 				threadId: sessionId,
 				resourceId: draftChatMemoryResourceId(execution.user.id),
 			},
+			simulation: simulation.resolve,
 			onExecutionRecorded: (id) => {
 				executionId = id;
 				onExecutionRecorded?.(id);
 			},
 		});
 
-		return await this.collectDraftRun(stream, '', () => executionId, { errorMode, onChunk });
+		return await this.collectDraftRun(stream, '', () => executionId, {
+			errorMode,
+			onChunk,
+			simulation: simulation.session,
+		});
 	}
 
 	async resumePreparedDraftRun({
@@ -264,10 +287,12 @@ export class AgentTestRunService {
 	}: ResumePreparedDraftRunInput): Promise<PreparedDraftRunResult> {
 		await this.assertCanRunDraft(execution.user, execution.projectId);
 		let executionId: string | undefined;
+		const simulation = this.simulationResolver(execution, '');
 		const stream = this.agentExecutionOrchestratorService.resumeForChat({
 			...execution,
 			usePublishedVersion: false,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			simulation: simulation.resolve,
 			onExecutionRecorded: (id) => {
 				executionId = id;
 				onExecutionRecorded?.(id);
@@ -277,6 +302,7 @@ export class AgentTestRunService {
 		return await this.collectDraftRun(stream, initialResponse, () => executionId, {
 			errorMode,
 			onChunk,
+			simulation: simulation.session,
 		});
 	}
 
@@ -293,6 +319,56 @@ export class AgentTestRunService {
 			sessionMode: prepared.sessionMode,
 		});
 		return { ...result, sessionId: prepared.sessionId };
+	}
+
+	/**
+	 * Run the published version for the Public API. The session belongs to the
+	 * API key's user and only continues other `public_api` runs of this agent.
+	 * A published agent is validated at publish time, so this skips the draft
+	 * runnable checks.
+	 */
+	async executePublishedRun({
+		agentId,
+		projectId,
+		user,
+		sessionId,
+		message,
+		abortSignal,
+	}: ExecutePublishedRunInput): Promise<PublishedRunResult> {
+		const sessionMode: AgentSessionMode = sessionId ? 'existing' : 'new';
+		if (
+			sessionId &&
+			!(await this.agentExecutionService.canUsePublicApiThread(
+				sessionId,
+				projectId,
+				agentId,
+				user.id,
+				sessionMode,
+			))
+		) {
+			return { status: 'session_not_found' };
+		}
+		const resolvedSessionId = sessionId ?? randomUUID();
+
+		let executionId: string | undefined;
+		const stream = this.agentExecutionOrchestratorService.executeForPublicApiPublished({
+			agentId,
+			projectId,
+			message,
+			memory: {
+				threadId: resolvedSessionId,
+				resourceId: publicApiMemoryResourceId(user.id),
+			},
+			user,
+			sessionMode,
+			onExecutionRecorded: (id) => {
+				executionId = id;
+			},
+			...(abortSignal ? { abortSignal } : {}),
+		});
+
+		const result = await this.collectDraftRun(stream, '', () => executionId, {});
+		return { ...result, sessionId: resolvedSessionId };
 	}
 
 	async resumeDraftRun({
@@ -355,10 +431,13 @@ export class AgentTestRunService {
 		agentId,
 		suspensions,
 		userId,
+		resourceId = draftChatMemoryResourceId(userId),
 	}: {
 		agentId: string;
 		suspensions: Array<Pick<AgentTestRunSuspension, 'runId'>>;
 		userId: string;
+		/** The memory scope the suspended run lives in. A draft run defaults to the draft scope. */
+		resourceId?: string;
 	}): Promise<boolean> {
 		const runIds = [...new Set(suspensions.map(({ runId }) => runId))];
 		try {
@@ -368,7 +447,7 @@ export class AgentTestRunService {
 						await this.agentExecutionOrchestratorService.cancelChatRun({
 							agentId,
 							runId,
-							resourceId: draftChatMemoryResourceId(userId),
+							resourceId,
 						}),
 				),
 			);
@@ -378,20 +457,52 @@ export class AgentTestRunService {
 		}
 	}
 
+	// The orchestrator resolves the session once it knows the thread; `session()` reads it back.
+	// The user is required: without one the flag and the test chat marker cannot be checked,
+	// so a missing user must never quietly mean a live run.
+	private simulationResolver(
+		execution: { user: User; agentId: string; projectId: string },
+		message: string,
+		testRunRequested = false,
+	) {
+		let resolved: SimulationSession | undefined;
+		const { user } = execution;
+		return {
+			resolve: async (threadId: string) => {
+				resolved = await this.simulationSessions.openForDraftRun({
+					user,
+					agentId: execution.agentId,
+					projectId: execution.projectId,
+					testChatId: threadId,
+					message,
+					testRunRequested,
+				});
+				return resolved;
+			},
+			session: () => resolved,
+		};
+	}
+
 	private async collectDraftRun(
 		stream: AsyncIterable<AgentExecutionStreamChunk>,
 		initialResponse: string,
 		getExecutionId: () => string | undefined,
-		{ errorMode = 'throw', onChunk }: DraftRunConsumptionOptions,
+		{
+			errorMode = 'throw',
+			onChunk,
+			simulation,
+		}: DraftRunConsumptionOptions & { simulation?: () => SimulationSession | undefined },
 	): Promise<PreparedDraftRunResult> {
 		const state: DraftRunState = {
 			response: initialResponse,
+			simulatedToolCalls: [],
 			suspensions: [],
 			maxIterations: false,
 			observerFailed: false,
 		};
 		try {
-			for await (const chunk of stream) {
+			for await (const rawChunk of stream) {
+				const chunk = this.withSimulation(rawChunk, simulation?.(), state);
 				this.observeDraftChunk(chunk, onChunk, state);
 				this.collectDraftChunk(chunk, errorMode, state);
 			}
@@ -404,10 +515,19 @@ export class AgentTestRunService {
 		if (state.errorChunk) throw state.errorChunk.error;
 		const executionId = getExecutionId();
 		if (!executionId) throw new UnexpectedError('Agent execution completed without a recorded ID');
+		const session = simulation?.();
 		const metadata = {
 			response: state.response,
 			executionId,
 			...(state.maxIterations ? { maxIterations: true as const } : {}),
+			...(session
+				? {
+						simulation: {
+							...(session.worldId ? { worldId: session.worldId } : {}),
+							toolCalls: state.simulatedToolCalls,
+						},
+					}
+				: {}),
 		};
 		if (state.suspensions.length > 0) {
 			return { status: 'suspended', ...metadata, suspensions: state.suspensions };
@@ -428,25 +548,31 @@ export class AgentTestRunService {
 			throw error;
 		}
 
-		const pendingToolCall = checkpoint?.pendingToolCalls[continuation.toolCallId];
-		const expectedResourceId = draftChatMemoryResourceId(userId);
-		if (
-			checkpoint?.status !== 'suspended' ||
-			checkpoint.persistence?.delegated === true ||
-			checkpoint.persistence?.threadId !== continuation.sessionId ||
-			checkpoint.persistence?.resourceId !== expectedResourceId ||
-			!pendingToolCall?.suspended ||
-			pendingToolCall.runId !== continuation.runId ||
-			!parseStandardApprovalSuspension({
-				runId: pendingToolCall.runId,
-				toolCallId: pendingToolCall.toolCallId,
-				toolName: pendingToolCall.toolName,
-				suspendPayload: pendingToolCall.suspendPayload,
-				resumeSchema: pendingToolCall.resumeSchema,
-			})
-		) {
+		const expected = {
+			runId: continuation.runId,
+			toolCallId: continuation.toolCallId,
+			threadId: continuation.sessionId,
+			resourceId: draftChatMemoryResourceId(userId),
+		};
+		if (!findPendingStandardApproval(checkpoint, expected)) {
 			throw new InvalidAgentTestRunCheckpointError();
 		}
+	}
+
+	private withSimulation(
+		chunk: AgentExecutionStreamChunk,
+		session: SimulationSession | undefined,
+		state: DraftRunState,
+	): AgentExecutionStreamChunk {
+		if (!session || chunk.type !== 'tool-result') return chunk;
+		const simulation = session.takeDecision(chunk.toolCallId);
+		if (!simulation) return chunk;
+		state.simulatedToolCalls.push({
+			toolCallId: chunk.toolCallId,
+			toolName: chunk.toolName,
+			...simulation,
+		});
+		return { ...chunk, simulation };
 	}
 
 	private observeDraftChunk(

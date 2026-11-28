@@ -1,12 +1,18 @@
-import type { PineconeStoreParams } from '@langchain/pinecone';
+import type { VectorStore } from '@langchain/core/vectorstores';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
-import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INodeProperties,
+	type ISupplyDataFunctions,
+} from 'n8n-workflow';
 
 import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
 import { pineconeIndexSearch } from '../shared/methods/listSearch';
 import { pineconeIndexRLC } from '../shared/descriptions';
+import { assertPineconeIndexAcceptsVectors, getPineconeVectorStore } from '../shared/pinecone';
 
 const sharedFields: INodeProperties[] = [pineconeIndexRLC];
 
@@ -26,7 +32,18 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [pineconeNamespaceField, metadataFilterField],
+		options: [
+			pineconeNamespaceField,
+			metadataFilterField,
+			{
+				displayName: 'Text Field',
+				name: 'textField',
+				type: 'string',
+				default: '',
+				description:
+					'For an index with a document schema: the document field that holds the text. Leave empty to use the "text" field, or else the first text field.',
+			},
+		],
 	},
 ];
 
@@ -50,7 +67,45 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
-export class VectorStorePinecone extends createVectorStoreNode<PineconeStore>({
+async function getValidatedIndex(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	itemIndex: number,
+) {
+	const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
+		extractValue: true,
+	}) as string;
+	const credentials = await context.getCredentials('pineconeApi');
+	const apiKey = credentials.apiKey as string;
+	const client = new Pinecone({ apiKey });
+	const { indexes } = await client.listIndexes();
+
+	if (!indexes?.some((entry) => entry.name === index)) {
+		throw new NodeOperationError(context.getNode(), `Index ${index} not found`, {
+			itemIndex,
+			description: 'Please check that the index exists in your vector store',
+		});
+	}
+
+	await assertPineconeIndexAcceptsVectors(
+		{ context, credentialType: 'pineconeApi', apiKey },
+		index,
+	);
+	return client.Index(index);
+}
+
+async function clearNamespace(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	index: ReturnType<Pinecone['Index']>,
+	namespace: string,
+) {
+	try {
+		await index.namespace(namespace).deleteAll();
+	} catch (error) {
+		context.logger.info(`Namespace ${namespace} does not exist yet`);
+	}
+}
+
+export class VectorStorePinecone extends createVectorStoreNode<VectorStore>({
 	meta: {
 		displayName: 'Pinecone Vector Store',
 		name: 'vectorStorePinecone',
@@ -71,61 +126,53 @@ export class VectorStorePinecone extends createVectorStoreNode<PineconeStore>({
 	loadFields: retrieveFields,
 	insertFields,
 	sharedFields,
+	// Document indexes with integrated embedding need the query text. Classic indexes embed
+	// it with the connected model, as before
+	searchByText: true,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
 		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
 			extractValue: true,
 		}) as string;
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			pineconeNamespace?: string;
+			textField?: string;
 		};
 		const credentials = await context.getCredentials('pineconeApi');
 
-		const client = new Pinecone({
-			apiKey: credentials.apiKey as string,
-		});
-
-		const pineconeIndex = client.Index(index);
-		const config: PineconeStoreParams = {
-			namespace: options.pineconeNamespace ?? undefined,
-			pineconeIndex,
-			filter,
-		};
-
-		return await PineconeStore.fromExistingIndex(embeddings, config);
+		return await getPineconeVectorStore(
+			{ context, credentialType: 'pineconeApi', apiKey: credentials.apiKey as string },
+			embeddings,
+			{
+				indexName: index,
+				namespace: options.pineconeNamespace ?? undefined,
+				filter,
+				textField: options.textField,
+			},
+		);
 	},
-	async populateVectorStore(context, embeddings, documents, itemIndex) {
-		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
-			extractValue: true,
-		}) as string;
+	async beforeInsert(context, _embeddings, itemIndex) {
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			pineconeNamespace?: string;
 			clearNamespace?: boolean;
 		};
-		const credentials = await context.getCredentials('pineconeApi');
+		if (!options.pineconeNamespace || !options.clearNamespace) return;
 
-		const client = new Pinecone({
-			apiKey: credentials.apiKey as string,
-		});
+		const index = await getValidatedIndex(context, itemIndex);
+		await clearNamespace(context, index, options.pineconeNamespace);
+	},
+	async populateVectorStore(context, embeddings, documents, itemIndex) {
+		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			pineconeNamespace?: string;
+			clearNamespace?: boolean;
+		};
+		const pineconeIndex = await getValidatedIndex(context, itemIndex);
 
-		const indexes = ((await client.listIndexes()).indexes ?? []).map((i) => i.name);
-
-		if (!indexes.includes(index)) {
-			throw new NodeOperationError(context.getNode(), `Index ${index} not found`, {
-				itemIndex,
-				description: 'Please check that the index exists in your vector store',
-			});
-		}
-
-		const pineconeIndex = client.Index(index);
-
-		if (options.pineconeNamespace && options.clearNamespace) {
-			const namespace = pineconeIndex.namespace(options.pineconeNamespace);
-			try {
-				await namespace.deleteAll();
-			} catch (error) {
-				// Namespace doesn't exist yet
-				context.logger.info(`Namespace ${options.pineconeNamespace} does not exist yet`);
-			}
+		if (
+			options.pineconeNamespace &&
+			options.clearNamespace &&
+			context.getNode().typeVersion < 1.1
+		) {
+			await clearNamespace(context, pineconeIndex, options.pineconeNamespace);
 		}
 
 		await PineconeStore.fromDocuments(documents, embeddings, {

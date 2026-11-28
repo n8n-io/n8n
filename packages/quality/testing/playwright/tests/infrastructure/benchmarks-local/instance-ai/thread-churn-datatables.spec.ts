@@ -20,7 +20,7 @@ const DATA_TABLE_PROMPT =
 test.describe(
 	'Instance-AI Memory: Data Table CRUD',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('heap returns to baseline after data table create/delete rounds', async ({

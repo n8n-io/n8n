@@ -31,6 +31,38 @@ node kind, or when the credential type it wraps is restricted under the credenti
 and leaves HTTP Request and the other credential-only nodes alone. The backend never sees the
 generated name and refuses a node type rule on it; the credential type rule is the one to write.
 
+The admin pages read and write the instance policy through `useInstancePolicy()`. It loads only
+the kinds the user can manage, from `/node-type-policies/instance` and
+`/credential-type-policies/instance`. `setAccessMany(kind, typeNames, action)` sends
+`{ changes, version }` to `PATCH …/instance/access`, so either all the types change or none does.
+The server places the rules, and the client never sends the rule list. `setAccess` calls it with one
+name. Saves of one kind run in order, and each one sends the version that the previous one
+returned. When the server answers 409 and the policy has a new version, the page loads the new
+policy, saves nothing and tells the admin. Saves queued behind it are dropped.
+A 409 with no new version means the server refuses to edit the policy in place, because it has
+several attached documents or shares one. The save returns `notEditable`, the page says so once,
+and the store sets `notEditable` for that kind. Later saves of that kind are not sent until a load
+finds a newer version.
+
+The landing page lists the team projects from `GET /project-policies` through
+`useProjectPolicies()`. Each entry covers both kinds, so a project policy is one card. "Add project
+policy" calls `POST /project-policies`, which gives the project both kinds in one write. The page
+reads the list again after each add, also when the admin closed the dialog before the add ended. A
+409 means another admin added the policy first: the dialog keeps its error and the page reads the
+list again. If the first list read fails, the page shows the Global section only. A later read that
+fails keeps the last list, and a read that ends after a newer one is ignored.
+
+The tables of the admin page let the admin select rows and act on them with
+`PolicySelectionBar`. The bar does not know the scope of the policy, so the project page can use it
+too. A selection stays in its tab and is kept across a page change, a search and a filter. The
+table draws its own checkbox column, because the select column of `N8nDataTableServer` has no
+accessible names. The checkbox in the header of that column selects the rows of the current page.
+The "Select all" button above the table selects the rows of every page that the search and the
+filter show.
+`useInstanceTypeAccess(kind).changeAccessMany` leaves out the read-only types and the types that
+already have the access. A bulk restriction asks once, through the review store, for all the types
+that workflows use.
+
 ```bash
 pnpm turbo typecheck lint test --filter=@n8n/frontend-module-type-availability-policies
 ```
@@ -58,6 +90,8 @@ admins when a project admin can lift it, otherwise the instance owners. The surf
 as a sibling of their own content, so a popover that closes never unmounts the open dialog.
 `RestrictedNodePopover` is the explanation for a row in a list: the lock trigger, the hover-opened
 popover and the dialog. The caller passes the row element and whether the row is keyboard-active.
+`RestrictedMenuItemMarker` puts that popover in a dropdown menu row. It finds the row itself, and
+the caller owns the dialog because the menu closes when the action is pressed.
 `RestrictedNodePanel` is the builder-facing explanation of a blocked node in the NDV, with the
 contact and replace actions. The shell renders the popover and the panel where a restricted node
 appears; the module owns their copy and behaviour.

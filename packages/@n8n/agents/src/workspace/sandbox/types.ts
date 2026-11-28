@@ -64,6 +64,8 @@ export interface DisabledSandboxConfig extends SandboxConfigBase {
 
 export interface EnabledSandboxConfigBase extends SandboxConfigBase {
 	enabled: true;
+	/** Outbound network policy. When omitted, keep the provider's current behavior. */
+	egress?: 'none' | 'public';
 	/**
 	 * When true, the provider deletes the sandbox once it goes idle instead of leaving it
 	 * stopped. Used for throwaway sandboxes (e.g. eval runs) so they don't accumulate.
@@ -85,6 +87,8 @@ export interface DaytonaSandboxConfig extends EnabledSandboxConfigBase {
 	autoArchiveInterval?: number;
 	autoDeleteInterval?: number;
 	createTimeoutSeconds?: number;
+	/** Give the first start a budget of a few seconds. See `DaytonaSandboxOptions.quickStart`. */
+	quickStart?: boolean;
 	getAuthToken?: () => Promise<string>;
 	refreshSkewMs?: number;
 	logger?: Logger;

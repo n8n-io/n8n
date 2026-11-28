@@ -172,6 +172,7 @@ describe('Publisher', () => {
 			'relay-agent-execution-update',
 			'cancel-agent-chat-execution',
 			'relay-agent-background-tasks-update',
+			'relay-agent-thread-title-update',
 			'relay-agent-message-queue-update',
 			'relay-agent-update',
 			'display-workflow-activation',
@@ -179,6 +180,7 @@ describe('Publisher', () => {
 			'display-workflow-activation-error',
 			'display-workflow-publication-status',
 			'reload-public-api-rate-limit-settings',
+			'promotion-environment-changed',
 		] as const)('should not debounce `%s`', async (command) => {
 			const publisher = new Publisher(
 				logger,

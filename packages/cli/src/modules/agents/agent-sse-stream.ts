@@ -1,4 +1,4 @@
-import type { AgentMessage, StreamChunk } from '@n8n/agents';
+import { PromptCacheParamsError, type AgentMessage, type StreamChunk } from '@n8n/agents';
 import {
 	AGENT_CHAT_ERROR_CODES,
 	type AgentPersistedMessageContentPart,
@@ -158,7 +158,7 @@ function emitTextLikeChunk(
 /** Map tool chunks to SSE events. */
 function emitToolChunk(
 	chunk: Extract<
-		StreamChunk,
+		AgentExecutionStreamChunk,
 		{
 			type:
 				| 'tool-input-start'
@@ -219,6 +219,7 @@ function emitToolChunk(
 				output: toolResultOutputForSse(chunk.output, chunk.isError),
 				...(chunk.isError !== undefined && { isError: chunk.isError }),
 				...(toolResultChunk.canceled !== undefined && { canceled: toolResultChunk.canceled }),
+				...(toolResultChunk.simulation && { simulation: toolResultChunk.simulation }),
 			});
 			break;
 		}
@@ -350,6 +351,8 @@ function apiCallErrorMessage(error: unknown): string | undefined {
 
 function stringifyError(error: unknown): string {
 	try {
+		// Its provider body sits on `cause`. Show the readable message instead.
+		if (error instanceof PromptCacheParamsError) return error.message;
 		const gatewayMessage = apiCallErrorMessage(error);
 		if (gatewayMessage) return gatewayMessage;
 		if (error instanceof Error) {

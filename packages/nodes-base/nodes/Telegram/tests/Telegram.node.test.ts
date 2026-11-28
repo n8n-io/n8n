@@ -98,6 +98,9 @@ describe('Telegram node', () => {
 				'file_1.pdf',
 				'application/pdf',
 			);
+			expect(String(apiRequestSpy.mock.calls[1][5])).toBe(
+				'https://api.telegram.org/file/bottest-token/documents/file_1.pdf',
+			);
 		});
 
 		it('should fallback to application/octet-stream if the mime type cannot be determined', async () => {
@@ -427,6 +430,119 @@ describe('Telegram node', () => {
 						}),
 					}),
 				}),
+			);
+		});
+	});
+
+	describe('message:sendMessage', () => {
+		it('should include protect_content in the payload when set to true', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123';
+					case 'text':
+						return 'Hello';
+					case 'additionalFields':
+						return { protect_content: true };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 100 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendMessage',
+				expect.objectContaining({
+					chat_id: '123',
+					protect_content: true,
+				}),
+				{},
+			);
+		});
+
+		it('should include protect_content in the payload when set to false', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123';
+					case 'text':
+						return 'Hello';
+					case 'additionalFields':
+						return { protect_content: false };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 100 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendMessage',
+				expect.objectContaining({
+					chat_id: '123',
+					protect_content: false,
+				}),
+				{},
+			);
+		});
+	});
+
+	describe('message:sendPhoto (non-binary)', () => {
+		it('should include protect_content in the payload when provided in additionalFields', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendPhoto';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123';
+					case 'file':
+						return 'https://example.com/photo.jpg';
+					case 'additionalFields':
+						return { protect_content: true };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 100 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendPhoto',
+				{
+					chat_id: '123',
+					photo: 'https://example.com/photo.jpg',
+					protect_content: true,
+				},
+				{},
 			);
 		});
 	});
@@ -935,6 +1051,118 @@ describe('Telegram node', () => {
 			);
 		});
 
+		it('should materialize single line breaks as <br> when Preserve Line Breaks is on', async () => {
+			// https://github.com/n8n-io/n8n/issues/37361
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '@channel';
+					case 'richFormat':
+						return 'markdown';
+					case 'richMessageText':
+						return 'string1\nstring2\n\nstring3';
+					case 'additionalFields':
+						return { preserveLineBreaks: true };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 101 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessage',
+				{
+					chat_id: '@channel',
+					rich_message: { markdown: 'string1<br>\nstring2\n\nstring3' },
+				},
+				{},
+			);
+		});
+
+		it('should materialize line breaks in HTML when Preserve Line Breaks is on', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '@channel';
+					case 'richFormat':
+						return 'html';
+					case 'richMessageText':
+						return 'string1\nstring2\n\nstring3';
+					case 'additionalFields':
+						return { preserveLineBreaks: true };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 101 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessage',
+				{
+					chat_id: '@channel',
+					rich_message: { html: 'string1<br>\nstring2<br><br>\n\nstring3' },
+				},
+				{},
+			);
+		});
+
+		it('should send the rich message text unchanged when Preserve Line Breaks is off', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '@channel';
+					case 'richFormat':
+						return 'markdown';
+					case 'richMessageText':
+						return 'string1\nstring2';
+					case 'additionalFields':
+						return {};
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 101 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessage',
+				{ chat_id: '@channel', rich_message: { markdown: 'string1\nstring2' } },
+				{},
+			);
+		});
+
 		it('should attach reply_markup with an inline keyboard', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
 				switch (p) {
@@ -982,6 +1210,86 @@ describe('Telegram node', () => {
 						inline_keyboard: [[{ text: 'Open', url: 'https://n8n.io' }]],
 					},
 				},
+				{},
+			);
+		});
+
+		it('should include protect_content in the payload when provided in additionalFields', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123';
+					case 'richFormat':
+						return 'html';
+					case 'richMessageText':
+						return '<b>Hi</b>';
+					case 'additionalFields':
+						return { protect_content: true };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 100 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessage',
+				{
+					chat_id: '123',
+					rich_message: { html: '<b>Hi</b>' },
+					protect_content: true,
+				},
+				{},
+			);
+		});
+	});
+
+	describe('message:editMessageText', () => {
+		it('should work correctly even when protect_content is set in additionalFields', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'editMessageText';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123';
+					case 'messageId':
+						return '456';
+					case 'text':
+						return 'Updated text';
+					case 'additionalFields':
+						return { protect_content: true };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 456 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'editMessageText',
+				expect.objectContaining({
+					chat_id: '123',
+					message_id: '456',
+					text: 'Updated text',
+				}),
 				{},
 			);
 		});

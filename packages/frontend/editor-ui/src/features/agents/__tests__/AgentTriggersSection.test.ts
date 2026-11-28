@@ -80,6 +80,7 @@ const { fetchStatusSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy, showMessage
 
 const connectedCredentials = ref<Record<string, string>>({});
 const configured = ref<Record<string, boolean>>({});
+const integrationSettings = ref<Record<string, unknown>>({});
 const managedCredential = ref(false);
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -101,6 +102,7 @@ vi.mock('../composables/useAgentIntegrationStatus', function mockIntegrationStat
 		useAgentIntegrationStatus: function useAgentIntegrationStatus() {
 			return {
 				connectedCredentials,
+				integrationSettings,
 				fetchStatus: fetchStatusSpy,
 				disconnect: disconnectSpy,
 				loadingMap: ref({}),
@@ -117,7 +119,16 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
+const reloadTasksSpy = vi.hoisted(() => vi.fn());
+
 const n8nChatFlag = vi.hoisted(() => ({ value: false }));
+const triggerRedesignFlag = vi.hoisted(() => ({ value: false }));
+vi.mock('../composables/useAgentTriggerRedesignFlag', async () => {
+	const { computed } = await import('vue');
+	return {
+		useAgentTriggerRedesignFlag: () => computed(() => triggerRedesignFlag.value),
+	};
+});
 vi.mock('../composables/useAgentsN8nChatFlag', () => ({
 	useAgentsN8nChatFlag: () => n8nChatFlag,
 }));
@@ -142,7 +153,7 @@ vi.mock('../channels/whatsapp/useWhatsAppMetaStatus', () => ({
 vi.mock('../components/AgentChannelModal.vue', () => ({
 	default: {
 		name: 'AgentChannelModal',
-		props: ['simpleSetup', 'isPublished', 'view', 'savedDescription', 'saveDescription'],
+		props: ['simpleSetup', 'isPublished', 'view', 'savedDescription', 'saveDescription', 'task'],
 		template:
 			'<div data-testid="agent-channel-modal-stub" :data-simple-setup="simpleSetup" :data-is-published="isPublished" :data-view="view" :data-saved-description="savedDescription" />',
 	},
@@ -169,17 +180,41 @@ function mountSection(
 				N8nText: { template: '<span><slot /></span>' },
 				AgentSchedulesRow: {
 					name: 'AgentSchedulesRow',
-					props: ['ensureAgentPersisted'],
+					props: ['ensureAgentPersisted', 'hideAdd'],
 					template: '<div />',
+				},
+				AgentTriggersList: {
+					name: 'AgentTriggersList',
+					props: ['channels', 'ensureAgentPersisted'],
+					emits: ['add-channel', 'open-channel', 'open-task'],
+					methods: { reloadTasks: reloadTasksSpy },
+					template:
+						'<div data-testid="agent-triggers-list-stub"><button data-testid="agent-triggers-add-trigger" /><button data-testid="add-trigger-item-channel" @click="$emit(\'add-channel\')" /></div>',
+				},
+				N8nDropdownMenu: {
+					name: 'N8nDropdownMenu',
+					props: ['items'],
+					emits: ['select'],
+					template:
+						'<div><slot name="trigger" /><button v-for="item in items" :key="item.id" :data-testid="\'add-trigger-item-\' + item.id" @click="$emit(\'select\', item.id)">{{ item.label }}</button></div>',
 				},
 			},
 		},
 	});
 }
 
+/** Opens the channel modal with the add button that the active flag state shows. */
+async function openAddChannel(wrapper: ReturnType<typeof mountSection>) {
+	const testId = triggerRedesignFlag.value
+		? 'add-trigger-item-channel'
+		: 'agent-channels-add-channel';
+	await wrapper.find(`[data-testid="${testId}"]`).trigger('click');
+}
+
 describe('AgentTriggersSection', () => {
 	beforeEach(function resetMocks() {
 		vi.clearAllMocks();
+		triggerRedesignFlag.value = false;
 		setActivePinia(createPinia());
 		vi.mocked(credentialsApi.getUsableCredentials).mockResolvedValue([]);
 		connectedCredentials.value = {};
@@ -494,11 +529,65 @@ describe('AgentTriggersSection', () => {
 		expect(fetchStatusSpy).toHaveBeenCalledExactlyOnceWith([]);
 	});
 
+	describe('add trigger menu', () => {
+		beforeEach(function enableTriggerRedesign() {
+			triggerRedesignFlag.value = true;
+		});
+
+		it('shows the triggers list and hides the chip rows', () => {
+			const ensurePersistedStub = vi.fn().mockResolvedValue(undefined);
+			const wrapper = mountSection(undefined, false, { ensureAgentPersisted: ensurePersistedStub });
+
+			const list = wrapper.findComponent({ name: 'AgentTriggersList' });
+			expect(list.exists()).toBe(true);
+			expect(list.props('ensureAgentPersisted')).toBe(ensurePersistedStub);
+			expect(wrapper.findComponent({ name: 'AgentSchedulesRow' }).exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-channels-add-channel"]').exists()).toBe(false);
+		});
+
+		it('opens the channel modal when "Add channel" is selected', async () => {
+			const wrapper = mountSection();
+
+			await openAddChannel(wrapper);
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').exists()).toBe(true);
+		});
+
+		it('opens the task in the modal and reloads the list after save', async () => {
+			const task = { id: 'task-1', name: 'Daily summary', enabled: true };
+			const wrapper = mountSection();
+
+			wrapper.findComponent({ name: 'AgentTriggersList' }).vm.$emit('open-task', task);
+			await flushPromises();
+
+			const modal = wrapper.findComponent({ name: 'AgentChannelModal' });
+			expect(modal.props('view')).toBe('schedule_edit');
+			expect(modal.props('task')).toEqual(task);
+			expect(reloadTasksSpy).not.toHaveBeenCalled();
+
+			modal.vm.$emit('tasks-changed');
+			await flushPromises();
+
+			expect(reloadTasksSpy).toHaveBeenCalledTimes(1);
+			expect(wrapper.emitted('tasks-changed')).toHaveLength(1);
+		});
+
+		it('shows the row add buttons and no add trigger menu when the flag is off', () => {
+			triggerRedesignFlag.value = false;
+			const wrapper = mountSection();
+
+			expect(wrapper.find('[data-testid="agent-triggers-add-trigger"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-channels-add-channel"]').exists()).toBe(true);
+			expect(wrapper.findComponent({ name: 'AgentSchedulesRow' }).props('hideAdd')).toBeFalsy();
+		});
+	});
+
 	describe('simpleChannelSetup', () => {
 		it('does not force simple setup on the channel modal by default', async () => {
 			const wrapper = mountSection();
 
-			await wrapper.find('[data-testid="agent-channels-add-channel"]').trigger('click');
+			await openAddChannel(wrapper);
 			await flushPromises();
 
 			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
@@ -509,7 +598,7 @@ describe('AgentTriggersSection', () => {
 		it('forwards simpleChannelSetup to the channel modal as simple-setup', async () => {
 			const wrapper = mountSection(true);
 
-			await wrapper.find('[data-testid="agent-channels-add-channel"]').trigger('click');
+			await openAddChannel(wrapper);
 			await flushPromises();
 
 			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
@@ -521,7 +610,7 @@ describe('AgentTriggersSection', () => {
 	it('forwards publication state to the channel modal', async () => {
 		const wrapper = mountSection(undefined, true);
 
-		await wrapper.find('[data-testid="agent-channels-add-channel"]').trigger('click');
+		await openAddChannel(wrapper);
 		await flushPromises();
 
 		expect(
@@ -628,7 +717,7 @@ describe('AgentTriggersSection', () => {
 			});
 			await flushPromises();
 
-			await wrapper.find('[data-testid="agent-channels-add-channel"]').trigger('click');
+			await openAddChannel(wrapper);
 			await flushPromises();
 
 			expect(
@@ -637,6 +726,46 @@ describe('AgentTriggersSection', () => {
 					.attributes('data-saved-description'),
 			).toBe('Handles support tickets');
 		});
+	});
+
+	describe('API chip and authentication', () => {
+		function mountWebhook(settings?: { authentication: string }) {
+			catalogItems.value = [{ type: 'webhook', label: 'API', icon: 'webhook' }];
+			configured.value = { webhook: true };
+			connectedCredentials.value = {};
+			integrationSettings.value = { webhook: settings };
+			return mountSection(undefined, true, { connectedTriggers: ['webhook'] });
+		}
+
+		const chip = (wrapper: ReturnType<typeof mountSection>) =>
+			wrapper.findComponent({ name: 'AgentChipButton' });
+
+		afterEach(() => {
+			integrationSettings.value = {};
+		});
+
+		it('shows the amber warning when authentication is none', async () => {
+			const wrapper = mountWebhook({ authentication: 'none' });
+			await flushPromises();
+
+			expect(chip(wrapper).props('warning')).toBe(true);
+			expect(chip(wrapper).props('warningReasons')).toEqual([
+				'agents.channels.webhook.authentication.noneNotice',
+			]);
+			expect(chip(wrapper).props('invalid')).toBe(false);
+			expect(wrapper.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(true);
+		});
+
+		it.each([{ authentication: 'headerAuth' }, { authentication: 'jwtAuth' }, undefined])(
+			'shows no warning for %j',
+			async (settings) => {
+				const wrapper = mountWebhook(settings);
+				await flushPromises();
+
+				expect(chip(wrapper).props('warning')).toBe(false);
+				expect(wrapper.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(false);
+			},
+		);
 	});
 
 	describe('WhatsApp chip and Meta review status', () => {

@@ -1,4 +1,4 @@
-import type { ConsentUiHints } from '@n8n/api-types';
+import type { ConsentRefusalDetails, ConsentUiHints } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User, OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -44,7 +44,12 @@ type ConsentDetailsResult =
 			isFirstParty: boolean;
 	  }
 	| { ok: false; reason: 'resource_unavailable' }
-	| { ok: false; reason: 'forbidden' };
+	| {
+			ok: false;
+			reason: 'forbidden';
+			/** Set when the resource says why it refused, so the page can name the reason. */
+			refusal?: ConsentRefusalDetails;
+	  };
 
 /**
  * Manages the consent flow for the shared OAuth server.
@@ -100,11 +105,7 @@ export class OAuthConsentService {
 					};
 				}
 
-				if (!(await resource.authorize(user)))
-					return {
-						ok: false,
-						reason: 'forbidden',
-					};
+				if (!(await resource.authorize(user))) return await this.forbidden(resource, user);
 
 				const scopes = this.grantableScopes(
 					await this.supportedScopesFor(resource, user),
@@ -153,6 +154,25 @@ export class OAuthConsentService {
 			this.logger.error('Error getting consent details', { error });
 			return null;
 		}
+	}
+
+	private async forbidden(
+		resource: ProtectedResource,
+		user: User,
+	): Promise<Extract<ConsentDetailsResult, { reason: 'forbidden' }>> {
+		// The details only explain the refusal. A failed lookup still answers `forbidden`.
+		const refusal = await Promise.resolve(resource.describeRefusal?.(user)).catch(
+			(error: unknown) => {
+				this.logger.warn('Could not describe a refusal', { error });
+				return undefined;
+			},
+		);
+		if (!refusal) return { ok: false, reason: 'forbidden' };
+		return {
+			ok: false,
+			reason: 'forbidden',
+			refusal: { ...refusal, resourceName: resource.displayName, uiHints: resource.uiHints },
+		};
 	}
 
 	/**
@@ -371,6 +391,15 @@ export class OAuthConsentService {
 			(await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource));
 		if (!resource?.isFirstParty) return null;
 
+		if (resource.skipConsent && this.isOwnClient(resource, sessionPayload)) {
+			if (!(await resource.authorize(user))) return null;
+			const scopes = this.grantableScopes(
+				await this.supportedScopesFor(resource, user),
+				sessionPayload.requestedScopes,
+			);
+			return await this.issueGrant(user, sessionPayload, scopes);
+		}
+
 		const consent = await this.userConsentRepository.findGrant(
 			user.id,
 			sessionPayload.clientId,
@@ -429,5 +458,13 @@ export class OAuthConsentService {
 				return null;
 			return await this.issueGrant(user, sessionPayload, consented, ctx);
 		});
+	}
+
+	private isOwnClient(resource: ProtectedResource, sessionPayload: OAuthSessionPayload): boolean {
+		const resourceUrls = resource.getResourceUrls?.() ?? [resource.getResourceUrl()];
+		return (
+			sessionPayload.redirectUri === sessionPayload.clientId &&
+			resourceUrls.includes(sessionPayload.clientId)
+		);
 	}
 }

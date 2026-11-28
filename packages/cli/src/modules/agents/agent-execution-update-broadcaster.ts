@@ -3,9 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-
-import { Push } from '@/push';
-import { Publisher } from '@n8n/backend-services';
+import { Publisher, PushProxy } from '@n8n/backend-services';
 
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentPushRecipientsService } from './agent-push-recipients.service';
@@ -19,7 +17,7 @@ export class AgentExecutionUpdateBroadcaster {
 	constructor(
 		private readonly logger: Logger,
 		private readonly recipients: AgentPushRecipientsService,
-		private readonly push: Push,
+		private readonly push: PushProxy,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly threadRepository: AgentExecutionThreadRepository,
@@ -74,6 +72,41 @@ export class AgentExecutionUpdateBroadcaster {
 				payload: { data, userIds },
 			});
 		}
+	}
+
+	/** Tells the users of a thread its new generated title, so open lists show it at once. */
+	notifyThreadTitleUpdated(data: PushPayload<'agentThreadTitleUpdated'>): void {
+		void this.broadcastThreadTitleUpdated(data).catch((error: unknown) => {
+			this.logger.warn('Failed to broadcast agent thread title update', {
+				threadId: data.threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+	}
+
+	private async broadcastThreadTitleUpdated(
+		data: PushPayload<'agentThreadTitleUpdated'>,
+	): Promise<void> {
+		const thread = await this.threadRepository.findOneBy({ id: data.threadId });
+		if (!thread || thread.projectId !== data.projectId || thread.agentId !== data.agentId) return;
+		const userIds = await this.getRecipients(thread);
+		if (userIds.length === 0) return;
+
+		this.push.sendToUsers({ type: 'agentThreadTitleUpdated', data }, userIds);
+		if (this.instanceSettings.isWorker || this.instanceSettings.isMultiMain) {
+			await this.publisher.publishCommand({
+				command: 'relay-agent-thread-title-update',
+				payload: { data, userIds },
+			});
+		}
+	}
+
+	@OnPubSubEvent('relay-agent-thread-title-update', { instanceType: 'main' })
+	handleThreadTitleRelay({
+		data,
+		userIds,
+	}: PubSubCommandMap['relay-agent-thread-title-update']): void {
+		this.push.sendToUsers({ type: 'agentThreadTitleUpdated', data }, userIds);
 	}
 
 	notifyQueueUpdated(threadId: string): void {

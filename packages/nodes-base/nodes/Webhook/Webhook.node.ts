@@ -43,6 +43,7 @@ import { WebhookAuthorizationError } from './error';
 import {
 	checkResponseModeConfiguration,
 	configuredOutputs,
+	getOutputHeaders,
 	handleFormData,
 	isIpAllowed,
 	setupOutputConnection,
@@ -58,8 +59,8 @@ export class Webhook extends Node {
 		iconColor: 'magenta',
 		name: 'webhook',
 		group: ['trigger'],
-		version: [1, 1.1, 2, 2.1, 2.2],
-		defaultVersion: 2.2,
+		version: [1, 1.1, 2, 2.1, 2.2, 2.3],
+		defaultVersion: 2.3,
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
 		activationMessage: 'You can now make calls to your production webhook URL.',
@@ -260,7 +261,10 @@ export class Webhook extends Node {
 		let validationData: IDataObject | undefined;
 		try {
 			if (options.ignoreBots && isbot(req.headers['user-agent']))
-				throw new WebhookAuthorizationError(403);
+				throw new WebhookAuthorizationError(
+					403,
+					'Request rejected because the user agent matches a bot. Change the user agent or disable "Ignore Bots".',
+				);
 			if (context.getNodeParameter('authentication', 'none') === 'n8nOAuth2') {
 				// Two-step n8n user-auth flow: (1) validate the bearer token and resolve
 				// the caller to an n8n user, then (2) seed the execution context so the
@@ -338,7 +342,7 @@ export class Webhook extends Node {
 
 		const response: INodeExecutionData = {
 			json: {
-				headers: req.headers,
+				headers: getOutputHeaders(context),
 				params: req.params,
 				query: req.query,
 				body: req.body,
@@ -398,7 +402,7 @@ export class Webhook extends Node {
 
 			const returnItem: INodeExecutionData = {
 				json: {
-					headers: req.headers,
+					headers: getOutputHeaders(context),
 					params: req.params,
 					query: req.query,
 					body: {},

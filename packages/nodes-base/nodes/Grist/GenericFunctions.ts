@@ -5,8 +5,10 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import type {
 	GristCredentials,
@@ -46,7 +48,7 @@ export function gristBaseUrl(credentials: GristCredentials): string {
 export async function gristApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject | number[] = {},
 	qs: IDataObject = {},
 ) {
@@ -54,9 +56,9 @@ export async function gristApiRequest(
 	const credentialsType = authentication === 'oAuth2' ? 'gristOAuth2Api' : 'gristApi';
 	const credentials = await this.getCredentials<GristCredentials>(credentialsType);
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
-		uri: `${gristBaseUrl(credentials)}/api${endpoint}`,
+		uri: requestUrl`${gristBaseUrl(credentials)}/api${endpoint}`,
 		qs,
 		body,
 		json: true,
@@ -102,10 +104,11 @@ export function isSafeInteger(val: number) {
 export function parseFilterProperties(filterProperties: GristFilterProperties) {
 	return filterProperties.reduce<{ [key: string]: Array<string | number> }>((acc, cur) => {
 		acc[cur.field] = acc[cur.field] ?? [];
-		const values = isSafeInteger(Number(cur.values)) ? Number(cur.values) : cur.values;
-		acc[cur.field].push(values);
+		const value = String(cur.values);
+		acc[cur.field].push(value);
+		if (value.trim() !== '' && isSafeInteger(Number(value))) acc[cur.field].push(Number(value));
 		return acc;
-	}, {});
+	}, Object.create(null));
 }
 
 export function parseDefinedFields(fieldsToSendProperties: GristDefinedFields) {

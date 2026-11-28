@@ -14,7 +14,13 @@ export type AgentContextLookup =
 	| { type: 'integrations'; queries?: string[] }
 	| { type: 'attachable-workflows'; searchTerm?: string }
 	| { type: 'config' | 'skills' | 'tasks' | 'custom-tools'; agentId: string }
-	| { type: 'skill'; agentId: string; skillId: string; referencePaths?: string[] }
+	| {
+			type: 'skill';
+			agentId: string;
+			skillId: string;
+			referencePaths?: string[];
+			referenceOffset?: number;
+	  }
 	| { type: 'custom-tool'; agentId: string; toolId: string }
 	| {
 			type: 'sessions';

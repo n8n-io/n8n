@@ -4,13 +4,7 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { Person, ServiceAccount, SettingsRepository } from '@n8n/db';
-import type {
-	AuthIdentity,
-	AuthIdentityRepository,
-	PersonRepository,
-	Settings,
-	User,
-} from '@n8n/db';
+import type { AuthIdentity, AuthIdentityRepository, PersonRepository, Settings } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -22,9 +16,8 @@ import type { BindingContext } from 'samlify/types/src/entity';
 import config from '@/config';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { Publisher } from '@n8n/backend-services';
+import { Publisher, UrlService } from '@n8n/backend-services';
 import type { CacheService, EventService } from '@n8n/backend-services';
-import type { UrlService } from '@n8n/backend-services';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
 import { SAML_PREFERENCES_DB_KEY } from '../constants';
@@ -225,6 +218,7 @@ describe('SamlService', () => {
 		authIdentityRepository.findByProviderIdWithUser.mockResolvedValue(null);
 		globalConfig = mock<GlobalConfig>({
 			sso: { saml: { loginEnabled: false } },
+			endpoints: { rest: 'rest' },
 		});
 		provisioningService = mock<ProvisioningService>();
 		cipher = mock<Cipher>();
@@ -390,6 +384,56 @@ describe('SamlService', () => {
 					n8nProjectRoles: ['projectRole1', 'projectRole2'],
 				},
 				raw: { email: 'test@test.com', role: 'admin' },
+			});
+		});
+
+		describe('when samlify rejects the response', () => {
+			const rejectWith = (rejection: unknown) => {
+				Container.set(UrlService, urlService);
+				vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue(
+					mock<IdentityProviderInstance>(),
+				);
+				const serviceProviderInstance = mock<ServiceProviderInstance>();
+				serviceProviderInstance.parseLoginResponse.mockRejectedValue(rejection);
+				vi.spyOn(samlService, 'getServiceProviderInstance').mockReturnValue(
+					serviceProviderInstance,
+				);
+			};
+
+			test.each([
+				{ kind: 'a string', rejection: 'ERR_AUDIENCE_MISMATCH' },
+				{ kind: 'an Error', rejection: new Error('ERR_AUDIENCE_MISMATCH') },
+			])('logs the reason and the expected values for $kind', async ({ rejection }) => {
+				rejectWith(rejection);
+
+				await expect(
+					samlService.getAttributesFromLoginResponse(mock<express.Request>(), 'post'),
+				).rejects.toThrowError(
+					'SAML Authentication failed. Could not parse SAML response. ERR_AUDIENCE_MISMATCH',
+				);
+				expect(logger.warn).toHaveBeenCalledWith(
+					'SAML response was rejected (ERR_AUDIENCE_MISMATCH). n8n expects Entity ID http://localhost:5678/rest/sso/saml/metadata and ACS URL http://localhost:5678/rest/sso/saml/acs',
+					{
+						reason: 'ERR_AUDIENCE_MISMATCH',
+						expectedEntityId: 'http://localhost:5678/rest/sso/saml/metadata',
+						expectedAcsUrl: 'http://localhost:5678/rest/sso/saml/acs',
+					},
+				);
+			});
+
+			test('logs a long reason on one line and shortens it', async () => {
+				const reason = `invalid signature\nfor uri #${'a'.repeat(500)}`;
+				rejectWith(new Error(reason));
+
+				await expect(
+					samlService.getAttributesFromLoginResponse(mock<express.Request>(), 'post'),
+				).rejects.toThrowError(reason);
+				const [message, metadata] = vi.mocked(logger.warn).mock.calls[0];
+				expect(message).not.toContain('\n');
+				expect(metadata).toMatchObject({
+					reason: expect.stringMatching(/^invalid signature for uri #a+\.\.\.$/),
+				});
+				expect((metadata as { reason: string }).reason).toHaveLength(203);
 			});
 		});
 	});
@@ -782,22 +826,22 @@ describe('SamlService', () => {
 				lastName: '',
 				userPrincipalName: 'foo@bar.com',
 			};
-			const mockUser = mock<User>();
-			mockUser.firstName = '';
-			mockUser.lastName = '';
+			const mockPerson = mock<Person>();
+			mockPerson.firstName = '';
+			mockPerson.lastName = '';
 
 			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
 			});
 			vi.mocked(personRepository.findByEmailWithAuthIdentities).mockResolvedValue(null);
-			vi.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
+			vi.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockPerson);
 			vi.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
 			expect(loginResult).toEqual({
-				authenticatedUser: mockUser,
+				authenticatedUser: mockPerson,
 				attributes: samlAttributes,
 				rawAttributes: {},
 				onboardingRequired: true,
@@ -811,22 +855,22 @@ describe('SamlService', () => {
 				lastName: 'Doe',
 				userPrincipalName: 'newuser@bar.com',
 			};
-			const mockUser = mock<User>();
-			mockUser.firstName = 'Jane';
-			mockUser.lastName = 'Doe';
+			const mockPerson = mock<Person>();
+			mockPerson.firstName = 'Jane';
+			mockPerson.lastName = 'Doe';
 
 			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
 			});
 			vi.mocked(personRepository.findByEmailWithAuthIdentities).mockResolvedValue(null);
-			vi.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
+			vi.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockPerson);
 			vi.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
 			expect(loginResult).toEqual({
-				authenticatedUser: mockUser,
+				authenticatedUser: mockPerson,
 				attributes: samlAttributes,
 				rawAttributes: {},
 				onboardingRequired: false,

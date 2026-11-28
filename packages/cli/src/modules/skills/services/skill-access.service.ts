@@ -1,16 +1,19 @@
-import type { CreateSkillDto } from '@n8n/api-types';
-import { ProjectScopeService } from '@n8n/backend-services';
-import type { OperationContext, User } from '@n8n/db';
+import type { AgentSkill, CreateSkillDto } from '@n8n/api-types';
+import { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
+import { WorkflowRepository, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-
 import type { Skill } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
 import type { SkillTarget } from '../utils/skill-content';
+import {
+	addedWorkflowMentionIds,
+	unreadableWorkflowMentionsMessage,
+} from '../utils/skill-workflow-mentions';
 import { requiredSourceScope, type SkillSourceAction } from './skill-source.policy';
+import { WorkflowsInSkillsFlagGate } from './workflows-in-skills-flag-gate';
 
 type SkillOperation = 'read' | 'update' | 'delete';
 
@@ -24,6 +27,9 @@ export class SkillAccessService {
 	constructor(
 		private readonly skillRepository: SkillRepository,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly workflowSharingService: WorkflowSharingService,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 	) {}
 
 	/** Whether the user may do `operation` on the skill. Every user may read an instance skill. */
@@ -34,15 +40,17 @@ export class SkillAccessService {
 	): Promise<boolean> {
 		const { projectId } = skill;
 		if (projectId) {
-			return await userHasScopes(user, [`projectSkill:${operation}`], false, { projectId });
+			return await this.projectScopeService.hasScopes(user, projectId, [
+				`projectSkill:${operation}`,
+			]);
 		}
 		return this.canAccessInstanceSkill(user, operation);
 	}
 
-	/** `canAccess` for a whole list: one query for the user's projects, not one per skill. */
+	/** Checks access or create permission for a list with one query for the user's projects. */
 	async accessCheck(
 		user: User,
-		operation: SkillOperation,
+		operation: SkillOperation | 'create',
 	): Promise<(skill: Pick<Skill, 'projectId'>) => boolean> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, [
 			`projectSkill:${operation}`,
@@ -139,7 +147,7 @@ export class SkillAccessService {
 		const scope = requiredSourceScope(action, projectId ? 'project' : 'global');
 		if (scope === null) return true;
 		return projectId
-			? await userHasScopes(user, [scope], false, { projectId })
+			? await this.projectScopeService.hasScopes(user, projectId, [scope])
 			: hasGlobalScope(user, scope);
 	}
 
@@ -172,7 +180,7 @@ export class SkillAccessService {
 	 */
 	async canCreate(user: User, projectId: string | null): Promise<boolean> {
 		if (projectId === null) return hasGlobalScope(user, 'skill:create');
-		return await userHasScopes(user, ['projectSkill:create'], false, { projectId });
+		return await this.projectScopeService.hasScopes(user, projectId, ['projectSkill:create']);
 	}
 
 	/** A create needs `projectSkill:create` in the project, or the global `skill:create`. */
@@ -185,7 +193,28 @@ export class SkillAccessService {
 		);
 	}
 
-	private canAccessInstanceSkill(user: User, operation: SkillOperation): boolean {
+	async assertCanReadMentionedWorkflows(
+		user: User,
+		skill: Pick<AgentSkill, 'instructions' | 'references'>,
+		previous?: Pick<AgentSkill, 'instructions' | 'references'>,
+	): Promise<void> {
+		const addedIds = addedWorkflowMentionIds(skill, previous);
+		if (addedIds.length === 0 || !(await this.workflowsInSkillsFlagGate.isEnabled())) return;
+		const [workflows, scopes] = await Promise.all([
+			this.workflowRepository.findByIds(addedIds, { fields: ['id'] }),
+			this.workflowSharingService.getSharedWorkflowScopes(addedIds, user),
+		]);
+		const existing = new Set(workflows.map(({ id }) => id));
+		const readable = new Set(
+			scopes
+				.filter(([, workflowScopes]) => workflowScopes.includes('workflow:read'))
+				.map(([id]) => id),
+		);
+		const unreadable = addedIds.filter((id) => !existing.has(id) || !readable.has(id));
+		if (unreadable.length > 0) throw new UserError(unreadableWorkflowMentionsMessage(unreadable));
+	}
+
+	private canAccessInstanceSkill(user: User, operation: SkillOperation | 'create'): boolean {
 		if (operation === 'read') return true;
 		return hasGlobalScope(user, `skill:${operation}`);
 	}

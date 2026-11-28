@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { router } from '../../actions/router';
@@ -71,7 +71,7 @@ describe('Confluence router', () => {
 			}),
 		);
 
-		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/attachments/att123');
+		expect(apiRequest).toHaveBeenCalledWith('DELETE', requestPath`/wiki/api/v2/attachments/att123`);
 		expect(result).toEqual([
 			[{ json: { deleted: true, attachmentId: 'att123', purged: false }, pairedItem: { item: 0 } }],
 		]);
@@ -92,7 +92,7 @@ describe('Confluence router', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/pages/9/attachments',
+			requestPath`/wiki/api/v2/pages/9/attachments`,
 			{},
 			{ limit: 250 },
 		);
@@ -119,7 +119,7 @@ describe('Confluence router', () => {
 		const result = await router.call(ctx);
 
 		expect(apiRequestUpload).toHaveBeenCalledWith(
-			'/wiki/rest/api/content/9/child/attachment',
+			requestPath`/wiki/rest/api/content/9/child/attachment`,
 			expect.anything(),
 		);
 		expect(result).toEqual([
@@ -141,7 +141,7 @@ describe('Confluence router', () => {
 			}),
 		);
 
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/api/v2/footer-comments', {
+		expect(apiRequest).toHaveBeenCalledWith('POST', requestPath`/wiki/api/v2/footer-comments`, {
 			pageId: '1',
 			body: { representation: 'storage', value: '<p>Nice page</p>' },
 		});
@@ -169,7 +169,7 @@ describe('Confluence router', () => {
 			}),
 		);
 
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/rest/api/content/1/label', [
+		expect(apiRequest).toHaveBeenCalledWith('POST', requestPath`/wiki/rest/api/content/1/label`, [
 			{ prefix: 'global', name: 'runbook' },
 			{ prefix: 'global', name: 'q3' },
 		]);
@@ -190,7 +190,7 @@ describe('Confluence router', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'DELETE',
-			'/wiki/rest/api/content/1/label',
+			requestPath`/wiki/rest/api/content/1/label`,
 			{},
 			{ name: 'runbook' },
 		);
@@ -208,7 +208,10 @@ describe('Confluence router', () => {
 			}),
 		);
 
-		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/footer-comments/555');
+		expect(apiRequest).toHaveBeenCalledWith(
+			'DELETE',
+			requestPath`/wiki/api/v2/footer-comments/555`,
+		);
 		expect(result).toEqual([
 			[{ json: { deleted: true, commentId: '555' }, pairedItem: { item: 0 } }],
 		]);
@@ -224,7 +227,7 @@ describe('Confluence router', () => {
 			}),
 		);
 
-		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/pages/1');
+		expect(apiRequest).toHaveBeenCalledWith('DELETE', requestPath`/wiki/api/v2/pages/1`);
 		expect(result).toEqual([
 			[{ json: { deleted: true, pageId: '1', purged: false }, pairedItem: { item: 0 } }],
 		]);
@@ -235,7 +238,7 @@ describe('Confluence router', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/pages/1',
+			requestPath`/wiki/api/v2/pages/1`,
 			{},
 			{ 'body-format': 'storage' },
 		);
@@ -258,7 +261,7 @@ describe('Confluence router', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/labels/777/pages',
+			requestPath`/wiki/api/v2/labels/777/pages`,
 			{},
 			{ 'body-format': 'storage', limit: 50 },
 		);
@@ -285,7 +288,7 @@ describe('Confluence router', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/pages/1/footer-comments',
+			requestPath`/wiki/api/v2/pages/1/footer-comments`,
 			{},
 			{ 'body-format': 'storage', limit: 50 },
 		);
@@ -299,8 +302,9 @@ describe('Confluence router', () => {
 
 	it('fans an array response out into one item per page', async () => {
 		apiRequest.mockImplementation(async (_method: string, url: string) => {
-			if (url.endsWith('/descendants')) return { results: [{ id: '2', type: 'page', depth: 1 }] };
-			return url === '/wiki/api/v2/pages' ? { results: [{ id: '2' }] } : { id: '1' };
+			if (String(url).endsWith('/descendants'))
+				return { results: [{ id: '2', type: 'page', depth: 1 }] };
+			return String(url) === '/wiki/api/v2/pages' ? { results: [{ id: '2' }] } : { id: '1' };
 		});
 
 		const result = await router.call(
@@ -334,7 +338,7 @@ describe('Confluence router', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/wiki/api/v2/pages/1/labels',
+				requestPath`/wiki/api/v2/pages/1/labels`,
 				{},
 				{ limit: 50 },
 			);
@@ -389,7 +393,7 @@ describe('Confluence router', () => {
 			}),
 		);
 
-		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces/98432', {}, {});
+		expect(apiRequest).toHaveBeenCalledWith('GET', requestPath`/wiki/api/v2/spaces/98432`, {}, {});
 		expect(result).toEqual([
 			[{ json: { id: '98432', key: 'NQK', name: 'Docs' }, pairedItem: { item: 0 } }],
 		]);
@@ -402,7 +406,12 @@ describe('Confluence router', () => {
 			mockExecuteCtx({ resource: 'space', operation: 'getMany', returnAll: false, limit: 50 }),
 		);
 
-		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces', {}, { limit: 50 });
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/wiki/api/v2/spaces`,
+			{},
+			{ limit: 50 },
+		);
 		expect(result).toEqual([
 			[
 				{ json: { id: '1' }, pairedItem: { item: 0 } },
@@ -454,7 +463,7 @@ describe('Confluence router', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/rest/api/search',
+			requestPath`/wiki/rest/api/search`,
 			{},
 			{ cql: 'type = page', limit: 50 },
 		);

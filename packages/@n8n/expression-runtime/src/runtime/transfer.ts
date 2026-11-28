@@ -13,6 +13,27 @@
  * a marker from user data that looks like one.
  */
 
+import {
+	bigIntPrototype,
+	bigIntValueOf,
+	booleanPrototype,
+	booleanValueOf,
+	defineProperty,
+	getPrototypeOf,
+	isArray,
+	isArrayBufferView,
+	isPrototypeOf,
+	numberPrototype,
+	numberValueOf,
+	objectKeys,
+	objectPrototype,
+	objectToString,
+	reflectApply,
+	reflectGet,
+	stringPrototype,
+	stringValueOf,
+} from './intrinsics';
+
 /** Names the type a marker carries, and marks the object as one of ours. */
 export const TRANSFER_TYPE_KEY = '__n8nType';
 
@@ -72,7 +93,7 @@ export type SentinelEncoder = (value: object) => TransferSentinel | undefined;
 
 function readKey(value: unknown, key: string): unknown {
 	if (typeof value !== 'object' || value === null) return undefined;
-	return Reflect.get(value, key);
+	return reflectGet(value, key);
 }
 
 /** The type a marker names, or nothing when the value is not a marker. */
@@ -104,7 +125,7 @@ export function defineOwnValue(
 	value: unknown,
 	enumerable = true,
 ): void {
-	Object.defineProperty(target, key, { value, writable: true, enumerable, configurable: true });
+	defineProperty(target, key, { value, writable: true, enumerable, configurable: true });
 }
 
 /** The objects a walk has finished, and the ones it is inside. */
@@ -139,8 +160,82 @@ export function encodeOnce(
 
 /** Type guard: plain object with Object.prototype or null prototype. */
 export function isPlainObject(value: object): value is Record<string, unknown> {
-	const proto = Object.getPrototypeOf(value);
-	return proto === Object.prototype || proto === null;
+	const proto = getPrototypeOf(value);
+	return proto === objectPrototype || proto === null;
+}
+
+function tryUnbox<T>(value: object, fn: (this: unknown) => T): T | undefined {
+	try {
+		const unboxed: T = reflectApply(fn, value, []);
+		return unboxed;
+	} catch {
+		return undefined;
+	}
+}
+
+function hasPrototype(proto: object, value: object): boolean {
+	try {
+		const found: boolean = reflectApply(isPrototypeOf, proto, [value]);
+		return found;
+	} catch {
+		return false;
+	}
+}
+
+const BOXED_PRIMITIVE_SPECS: ReadonlyArray<{
+	proto: object;
+	tag: string;
+	unbox: (this: unknown) => string | number | boolean | bigint;
+}> = [
+	{ proto: stringPrototype, tag: '[object String]', unbox: stringValueOf },
+	{ proto: numberPrototype, tag: '[object Number]', unbox: numberValueOf },
+	{ proto: booleanPrototype, tag: '[object Boolean]', unbox: booleanValueOf },
+	...(bigIntPrototype !== undefined && bigIntValueOf !== undefined
+		? [{ proto: bigIntPrototype, tag: '[object BigInt]', unbox: bigIntValueOf }]
+		: []),
+];
+
+/**
+ * Return the primitive inside a boxed String, Number, Boolean, or BigInt.
+ * Return undefined for any other object, including an object that inherits
+ * a wrapper prototype without its internal slot.
+ */
+export function unboxPrimitive(value: object): string | number | boolean | bigint | undefined {
+	let proto: unknown;
+	try {
+		proto = getPrototypeOf(value);
+	} catch {
+		return undefined;
+	}
+	if (proto === objectPrototype || proto === null) return undefined;
+
+	for (let i = 0; i < BOXED_PRIMITIVE_SPECS.length; i++) {
+		const spec = BOXED_PRIMITIVE_SPECS[i];
+		if (proto === spec.proto) {
+			const unboxed = tryUnbox(value, spec.unbox);
+			if (unboxed !== undefined) return unboxed;
+		}
+	}
+
+	let tag = '';
+	try {
+		tag = reflectApply(objectToString, value, []);
+	} catch {
+		tag = '';
+	}
+	for (let i = 0; i < BOXED_PRIMITIVE_SPECS.length; i++) {
+		const spec = BOXED_PRIMITIVE_SPECS[i];
+		if (tag === spec.tag || hasPrototype(spec.proto, value)) {
+			const unboxed = tryUnbox(value, spec.unbox);
+			if (unboxed !== undefined) return unboxed;
+		}
+	}
+	return undefined;
+}
+
+/** Say whether `value` is a structured-cloneable boxed primitive object. */
+export function isBoxedPrimitive(value: object): boolean {
+	return unboxPrimitive(value) !== undefined;
 }
 
 /** Types that structured clone copies with the prototype intact. */
@@ -153,7 +248,8 @@ export function isStructuredCloneBuiltin(value: object): boolean {
 		value instanceof Error ||
 		value instanceof Promise ||
 		value instanceof ArrayBuffer ||
-		ArrayBuffer.isView(value)
+		isArrayBufferView(value) ||
+		isBoxedPrimitive(value)
 	);
 }
 
@@ -166,7 +262,9 @@ function unwrapPlainObject(
 	// Record the result before the walk. A value that refers to itself then
 	// resolves to the same object.
 	seen.set(value, result);
-	for (const key of Object.keys(value)) {
+	const keys = objectKeys(value);
+	for (let i = 0; i < keys.length; i++) {
+		const key = keys[i];
 		defineOwnValue(result, key, unwrapValue(value[key], decode, seen));
 	}
 	return result;
@@ -176,7 +274,7 @@ function unwrapValue(value: unknown, decode: SentinelDecoder, seen: Map<object, 
 	if (value === null || value === undefined) return value;
 	if (typeof value !== 'object') return value;
 	if (seen.has(value)) return seen.get(value);
-	if (Array.isArray(value)) {
+	if (isArray(value)) {
 		const result: unknown[] = new Array<unknown>(value.length);
 		seen.set(value, result);
 		// `forEach` steps over the holes of a sparse array, which keeps it sparse.
@@ -201,7 +299,7 @@ function unwrapValue(value: unknown, decode: SentinelDecoder, seen: Map<object, 
 		if (seen.has(inner)) return seen.get(inner);
 		// An array payload is walked as an array. Its own entries carry no framing,
 		// so reading it as a marker is never right.
-		if (Array.isArray(inner)) return unwrapValue(inner, decode, seen);
+		if (isArray(inner)) return unwrapValue(inner, decode, seen);
 		if (!isPlainObject(inner)) return inner;
 		return unwrapPlainObject(inner, decode, seen);
 	}
@@ -219,7 +317,7 @@ function holdsSentinel(value: unknown, seen: Set<object>): boolean {
 	if (value === null || typeof value !== 'object') return false;
 	if (seen.has(value)) return false;
 	seen.add(value);
-	if (Array.isArray(value)) {
+	if (isArray(value)) {
 		for (let index = 0; index < value.length; index++) {
 			if (holdsSentinel(value[index], seen)) return true;
 		}

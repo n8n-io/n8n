@@ -12,6 +12,7 @@ import { loadSlackAdapter } from '../esm-loader';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 
 vi.mock('../esm-loader', () => ({
+	loadChatSdk: async () => await import('chat'),
 	loadSlackAdapter: vi.fn(),
 }));
 
@@ -21,11 +22,12 @@ describe('SlackIntegration', () => {
 	let integration: SlackIntegration;
 	const adapterConstructor = vi.fn();
 
-	beforeEach(() => {
-		integration = new SlackIntegration(mock<AgentRepository>());
+	beforeEach(async () => {
+		integration = new SlackIntegration(mock<AgentRepository>(), mock());
 		adapterConstructor.mockReset();
 		mockedLoadSlackAdapter.mockReset();
 		mockedLoadSlackAdapter.mockResolvedValue({
+			...(await import('@chat-adapter/slack')),
 			SlackAdapter: class {
 				constructor(config: unknown) {
 					adapterConstructor(config);
@@ -221,7 +223,7 @@ describe('SlackIntegration', () => {
 		agentRepository.findByIntegrationCredential.mockResolvedValue([
 			{ id: 'other-agent', name: 'Other Agent' },
 		] as never);
-		integration = new SlackIntegration(agentRepository);
+		integration = new SlackIntegration(agentRepository, mock());
 
 		await expect(
 			integration.onBeforeConnect({

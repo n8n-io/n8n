@@ -18,6 +18,55 @@ $ npx @n8n/scan-community-package @SCOPE/n8n-nodes-PACKAGE@beta
 
 Without a version, the scanner checks the `latest` dist-tag.
 
+### Scan a local package before you submit it
+
+Run the scanner with a path, for example `.` in your node's directory:
+
+```
+$ npm run build
+$ npx @n8n/scan-community-package .
+```
+
+The scanner lints your sources and the JavaScript files that `npm publish` would put in the package, with the same rules it applies to a published package. It reads the file list from `npm pack --dry-run`, so it respects the `files` field and `.npmignore`. Build the package first, or the scanner lints your sources only. The npm provenance and attested source checks need a published package, so a local scan skips them and lists them in `skippedChecks`.
+
+### Write the result as JSON
+
+To get the result as JSON, add `--output` with a file path. This works for a published package and for a local directory. The scanner still prints its progress to the terminal:
+
+```
+$ npx @n8n/scan-community-package n8n-nodes-PACKAGE --output scan-result.json
+$ npx @n8n/scan-community-package . --output scan-result.json
+```
+
+The file has this shape:
+
+```json
+{
+  "package": "n8n-nodes-PACKAGE",
+  "version": "1.2.3",
+  "status": "failed",
+  "check": "eslint",
+  "message": "ESLint violations found: 1 in the source",
+  "findings": [
+    {
+      "file": "nodes/Example/Example.node.ts",
+      "line": 12,
+      "column": 3,
+      "rule": "no-console",
+      "message": "Unexpected console statement.",
+      "origin": "source"
+    }
+  ],
+  "skippedChecks": []
+}
+```
+
+- `status` is `passed`, `failed` or `error`. It matches the [exit code](#exit-codes).
+- `check` names the check that did not pass: `provenance`, `source` or `eslint`. It is `null` when the package passed, or when the scan stopped before the first check (for example, the package does not exist on npm).
+- `message` gives the reason when the package did not pass.
+- `findings` lists the ESLint errors. `origin` tells if the file is in the attested source repository (`source`) or in the npm tarball (`package`). `file` is relative to that location.
+- `skippedChecks` lists the checks that did not run, so a `passed` status does not cover them. A local scan skips `provenance` and `source`. A scan of a published package skips nothing.
+
 ### What it checks
 
 The scanner runs these steps in sequence. It stops at the first step that fails.

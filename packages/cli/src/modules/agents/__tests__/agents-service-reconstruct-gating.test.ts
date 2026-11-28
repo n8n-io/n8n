@@ -22,6 +22,8 @@ import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
+import type * as ProxyTransport from '@/utils/ai-proxy-fetch';
+import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -34,7 +36,7 @@ import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentPlanService } from '../agent-plan.service';
 import { AgentWakeService } from '../background/agent-wake.service';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
@@ -60,7 +62,6 @@ import type { N8nMemory } from '../integrations/n8n-memory';
 import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
-import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
@@ -69,6 +70,14 @@ import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
 vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
+
+// A module mock, so the MCP transport can be replaced without changing an ESM namespace.
+const { createAiMcpFetchMock } = vi.hoisted(() => ({ createAiMcpFetchMock: vi.fn() }));
+vi.mock('@/utils/ai-proxy-fetch', async () => {
+	const actual = await vi.importActual<typeof ProxyTransport>('@/utils/ai-proxy-fetch');
+	createAiMcpFetchMock.mockImplementation(actual.createAiMcpFetch);
+	return { ...actual, createAiMcpFetch: createAiMcpFetchMock };
+});
 
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();
@@ -111,9 +120,8 @@ function makeReconstructionService(
 		agentRepository?: AgentRepository;
 		agentSandboxRuntimeService?: AgentSandboxRuntimeService;
 		n8nCheckpointStorage?: N8NCheckpointStorage;
-		agentFileRepository?: KnowledgeFileRepository;
 		agentWorkspaceService?: AgentWorkspaceService;
-		agentKnowledgeMirrorService?: AgentKnowledgeMirrorService;
+		knowledgeRetriever?: KnowledgeRetrievalService;
 		knowledgeAvailabilityService?: KnowledgeAvailabilityService;
 	} = {},
 ): AgentRuntimeReconstructionService {
@@ -132,7 +140,6 @@ function makeReconstructionService(
 	return new AgentRuntimeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
 		overrides.agentRepository ?? mock<AgentRepository>(),
-		overrides.agentFileRepository ?? mock<KnowledgeFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		overrides.n8nCheckpointStorage ?? mock<N8NCheckpointStorage>(),
@@ -145,7 +152,7 @@ function makeReconstructionService(
 		mock<AiService>(),
 		outboundHttp,
 		agentWorkspaceService,
-		overrides.agentKnowledgeMirrorService ?? mock<AgentKnowledgeMirrorService>(),
+		overrides.knowledgeRetriever ?? mock<KnowledgeRetrievalService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
@@ -153,6 +160,7 @@ function makeReconstructionService(
 		mock<AgentKnowledgeUsageTracker>(),
 		overrides.knowledgeAvailabilityService ?? makeKnowledgeAvailabilityService(),
 		mock<AgentSandboxFilesService>(),
+		mock<WorkflowsInSkillsFlagGate>(),
 	);
 }
 
@@ -162,7 +170,7 @@ function makeAgentEntity(
 ): ProjectAgent {
 	const schema: AgentJsonConfig = {
 		name: 'Test',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Be helpful',
 		...(schemaConfig !== undefined ? { config: schemaConfig } : {}),
 		...(overrides ?? {}),
@@ -251,7 +259,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			await service.reconstructFromResolvedSource({
 				config: {
 					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Help',
 					mcpServers: [
 						{
@@ -276,6 +284,86 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			expect(deps.nonInterrupting).toBe(nonInterrupting);
 		},
 	);
+
+	it.each([
+		['the default fetch without instrumentation', 'none'],
+		['the default fetch for instrumentation without an MCP override', 'no-override'],
+		['the override of the instrumentation', 'override'],
+	] as const)('selects %s as the MCP fetch during reconstruction', async (_label, mode) => {
+		const { service, credentialProvider } = setup();
+		const liveFetch = vi.fn();
+		const evalFetch = vi.fn();
+		const mcpFetch = vi.fn(() => evalFetch);
+		const instrumentation = {
+			none: undefined,
+			// An evaluation run that only observes MCP tool calls keeps the default fetch.
+			'no-override': { onMcpToolCallSettled: vi.fn() },
+			override: { mcpFetch },
+		};
+		const realFactory = createAiMcpFetchMock.getMockImplementation();
+		createAiMcpFetchMock.mockReturnValue(liveFetch);
+		try {
+			const entity = makeAgentEntity(undefined, {
+				mcpServers: [
+					{
+						name: 'fixture',
+						url: 'https://fixture.invalid/mcp',
+						transport: 'streamableHttp',
+						authentication: 'none',
+					},
+				],
+			});
+			await service.reconstructFromAgentEntity(
+				storedRunSource(entity),
+				credentialProvider,
+				'production',
+				undefined,
+				undefined,
+				instrumentation[mode],
+			);
+			// The default transport stays the proxy fetch. An override replaces it as the simulated
+			// fetch, which answers every request, so no credential is read for that server.
+			expect(buildMcpClientForServerMock).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'fixture' }),
+				expect.objectContaining({
+					proxyFetch: liveFetch,
+					simulatedFetch: mode === 'override' ? evalFetch : undefined,
+				}),
+			);
+			if (mode === 'override') expect(mcpFetch).toHaveBeenCalledWith('fixture');
+			else expect(mcpFetch).not.toHaveBeenCalled();
+			// Auth-pending servers are attached only when the override keeps them off the network.
+			expect(buildFromJsonMock.mock.lastCall?.at(-1)).toMatchObject({
+				attachAuthPendingMcpServers: mode === 'override',
+			});
+		} finally {
+			createAiMcpFetchMock.mockImplementation(realFactory!);
+		}
+	});
+
+	it.each([
+		['hands the tool call interceptor of the instrumentation to the agent', true],
+		['installs no interceptor without one', false],
+	])('%s', async (_label, withInterceptor) => {
+		const { service, credentialProvider } = setup();
+		builtAgent.toolCallInterceptor.mockClear();
+		const toolCallInterceptor = vi.fn();
+
+		await service.reconstructFromAgentEntity(
+			storedRunSource(makeAgentEntity()),
+			credentialProvider,
+			'production',
+			undefined,
+			undefined,
+			withInterceptor ? ({ toolCallInterceptor } as never) : undefined,
+		);
+
+		if (withInterceptor) {
+			expect(builtAgent.toolCallInterceptor).toHaveBeenCalledWith(toolCallInterceptor);
+		} else {
+			expect(builtAgent.toolCallInterceptor).not.toHaveBeenCalled();
+		}
+	});
 
 	it('forwards resolved MCP tool names through eval instrumentation', async () => {
 		const { service, credentialProvider } = setup();
@@ -349,20 +437,20 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 	});
 
 	it('attaches a workspace when the effective sandbox setting is enabled', async () => {
-		const agentFileRepository = mock<KnowledgeFileRepository>();
+		const knowledgeRetriever = mock<KnowledgeRetrievalService>();
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 			isEnabled: () => true,
 		});
 		const agentWorkspaceService = mock<AgentWorkspaceService>();
 		const workspace = new Workspace({});
-		agentFileRepository.hasFilesForAgent.mockResolvedValue(false);
+		knowledgeRetriever.hasFiles.mockResolvedValue(false);
 		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
 			workspace,
 			handle: mock<AgentSandboxRuntime>(),
 		});
 		const service = makeReconstructionService({
 			agentSandboxRuntimeService,
-			agentFileRepository,
+			knowledgeRetriever,
 			agentWorkspaceService,
 		});
 
@@ -377,45 +465,91 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		expect(getInjectedToolNames()).not.toContain('find_file');
 	});
 
+	it.each([true, false])(
+		'forwards config.sandboxEgress=%s to getAgentWorkspace',
+		async (sandboxEgress) => {
+			const knowledgeRetriever = mock<KnowledgeRetrievalService>();
+			const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+				isEnabled: () => true,
+			});
+			const agentWorkspaceService = mock<AgentWorkspaceService>();
+			knowledgeRetriever.hasFiles.mockResolvedValue(false);
+			agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+				workspace: new Workspace({}),
+				handle: mock<AgentSandboxRuntime>(),
+			});
+			const service = makeReconstructionService({
+				agentSandboxRuntimeService,
+				knowledgeRetriever,
+				agentWorkspaceService,
+			});
+			const agent = makeAgentEntity({ sandboxEgress });
+
+			await service.reconstructFromAgentEntity(
+				storedRunSource(agent),
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				undefined,
+				undefined,
+				'manual',
+				principalHash,
+			);
+
+			expect(agentWorkspaceService.getAgentWorkspace).toHaveBeenCalledWith(
+				'project-1',
+				'agent-1',
+				principalHash,
+				{ sandboxEgress },
+			);
+		},
+	);
+
 	it('keeps knowledge tools gated by uploaded files', async () => {
-		const agentFileRepository = mock<KnowledgeFileRepository>();
+		const knowledgeRetriever = mock<KnowledgeRetrievalService>();
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 			isEnabled: () => true,
 		});
 		const agentWorkspaceService = mock<AgentWorkspaceService>();
-		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
+		knowledgeRetriever.hasFiles.mockResolvedValue(true);
 		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
 			workspace: new Workspace({}),
 			handle: mock<AgentSandboxRuntime>(),
 		});
 		const service = makeReconstructionService({
 			agentSandboxRuntimeService,
-			agentFileRepository,
+			knowledgeRetriever,
 			agentWorkspaceService,
 		});
 
 		await reconstructWithWorkspace(service);
 
+		// The sandbox id is derived from these ids, so the scope must carry them unchanged.
+		expect(knowledgeRetriever.hasFiles).toHaveBeenCalledWith({
+			kind: 'agent',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+		});
 		expect(getInjectedToolNames()).toEqual(
 			expect.arrayContaining(['find_file', 'search_text', 'read_file']),
 		);
 	});
 
 	it('keeps the workspace but skips knowledge tools when the knowledge module is inactive', async () => {
-		const agentFileRepository = mock<KnowledgeFileRepository>();
+		const knowledgeRetriever = mock<KnowledgeRetrievalService>();
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 			isEnabled: () => true,
 		});
 		const agentWorkspaceService = mock<AgentWorkspaceService>();
 		const workspace = new Workspace({});
-		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
+		knowledgeRetriever.hasFiles.mockResolvedValue(true);
 		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
 			workspace,
 			handle: mock<AgentSandboxRuntime>(),
 		});
 		const service = makeReconstructionService({
 			agentSandboxRuntimeService,
-			agentFileRepository,
+			knowledgeRetriever,
 			agentWorkspaceService,
 			knowledgeAvailabilityService: makeKnowledgeAvailabilityService({ isKnowledgeActive: false }),
 		});
@@ -423,8 +557,8 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		await reconstructWithWorkspace(service);
 
 		expect(builtAgent.workspace).toHaveBeenCalledWith(workspace);
-		// The file repository is never asked while knowledge is off.
-		expect(agentFileRepository.hasFilesForAgent).not.toHaveBeenCalled();
+		// The knowledge module is never asked while it is off.
+		expect(knowledgeRetriever.hasFiles).not.toHaveBeenCalled();
 		for (const toolName of ['find_file', 'search_text', 'read_file']) {
 			expect(getInjectedToolNames()).not.toContain(toolName);
 		}
@@ -437,7 +571,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			const construction = createDeferredPromise<agents.Agent>();
 			const acquisition =
 				createDeferredPromise<Awaited<ReturnType<AgentWorkspaceService['getAgentWorkspace']>>>();
-			const agentFileRepository = mock<KnowledgeFileRepository>();
+			const knowledgeRetriever = mock<KnowledgeRetrievalService>();
 			const agentWorkspaceService = mock<AgentWorkspaceService>();
 			agentWorkspaceService.getAgentWorkspace.mockImplementationOnce(async () => {
 				started.resolve();
@@ -454,7 +588,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			const service = makeReconstructionService({
 				agentSandboxRuntimeService: mock<AgentSandboxRuntimeService>({ isEnabled: () => true }),
 				agentWorkspaceService,
-				agentFileRepository,
+				knowledgeRetriever,
 			});
 			const controller = new AbortController();
 			const reason = new Error('setup cancelled');
@@ -468,7 +602,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			await vi.waitFor(() => expect(builtAgent.close).toHaveBeenCalledTimes(1));
 
 			expect(builtAgent.workspace).not.toHaveBeenCalled();
-			expect(agentFileRepository.hasFilesForAgent).not.toHaveBeenCalled();
+			expect(knowledgeRetriever.hasFiles).not.toHaveBeenCalled();
 			expect(builtAgent.fileStore).not.toHaveBeenCalled();
 		},
 		1_000,
@@ -487,7 +621,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		await service.reconstructFromResolvedSource({
 			config: {
 				name: 'Inline',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help',
 			},
 			memoryOwnerAgentId: 'agent-1',
@@ -777,7 +911,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			subAgents: { agents: [{ agentId: 'agent-billing' }] },
 		};
@@ -797,7 +931,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			subAgents: { agents: [{ agentId: 'agent-billing' }] },
 		};
@@ -849,7 +983,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 						model: 'google-vertex/gemini-3-flash-preview',
 						credential: 'vertex-cred',
 					},
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'high-cred' },
 				},
 			},
 		});
@@ -875,7 +1009,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				privateKey: 'private-key',
 			},
 			high: {
-				id: 'anthropic/claude-sonnet-4-5',
+				id: 'anthropic/claude-sonnet-5-5',
 				apiKey: 'high-key',
 			},
 		});
@@ -896,7 +1030,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				model: 'openai/gpt-4o',
 				subAgents: {
 					modelsByDifficulty: {
-						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+						high: { model: 'anthropic/claude-sonnet-5-5', credential: 'high-cred' },
 					},
 				},
 			},
@@ -917,6 +1051,35 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const providerTools = await resolveInlineSubAgentProviderTools?.(highModel!);
 		expect(providerTools?.map((tool) => tool.name)).toEqual(['anthropic.web_search_20250305']);
 		expect(providerTools?.map((tool) => tool.name)).not.toContain('openai.web_search');
+	});
+
+	it('gives inline children no provider tools in a test run', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({ apiKey: 'high-key' });
+		const service = makeReconstructionService();
+		const entity = makeAgentEntity(
+			{ webSearch: { enabled: true } },
+			{
+				model: 'openai/gpt-4o',
+				subAgents: {
+					modelsByDifficulty: {
+						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+					},
+				},
+			},
+		);
+
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'test',
+			undefined,
+			undefined,
+			{ disableProviderTools: true },
+		);
+
+		expect(getInjectedDelegateTool()).toBeDefined();
+		expect(getInjectedResolveInlineSubAgentProviderTools()).toBeUndefined();
 	});
 
 	it('omits inlineSubAgentModelsByDifficulty when no difficulty mappings are configured', async () => {
@@ -1028,7 +1191,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — check
 			'production',
 		);
 
-		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith('agent-1');
+		// The definition hash lets a pending approval detect a changed Agent.
+		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith('agent-1', expect.any(String));
 		expect(builtAgent.checkpoint).toHaveBeenCalledWith(scopedStorage);
 	});
 });
@@ -1046,7 +1210,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 
 		const config: AgentJsonConfig = {
 			name: 'Child',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help',
 		};
 
@@ -1098,6 +1262,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 		);
 		expect(getInjectedToolNames()).toContain(WRITE_TODOS_TOOL_NAME);
 		for (const name of planToolNames) expect(getInjectedToolNames()).not.toContain(name);
+		expect(builtAgent.contextCueProvider).not.toHaveBeenCalled();
 		expect(builtAgent.volatileInstructionsProvider).not.toHaveBeenCalled();
 	});
 
@@ -1115,17 +1280,33 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 			expect(getInjectedToolNames()).not.toContain(WRITE_TODOS_TOOL_NAME);
 			const eagerToolNames = builtAgent.nativeToolDeferral.mock.calls[0][0].eagerToolNames;
 			expect(eagerToolNames.includes('background_jobs')).toBe(backgroundTasksEnabled);
+			expect(builtAgent.volatileInstructionsProvider).not.toHaveBeenCalled();
 			if (backgroundTasksEnabled) {
 				expect(getInjectedToolNames()).toContain('background_jobs');
-				expect(builtAgent.volatileInstructionsProvider).toHaveBeenCalledTimes(1);
-				const provider = builtAgent.volatileInstructionsProvider.mock.calls[0][0];
-				wakeService.getBackgroundUpdates.mockResolvedValue('Background result');
+				expect(builtAgent.contextCueProvider).toHaveBeenCalledTimes(1);
+				const provider = builtAgent.contextCueProvider.mock.calls[0][0];
+				const cues = [
+					{ id: 'background-updates:job:job-1:completed', content: 'Background result' },
+				];
+				const sentCueIds = new Set(['background-updates:job:earlier:completed']);
+				wakeService.getBackgroundUpdateCues.mockResolvedValue(cues);
 				expect(
-					await provider({ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } }),
-				).toBe('Background result');
-				expect(wakeService.getBackgroundUpdates).toHaveBeenCalledWith('thread-1', 'resource-1');
+					await provider({
+						messages: [],
+						sentCueIds,
+						persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+					}),
+				).toEqual(cues);
+				expect(wakeService.getBackgroundUpdateCues).toHaveBeenCalledWith(
+					'thread-1',
+					'resource-1',
+					sentCueIds,
+				);
+				expect(
+					await provider({ messages: [], sentCueIds: new Set(), persistence: undefined }),
+				).toEqual([]);
 			} else {
-				expect(builtAgent.volatileInstructionsProvider).not.toHaveBeenCalled();
+				expect(builtAgent.contextCueProvider).not.toHaveBeenCalled();
 			}
 		},
 	);
@@ -1152,7 +1333,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 		async (runtimeProfile) => {
 			Container.get(AgentsConfig).planToolsEnabled = true;
 			await makeReconstructionService().reconstructFromResolvedSource({
-				config: { name: 'Child', model: 'anthropic/claude-sonnet-4-5', instructions: 'Help' },
+				config: { name: 'Child', model: 'anthropic/claude-sonnet-5-5', instructions: 'Help' },
 				memoryOwnerAgentId: 'child-agent-1',
 				projectId: 'project-1',
 				credentialProvider: mock<CredentialProvider>(),

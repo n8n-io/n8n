@@ -1,12 +1,14 @@
+import { parseAgentSkillWorkflowMentions, type SkillScanFinding } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { Telemetry } from '@/telemetry';
-
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
+import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
+import { WorkflowsInSkillsFlagGate } from './workflows-in-skills-flag-gate';
 
 /** Package imports report no skill telemetry. */
 export type SkillTelemetrySource = Exclude<SkillSource, 'import'>;
@@ -33,11 +35,29 @@ type ImportedFromSourceProps = InferTelemetryProps<
 /** A Skill Sync reason code, or `unexpected` for a failure with no known reason. */
 export type SkillSourceTelemetryReason = NonNullable<ConnectedSourceProps['reason']>;
 
+/** The codes that a flagged-skill event sends for the findings of one check. */
+export function flaggedCodes(
+	findings: SkillScanFinding[],
+): Pick<FlaggedSkillProps, 'rule_codes' | 'link_reason_codes'> {
+	const flagged = findings.filter(({ severity }) => severity !== 'info');
+	const linkReasons = new Set(
+		flagged.flatMap(({ linkReason }) => (linkReason ? [linkReason] : [])),
+	);
+	return {
+		rule_codes: [...new Set(flagged.map(({ rule }) => rule))],
+		...(linkReasons.size ? { link_reason_codes: [...linkReasons] } : {}),
+	};
+}
+
 type FlaggedSkillProps = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_CHECK_FLAGGED_SKILL
 >;
 
 type StoppedSyncProps = InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_STOPPED_SKILL_SYNC>;
+
+type DeletedSourceProps = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE
+>;
 
 type UpdateFoundProps = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_UPDATE_FOUND
@@ -56,15 +76,16 @@ type SkillTelemetryTarget = Pick<Skill, 'id' | 'projectId'>;
 export type SkillTelemetryRef = SkillTelemetryTarget | string;
 
 /**
- * Skills telemetry. Callers emit only once the write commits, and only while the agents
- * module is on (`SkillsGate.isEnabled`). An emit never fails the write: an error is logged and dropped.
+ * Skills telemetry. Callers emit only once the write commits, and only while skills
+ * are on (`SkillsGate.isEnabled`). An emit never fails the write: an error is logged and dropped.
  */
 @Service()
 export class SkillsTelemetry {
 	constructor(
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly skillRepository: SkillRepository,
 		private readonly logger: Logger,
+		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 	) {}
 
 	async created(
@@ -76,6 +97,7 @@ export class SkillsTelemetry {
 	): Promise<void> {
 		await this.safely(async () => {
 			const skills = await this.resolve(refs);
+			const mentionCounts = await this.createdMentionCounts(skills.map(({ id }) => id));
 			for (const skill of skills) {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CREATED_SKILL, {
 					user_id: userId,
@@ -84,6 +106,7 @@ export class SkillsTelemetry {
 					source,
 					method,
 					...origin,
+					...mentionCounts.get(skill.id),
 				});
 			}
 		});
@@ -107,6 +130,7 @@ export class SkillsTelemetry {
 				source,
 				version,
 				scope_changed: scopeChanged,
+				...(await this.updatedMentionCounts(skill.id, version)),
 			});
 		});
 	}
@@ -123,6 +147,21 @@ export class SkillsTelemetry {
 				skill_id: skill.id,
 				...placeOf(skill),
 				source,
+			});
+		});
+	}
+
+	async changedSourceScope(
+		props: Omit<
+			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_CHANGED_SKILL_SOURCE_SCOPE>,
+			'user_id'
+		>,
+		userId: string,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CHANGED_SKILL_SOURCE_SCOPE, {
+				user_id: userId,
+				...props,
 			});
 		});
 	}
@@ -157,6 +196,16 @@ export class SkillsTelemetry {
 		});
 	}
 
+	/** One source delete, after the transaction commits or fails. */
+	async deletedSource(props: Omit<DeletedSourceProps, 'user_id'>, userId: string) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
 	/** One synced skill that became a normal skill. */
 	async stoppedSync(props: Omit<StoppedSyncProps, 'user_id'>, userId: string) {
 		await this.safely(async () => {
@@ -184,6 +233,87 @@ export class SkillsTelemetry {
 		});
 	}
 
+	async reviewedUpdate(
+		props: Omit<
+			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE>,
+			'user_id'
+		>,
+		userId: string,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
+	async updatedSourceCredential(
+		props: Omit<
+			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL_SOURCE_CREDENTIAL>,
+			'user_id'
+		>,
+		userId: string,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL_SOURCE_CREDENTIAL, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
+	async sourceHealthChanged(
+		props: InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_HEALTH_CHANGED>,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_HEALTH_CHANGED, props);
+		});
+	}
+
+	private async createdMentionCounts(skillIds: string[]) {
+		return await this.countMentions(async () => {
+			const latest = await this.skillRepository.findLatestSaved(skillIds);
+			return new Map(
+				[...latest].map(([id, row]) => [
+					id,
+					{ workflow_mention_count: mentionedWorkflowIds(row).size },
+				]),
+			);
+		}, new Map<string, { workflow_mention_count: number }>());
+	}
+
+	private async updatedMentionCounts(skillId: string, version: number) {
+		return await this.countMentions(async () => {
+			const [saved, previous] = await Promise.all([
+				this.skillRepository.findVersionByNumber(skillId, version),
+				this.skillRepository.findVersionByNumber(skillId, version - 1),
+			]);
+			if (!saved) return {};
+			const next = mentionedWorkflowIds(saved);
+			const mentionCount = { workflow_mention_count: next.size };
+			if (!previous) return mentionCount;
+			const before = mentionedWorkflowIds(previous);
+			return {
+				...mentionCount,
+				workflow_mentions_added: [...next].filter((id) => !before.has(id)).length,
+				workflow_mentions_removed: [...before].filter((id) => !next.has(id)).length,
+			};
+		}, {});
+	}
+
+	private async countMentions<T>(count: () => Promise<T>, none: T): Promise<T> {
+		try {
+			if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return none;
+			return await count();
+		} catch (error) {
+			this.logger.warn('Could not count skill workflow mentions', {
+				error: ensureError(error).message,
+			});
+			return none;
+		}
+	}
+
 	/** Reads back only the refs that came as a bare id, in one query. */
 	private async resolve(refs: SkillTelemetryRef[]): Promise<SkillTelemetryTarget[]> {
 		const ids = refs.filter((ref) => typeof ref === 'string');
@@ -198,6 +328,12 @@ export class SkillsTelemetry {
 			this.logger.warn('Could not send skills telemetry', { error: ensureError(error).message });
 		}
 	}
+}
+
+function mentionedWorkflowIds(row: ResolvedSkillRow): Set<string> {
+	return new Set(
+		parseAgentSkillWorkflowMentions(toAgentSkill(row)).map(({ workflowId }) => workflowId),
+	);
 }
 
 function placeOf(skill: SkillTelemetryTarget): SkillPlace {

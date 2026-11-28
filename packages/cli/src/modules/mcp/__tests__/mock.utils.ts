@@ -61,6 +61,7 @@ export const createWorkflowHistoryVersion = (
 		name: overrides.name ?? null,
 		description: overrides.description ?? null,
 		autosaved: overrides.autosaved ?? false,
+		settings: overrides.settings ?? {},
 		workflow: overrides.workflow as WorkflowEntity,
 		workflowPublishHistory: overrides.workflowPublishHistory ?? [],
 		createdAt: overrides.createdAt ?? new Date('2024-01-01T00:00:00.000Z'),

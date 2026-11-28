@@ -822,6 +822,21 @@ describe('N8nDropdownMenu', () => {
 			vi.useRealTimers();
 		});
 
+		it('should render the footer slot', async () => {
+			const { findByTestId } = render(DropdownMenu, {
+				props: {
+					items: createItems(3),
+					modelValue: true,
+					searchable: true,
+				},
+				slots: {
+					footer: '<button data-test-id="dropdown-footer">Load more</button>',
+				},
+			});
+
+			expect(await findByTestId('dropdown-footer')).toBeInTheDocument();
+		});
+
 		it('should render search placeholder', async () => {
 			render(DropdownMenu, {
 				props: {
@@ -967,6 +982,30 @@ describe('N8nDropdownMenu', () => {
 			await waitFor(() => expect(document.activeElement).toBe(textarea));
 
 			await userEvent.click(textarea);
+			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+		});
+
+		it('keeps the menu open when ArrowUp is pressed on the first item below a header', async () => {
+			const wrapper = renderExternalDropdown([
+				{ id: 'section', label: 'Workflows', header: true },
+				{ id: 'orders', label: 'Orders' },
+				{ id: 'invoices', label: 'Invoices' },
+			]);
+			const textarea = wrapper.container.querySelector('textarea')!;
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+
+			await userEvent.keyboard('{ArrowDown}');
+			const orders = await waitFor(() => {
+				const item = wrapper.getByRole('menuitem', { name: 'Orders' });
+				expect(item).toHaveAttribute('data-virtual-highlighted');
+				return item;
+			});
+
+			await userEvent.keyboard('{ArrowUp}{ArrowUp}');
+
+			await waitFor(() => {
+				expect(orders).toHaveAttribute('data-virtual-highlighted');
+			});
 			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
 		});
 
@@ -1250,6 +1289,43 @@ describe('N8nDropdownMenu', () => {
 	});
 
 	describe('extraPopperClass prop', () => {
+		it('preserves the shortcut boundary across teleported submenu levels', async () => {
+			const user = userEvent.setup();
+			const view = render(DropdownMenu, {
+				props: {
+					items: [
+						{
+							id: 'import',
+							label: 'Import',
+							children: [
+								{
+									id: 'source',
+									label: 'Source',
+									children: [{ id: 'file', label: 'From file' }],
+								},
+							],
+						},
+					],
+					modelValue: true,
+					extraPopperClass: 'ignore-key-press-canvas',
+				},
+			});
+			const rootMenu = (await getDropdownContent()).dropdown;
+			const parent = await view.findByRole('menuitem', { name: 'Import' });
+			parent.focus();
+			await user.keyboard('{ArrowRight}');
+
+			const source = await view.findByRole('menuitem', { name: 'Source' });
+			await waitFor(() => expect(source).toHaveFocus());
+			expect(rootMenu).not.toContainElement(source);
+			expect(source.closest('[role="menu"]')).toHaveClass('ignore-key-press-canvas');
+
+			await user.keyboard('{ArrowRight}');
+			const file = await view.findByRole('menuitem', { name: 'From file' });
+			await waitFor(() => expect(file).toHaveFocus());
+			expect(file.closest('[role="menu"]')).toHaveClass('ignore-key-press-canvas');
+		});
+
 		it('should apply extra class to dropdown content', async () => {
 			render(DropdownMenu, {
 				props: {

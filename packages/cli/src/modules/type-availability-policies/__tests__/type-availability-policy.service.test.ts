@@ -1,22 +1,28 @@
 import type { EventService } from '@n8n/backend-services';
-import type { OperationContext, TransactionRunner } from '@n8n/db';
+import { ProjectNotFoundError } from '@n8n/backend-services';
+import type { OperationContext, ProjectRepository, TransactionRunner } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import type { NodeLoader } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { NodeTypes } from '@/node-types';
 
-import { CREDENTIAL_TYPES_KIND } from '../constants';
+import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from '../constants';
 import type { TypeAvailabilityPolicyAttachmentRepository } from '../database/repositories/type-availability-policy-attachment.repository';
 import type { TypeAvailabilityPolicyScopeRepository } from '../database/repositories/type-availability-policy-scope.repository';
 import type { TypeAvailabilityPolicyRepository } from '../database/repositories/type-availability-policy.repository';
 import { TypeAvailabilityPolicy } from '../database/entities/type-availability-policy.entity';
 import { TypeAvailabilityPolicyScope } from '../database/entities/type-availability-policy-scope.entity';
 import { unconfiguredScope, type EffectivePolicy } from '../effective-policy';
+import type { ListTypes } from '../listed-node-types';
 import type { PolicyAttachment, PolicyRule } from '../policy-rule.types';
 import type { TypeAvailabilityPolicySnapshot } from '../type-availability-policy-snapshot';
-import { TypeAvailabilityPolicyService } from '../type-availability-policy.service';
+import {
+	PERSONAL_PROJECT_POLICY,
+	TypeAvailabilityPolicyService,
+} from '../type-availability-policy.service';
 
 const KIND = 'node-types';
 const ROOT: OperationContext = {};
@@ -76,6 +82,12 @@ function makePolicy(overrides: Partial<TypeAvailabilityPolicy> = {}) {
 	});
 }
 
+const PROJECT_ID = 'project-1';
+const BOTH_KINDS = [NODE_TYPES_KIND, CREDENTIAL_TYPES_KIND];
+
+const projectScopeOf = (kind: string) =>
+	makeScope({ id: `scope-${kind}`, kind, projectId: PROJECT_ID, version: 1 });
+
 describe('TypeAvailabilityPolicyService', () => {
 	const policyRepository = mock<TypeAvailabilityPolicyRepository>();
 	const scopeRepository = mock<TypeAvailabilityPolicyScopeRepository>();
@@ -85,6 +97,7 @@ describe('TypeAvailabilityPolicyService', () => {
 	const snapshot = mock<TypeAvailabilityPolicySnapshot>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const nodeTypes = mock<NodeTypes>();
+	const projectRepository = mock<ProjectRepository>();
 
 	const service = new TypeAvailabilityPolicyService(
 		policyRepository,
@@ -95,7 +108,18 @@ describe('TypeAvailabilityPolicyService', () => {
 		snapshot,
 		loadNodesAndCredentials,
 		nodeTypes,
+		projectRepository,
 	);
+
+	const arrangeTeamProject = () =>
+		projectRepository.findTypesByIds.mockResolvedValue([{ id: PROJECT_ID, type: 'team' }]);
+
+	/** `createScopeIfAbsent` reports a new row for the kinds in `missing`, an existing one otherwise. */
+	const arrangeProjectScopes = (missing: string[]) =>
+		scopeRepository.createScopeIfAbsent.mockImplementation(async ({ kind }) => ({
+			scope: projectScopeOf(kind),
+			created: missing.includes(kind),
+		}));
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -104,6 +128,10 @@ describe('TypeAvailabilityPolicyService', () => {
 		snapshot.projectScopes.mockReturnValue(null);
 		snapshot.refreshAfterWrite.mockResolvedValue(undefined);
 		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(ROOT));
+		// Every project id in these tests names a team project unless a test says otherwise.
+		projectRepository.findTypesByIds.mockImplementation(async (ids) =>
+			ids.map((id) => ({ id, type: 'team' as const })),
+		);
 		// Every fixture rule names `n8n-nodes-base`, so it must resolve as an installed package.
 		loadNodesAndCredentials.loaders = { 'n8n-nodes-base': makeLoader('n8n-nodes-base') };
 		// Fixture `name` rules name Slack, so it must resolve as a loaded node.
@@ -243,6 +271,16 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			expect(transactionRunner.run).not.toHaveBeenCalled();
 			expect(scopeRepository.findScopeByKindAndProject).not.toHaveBeenCalled();
+		});
+
+		it('rejects a personal project before opening a transaction', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([{ id: 'project-1', type: 'personal' }]);
+
+			await expect(
+				service.setDefaultAction(KIND, 'project-1', 'deny', 0, 'user-1'),
+			).rejects.toThrow(PERSONAL_PROJECT_POLICY);
+
+			expect(transactionRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('still allows a delegate defaultAction at instance scope', async () => {
@@ -1061,6 +1099,53 @@ describe('TypeAvailabilityPolicyService', () => {
 			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
 		});
 
+		it('rejects a personal project before opening a transaction', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([{ id: 'project-1', type: 'personal' }]);
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					'project-1',
+					{ rules: [RULE], defaultAction: 'deny' },
+					0,
+					'user-1',
+				),
+			).rejects.toThrow(PERSONAL_PROJECT_POLICY);
+			expect(projectRepository.findTypesByIds).toHaveBeenCalledWith(['project-1']);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('throws ProjectNotFoundError for an unknown project, before opening a transaction', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([]);
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					'missing-project',
+					{ rules: [RULE], defaultAction: 'deny' },
+					0,
+					'user-1',
+				),
+			).rejects.toThrow(ProjectNotFoundError);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('does not look up a project at instance scope', async () => {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ version: 2 }));
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					null,
+					{ rules: [RULE], defaultAction: 'deny' },
+					1,
+					'user-1',
+				),
+			).rejects.toThrow(ConflictError);
+			expect(projectRepository.findTypesByIds).not.toHaveBeenCalled();
+		});
+
 		it('rejects a package rule on the credential-only prefix, before opening a transaction', async () => {
 			const rule: PolicyRule = {
 				id: 'r1',
@@ -1512,6 +1597,717 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			expect(scopeRepository.updateDefaultAction).not.toHaveBeenCalled();
 			expect(scopeRepository.bumpVersion).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('createProjectPolicy', () => {
+		const emitted = (name: string) =>
+			eventService.emit.mock.calls
+				.filter(([event]) => event === name)
+				.map(([, payload]) => payload);
+
+		beforeEach(() => {
+			arrangeTeamProject();
+		});
+
+		it('creates an empty allow scope of both kinds in one transaction', async () => {
+			arrangeProjectScopes(BOTH_KINDS);
+
+			await service.createProjectPolicy(PROJECT_ID, 'user-1');
+
+			expect(transactionRunner.run).toHaveBeenCalledTimes(1);
+			expect(scopeRepository.createScopeIfAbsent.mock.calls).toEqual(
+				BOTH_KINDS.map((kind) => [
+					{ kind, projectId: PROJECT_ID, defaultAction: 'allow', updatedBy: 'user-1' },
+					ROOT,
+				]),
+			);
+			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
+		});
+
+		it('emits an audit event and a saved event for each created kind', async () => {
+			arrangeProjectScopes(BOTH_KINDS);
+
+			await service.createProjectPolicy(PROJECT_ID, 'user-1');
+
+			const scope = (kind: string) => ({
+				updatedBy: 'user-1',
+				kind,
+				projectId: PROJECT_ID,
+				scopeId: `scope-${kind}`,
+				before: null,
+				after: { defaultAction: 'allow', version: 1 },
+			});
+			expect(emitted('node-type-policy-scope-updated')).toEqual(
+				BOTH_KINDS.map((kind) => ({ ...scope(kind), loginId: undefined })),
+			);
+			expect(emitted('node-type-policy-saved')).toEqual(
+				BOTH_KINDS.map((kind) => ({
+					...scope(kind),
+					rulesBefore: null,
+					rulesAfter: [],
+					shadowWarningCount: 0,
+					notLoadedWarningCount: 0,
+					origin: 'add-project-policy',
+				})),
+			);
+		});
+
+		it.each(BOTH_KINDS)('creates only the missing kind when %s is missing', async (missing) => {
+			arrangeProjectScopes([missing]);
+
+			await service.createProjectPolicy(PROJECT_ID, 'user-1');
+
+			for (const event of ['node-type-policy-scope-updated', 'node-type-policy-saved']) {
+				expect(emitted(event)).toEqual([expect.objectContaining({ kind: missing })]);
+			}
+		});
+
+		it('throws a conflict when the project has a policy of both kinds', async () => {
+			arrangeProjectScopes([]);
+
+			await expect(service.createProjectPolicy(PROJECT_ID, 'user-1')).rejects.toThrow(
+				ConflictError,
+			);
+
+			expect(snapshot.refreshAfterWrite).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('throws not found for an unknown project', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([]);
+
+			await expect(service.createProjectPolicy(PROJECT_ID, 'user-1')).rejects.toThrow(
+				NotFoundError,
+			);
+
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('rejects a personal project', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([{ id: PROJECT_ID, type: 'personal' }]);
+
+			await expect(service.createProjectPolicy(PROJECT_ID, 'user-1')).rejects.toThrow(
+				BadRequestError,
+			);
+
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('refreshes nothing and emits nothing when the second write fails', async () => {
+			scopeRepository.createScopeIfAbsent
+				.mockResolvedValueOnce({ scope: projectScopeOf(NODE_TYPES_KIND), created: true })
+				.mockRejectedValueOnce(new Error('second write failed'));
+
+			await expect(service.createProjectPolicy(PROJECT_ID, 'user-1')).rejects.toThrow(
+				'second write failed',
+			);
+
+			expect(snapshot.refreshAfterWrite).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('login id on the audit events', () => {
+		type Case = {
+			write: string;
+			events: string[];
+			act: (ctx?: OperationContext) => Promise<unknown>;
+		};
+
+		const serviceAccountCtx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+
+		const arrangeFirstEffectiveWrite = () => {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(null);
+			scopeRepository.createScopeIfAbsent.mockResolvedValue({
+				scope: makeScope({ version: 1 }),
+				created: true,
+			});
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
+			scopeRepository.findScopeById.mockResolvedValue(makeScope({ version: 1 }));
+		};
+
+		const arrangeExistingEffectiveWrite = () => {
+			const existingPolicy = makePolicy({ rules: [], version: 1 });
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ version: 1 }));
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: existingPolicy.id, rules: [], priority: 0, isFloor: false },
+			]);
+			policyRepository.findByIdAndKind.mockResolvedValue(existingPolicy);
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
+			policyRepository.updateRules.mockResolvedValue(makePolicy({ rules: [RULE], version: 2 }));
+			scopeRepository.findScopeById.mockResolvedValue(makeScope({ version: 2 }));
+		};
+
+		const cases: Case[] = [
+			{
+				write: 'createPolicyDocument',
+				events: ['node-type-policy-document-created'],
+				act: async (ctx) => {
+					policyRepository.createPolicy.mockResolvedValue(makePolicy());
+					return await service.createPolicyDocument(KIND, [RULE], 'user-1', ctx);
+				},
+			},
+			{
+				write: 'updatePolicyDocument',
+				events: ['node-type-policy-document-updated'],
+				act: async (ctx) => {
+					policyRepository.findByIdAndKind.mockResolvedValue(makePolicy({ version: 1 }));
+					policyRepository.updateRules.mockResolvedValue(makePolicy({ version: 2 }));
+					attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
+					scopeRepository.lockScopesByIds.mockResolvedValue([]);
+					return await service.updatePolicyDocument(KIND, 'policy-1', [RULE], 1, 'user-1', ctx);
+				},
+			},
+			{
+				write: 'deletePolicyDocument',
+				events: ['node-type-policy-document-deleted'],
+				act: async (ctx) => {
+					policyRepository.findByIdAndKind.mockResolvedValue(makePolicy());
+					attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
+					return await service.deletePolicyDocument(KIND, 'policy-1', 'user-1', ctx);
+				},
+			},
+			{
+				write: 'replaceAttachments',
+				events: ['node-type-policy-attachments-updated'],
+				act: async (ctx) => {
+					scopeRepository.findScopeByIdAndKind.mockResolvedValue(makeScope({ version: 1 }));
+					scopeRepository.findScopeById.mockResolvedValue(makeScope({ version: 2 }));
+					attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
+					return await service.replaceAttachments(KIND, 'scope-1', [], 1, 'user-1', ctx);
+				},
+			},
+			{
+				write: 'setEffectivePolicy on first write',
+				events: ['node-type-policy-scope-updated', 'node-type-policy-document-created'],
+				act: async (ctx) => {
+					arrangeFirstEffectiveWrite();
+					return await service.setEffectivePolicy(
+						KIND,
+						null,
+						{ rules: [RULE], defaultAction: 'allow' },
+						0,
+						'user-1',
+						ctx,
+					);
+				},
+			},
+			{
+				write: 'createProjectPolicy',
+				events: ['node-type-policy-scope-updated'],
+				act: async (ctx) => {
+					arrangeTeamProject();
+					arrangeProjectScopes([NODE_TYPES_KIND]);
+					return await service.createProjectPolicy(PROJECT_ID, 'user-1', ctx);
+				},
+			},
+			{
+				write: 'setEffectivePolicy on an existing scope',
+				events: ['node-type-policy-scope-updated', 'node-type-policy-document-updated'],
+				act: async (ctx) => {
+					arrangeExistingEffectiveWrite();
+					return await service.setEffectivePolicy(
+						KIND,
+						null,
+						{ rules: [RULE], defaultAction: 'allow' },
+						1,
+						'user-1',
+						ctx,
+					);
+				},
+			},
+		];
+
+		const payloadsOf = (events: string[]) =>
+			events.map((event) => eventService.emit.mock.calls.find(([name]) => name === event)?.[1]);
+
+		it.each(cases)(
+			'$write passes the login id of the operation context to $events',
+			async ({ act, events }) => {
+				await act(serviceAccountCtx);
+
+				for (const payload of payloadsOf(events)) {
+					expect(payload).toMatchObject({ loginId: 'login-1' });
+				}
+			},
+		);
+
+		it.each(cases)(
+			'$write emits no login id without an operation context',
+			async ({ act, events }) => {
+				await act();
+
+				for (const payload of payloadsOf(events)) {
+					expect(payload).toBeDefined();
+					expect(payload).toMatchObject({ loginId: undefined });
+				}
+			},
+		);
+	});
+
+	describe('getInstanceAccess', () => {
+		const SLACK = 'n8n-nodes-base.slack';
+		const NOTION = 'n8n-nodes-base.notion';
+		const GMAIL = 'n8n-nodes-base.gmail';
+
+		function givenInstanceRules(
+			rules: PolicyRule[],
+			scope: Partial<TypeAvailabilityPolicyScope> = {},
+		) {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+				makeScope({ projectId: null, ...scope }),
+			);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: 'p1', rules, priority: 0, isFloor: false },
+			]);
+		}
+
+		it('reports the instance verdict, the matched rule and the version for every type', async () => {
+			givenInstanceRules(
+				[
+					{ id: 'deny-slack', action: 'deny', selector: { kind: 'name', value: SLACK } },
+					{ id: 'delegate-notion', action: 'delegate', selector: { kind: 'name', value: NOTION } },
+				],
+				{ version: 7 },
+			);
+
+			const result = await service.getInstanceAccess(KIND, [SLACK, NOTION, GMAIL]);
+
+			expect(result).toEqual({
+				scopeId: 'scope-1',
+				version: 7,
+				defaultAction: 'allow',
+				types: [
+					{ name: SLACK, access: 'deny', matchedRuleId: 'deny-slack' },
+					{ name: NOTION, access: 'delegate', matchedRuleId: 'delegate-notion' },
+					{ name: GMAIL, access: 'allow', matchedRuleId: null },
+				],
+			});
+		});
+
+		it('reports the default action with no rule when the scope is unconfigured', async () => {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(null);
+
+			const result = await service.getInstanceAccess(KIND, [SLACK]);
+
+			expect(result).toEqual({
+				scopeId: null,
+				version: 0,
+				defaultAction: 'allow',
+				types: [{ name: SLACK, access: 'allow', matchedRuleId: null }],
+			});
+		});
+
+		it('reports a deny default action for a type that no rule names', async () => {
+			givenInstanceRules([], { defaultAction: 'deny' });
+
+			const result = await service.getInstanceAccess(KIND, [GMAIL]);
+
+			expect(result.types).toEqual([{ name: GMAIL, access: 'deny', matchedRuleId: null }]);
+		});
+
+		it('applies floor attachments before normal ones', async () => {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ projectId: null }));
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{
+					policyId: 'normal',
+					rules: [{ id: 'allow-slack', action: 'allow', selector: { kind: 'name', value: SLACK } }],
+					priority: 0,
+					isFloor: false,
+				},
+				{
+					policyId: 'floor',
+					rules: [
+						{
+							id: 'deny-package',
+							action: 'deny',
+							selector: { kind: 'package', value: 'n8n-nodes-base' },
+						},
+					],
+					priority: 0,
+					isFloor: true,
+				},
+			]);
+
+			const result = await service.getInstanceAccess(KIND, [SLACK]);
+
+			expect(result.types).toEqual([
+				{ name: SLACK, access: 'deny', matchedRuleId: 'deny-package' },
+			]);
+		});
+
+		it('judges a generated tool variant by its base type', async () => {
+			const GMAIL_TOOL = 'n8n-nodes-base.gmailTool';
+			nodeTypes.resolveBaseName.mockImplementation((name) => ({
+				baseName: name === GMAIL_TOOL ? GMAIL : name,
+				isSyntheticTool: name === GMAIL_TOOL,
+			}));
+			givenInstanceRules([
+				{ id: 'deny-gmail', action: 'deny', selector: { kind: 'name', value: GMAIL } },
+			]);
+
+			const result = await service.getInstanceAccess(KIND, [GMAIL_TOOL]);
+
+			expect(result.types).toEqual([
+				{ name: GMAIL_TOOL, access: 'deny', matchedRuleId: 'deny-gmail' },
+			]);
+		});
+
+		it('reads the database, not the snapshot', async () => {
+			givenInstanceRules([]);
+
+			await service.getInstanceAccess(KIND, [SLACK]);
+
+			expect(snapshot.read).not.toHaveBeenCalled();
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledWith(KIND, null, ROOT);
+		});
+
+		describe('credential types', () => {
+			beforeEach(() => {
+				Object.defineProperty(loadNodesAndCredentials, 'knownCredentials', {
+					configurable: true,
+					value: {
+						oAuth2Api: { className: '', sourcePath: '' },
+						googleOAuth2Api: { className: '', sourcePath: '', extends: ['oAuth2Api'] },
+						googleSheetsOAuth2Api: {
+							className: '',
+							sourcePath: '',
+							extends: ['googleOAuth2Api'],
+						},
+						slackApi: { className: '', sourcePath: '' },
+					},
+				});
+			});
+
+			afterEach(() => {
+				delete (loadNodesAndCredentials as { knownCredentials?: unknown }).knownCredentials;
+			});
+
+			it('gives every type that extends a parent, at any depth, the access of the extends rule', async () => {
+				givenInstanceRules(
+					[
+						{
+							id: 'deny-oauth2',
+							action: 'deny',
+							selector: { kind: 'extends', value: 'oAuth2Api' },
+						},
+					],
+					{ kind: CREDENTIAL_TYPES_KIND },
+				);
+
+				const result = await service.getInstanceAccess(CREDENTIAL_TYPES_KIND, [
+					'oAuth2Api',
+					'googleOAuth2Api',
+					'googleSheetsOAuth2Api',
+					'slackApi',
+				]);
+
+				expect(result.types).toEqual([
+					{ name: 'oAuth2Api', access: 'deny', matchedRuleId: 'deny-oauth2' },
+					{ name: 'googleOAuth2Api', access: 'deny', matchedRuleId: 'deny-oauth2' },
+					{ name: 'googleSheetsOAuth2Api', access: 'deny', matchedRuleId: 'deny-oauth2' },
+					{ name: 'slackApi', access: 'allow', matchedRuleId: null },
+				]);
+			});
+
+			it('lets an earlier name rule decide a type that an extends rule also covers', async () => {
+				givenInstanceRules(
+					[
+						{
+							id: 'allow-sheets',
+							action: 'allow',
+							selector: { kind: 'name', value: 'googleSheetsOAuth2Api' },
+						},
+						{
+							id: 'deny-oauth2',
+							action: 'deny',
+							selector: { kind: 'extends', value: 'oAuth2Api' },
+						},
+					],
+					{ kind: CREDENTIAL_TYPES_KIND },
+				);
+
+				const result = await service.getInstanceAccess(CREDENTIAL_TYPES_KIND, [
+					'googleSheetsOAuth2Api',
+					'googleOAuth2Api',
+				]);
+
+				expect(result.types).toEqual([
+					{ name: 'googleSheetsOAuth2Api', access: 'allow', matchedRuleId: 'allow-sheets' },
+					{ name: 'googleOAuth2Api', access: 'deny', matchedRuleId: 'deny-oauth2' },
+				]);
+			});
+		});
+	});
+
+	describe('getProjectAccess', () => {
+		const PROJECT_ID = 'project-1';
+		const SLACK = 'n8n-nodes-base.slack';
+		const NOTION = 'n8n-nodes-base.notion';
+		const GMAIL = 'n8n-nodes-base.gmail';
+		const GMAIL_TOOL = 'n8n-nodes-base.gmailTool';
+
+		type ScopeSetup = {
+			rules: PolicyRule[];
+			defaultAction?: TypeAvailabilityPolicyScope['defaultAction'];
+			version?: number;
+		};
+
+		/** `project: null` leaves the project without a scope row. */
+		function givenScopes(instance: ScopeSetup, project: ScopeSetup | null) {
+			scopeRepository.findScopeByKindAndProject.mockImplementation(async (_kind, projectId) => {
+				const setup = projectId === null ? instance : project;
+				if (!setup) return null;
+				return makeScope({
+					id: projectId === null ? 'instance-scope' : 'project-scope',
+					projectId,
+					defaultAction: setup.defaultAction ?? 'allow',
+					version: setup.version ?? 1,
+				});
+			});
+			attachmentRepository.listAttachmentsForScope.mockImplementation(async (scopeId) => [
+				{
+					policyId: `${scopeId}-policy`,
+					rules: scopeId === 'instance-scope' ? instance.rules : (project?.rules ?? []),
+					priority: 0,
+					isFloor: false,
+				},
+			]);
+		}
+
+		const delegateNotion: PolicyRule = {
+			id: 'delegate-notion',
+			action: 'delegate',
+			selector: { kind: 'name', value: NOTION },
+		};
+
+		it('reports a delegated type that the project opts in to as allowed by the project', async () => {
+			givenScopes(
+				{ rules: [delegateNotion] },
+				{
+					rules: [
+						{ id: 'allow-notion', action: 'allow', selector: { kind: 'name', value: NOTION } },
+					],
+				},
+			);
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [NOTION]);
+
+			expect(result.types).toEqual([
+				{
+					name: NOTION,
+					access: 'allow',
+					scope: 'project',
+					matchedRuleId: 'allow-notion',
+					optInAvailable: false,
+				},
+			]);
+		});
+
+		it('reports a type that the instance restricts as restricted by the instance', async () => {
+			givenScopes(
+				{ rules: [{ id: 'deny-slack', action: 'deny', selector: { kind: 'name', value: SLACK } }] },
+				{
+					rules: [{ id: 'allow-slack', action: 'allow', selector: { kind: 'name', value: SLACK } }],
+				},
+			);
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [SLACK]);
+
+			expect(result.types).toEqual([
+				{
+					name: SLACK,
+					access: 'deny',
+					scope: 'instance',
+					matchedRuleId: 'deny-slack',
+					optInAvailable: false,
+				},
+			]);
+		});
+
+		it('reports a delegated type without an opt-in as restricted by the instance, with opt-in available', async () => {
+			givenScopes({ rules: [delegateNotion] }, null);
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [NOTION]);
+
+			expect(result.types).toEqual([
+				{
+					name: NOTION,
+					access: 'deny',
+					scope: 'instance',
+					matchedRuleId: 'delegate-notion',
+					optInAvailable: true,
+				},
+			]);
+		});
+
+		it('reports a delegated type under a project deny default as restricted by the project, with opt-in available', async () => {
+			givenScopes({ rules: [delegateNotion] }, { rules: [], defaultAction: 'deny' });
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [NOTION]);
+
+			expect(result.types).toEqual([
+				{
+					name: NOTION,
+					access: 'deny',
+					scope: 'project',
+					matchedRuleId: null,
+					optInAvailable: true,
+				},
+			]);
+		});
+
+		it('reports a type that only the project restricts as restricted by the project', async () => {
+			givenScopes(
+				{ rules: [] },
+				{ rules: [{ id: 'deny-gmail', action: 'deny', selector: { kind: 'name', value: GMAIL } }] },
+			);
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [GMAIL, SLACK]);
+
+			expect(result.types).toEqual([
+				{
+					name: GMAIL,
+					access: 'deny',
+					scope: 'project',
+					matchedRuleId: 'deny-gmail',
+					optInAvailable: false,
+				},
+				{
+					name: SLACK,
+					access: 'allow',
+					scope: 'instance',
+					matchedRuleId: null,
+					optInAvailable: false,
+				},
+			]);
+		});
+
+		it('reports the version of each scope it read', async () => {
+			givenScopes({ rules: [], version: 7 }, { rules: [], version: 3 });
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [SLACK]);
+
+			expect(result).toMatchObject({ instanceVersion: 7, projectVersion: 3 });
+		});
+
+		it('reports version 0 for a project without a policy', async () => {
+			givenScopes({ rules: [], version: 7 }, null);
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [SLACK]);
+
+			expect(result).toMatchObject({ instanceVersion: 7, projectVersion: 0 });
+		});
+
+		it('throws ProjectNotFoundError for an unknown project, before reading a scope', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([]);
+
+			await expect(service.getProjectAccess(KIND, PROJECT_ID, [SLACK])).rejects.toThrow(
+				ProjectNotFoundError,
+			);
+			expect(scopeRepository.findScopeByKindAndProject).not.toHaveBeenCalled();
+		});
+
+		it('reports the instance rows for a personal project', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([{ id: PROJECT_ID, type: 'personal' }]);
+			givenScopes(
+				{
+					rules: [{ id: 'deny-slack', action: 'deny', selector: { kind: 'name', value: SLACK } }],
+					version: 7,
+				},
+				null,
+			);
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [SLACK]);
+
+			expect(result).toMatchObject({ instanceVersion: 7, projectVersion: 0 });
+			expect(result.types).toEqual([
+				expect.objectContaining({ name: SLACK, access: 'deny', scope: 'instance' }),
+			]);
+		});
+
+		it('reads the database, not the snapshot', async () => {
+			givenScopes({ rules: [] }, { rules: [] });
+
+			await service.getProjectAccess(KIND, PROJECT_ID, [SLACK]);
+
+			expect(snapshot.read).not.toHaveBeenCalled();
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledWith(KIND, null, ROOT);
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledWith(
+				KIND,
+				PROJECT_ID,
+				ROOT,
+			);
+		});
+
+		it('lists each scope against its own rules, and keeps a row that either scope lists', async () => {
+			const denyGmailTool: PolicyRule = {
+				id: 'deny-gmail-tool',
+				action: 'deny',
+				selector: { kind: 'name', value: GMAIL_TOOL },
+			};
+			givenScopes({ rules: [delegateNotion] }, { rules: [denyGmailTool] });
+			const listTypesCalls: Array<[unknown[], readonly PolicyRule[]]> = [];
+			// Lists a tool variant only when a rule decides it, as `listedNodeTypes` does.
+			const listTypes: ListTypes = (types, rules) => {
+				listTypesCalls.push([[...types], rules]);
+				return types.filter((type) => type.name !== GMAIL_TOOL || type.matchedRuleId !== null);
+			};
+
+			const result = await service.getProjectAccess(
+				KIND,
+				PROJECT_ID,
+				[NOTION, GMAIL, GMAIL_TOOL],
+				listTypes,
+			);
+
+			expect(listTypesCalls).toEqual([
+				[
+					[
+						expect.objectContaining({ name: NOTION, matchedRuleId: 'delegate-notion' }),
+						expect.objectContaining({ name: GMAIL, matchedRuleId: null }),
+						expect.objectContaining({ name: GMAIL_TOOL, matchedRuleId: null }),
+					],
+					[delegateNotion],
+				],
+				[
+					[
+						expect.objectContaining({ name: NOTION, matchedRuleId: null }),
+						expect.objectContaining({ name: GMAIL, matchedRuleId: null }),
+						expect.objectContaining({ name: GMAIL_TOOL, matchedRuleId: 'deny-gmail-tool' }),
+					],
+					[denyGmailTool],
+				],
+			]);
+			expect(result.types).toEqual([
+				expect.objectContaining({ name: NOTION, scope: 'instance' }),
+				expect.objectContaining({ name: GMAIL, scope: 'instance' }),
+				{
+					name: GMAIL_TOOL,
+					access: 'deny',
+					scope: 'project',
+					matchedRuleId: 'deny-gmail-tool',
+					optInAvailable: false,
+				},
+			]);
+		});
+
+		it('adds no row when neither scope lists the type', async () => {
+			givenScopes({ rules: [] }, { rules: [] });
+			const listTypes: ListTypes = (types) => types.filter((type) => type.name !== GMAIL_TOOL);
+
+			const result = await service.getProjectAccess(
+				KIND,
+				PROJECT_ID,
+				[GMAIL, GMAIL_TOOL],
+				listTypes,
+			);
+
+			expect(result.types.map((type) => type.name)).toEqual([GMAIL]);
 		});
 	});
 
@@ -1994,7 +2790,7 @@ describe('TypeAvailabilityPolicyService', () => {
 
 				const result = await service.evaluateComposedTypesForAllProjects(KIND, [TYPE]);
 
-				expect(scopeRepository.findProjectScopes).toHaveBeenCalledWith(KIND, {});
+				expect(scopeRepository.findProjectScopes).toHaveBeenCalledWith(KIND, {}, undefined);
 				expect(attachmentRepository.listAttachmentsForScopes).toHaveBeenCalledWith(['scope-2'], {});
 				expect(result.byProject).toHaveLength(1);
 				expect(result.byProject[0].projectId).toBe('project-a');
@@ -2034,6 +2830,15 @@ describe('TypeAvailabilityPolicyService', () => {
 				);
 
 				await service.setDefaultAction(KIND, null, 'deny', 1, 'user-2');
+
+				expectRefreshedOnceAfterCommit();
+			});
+
+			it('refreshes once after createProjectPolicy commits', async () => {
+				arrangeTeamProject();
+				arrangeProjectScopes(BOTH_KINDS);
+
+				await service.createProjectPolicy(PROJECT_ID, 'user-1');
 
 				expectRefreshedOnceAfterCommit();
 			});

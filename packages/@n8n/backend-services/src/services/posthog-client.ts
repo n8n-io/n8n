@@ -1,0 +1,372 @@
+import {
+	AGENT_EVALS_FLAG,
+	AGENT_SANDBOX_FILES_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
+	CUSTOM_MCP_SERVERS_FLAG,
+	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_AI_CLOUD_BROWSER_FLAG,
+	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	CONFIG_EVALUATIONS_FLAG,
+	EVAL_COLLECTIONS_FLAG,
+	GROUPS_WITH_TRIGGERS_FLAG,
+	GROUPS_WITH_MANY_BOUNDARIES_FLAG,
+	KNOWLEDGE_COLLECTIONS_FLAG,
+	SELF_HEALING_FLAG,
+	WORKFLOWS_IN_SKILLS_FLAG,
+} from '@n8n/api-types';
+import { getN8nVersion } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import type { PublicUser } from '@n8n/db';
+import { Service } from '@n8n/di';
+import type { Application } from 'express';
+import { InstanceSettings } from 'n8n-core';
+import type { FeatureFlagPayloads, FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
+import type { AllFlagsOptions, FeatureFlagEvaluations, PostHog } from 'posthog-node';
+
+/**
+ * PostHog group type for instance-level properties.
+ * Note: Aliased as "instance" on PostHog dashboard
+ */
+const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
+
+const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+/**
+ * Backend gates read instance flags on hot paths, for example on each MCP request. A failed or
+ * empty answer is kept this long, so that an unreachable PostHog does not cost a timeout on
+ * each read.
+ */
+const EMPTY_INSTANCE_FLAGS_CACHE_TTL_MS = 60 * 1000;
+const EDITOR_INSTANCE_FLAGS = [
+	CREDENTIAL_DESCRIPTIONS_FLAG,
+	AGENT_SANDBOX_FILES_FLAG,
+	INSTANCE_AI_CLOUD_BROWSER_FLAG,
+	KNOWLEDGE_COLLECTIONS_FLAG,
+	SELF_HEALING_FLAG,
+	WORKFLOWS_IN_SKILLS_FLAG,
+	CUSTOM_MCP_SERVERS_FLAG,
+];
+/**
+ * Multivariate flags that roll out by instance. The editor gets the instance variant as it is,
+ * so the editor and the backend read the same value.
+ */
+const MULTIVARIATE_EDITOR_INSTANCE_FLAGS = [WORKFLOWS_IN_SKILLS_FLAG, CUSTOM_MCP_SERVERS_FLAG];
+
+const SESSION_ID_MAX_LENGTH = 1000;
+
+function sanitizeSessionId(value: string | undefined): string | undefined {
+	const sanitized = value?.replace(/[^\x20-\x7E]/g, '').trim();
+	return sanitized ? sanitized.slice(0, SESSION_ID_MAX_LENGTH) : undefined;
+}
+
+interface FeatureFlagData {
+	featureFlags: FeatureFlags;
+	featureFlagPayloads: FeatureFlagPayloads;
+}
+
+interface CachedFlags extends FeatureFlagData {
+	expiresAt: number;
+}
+
+@Service()
+export class PostHogClient {
+	private postHog?: PostHog;
+
+	private readonly flagsCache = new Map<string, CachedFlags>();
+
+	/** Instance fetches in flight, so that parallel reads share one request. */
+	private readonly instanceFetches = new Map<string, Promise<FeatureFlagData>>();
+
+	constructor(
+		private readonly instanceSettings: InstanceSettings,
+		private readonly globalConfig: GlobalConfig,
+	) {}
+
+	async init() {
+		const { enabled, posthogConfig } = this.globalConfig.diagnostics;
+		// Eval instances must not draw a fresh flag rollout per instance; env overrides still apply.
+		if (!enabled || this.globalConfig.instanceAi.evalInstance) {
+			return;
+		}
+
+		const { PostHog } = await import('posthog-node');
+		this.postHog = new PostHog(posthogConfig.apiKey, {
+			host: posthogConfig.apiHost,
+		});
+	}
+
+	setupExpressSessionContext(app: Application): void {
+		const postHog = this.postHog;
+		if (!postHog || this.globalConfig.deployment.type !== 'cloud') return;
+
+		app.use((req, _res, next) => {
+			const sessionId = sanitizeSessionId(req.get('x-posthog-session-id'));
+			if (!sessionId) return next();
+
+			postHog.withContext({ sessionId }, next);
+		});
+	}
+
+	async stop(): Promise<void> {
+		if (this.postHog) {
+			return await this.postHog.shutdown();
+		}
+	}
+
+	track(payload: { userId: string; event: string; properties: ITelemetryTrackProperties }): void {
+		// `Telemetry.track` composes `userId` as `<instanceId>#<user_id>` and falls back to the
+		// bare instance id when the properties carry no `user_id`. Capturing that would create one
+		// phantom person profile per instance (#32344), so the event is dropped here. It still
+		// reaches RudderStack, which is why a backend event that forgets `user_id` goes missing
+		// from PostHog alone. `Telemetry.warnAboutMissingUserId` reports that case.
+		if (!payload.userId || payload.userId === this.instanceSettings.instanceId) return;
+
+		const instanceId = payload?.properties?.instance_id;
+
+		this.postHog?.capture({
+			event: payload.event,
+			distinctId: payload.userId,
+			properties: payload.properties,
+			...(typeof instanceId === 'string' && {
+				groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId },
+			}),
+		});
+	}
+
+	groupIdentify({
+		instanceId,
+		distinctId,
+		properties,
+	}: {
+		instanceId: string;
+		distinctId: string;
+		properties: Record<string, string | number> | undefined;
+	}): void {
+		// PostHog refuses a `$groupidentify` that has no real person behind it
+		if (!instanceId || !distinctId) return;
+
+		this.postHog?.capture({
+			distinctId,
+			event: '$groupidentify',
+			properties: {
+				$group_type: POSTHOG_GROUP_TYPE_INSTANCE,
+				$group_key: instanceId,
+				$group_set: properties,
+			},
+			groups: {
+				[POSTHOG_GROUP_TYPE_INSTANCE]: instanceId,
+			},
+		});
+	}
+
+	identify({
+		distinctId,
+		properties,
+	}: { distinctId: string; properties: Record<string | number, unknown> | undefined }): void {
+		if (!distinctId) return;
+
+		this.postHog?.identify({
+			distinctId,
+			properties: properties ?? undefined,
+		});
+	}
+
+	async getFeatureFlags(user: Pick<PublicUser, 'id' | 'createdAt'>): Promise<FeatureFlags> {
+		return (await this.getFeatureFlagsAndPayloads(user)).featureFlags;
+	}
+
+	async getFeatureFlagForInstance(flagName: string): Promise<FeatureFlags[string]> {
+		const flagNames = EDITOR_INSTANCE_FLAGS.includes(flagName) ? EDITOR_INSTANCE_FLAGS : [flagName];
+		return (await this.getFeatureFlagsForInstance(flagNames))[flagName];
+	}
+
+	private async getFeatureFlagsForInstance(flagNames: string[]): Promise<FeatureFlags> {
+		const { instanceId } = this.instanceSettings;
+		const cacheKey = ['instance', instanceId, ...flagNames].join('#');
+
+		let fetch = this.instanceFetches.get(cacheKey);
+		if (!fetch) {
+			fetch = this.fetchInstanceFlags(cacheKey, flagNames).finally(() =>
+				this.instanceFetches.delete(cacheKey),
+			);
+			this.instanceFetches.set(cacheKey, fetch);
+		}
+
+		return this.applyEnvOverrides(await fetch).featureFlags;
+	}
+
+	private async fetchInstanceFlags(cacheKey: string, flagNames: string[]) {
+		const { instanceId } = this.instanceSettings;
+		let data: FeatureFlagData = { featureFlags: {}, featureFlagPayloads: {} };
+
+		try {
+			data = await this.fetchFlagsFromPostHog({
+				cacheKey,
+				distinctId: `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
+				options: {
+					flagKeys: flagNames,
+					groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId },
+				},
+			});
+		} catch {
+			// Apply local overrides when PostHog is not available.
+		}
+
+		// `fetchFlagsFromPostHog` caches only a non-empty answer.
+		const cached = this.flagsCache.get(cacheKey);
+		if (this.postHog && !(cached && cached.expiresAt > Date.now())) {
+			this.flagsCache.set(cacheKey, {
+				...data,
+				expiresAt: Date.now() + EMPTY_INSTANCE_FLAGS_CACHE_TTL_MS,
+			});
+		}
+
+		return data;
+	}
+
+	async getFeatureFlagsAndPayloads(
+		user: Pick<PublicUser, 'id' | 'createdAt'>,
+	): Promise<FeatureFlagData> {
+		// Apply local overrides when PostHog is not available.
+		let data: FeatureFlagData = { featureFlags: {}, featureFlagPayloads: {} };
+		try {
+			const { instanceId } = this.instanceSettings;
+			const distinctId = [instanceId, user.id].join('#');
+			data = await this.fetchFlagsFromPostHog({
+				cacheKey: distinctId,
+				distinctId,
+				options: {
+					personProperties: {
+						created_at_timestamp: user.createdAt.getTime().toString(),
+						instance_id: instanceId,
+						version_cli: getN8nVersion(),
+					},
+					...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
+				},
+			});
+		} catch {
+			// Apply local overrides when PostHog is not available.
+		}
+		const overridden = this.applyEnvOverrides(data);
+		// The editor and backend must use the same instance result.
+		const instanceFlags = await this.getFeatureFlagsForInstance(EDITOR_INSTANCE_FLAGS);
+		return {
+			...overridden,
+			featureFlags: {
+				...overridden.featureFlags,
+				...Object.fromEntries(
+					EDITOR_INSTANCE_FLAGS.map((flag) => [
+						flag,
+						MULTIVARIATE_EDITOR_INSTANCE_FLAGS.includes(flag)
+							? (instanceFlags[flag] ?? false)
+							: instanceFlags[flag] === true,
+					]),
+				),
+			},
+		};
+	}
+
+	private async fetchFlagsFromPostHog({
+		cacheKey,
+		distinctId,
+		options,
+	}: {
+		cacheKey: string;
+		distinctId: string;
+		options: AllFlagsOptions;
+	}): Promise<FeatureFlagData> {
+		if (!this.postHog) {
+			return { featureFlags: {}, featureFlagPayloads: {} };
+		}
+
+		const cached = this.flagsCache.get(cacheKey);
+		if (cached && cached.expiresAt > Date.now()) {
+			return cached;
+		}
+
+		const evaluatedFlags = await this.postHog.evaluateFlags(distinctId, options);
+
+		const data = this.resolveFeatureFlagData(evaluatedFlags);
+
+		if (Object.keys(data.featureFlags).length > 0) {
+			this.flagsCache.set(cacheKey, { ...data, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
+		}
+
+		return data;
+	}
+
+	private resolveFeatureFlagData(evaluatedFlags: FeatureFlagEvaluations): FeatureFlagData {
+		const featureFlags: FeatureFlags = {};
+		const featureFlagPayloads: FeatureFlagPayloads = {};
+
+		if (!evaluatedFlags || !Array.isArray(evaluatedFlags.keys)) {
+			return { featureFlags, featureFlagPayloads };
+		}
+
+		for (const key of evaluatedFlags.keys) {
+			try {
+				featureFlags[key] = evaluatedFlags.getFlag(key);
+				const payload = evaluatedFlags.getFlagPayload(key);
+				if (payload !== undefined && payload !== null) {
+					featureFlagPayloads[key] = payload;
+				}
+			} catch {}
+		}
+
+		return { featureFlags, featureFlagPayloads };
+	}
+
+	/** Applies local settings after PostHog. Dedicated feature settings take priority. */
+	private applyEnvOverrides(data: FeatureFlagData): FeatureFlagData {
+		const overrides = { ...this.globalConfig.featureFlags.override };
+
+		if (this.globalConfig.evaluation.collectionsEnabled) {
+			overrides[EVAL_COLLECTIONS_FLAG] = true;
+		}
+
+		// `088_config_evaluations` is multivariate — the enabled arm is the
+		// `variant` string, not a boolean (`resolveExperimentGates` checks for it).
+		if (this.globalConfig.evaluation.configEvalsEnabled) {
+			overrides[CONFIG_EVALUATIONS_FLAG] = CONFIG_EVALUATIONS_ENABLED_VARIANT;
+		}
+
+		if (this.globalConfig.evaluation.agentEvalsEnabled) {
+			overrides[AGENT_EVALS_FLAG] = true;
+		}
+
+		if (this.globalConfig.instanceAi.nodeUsageEnabled) {
+			overrides[INSTANCE_AI_NODE_USAGE_FLAG] = true;
+		}
+
+		if (this.globalConfig.workflows.groupsWithTriggersEnabled) {
+			overrides[GROUPS_WITH_TRIGGERS_FLAG] = true;
+		}
+
+		if (this.globalConfig.workflows.groupsWithManyBoundariesEnabled) {
+			overrides[GROUPS_WITH_MANY_BOUNDARIES_FLAG] = true;
+		}
+
+		if (Object.keys(overrides).length === 0) {
+			return {
+				featureFlags: data.featureFlags,
+				featureFlagPayloads: data.featureFlagPayloads,
+			};
+		}
+
+		const featureFlags = { ...data.featureFlags };
+		const featureFlagPayloads = { ...data.featureFlagPayloads };
+
+		for (const [key, override] of Object.entries(overrides)) {
+			const value = typeof override === 'object' ? override.value : override;
+			const payload = typeof override === 'object' ? override.payload : undefined;
+
+			featureFlags[key] = value;
+			if (payload === undefined || payload === null) {
+				delete featureFlagPayloads[key];
+			} else {
+				featureFlagPayloads[key] = payload;
+			}
+		}
+
+		return { featureFlags, featureFlagPayloads };
+	}
+}

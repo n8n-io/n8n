@@ -1,11 +1,14 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { vElementSize } from '@vueuse/components';
 import type { AgentChatResumeDto, AgentJsonConfig, AgentThreadMemoryDto } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
 import { N8nRecycleScroller } from '@n8n/design-system';
+import { useScrollEdges } from '@n8n/design-system/composables/useScrollEdges';
+import { useI18n } from '@n8n/i18n';
 import SessionTimelineRow from './SessionTimelineRow.vue';
+import ToolApprovalCard from '@/features/ai/shared/components/ToolApprovalCard.vue';
 import type { TimelineItem } from '../session-timeline.types';
+import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
 import { filteredTimelineItemIndexes, timelineItemKey } from '../session-timeline.utils';
 import { backgroundJobTimelineLabelKey } from '../utils/background-job-labels';
 
@@ -28,18 +31,27 @@ const props = defineProps<{
 	visibleKinds: Set<string>;
 	searchQuery?: string;
 	noticeIndex?: number;
+	/** Suspension row the open approval belongs to. The card expands under it. */
+	approvalItem?: TimelineItem | null;
+	approval?: ApprovalInput;
+	approvalDisabled?: boolean;
 }>();
 
-const emit = defineEmits<{ select: [index: number | null] }>();
+const emit = defineEmits<{
+	select: [index: number | null];
+	approve: [resumeData: ApprovalResume];
+}>();
 
 const i18n = useI18n();
 const tableRef = ref<HTMLElement | null>(null);
 const scrollerRef = ref<{
 	scrollToKey: (key: string, behavior?: ScrollBehavior) => void;
 } | null>(null);
-const canScrollUp = ref(false);
-const canScrollDown = ref(false);
-let scrollContainer: HTMLElement | null = null;
+const scrollContainerRef = ref<HTMLElement | null>(null);
+const { canScrollTop: canScrollUp, canScrollBottom: canScrollDown } = useScrollEdges(
+	scrollContainerRef,
+	{ axis: 'vertical' },
+);
 
 function labelForKey(key: string): string {
 	const backgroundJobKey = backgroundJobTimelineLabelKey(key);
@@ -114,6 +126,16 @@ const rows = computed<Row[]>(function getRows() {
 const shouldVirtualizeRows = computed(function shouldVirtualize() {
 	return rows.value.length > VIRTUALIZE_AFTER_ROWS;
 });
+
+// The card expands inline under its suspension row, so it is not part of the
+// row model and never touches selectedIndex or arrow-key navigation.
+function showsApprovalRow(row: Row): boolean {
+	return (
+		props.approval !== undefined &&
+		props.approvalItem?.executionId === row.item.executionId &&
+		props.approvalItem?.toolCallId === row.item.toolCallId
+	);
+}
 const tabbableEventIndex = computed(function getTabbableEventIndex() {
 	return rows.value.find((row) => row.index === props.selectedIndex)?.index ?? rows.value[0]?.index;
 });
@@ -157,27 +179,13 @@ function onRowKeydown(event: KeyboardEvent) {
 	if (row) emit('select', row.index);
 }
 
-function updateScrollMask() {
-	if (!scrollContainer) {
-		canScrollUp.value = false;
-		canScrollDown.value = false;
-		return;
-	}
-	canScrollUp.value = scrollContainer.scrollTop > 0;
-	canScrollDown.value =
-		scrollContainer.scrollTop + scrollContainer.clientHeight < scrollContainer.scrollHeight - 1;
-}
-
 function bindScrollContainer() {
 	const nextScrollContainer =
 		tableRef.value?.querySelector<HTMLElement>('[data-timeline-scroll-container]') ??
-		tableRef.value?.querySelector<HTMLElement>('.recycle-scroller-wrapper');
-	if (nextScrollContainer === scrollContainer) return;
-
-	scrollContainer?.removeEventListener('scroll', updateScrollMask);
-	scrollContainer = nextScrollContainer ?? null;
-	scrollContainer?.addEventListener('scroll', updateScrollMask, { passive: true });
-	updateScrollMask();
+		tableRef.value?.querySelector<HTMLElement>('.recycle-scroller-wrapper') ??
+		null;
+	if (nextScrollContainer === scrollContainerRef.value) return;
+	scrollContainerRef.value = nextScrollContainer;
 }
 
 function scrollSelectedIntoView(): void {
@@ -198,6 +206,7 @@ function scrollSelectedIntoView(): void {
 		return;
 	}
 
+	const scrollContainer = scrollContainerRef.value;
 	if (!row || !scrollContainer) return;
 
 	const rowBounds = row.getBoundingClientRect();
@@ -213,7 +222,6 @@ function scrollSelectedIntoView(): void {
 			behavior,
 		});
 	}
-	updateScrollMask();
 }
 
 defineExpose({ scrollSelectedIntoView });
@@ -242,19 +250,12 @@ watch(
 watch(
 	() => rows.value.length,
 	() => {
-		void nextTick(() => {
-			bindScrollContainer();
-			updateScrollMask();
-		});
+		void nextTick(bindScrollContainer);
 	},
 );
 
 onMounted(() => {
 	void nextTick(bindScrollContainer);
-});
-
-onBeforeUnmount(() => {
-	scrollContainer?.removeEventListener('scroll', updateScrollMask);
 });
 </script>
 
@@ -303,6 +304,24 @@ onBeforeUnmount(() => {
 							:selected="props.selectedIndex === row.index"
 							:search-query="props.searchQuery"
 							:personalisation="props.personalisation"
+						/>
+					</div>
+					<div
+						v-if="props.approval && showsApprovalRow(row)"
+						:class="$style.approvalRow"
+						data-test-id="timeline-approval-row"
+						role="gridcell"
+						@click.stop
+						@keydown.stop
+					>
+						<ToolApprovalCard
+							:input="props.approval"
+							:agent-name="props.agentName"
+							:tools="props.tools"
+							:disabled="props.approvalDisabled"
+							:auto-focus="false"
+							:use-key-shortcuts="false"
+							@submit="emit('approve', $event)"
 						/>
 					</div>
 					<div v-if="rowIndex < rows.length - 1" :class="$style.divider"><span></span></div>
@@ -363,6 +382,24 @@ onBeforeUnmount(() => {
 					>
 						<slot name="notice" />
 					</div>
+					<div
+						v-if="props.approval && showsApprovalRow(row)"
+						:class="$style.approvalRow"
+						data-test-id="timeline-approval-row"
+						role="gridcell"
+						@click.stop
+						@keydown.stop
+					>
+						<ToolApprovalCard
+							:input="props.approval"
+							:agent-name="props.agentName"
+							:tools="props.tools"
+							:disabled="props.approvalDisabled"
+							:auto-focus="false"
+							:use-key-shortcuts="false"
+							@submit="emit('approve', $event)"
+						/>
+					</div>
 					<div v-if="row.id !== rows[rows.length - 1].id" :class="$style.divider">
 						<span></span>
 					</div>
@@ -390,6 +427,11 @@ onBeforeUnmount(() => {
 	width: 100%;
 	max-width: var(--n8n-session-panel--container-width, none);
 	margin: 0 auto;
+}
+
+.approvalRow {
+	width: 100%;
+	padding: var(--spacing--4xs) var(--spacing--sm) var(--spacing--xs);
 }
 
 .empty {

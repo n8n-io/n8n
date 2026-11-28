@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { rmSync, readFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 import { fakeBinaries } from './fake-bin.mjs';
-import { parseOpenCodeArgs } from '../../scripts/cloud-session-opencode.mjs';
+import { parseOpenCodeArgs, parseOpenCodeVersion } from '../../scripts/cloud-session-opencode.mjs';
 
 const script = fileURLToPath(new URL('../../scripts/cloud-session.mjs', import.meta.url));
 const secret = 'a'.repeat(64);
@@ -31,11 +32,11 @@ if (args[0] === 'codespace' && args[1] === 'list') {
   const server = require('node:http').createServer((req, res) => {
     const expected = 'Basic ' + Buffer.from('opencode:' + '${secret}').toString('base64');
     if (process.env.TEST_UNAUTHORIZED || req.headers.authorization !== expected) { res.writeHead(401).end(); return; }
+    if (req.url !== '/api/info') { res.writeHead(404).end(); return; }
     res.setHeader('content-type', 'application/json');
-    res.end(JSON.stringify({ healthy: true, version: process.env.TEST_SERVER_VERSION || '1.2.3' }));
+    res.end(JSON.stringify({ version: process.env.TEST_SERVER_VERSION || '2.4.1', pid: process.pid, urls: [], paths: { tmp: '/tmp' } }));
   });
   server.listen(port, '127.0.0.1');
-  if (process.env.TEST_TUNNEL_DROP) setTimeout(() => process.exit(1), 500);
   process.on('SIGTERM', () => { log({ event: 'tunnel-stopped' }); server.closeAllConnections(); server.close(() => process.exit(0)); });
 } else if (args.at(-1).includes('node --input-type=module')) {
   let source = '';
@@ -59,10 +60,15 @@ if (args[0] === 'codespace' && args[1] === 'list') {
 		`
 if (args[0] === '--version') {
   if (process.env.TEST_NO_CLIENT) process.exit(1);
-  console.log(process.env.TEST_CLIENT_VERSION || '1.2.3');
+  console.log(process.env.TEST_CLIENT_VERSION || 'opencode v2.4.1');
 } else {
-  log({ command: 'opencode', args, password: process.env.OPENCODE_SERVER_PASSWORD });
-  if (process.env.TEST_CLIENT_WAIT) setInterval(() => {}, 1000);
+  log({
+    command: 'opencode',
+    args,
+    password: process.env.OPENCODE_PASSWORD,
+    legacyPassword: process.env.OPENCODE_SERVER_PASSWORD ?? null,
+    legacyUsername: process.env.OPENCODE_SERVER_USERNAME ?? null,
+  });
 }
 `,
 	);
@@ -113,6 +119,26 @@ function stopped(pid) {
 	}
 }
 
+async function freePort() {
+	const server = createServer();
+	await new Promise((resolve, reject) => {
+		server.once('error', reject);
+		server.listen(0, '127.0.0.1', resolve);
+	});
+	const { port } = server.address();
+	await new Promise((resolve) => server.close(resolve));
+	return port;
+}
+
+test('parses V2 and bare semver OpenCode version output', () => {
+	assert.equal(parseOpenCodeVersion('opencode v2.4.1\n'), '2.4.1');
+	assert.equal(parseOpenCodeVersion('opencode v2.3.2-rc.1+build.4\n'), '2.3.2-rc.1+build.4');
+	assert.equal(parseOpenCodeVersion('2.4.1\n'), '2.4.1');
+	assert.equal(parseOpenCodeVersion('1.18.25'), '1.18.25');
+	assert.equal(parseOpenCodeVersion(''), undefined);
+	assert.equal(parseOpenCodeVersion('unexpected output'), undefined);
+});
+
 test('parses options before or after the workspace and rejects unsupported flags', () => {
 	assert.equal(parseOpenCodeArgs(['--web']).port, 4096);
 	assert.equal(parseOpenCodeArgs([]).port, 0);
@@ -152,13 +178,12 @@ test(
 		const tunnel = calls.find((call) => call.command === 'gh' && call.args.includes('-N'));
 		assert.match(tunnel.args.at(-1), /^127\.0\.0\.1:\d+:127\.0\.0\.1:4242$/);
 		const client = calls.find((call) => call.command === 'opencode');
-		assert.deepEqual(client.args.slice(2), [
-			'--dir',
-			'/workspaces/wt-fix-flaky',
-			'--session',
-			'ses_saved',
-		]);
+		assert.equal(client.args[0], '--server');
+		assert.match(client.args[1], /^http:\/\/127\.0\.0\.1:\d+$/);
+		assert.deepEqual(client.args.slice(2), ['--session', 'ses_saved', '/workspaces/wt-fix-flaky']);
 		assert.equal(client.password, secret);
+		assert.equal(client.legacyPassword, null);
+		assert.equal(client.legacyUsername, null);
 		assert.ok(!result.output.includes(secret));
 		assert.ok(calls.some((call) => call.event === 'tunnel-stopped'));
 		const pid = calls.find((call) => call.event === 'ssh-child').pid;
@@ -167,11 +192,13 @@ test(
 );
 
 test('starts a new conversation for --new instead of continuing', { timeout: 15000 }, async (t) => {
-	const f = fixture(t);
+	const f = fixture(t, { TEST_CLIENT_VERSION: '2.4.1' });
 	const result = await f.start(['fix-flaky', '--new']).done;
 	assert.equal(result.code, 0, result.output);
 	const client = f.calls().find((call) => call.command === 'opencode');
-	assert.deepEqual(client.args.slice(2), ['--dir', '/workspaces/wt-fix-flaky']);
+	assert.equal(client.args[0], '--server');
+	assert.match(client.args[1], /^http:\/\/127\.0\.0\.1:\d+$/);
+	assert.deepEqual(client.args.slice(2), ['/workspaces/wt-fix-flaky']);
 });
 
 for (const signal of ['SIGINT', 'SIGHUP']) {
@@ -180,7 +207,8 @@ for (const signal of ['SIGINT', 'SIGHUP']) {
 		{ timeout: 15000 },
 		async (t) => {
 			const f = fixture(t, { TEST_NO_CLIENT: '1' });
-			const run = f.start(['--web', 'fix-flaky']);
+			const port = await freePort();
+			const run = f.start(['--web', '--port', String(port), 'fix-flaky']);
 			const browser = await waitFor(() => f.calls().find((call) => call.command === 'browser'));
 			const url = new URL(browser.args[0]);
 			assert.equal(
@@ -188,7 +216,7 @@ for (const signal of ['SIGINT', 'SIGHUP']) {
 				`/${Buffer.from('/workspaces/wt-fix-flaky').toString('base64url')}/session/ses_saved`,
 			);
 			assert.equal(url.password, '');
-			const response = await fetch(`${url.origin}/global/health`);
+			const response = await fetch(`${url.origin}/api/info`);
 			assert.equal(response.status, 200);
 			await response.text();
 			run.child.kill(signal);
@@ -203,14 +231,13 @@ for (const signal of ['SIGINT', 'SIGHUP']) {
 for (const [label, env, message] of [
 	[
 		'a version mismatch',
-		{ TEST_SERVER_VERSION: '1.14.22' },
-		/versions differ.*npm install -g opencode-ai@1\.14\.22/,
+		{ TEST_SERVER_VERSION: '2.3.2' },
+		/versions differ.*npm install -g @opencode\/cli@2\.3\.2/,
 	],
 	['an authentication failure', { TEST_UNAUTHORIZED: '1' }, /health check failed \(401\)/],
 	['a tunnel startup failure', { TEST_TUNNEL_FAIL: '1' }, /SSH tunnel closed/],
 	['a remote preparation failure', { TEST_BOOTSTRAP_FAIL: '1' }, /Could not prepare/],
 	['a missing local client', { TEST_NO_CLIENT: '1' }, /Install OpenCode locally/],
-	['a connection loss', { TEST_CLIENT_WAIT: '1', TEST_TUNNEL_DROP: '1' }, /SSH connection closed/],
 ]) {
 	test(`reports ${label} without printing credentials`, { timeout: 15000 }, async (t) => {
 		const f = fixture(t, env);
@@ -218,7 +245,6 @@ for (const [label, env, message] of [
 		assert.equal(result.code, 1, result.output);
 		assert.match(result.output, message);
 		assert.ok(!result.output.includes(secret));
-		if (label !== 'a connection loss')
-			assert.ok(!f.calls().some((call) => call.command === 'opencode'));
+		assert.ok(!f.calls().some((call) => call.command === 'opencode'));
 	});
 }

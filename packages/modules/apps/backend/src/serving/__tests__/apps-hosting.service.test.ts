@@ -13,8 +13,9 @@ function setup(owned = true) {
 	hosts.validRequestHost.mockReturnValue(true);
 	hosts.ownsRequest.mockReturnValue(owned);
 	hosts.namespace.mockReturnValue('sales');
+	hosts.contentSecurityPolicy.mockReturnValue("frame-ancestors 'none'");
 	const service = new AppsHostingService(hosts, mock<Logger>());
-	const req = mock<Request>();
+	const req = mock<Request>({ headers: {} });
 	const res = mock<Response>({ headersSent: false });
 	res.set.mockReturnValue(res);
 	res.status.mockReturnValue(res);
@@ -32,6 +33,41 @@ describe('AppsHostingService', () => {
 		expect(service.allowsUpgrade(req)).toBe(true);
 		hosts.ownsRequest.mockReturnValue(true);
 		expect(service.allowsUpgrade(req)).toBe(false);
+	});
+
+	it.each([
+		['a success', () => {}],
+		[
+			'a router error',
+			(_req: unknown, _res: unknown, next: (error?: unknown) => void) => next(new Error()),
+		],
+		[
+			'no matching route',
+			(_req: unknown, _res: unknown, next: (error?: unknown) => void) => next(),
+		],
+	])('sends the content security policy of the host with %s', (_case, handler) => {
+		const { service, hosts, req, res } = setup();
+		const router = service.router as typeof service.router & { handle: RequestHandler };
+		vi.spyOn(router, 'handle').mockImplementation(handler);
+
+		void service.dispatch(req, res, vi.fn());
+
+		expect(hosts.contentSecurityPolicy).toHaveBeenCalledWith(req);
+		expect(res.set).toHaveBeenCalledWith(
+			expect.objectContaining({ 'Content-Security-Policy': "frame-ancestors 'none'" }),
+		);
+	});
+
+	it('sends the content security policy with the response for an unknown app host', () => {
+		const { service, hosts, req, res } = setup();
+		hosts.namespace.mockReturnValue(undefined);
+
+		void service.dispatch(req, res, vi.fn());
+
+		expect(res.set).toHaveBeenCalledWith(
+			expect.objectContaining({ 'Content-Security-Policy': "frame-ancestors 'none'" }),
+		);
+		expect(res.sendStatus).toHaveBeenCalledWith(404);
 	});
 
 	it('rejects apps-owned requests without a namespace', () => {
@@ -57,6 +93,49 @@ describe('AppsHostingService', () => {
 		expect(handle).toHaveBeenCalledOnce();
 		expect(res.sendStatus).not.toHaveBeenCalled();
 	});
+
+	describe.each([
+		['an app host', 'sales', undefined],
+		['a preview host', undefined, 'sales'],
+	])('on %s', (_host, namespace, previewNamespace) => {
+		it.each([
+			[{ 'service-worker': 'script' }],
+			[{ 'sec-fetch-dest': 'serviceworker' }],
+			[{ 'service-worker': 'Script', 'sec-fetch-dest': 'serviceworker' }],
+		])('answers 404 to a service worker script request with %o', (headers) => {
+			const { service, hosts, req, res } = setup();
+			hosts.namespace.mockReturnValue(namespace);
+			hosts.previewNamespace.mockReturnValue(previewNamespace);
+			req.headers = headers;
+			const router = service.router as typeof service.router & { handle: RequestHandler };
+			const handle = vi.spyOn(router, 'handle');
+			const next = vi.fn();
+
+			void service.dispatch(req, res, next);
+
+			expect(res.sendStatus).toHaveBeenCalledExactlyOnceWith(404);
+			expect(res.set).toHaveBeenCalledWith(
+				expect.objectContaining({ 'Content-Security-Policy': "frame-ancestors 'none'" }),
+			);
+			expect(handle).not.toHaveBeenCalled();
+			expect(next).not.toHaveBeenCalled();
+		});
+	});
+
+	it.each(['script', 'worker', 'document'])(
+		'routes a request with Sec-Fetch-Dest %s to the apps router',
+		(dest) => {
+			const { service, req, res } = setup();
+			req.headers = { 'sec-fetch-dest': dest };
+			const router = service.router as typeof service.router & { handle: RequestHandler };
+			const handle = vi.spyOn(router, 'handle').mockImplementation(() => {});
+
+			void service.dispatch(req, res, vi.fn());
+
+			expect(handle).toHaveBeenCalledOnce();
+			expect(res.sendStatus).not.toHaveBeenCalled();
+		},
+	);
 
 	it('never falls through to main routes when the apps router exits', () => {
 		const { service, req, res } = setup();

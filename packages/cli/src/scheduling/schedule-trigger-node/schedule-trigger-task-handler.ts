@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
@@ -45,22 +45,28 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowPublisherService: WorkflowPublisherService,
+		private readonly workflowRepository: WorkflowRepository,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
 
 	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
 		const { workflowId, nodeId } = this.parsePayload(task);
-		const workflowData =
-			await this.triggerExecutionContextFactory.findPublishedWorkflowData(workflowId);
+		// The published-version mapping outlives an unpublish until the leader applies it.
+		const workflowData = (await this.workflowRepository.isActive(workflowId))
+			? await this.triggerExecutionContextFactory.findPublishedWorkflowData(workflowId)
+			: null;
 
 		if (workflowData === null) {
-			this.logger.debug('Workflow has no published version. Skipping the occurrence', {
-				taskId: task.id,
-				jobId: task.jobId,
-				workflowId,
-				nodeId,
-			});
+			this.logger.debug(
+				'Workflow is unpublished or has no published version. Skipping the occurrence',
+				{
+					taskId: task.id,
+					jobId: task.jobId,
+					workflowId,
+					nodeId,
+				},
+			);
 			return report.notDispatched();
 		}
 		const node = resolveTaskTriggerNode(

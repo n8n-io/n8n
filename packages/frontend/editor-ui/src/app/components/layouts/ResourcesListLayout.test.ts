@@ -121,6 +121,20 @@ describe('ResourcesListLayout', () => {
 		expect(queryByTestId('resources-list-search')).not.toBeInTheDocument();
 	});
 
+	it('shows the unavailable state instead of the list and leaves the browser search shortcut available', async () => {
+		const { queryByTestId, getByText } = renderComponent({
+			props: { resources: TEST_WORKFLOWS, loading: true },
+			slots: { unavailable: () => 'No access to this list' },
+		});
+		await waitAllPromises();
+
+		expect(getByText('No access to this list')).toBeInTheDocument();
+		expect(queryByTestId('resources-list-search')).not.toBeInTheDocument();
+		const shortcut = new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, cancelable: true });
+		window.dispatchEvent(shortcut);
+		expect(shortcut.defaultPrevented).toBe(false);
+	});
+
 	it('should render the list chrome while refreshing an empty list without an empty state', () => {
 		const { getByTestId } = renderComponent({
 			props: {
@@ -175,6 +189,41 @@ describe('ResourcesListLayout', () => {
 		});
 		expect(getByTestId('resources-list-wrapper')).toBeTruthy();
 		expect(getByTestId('resources-table')).toBeTruthy();
+	});
+
+	it('keeps folder content in the scrolling list when there are no other resources', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				type: 'list-paginated',
+				hasEmptyState: false,
+			},
+			slots: {
+				'list-prepend': '<div data-test-id="folder-list">Support</div>',
+			},
+		});
+
+		expect(getByTestId('paginated-list')).toContainElement(getByTestId('folder-list'));
+		expect(getByTestId('resources-list-search')).toBeInTheDocument();
+		expect(queryByTestId('resources-list-pagination')).not.toBeInTheDocument();
+	});
+
+	it('keeps folder content before resources and preserves resource pagination', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				type: 'list-paginated',
+				resources: TEST_WORKFLOWS,
+				totalItems: TEST_WORKFLOWS.length,
+			},
+			slots: {
+				'list-prepend': '<div data-test-id="folder-list">Support</div>',
+				item: '<div data-test-id="resource-card">Resource</div>',
+			},
+		});
+
+		expect(getByTestId('folder-list').nextElementSibling).toContainElement(
+			getByTestId('paginated-list').querySelector('[data-test-id="resource-card"]'),
+		);
+		expect(getByTestId('resources-list-pagination')).toBeInTheDocument();
 	});
 
 	it('should load sort & page size from local storage', async () => {

@@ -3,8 +3,11 @@ import {
 	type ApprovePromotionReviewDto,
 	type InboxCounts,
 	type InboxPromotionReviewItem,
+	type ListPromotionReviewsQueryDto,
+	type PromotionReviewItem,
 	type PromotionReviewRemoteError,
 	type PromotionReviewState,
+	promotionReviewTabSchema,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
@@ -22,6 +25,7 @@ import {
 } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { singleFlight } from '@n8n/utils/promise/single-flight';
+import { z } from 'zod';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 
@@ -40,7 +44,7 @@ import {
 } from './git-hosts/gitlab-merge-request.client';
 import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-merge-request.types';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
-import { observePromotion } from './promotion-telemetry';
+import { observePromotion, type ClosedHostStatus } from './promotion-telemetry';
 import { approvalNote } from './promotion-review.utils';
 import type { PromotionReviewCloseReason } from './promotions.types';
 
@@ -98,6 +102,10 @@ export class PromotionReviewInboxService {
 		);
 	}
 
+	private assertEnabled() {
+		if (!this.isEnabled()) throw new ForbiddenError("Promotion reviews aren't enabled.");
+	}
+
 	async listForInbox(user: User, query: InboxSourceQuery): Promise<InboxPromotionReviewItem[]> {
 		if (!canRead(user)) return [];
 		// A sync during "Load more" could move a review above the cursor, where the user never sees it.
@@ -116,6 +124,47 @@ export class PromotionReviewInboxService {
 				synced.get(review.id) ?? read.get(review.id) ?? { mergeRequest: null, remoteError: null },
 			),
 		);
+	}
+
+	/**
+	 * One page of the reviews that the Inbox of the user shows, for the public API. Pages with
+	 * the order of the Inbox, so a sync on the first page does not skip or repeat a review.
+	 */
+	async listPage(
+		user: User,
+		{ state, limit, cursor }: ListPromotionReviewsQueryDto,
+	): Promise<{ data: PromotionReviewItem[]; nextCursor: string | null }> {
+		this.assertEnabled();
+		const after = cursor ? decodeCursor(cursor, state) : undefined;
+		const items = await this.listForInbox(user, {
+			state,
+			limit: limit + 1,
+			boundary: after && { mode: 'afterItem', updatedAt: new Date(after.updatedAt), id: after.id },
+		});
+		const data = items.slice(0, limit).map(withoutType);
+		const last = data.at(-1);
+		return {
+			data,
+			nextCursor:
+				items.length > limit && last
+					? encodeCursor({ state, updatedAt: last.updatedAt, id: last.id })
+					: null,
+		};
+	}
+
+	/** One review that the Inbox of the user shows. Reads the host now, as the Inbox sync does. */
+	async getForUser(user: User, reviewId: string): Promise<PromotionReviewItem> {
+		this.assertEnabled();
+		// A review that the Inbox hides reads as missing, as in the list.
+		const review = canRead(user)
+			? await this.reviewRepository.findByIdWithRelations(reviewId)
+			: null;
+		if (!review) throw new NotFoundError('Promotion review not found.');
+
+		const run = (await this.newestRuns([review])).get(review.id);
+		const view = await this.readOne(review, run, new Map());
+		if (view.mergeRequest) await this.applyHostState(review, view.mergeRequest);
+		return withoutType(toItem(review, run, view));
 	}
 
 	async countForInbox(user: User): Promise<InboxCounts> {
@@ -169,7 +218,7 @@ export class PromotionReviewInboxService {
 		reviewId: string,
 		{ headCommitSha }: ApprovePromotionReviewDto,
 	): Promise<InboxPromotionReviewItem> {
-		if (!this.isEnabled()) throw new ForbiddenError("Promotion reviews aren't enabled.");
+		this.assertEnabled();
 		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
 		if (!review) throw new NotFoundError('Promotion review not found.');
 
@@ -187,6 +236,91 @@ export class PromotionReviewInboxService {
 					durationMs: observed.durationMs,
 				}),
 		);
+	}
+
+	/**
+	 * Closes the review within n8n. Reads the host first and records merged or closed states.
+	 * Allows the close when the merge request is missing, or the host configuration is invalid or
+	 * absent. Refuses transient host failures.
+	 */
+	async close(user: User, reviewId: string): Promise<InboxPromotionReviewItem> {
+		this.assertEnabled();
+		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
+		if (!review) throw new NotFoundError('Promotion review not found.');
+
+		// Stays null when the close fails before n8n asks the host.
+		let hostStatus: ClosedHostStatus | null = null;
+		return await observePromotion(
+			async () => await this.closeReview(review, (status) => (hostStatus = status)),
+			(observed) =>
+				this.eventService.emit('promotion-review-closed', {
+					user,
+					reviewId: review.id,
+					environmentId: review.environmentId,
+					reviewType: review.type,
+					reviewAgeMs: Date.now() - review.createdAt.getTime(),
+					hostStatus,
+					outcome: observed.ok ? 'closed' : 'failed',
+					...(!observed.ok && { failureKind: observed.failureKind }),
+					durationMs: observed.durationMs,
+				}),
+		);
+	}
+
+	private async closeReview(
+		review: PromotionReview,
+		onHostStatus: (status: ClosedHostStatus) => void,
+	): Promise<InboxPromotionReviewItem> {
+		if (review.state === 'merged' || review.state === 'closed') {
+			throw new ConflictError(
+				`This promotion review is already ${review.state}. Reload the Inbox.`,
+			);
+		}
+
+		const run = (await this.newestRuns([review])).get(review.id);
+		let view: RemoteView = failed('no_connection');
+		try {
+			const host = await this.readMergeRequest(review, run);
+			if (host) view = { mergeRequest: host.mergeRequest, remoteError: null };
+		} catch (error) {
+			// An unexpected error, such as an invalid GitLab response, is a bug and must not read as a host outage.
+			if (!isHostAccessError(error)) throw error;
+			view = failed(remoteErrorOf(error));
+		}
+		const { mergeRequest, remoteError } = view;
+
+		if (mergeRequest) {
+			await this.applyHostState(review, mergeRequest);
+			const hostState = toReviewState(mergeRequest);
+			onHostStatus(hostState);
+			if (hostState === 'merged' || hostState === 'closed') {
+				throw new ConflictError(
+					`The merge request is already ${hostState} on GitLab. Reload the Inbox.`,
+				);
+			}
+		} else if (remoteError) {
+			onHostStatus(remoteError);
+			if (remoteError === 'unreachable') {
+				throw new ServiceUnavailableError("GitLab didn't answer. Try again.");
+			}
+		}
+
+		const at = new Date();
+		const staleBefore = new Date(at.getTime() - APPROVAL_CLAIM_TTL_MS);
+		if (!(await this.reviewRepository.closeByUser(review.id, at, staleBefore, {}))) {
+			const current = await this.reviewRepository.findByIdWithRelations(review.id);
+			if (current?.state === 'merged' || current?.state === 'closed') {
+				throw new ConflictError(
+					`This promotion review is already ${current.state}. Reload the Inbox.`,
+				);
+			}
+			throw new ConflictError(
+				'Someone is approving this promotion review. Wait for the approval to finish, then reload the Inbox.',
+			);
+		}
+		review.state = 'closed';
+		review.lastStateChangeAt = at;
+		return toItem(review, run, view);
 	}
 
 	private async approveReview(
@@ -392,10 +526,46 @@ export class PromotionReviewInboxService {
 
 const canRead = (user: User) => hasGlobalScope(user, 'promotions:readReviews');
 
+const withoutType = ({ type: _, ...review }: InboxPromotionReviewItem): PromotionReviewItem =>
+	review;
+
+/** The last review of a page. The next page starts after it in the Inbox order. */
+const cursorSchema = z
+	.object({
+		state: promotionReviewTabSchema,
+		updatedAt: z.string().datetime(),
+		id: z.string().uuid(),
+	})
+	.strict();
+type ReviewCursor = z.infer<typeof cursorSchema>;
+
+const encodeCursor = (cursor: ReviewCursor) =>
+	Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
+
+const decodeCursor = (cursor: string, state: ReviewCursor['state']): ReviewCursor => {
+	try {
+		const parsed = cursorSchema.parse(
+			JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')),
+		);
+		// A cursor of the other tab would start the page at a review of that tab.
+		if (parsed.state === state) return parsed;
+	} catch {
+		// Not a cursor that this list wrote. The error below answers it.
+	}
+	throw new BadRequestError('An invalid cursor was provided');
+};
+
 const failed = (remoteError: PromotionReviewRemoteError): RemoteView => ({
 	mergeRequest: null,
 	remoteError,
 });
+
+/** The errors that the GitLab client throws when it cannot read the merge request. */
+const isHostAccessError = (error: unknown) =>
+	error instanceof NotFoundError ||
+	error instanceof BadRequestError ||
+	error instanceof ServiceUnavailableError ||
+	error instanceof TooManyRequestsError;
 
 // The GitLab client throws BadRequestError for token, certificate, and URL problems,
 // and ServiceUnavailableError or TooManyRequestsError when GitLab cannot answer.

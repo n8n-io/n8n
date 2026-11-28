@@ -21,9 +21,16 @@ type AgentPackageKeyHandling = {
 	integrations: 'transform';
 	tools: 'transform';
 	skills: 'exclude';
+	// Agent tags are not part of packages yet; they travel with the internal
+	// REST API only for now.
+	tags: 'exclude';
 	availableInMCP: 'copy';
+	isArchived: 'copy';
 	project: 'exclude';
 	projectId: 'exclude';
+	parentFolderId: 'exclude';
+	approvalWorkflowId: 'exclude';
+	approvalWorkflow: 'exclude';
 	scope: 'exclude';
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
@@ -33,6 +40,8 @@ type AgentPackageKeyHandling = {
 	revision: 'exclude';
 	publicationRevision: 'exclude';
 	setupCompletedAt: 'exclude';
+	identityId: 'exclude';
+	identity: 'exclude';
 };
 
 const serializePayload = definePackageSerializationPayload<
@@ -68,7 +77,7 @@ function withoutChannelCredentials(integrations: Agent['integrations']): Agent['
 @Service()
 export class AgentSerializer {
 	serialize(
-		agent: Pick<Agent, 'id' | 'name' | 'availableInMCP'>,
+		agent: Pick<Agent, 'id' | 'name' | 'availableInMCP' | 'isArchived'>,
 		definition: AgentDefinition,
 		integrations: Agent['integrations'],
 	): SerializedAgent {
@@ -77,6 +86,9 @@ export class AgentSerializer {
 			? {
 					...definition.schema,
 					integrations: withoutChannelCredentials(integrations),
+					hitlConfigurations: definition.schema.hitlConfigurations?.map((interaction) =>
+						interaction.method === 'channel' ? { ...interaction, credentialId: '' } : interaction,
+					),
 					...(definition.schema.skills
 						? { skills: definition.schema.skills.map(({ type, id }) => ({ type, id })) }
 						: {}),
@@ -88,6 +100,7 @@ export class AgentSerializer {
 				name: agent.name,
 				config,
 				availableInMCP: agent.availableInMCP,
+				...(agent.isArchived ? { isArchived: true } : {}),
 				tools: this.referencedBodies(
 					agent.id,
 					'custom tool',

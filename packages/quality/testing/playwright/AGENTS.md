@@ -9,9 +9,10 @@ Read the [quality](../../AGENTS.md) and [testing](../AGENTS.md) instructions fir
 
 - Keep product UI and API journeys in `tests/e2e/`.
 - Keep database, queue, multi-main, encryption, and process lifecycle tests in `tests/infrastructure/`.
+- Keep published-image deployment compatibility cells in `tests/deployment/`. Call `createN8NStack` directly (do not use `fixtures/sut.ts`). Do not add unit tests for `probe.ts`; nightly cell runs exercise it directly.
 - Keep Playwright-backed memory and canvas checks in `tests/performance/`. Keep infrastructure load specs in `tests/infrastructure/benchmarks/`.
 - Keep local-only container benchmarks in `tests/infrastructure/benchmarks-local/`.
-- Keep fixture and harness contract tests in `tests/framework/`. Run browser-free tests with Vitest. Run browser-backed contracts with `test:harness`.
+- Keep pure fixture logic tests next to the code as `*.test.ts`. Run them with `test:unit`. Use product specs to exercise the fixtures.
 - Use Playwright when tests need its browser, worker lifecycle, project matrix, fixtures, or managed containers. Use Vitest for browser-free tests that need none of these.
 
 ## Write isolated tests

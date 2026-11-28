@@ -69,6 +69,7 @@ export namespace PubSub {
 		export type StopAgentSession = ToCommand<'stop-agent-session'>;
 		export type RelayAgentMessageQueueUpdate = ToCommand<'relay-agent-message-queue-update'>;
 		export type RelayAgentBackgroundJobsUpdate = ToCommand<'relay-agent-background-tasks-update'>;
+		export type RelayAgentThreadTitleUpdate = ToCommand<'relay-agent-thread-title-update'>;
 		export type RelayAgentUpdate = ToCommand<'relay-agent-update'>;
 		export type ResumeAgentWorkflowTool = ToCommand<'resume-agent-workflow-tool'>;
 		export type CancelAgentBackgroundJob = ToCommand<'cancel-agent-background-job'>;
@@ -89,6 +90,9 @@ export namespace PubSub {
 		export type ReloadInstanceAiSettings = ToCommand<'reload-instance-ai-settings'>;
 		export type SelfHealingFailure = ToCommand<'self-healing-failure'>;
 		export type ReloadAgentsSettings = ToCommand<'reload-agents-settings'>;
+		export type ReloadMcpSettings = ToCommand<'reload-mcp-settings'>;
+		export type ReloadSkillSyncSettings = ToCommand<'reload-skill-sync-settings'>;
+		export type ReloadAiPreferenceSettings = ToCommand<'reload-ai-preference-settings'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 		export type CancelCollection = ToCommand<'cancel-collection'>;
 		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
@@ -99,6 +103,8 @@ export namespace PubSub {
 		export type AgentTasksChanged = ToCommand<'agent-tasks-changed'>;
 		export type RedactionFloorChanged = ToCommand<'redaction-floor-changed'>;
 		export type ReloadTypeAvailabilityPolicies = ToCommand<'reload-type-availability-policies'>;
+		export type ReloadExecutionLimits = ToCommand<'reload-execution-limits'>;
+		export type PromotionEnvironmentChanged = ToCommand<'promotion-environment-changed'>;
 	}
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
@@ -127,6 +133,7 @@ export namespace PubSub {
 		| Commands.StopAgentSession
 		| Commands.RelayAgentMessageQueueUpdate
 		| Commands.RelayAgentBackgroundJobsUpdate
+		| Commands.RelayAgentThreadTitleUpdate
 		| Commands.RelayAgentUpdate
 		| Commands.ResumeAgentWorkflowTool
 		| Commands.CancelAgentBackgroundJob
@@ -149,6 +156,9 @@ export namespace PubSub {
 		| Commands.ReloadInstanceAiSettings
 		| Commands.SelfHealingFailure
 		| Commands.ReloadAgentsSettings
+		| Commands.ReloadMcpSettings
+		| Commands.ReloadSkillSyncSettings
+		| Commands.ReloadAiPreferenceSettings
 		| Commands.CancelTestRun
 		| Commands.CancelCollection
 		| Commands.AgentChatIntegrationChanged
@@ -158,7 +168,9 @@ export namespace PubSub {
 		| Commands.AgentConfigChanged
 		| Commands.AgentTasksChanged
 		| Commands.RedactionFloorChanged
-		| Commands.ReloadTypeAvailabilityPolicies;
+		| Commands.ReloadTypeAvailabilityPolicies
+		| Commands.ReloadExecutionLimits
+		| Commands.PromotionEnvironmentChanged;
 
 	// ----------------------------------
 	//         worker responses

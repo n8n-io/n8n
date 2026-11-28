@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "1.48.0",
+  "version": "1.50.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -19,6 +19,10 @@
   "main": "dist/index.js",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
+  "sideEffects": [
+    "./src/openapi-extend.ts",
+    "./dist/openapi-extend.js"
+  ],
   "files": [
     "dist/**/*"
   ],

@@ -11,6 +11,8 @@ import type {
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
+import type { AgentChatChannel } from './useAgentApi';
+
 export interface AgentExecutionThread extends AgentSessionPreviewAccess {
 	id: string;
 	agentId: string;
@@ -36,7 +38,13 @@ export interface AgentExecutionThread extends AgentSessionPreviewAccess {
 	status?: AgentSessionStatus | null;
 }
 
-export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+export type AgentExecutionStatus =
+	| 'running'
+	| 'success'
+	| 'error'
+	| 'cancelled'
+	| 'interrupted'
+	| 'awaiting';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 export type AgentExecutionFailureKind = 'execution' | 'tool' | 'node' | 'workflow';
 export type { AgentSessionOrigin, AgentSessionStatus };
@@ -99,7 +107,12 @@ export interface AgentExecution {
 	author: AgentMessageAuthor | null;
 	attachments: AgentExecutionAttachment[] | null;
 	model: string | null;
+	/** Input tokens of the turn, cached input included. */
 	promptTokens: number | null;
+	/** Input tokens read from the provider prompt cache. A subset of `promptTokens`. */
+	cacheReadTokens?: number | null;
+	/** Input tokens written to the provider prompt cache. A subset of `promptTokens`. */
+	cacheWriteTokens?: number | null;
 	completionTokens: number | null;
 	totalTokens: number | null;
 	cost: number | null;
@@ -152,17 +165,22 @@ export const listThreads = async (
 	);
 };
 
+/**
+ * A system agent thread loads through the system agent routes, which find its
+ * project from the thread. The project route loads project agents only.
+ */
 export const getThreadDetail = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	threadId: string,
+	channel: AgentChatChannel = 'chat',
 ): Promise<ThreadDetail> => {
-	return await makeRestApiRequest<ThreadDetail>(
-		context,
-		'GET',
-		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}`,
-	);
+	const path =
+		channel === 'system'
+			? `/agents/system/${encodeURIComponent(agentId)}/threads/${encodeURIComponent(threadId)}/detail`
+			: `${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}`;
+	return await makeRestApiRequest<ThreadDetail>(context, 'GET', path);
 };
 
 export const deleteThread = async (
@@ -175,6 +193,21 @@ export const deleteThread = async (
 		context,
 		'DELETE',
 		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}`,
+	);
+};
+
+export const resumeTaskApproval = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	body: { toolCallId: string; resumeData: unknown },
+): Promise<{ success: boolean }> => {
+	return await makeRestApiRequest<{ success: boolean }>(
+		context,
+		'POST',
+		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}/approval`,
+		body,
 	);
 };
 

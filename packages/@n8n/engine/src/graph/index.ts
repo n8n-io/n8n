@@ -9,6 +9,8 @@ export type {
 	WorkflowGraph,
 } from './workflow-graph';
 export {
+	compareByConcatenationOrder,
+	createNodeLabeler,
 	findTriggerNode,
 	getDescendantNodeIds,
 	getPredecessorNodeIds,

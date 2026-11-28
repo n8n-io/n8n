@@ -1,24 +1,38 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, type Ref } from 'vue';
+import type { SkillListItem, SkillListResponse } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	type InputMenuItem,
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
 import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
+import type { OpenResourceContext } from '../openResourceContext';
+import type { ArtifactTab } from '../useCanvasPreview';
 
 const {
 	browserUseTelemetry,
 	ensureBrowserConnected,
+	featureFlags,
+	getSkills,
 	ignorePendingConnectResult,
 	mcpStore,
 	mcpTelemetry,
+	openResource,
+	projectsStore,
+	resourceSearch,
+	rootStore,
 	router,
 	settingsStore,
 	uiStore,
+	usersStore,
 } = vi.hoisted(() => ({
 	browserUseTelemetry: { trackModalOpened: vi.fn() },
 	ensureBrowserConnected: vi.fn(),
+	featureFlags: { skills: false },
+	getSkills: vi.fn<typeof import('@/features/settings/context/skills.api').getSkills>(),
 	ignorePendingConnectResult: vi.fn(),
 	mcpStore: {
 		connections: [] as Array<Record<string, unknown>>,
@@ -29,6 +43,22 @@ const {
 		trackToolsListOpened: vi.fn(),
 		trackSettingsOpened: vi.fn(),
 	},
+	openResource: { current: null as OpenResourceContext | null },
+	// The refs are set when the mocked module loads, as vi.hoisted runs before the imports.
+	resourceSearch: {} as {
+		results: Ref<ArtifactTab[]>;
+		isLoading: Ref<boolean>;
+		search: ReturnType<typeof vi.fn>;
+	},
+	projectsStore: {
+		personalProject: null as { id: string } | null,
+		myProjects: [] as Array<{
+			id: string;
+			type: 'personal' | 'team';
+			scopes: Array<'projectSkill:create'>;
+		}>,
+	},
+	rootStore: { restApiContext: { baseUrl: '/rest', pushRef: '' } },
 	router: {
 		push: vi.fn(),
 		resolve: vi.fn(() => ({ href: '/settings/context/preferences' })),
@@ -45,6 +75,7 @@ const {
 		openModal: vi.fn(),
 		openModalWithData: vi.fn(),
 	},
+	usersStore: { currentUser: { globalScopes: [] as Array<'skill:create'> } },
 }));
 
 vi.mock('@n8n/i18n', () => ({
@@ -58,6 +89,25 @@ vi.mock('vue-router', () => ({
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => uiStore,
 }));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => rootStore,
+}));
+
+vi.mock('@/features/settings/context/context.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/settings/context/context.utils')>()),
+	isContextSkillsEnabled: () => featureFlags.skills,
+}));
+
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => projectsStore,
+}));
+
+vi.mock('@n8n/stores/users.store', () => ({
+	useUsersStore: () => usersStore,
+}));
+
+vi.mock('@/features/settings/context/skills.api', () => ({ getSkills }));
 
 vi.mock('../composables/useBrowserUseConnection', () => ({
 	useBrowserUseConnection: () => ({ ensureConnected: ensureBrowserConnected }),
@@ -83,6 +133,18 @@ vi.mock('../instanceAiBrowserUse.telemetry', () => ({
 	useInstanceAiBrowserUseTelemetry: () => browserUseTelemetry,
 }));
 
+vi.mock('../openResourceContext', () => ({
+	injectOpenResource: () => openResource.current,
+}));
+
+vi.mock('../composables/useProjectResourceSearch', async () => {
+	const { ref: vueRef } = await import('vue');
+	resourceSearch.results = vueRef([]);
+	resourceSearch.isLoading = vueRef(false);
+	resourceSearch.search = vi.fn();
+	return { useProjectResourceSearch: () => resourceSearch };
+});
+
 function findItem(items: InputMenuItem[], id: string): InputMenuItem | undefined {
 	for (const item of items) {
 		if (item.id === id) return item;
@@ -103,6 +165,18 @@ function makeMcpConnection(id: string, status: 'connected' | 'connecting' | 'dis
 	};
 }
 
+function makeSkill(id: string, name: string, overrides: Partial<SkillListItem> = {}) {
+	return mock<SkillListItem>({
+		id,
+		name,
+		description: 'Skill description',
+		scope: 'instance',
+		projectId: null,
+		availableToAssistant: true,
+		...overrides,
+	});
+}
+
 const mcpStatusCases: Array<{
 	statuses: Array<'connected' | 'connecting' | 'disconnected'>;
 	expectedStatus: 'connected' | 'connecting' | 'disconnected' | undefined;
@@ -116,10 +190,18 @@ const mcpStatusCases: Array<{
 describe('useInstanceAiInputMenuItems', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		featureFlags.skills = false;
+		projectsStore.personalProject = null;
+		projectsStore.myProjects = [];
+		usersStore.currentUser.globalScopes = ['skill:create'];
+		getSkills.mockResolvedValue({ data: [], count: 0 });
 		mcpStore.connections = [];
 		settingsStore.isMcpAvailable = true;
 		settingsStore.isBrowserUseAvailable = true;
 		settingsStore.browserUseConnectionStatus = 'none';
+		openResource.current = null;
+		resourceSearch.results.value = [];
+		resourceSearch.isLoading.value = false;
 	});
 
 	it('omits connection groups that instance settings report as unavailable', () => {
@@ -256,5 +338,289 @@ describe('useInstanceAiInputMenuItems', () => {
 			expect(router.push).not.toHaveBeenCalled();
 			openSpy.mockRestore();
 		});
+	});
+
+	describe('the open-resource submenu', () => {
+		const workflow: ArtifactTab = {
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'Morning report',
+			icon: 'workflow',
+			projectId: 'project-1',
+		};
+
+		function provideContext(overrides: Partial<OpenResourceContext> = {}) {
+			const context: OpenResourceContext = {
+				projectId: () => 'project-1',
+				isAvailable: () => true,
+				excludedTabs: () => [],
+				open: vi.fn(),
+				...overrides,
+			};
+			openResource.current = context;
+			return context;
+		}
+
+		it('is not shown in a composer that has no preview to open resources in', () => {
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+			expect(findItem(menuItems.value, 'open-resource')).toBeUndefined();
+		});
+
+		it('is not shown until the thread view can open a resource', () => {
+			provideContext({ isAvailable: () => false });
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+			expect(findItem(menuItems.value, 'open-resource')).toBeUndefined();
+		});
+
+		it('sits in one group with Preferences, and opens the picked resource', async () => {
+			const context = provideContext();
+			resourceSearch.results.value = [workflow];
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			const ids = menuItems.value.map(({ id }) => id);
+			const item = findItem(menuItems.value, 'open-resource');
+
+			expect(ids.slice(-2)).toEqual(['open-resource', 'preferences']);
+			expect(item).toMatchObject({
+				label: 'instanceAi.inputMenu.openResource.label',
+				divided: true,
+				searchable: true,
+				loading: false,
+			});
+			expect(findItem(menuItems.value, 'preferences')?.divided).toBe(false);
+			expect(item?.children?.map(({ label }) => label)).toEqual(['Morning report']);
+
+			await item?.children?.[0]?.data?.action?.();
+			expect(context.open).toHaveBeenCalledWith(workflow);
+		});
+
+		it('shows loading while the first results load, then an empty state', () => {
+			provideContext();
+			resourceSearch.isLoading.value = true;
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			expect(findItem(menuItems.value, 'open-resource')?.loading).toBe(true);
+
+			resourceSearch.isLoading.value = false;
+			const item = findItem(menuItems.value, 'open-resource');
+			expect(item?.loading).toBe(false);
+			expect(item?.children).toEqual([
+				expect.objectContaining({
+					label: 'instanceAi.previewTabBar.noResources',
+					disabled: true,
+				}),
+			]);
+		});
+
+		it('loads the resources when the submenu opens, and searches them with a debounce', async () => {
+			vi.useFakeTimers();
+			try {
+				provideContext();
+				const { handleSubMenuToggle, handleSearch } = useInstanceAiInputMenuItems(vi.fn());
+
+				handleSubMenuToggle('skills', true);
+				handleSubMenuToggle('open-resource', false);
+				expect(resourceSearch.search).not.toHaveBeenCalled();
+
+				handleSubMenuToggle('open-resource', true);
+				expect(resourceSearch.search).toHaveBeenCalledExactlyOnceWith();
+
+				handleSearch('mor', 'skills');
+				handleSearch('mor', 'open-resource');
+				handleSearch('morn', 'open-resource');
+				await vi.runAllTimersAsync();
+
+				expect(resourceSearch.search).toHaveBeenCalledTimes(2);
+				expect(resourceSearch.search).toHaveBeenLastCalledWith('morn');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	describe('the skills submenu', () => {
+		beforeEach(() => {
+			featureFlags.skills = true;
+		});
+
+		it('omits skills and does not fetch them when skills are off', async () => {
+			featureFlags.skills = false;
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
+
+			await refreshSkills();
+
+			expect(findItem(menuItems.value, 'skills')).toBeUndefined();
+			expect(getSkills).not.toHaveBeenCalled();
+		});
+
+		it('groups enabled session-project and instance skills by name and follows project changes', async () => {
+			const projectId = ref<string | undefined>('project-1');
+			const data = [
+				makeSkill('iz', 'Zebra'),
+				makeSkill('pz', 'Zulu', { scope: 'project', projectId: 'project-1' }),
+				makeSkill('ia', 'Alpha'),
+				makeSkill('pa', 'Bravo', { scope: 'project', projectId: 'project-1' }),
+				makeSkill('personal', 'Personal', { scope: 'project', projectId: 'personal-1' }),
+				makeSkill('other', 'Other', { scope: 'project', projectId: 'other-project' }),
+				makeSkill('disabled', 'Disabled', { availableToAssistant: false }),
+				makeSkill('disabled-project', 'Disabled project', {
+					scope: 'project',
+					projectId: 'project-1',
+					availableToAssistant: false,
+				}),
+				makeSkill('unnamed', ' '),
+				makeSkill('undescribed', 'No description', { description: ' ' }),
+			];
+			getSkills.mockResolvedValue({ data, count: data.length });
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn(), projectId);
+			await refreshSkills();
+
+			expect(getSkills).toHaveBeenCalledWith(rootStore.restApiContext);
+			expect(findItem(menuItems.value, 'skills')?.children?.map(({ label }) => label)).toEqual([
+				'settings.context.skills.scope.project',
+				'Bravo',
+				'Zulu',
+				'settings.context.skills.scope.instance',
+				'Alpha',
+				'Zebra',
+				'instanceAi.inputMenu.skills.manage',
+				'instanceAi.inputMenu.skills.create',
+			]);
+
+			projectId.value = 'personal-1';
+			expect(findItem(menuItems.value, 'skill-personal')).toBeDefined();
+			expect(findItem(menuItems.value, 'skill-pa')).toBeUndefined();
+
+			projectId.value = undefined;
+			expect(findItem(menuItems.value, 'skills-project')).toBeUndefined();
+			expect(findItem(menuItems.value, 'skill-personal')).toBeUndefined();
+			expect(findItem(menuItems.value, 'skill-ia')).toBeDefined();
+		});
+
+		it.each([
+			{ scope: 'none', canCreate: false },
+			{ scope: 'instance', canCreate: true },
+			{ scope: 'personal', canCreate: true },
+			{ scope: 'team', canCreate: true },
+		])('checks skill-create permission for the $scope scope', async ({ scope, canCreate }) => {
+			usersStore.currentUser.globalScopes = scope === 'instance' ? ['skill:create'] : [];
+			projectsStore.personalProject = { id: 'personal-1' };
+			projectsStore.myProjects = [
+				{
+					id: 'personal-1',
+					type: 'personal',
+					scopes: scope === 'personal' ? ['projectSkill:create'] : [],
+				},
+				{
+					id: 'team-1',
+					type: 'team',
+					scopes: scope === 'team' ? ['projectSkill:create'] : [],
+				},
+			];
+			getSkills.mockResolvedValue({ data: [makeSkill('s1', 'Skill')], count: 1 });
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(
+				vi.fn(),
+				'read-only-project',
+			);
+			await refreshSkills();
+
+			expect(Boolean(findItem(menuItems.value, 'create-skill'))).toBe(canCreate);
+			expect(findItem(menuItems.value, 'manage-skills')?.data?.action).toBeTypeOf('function');
+			expect(findItem(menuItems.value, 'skill-s1')?.data?.action).toBeTypeOf('function');
+		});
+
+		it.each([
+			{ id: 'skill-s1', query: { skillId: 's1' }, href: '/settings/context/skills?skillId=s1' },
+			{ id: 'manage-skills', query: {}, href: '/settings/context/skills' },
+			{
+				id: 'create-skill',
+				query: { create: 'true' },
+				href: '/settings/context/skills?create=true',
+			},
+		])('opens $id in a new tab with the matching settings state', async ({ id, query, href }) => {
+			const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+			getSkills.mockResolvedValue({ data: [makeSkill('s1', 'Skill')], count: 1 });
+			router.resolve.mockReturnValueOnce({ href });
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
+			await refreshSkills();
+			await findItem(menuItems.value, id)?.data?.action?.();
+
+			expect(router.resolve).toHaveBeenCalledWith({ name: 'SettingsContextSkills', query });
+			expect(openSpy).toHaveBeenCalledWith(href, '_blank', 'noopener');
+			expect(router.push).not.toHaveBeenCalled();
+			openSpy.mockRestore();
+		});
+
+		it('shows loading before an empty result and refreshes the list on the next open', async () => {
+			const pending = createDeferredPromise<SkillListResponse>();
+			getSkills.mockReturnValueOnce(pending.promise);
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
+			const load = refreshSkills();
+
+			expect(findItem(menuItems.value, 'skills-status')).toMatchObject({
+				label: 'instanceAi.inputMenu.skills.loading',
+				disabled: true,
+			});
+			pending.resolve({ data: [], count: 0 });
+			await load;
+			expect(findItem(menuItems.value, 'skills-status')?.label).toBe(
+				'instanceAi.inputMenu.skills.empty',
+			);
+			expect(findItem(menuItems.value, 'manage-skills')?.data?.action).toBeTypeOf('function');
+			expect(findItem(menuItems.value, 'create-skill')?.data?.action).toBeTypeOf('function');
+
+			getSkills.mockResolvedValueOnce({ data: [makeSkill('s1', 'Added skill')], count: 1 });
+			await refreshSkills();
+			expect(getSkills).toHaveBeenCalledTimes(2);
+			expect(findItem(menuItems.value, 'skill-s1')?.label).toBe('Added skill');
+			expect(findItem(menuItems.value, 'skills-status')).toBeUndefined();
+		});
+
+		it('shows failed reads separately from empty reads, clears old skills, and retries', async () => {
+			getSkills.mockResolvedValueOnce({ data: [makeSkill('s1', 'Skill')], count: 1 });
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
+			await refreshSkills();
+
+			getSkills.mockRejectedValueOnce(new Error('offline'));
+			await refreshSkills();
+			expect(findItem(menuItems.value, 'skills-status')).toMatchObject({
+				label: 'instanceAi.inputMenu.skills.loadError',
+				disabled: true,
+			});
+			expect(findItem(menuItems.value, 'skill-s1')).toBeUndefined();
+			expect(findItem(menuItems.value, 'manage-skills')).toBeDefined();
+			expect(findItem(menuItems.value, 'create-skill')).toBeDefined();
+
+			await refreshSkills();
+			expect(findItem(menuItems.value, 'skills-status')?.label).toBe(
+				'instanceAi.inputMenu.skills.empty',
+			);
+		});
+
+		it.each(['success', 'failure'])(
+			'keeps the latest list when an older request finishes with %s',
+			async (result) => {
+				const pending = createDeferredPromise<SkillListResponse>();
+				getSkills.mockReturnValueOnce(pending.promise);
+				const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
+				const earlier = refreshSkills();
+
+				getSkills.mockResolvedValueOnce({ data: [makeSkill('new', 'New skill')], count: 1 });
+				await refreshSkills();
+				if (result === 'success') {
+					pending.resolve({ data: [makeSkill('old', 'Old skill')], count: 1 });
+				} else {
+					pending.reject(new Error('offline'));
+				}
+				await earlier;
+
+				expect(findItem(menuItems.value, 'skill-new')?.label).toBe('New skill');
+				expect(findItem(menuItems.value, 'skill-old')).toBeUndefined();
+				expect(findItem(menuItems.value, 'skills-status')).toBeUndefined();
+			},
+		);
 	});
 });

@@ -1,53 +1,102 @@
-import { ASSISTANT_SKILLS_FLAG, SKILL_SYNC_FLAG } from '@n8n/api-types';
+import { SKILL_SYNC_FLAG, WORKFLOWS_IN_SKILLS_FLAG } from '@n8n/api-types';
+import type { ModuleRegistry } from '@n8n/backend-common';
+import type { PostHogClient } from '@n8n/backend-services';
+import type { ModuleSettings } from '@n8n/decorators';
 import type { User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import type { PostHogClient } from '@/posthog';
-
-import { AssistantSkillsFlagGate } from '../services/assistant-skills-flag-gate';
 import type { SkillUsage } from '../services/skill-usage.contracts';
 import { SkillSyncFlagGate } from '../services/skill-sync-flag-gate';
+import type { SkillSyncSettingsService } from '../services/skill-sync-settings.service';
 import { SkillUsageProxy } from '../services/skill-usage-proxy.service';
+import { WorkflowsInSkillsFlagGate } from '../services/workflows-in-skills-flag-gate';
 import { SkillsGate } from '../services/skills-gate';
 
 describe('skills gates', () => {
-	function createGates() {
+	function consumerSettings({ agents = false, assistant = false, mcp = false } = {}) {
+		return new Map<string, ModuleSettings>([
+			['agents', { enabled: agents }],
+			['instance-ai', { enabled: assistant }],
+			['mcp', { mcpAccessEnabled: mcp }],
+		]);
+	}
+
+	function createGates(settings = consumerSettings({ agents: true })) {
 		const proxy = new SkillUsageProxy();
-		const skillsGate = new SkillsGate(proxy);
+		const moduleRegistry = { settings } as unknown as ModuleRegistry;
+		const skillsGate = new SkillsGate(proxy, moduleRegistry);
 		const postHog = mock<PostHogClient>();
-		const assistantGate = new AssistantSkillsFlagGate(skillsGate, postHog);
-		const syncGate = new SkillSyncFlagGate(skillsGate, postHog);
-		return { proxy, skillsGate, postHog, assistantGate, syncGate };
+		const skillSyncSettings = mock<SkillSyncSettingsService>();
+		skillSyncSettings.isEnabled.mockReturnValue(true);
+		const syncGate = new SkillSyncFlagGate(skillsGate, postHog, skillSyncSettings);
+		const mentionsGate = new WorkflowsInSkillsFlagGate(skillsGate, postHog);
+		return { proxy, skillsGate, postHog, syncGate, skillSyncSettings, mentionsGate };
 	}
 
 	const user = mock<User>({ id: 'user-1' });
 
-	it('keeps both gates off until the agents module registers its SkillUsage', async () => {
-		const { skillsGate, postHog, assistantGate } = createGates();
-		postHog.getFeatureFlagForInstance.mockResolvedValue(true);
+	it('keeps skills off until the agents module registers its SkillUsage', () => {
+		const { skillsGate } = createGates();
 
 		expect(skillsGate.isEnabled).toBe(false);
-		expect(await assistantGate.isEnabled()).toBe(false);
+	});
+
+	it.each(['agents', 'assistant', 'mcp'] as const)(
+		'turns skills on while only %s is on',
+		(consumer) => {
+			const { proxy, skillsGate } = createGates(consumerSettings({ [consumer]: true }));
+			proxy.register(mock<SkillUsage>());
+
+			expect(skillsGate.isEnabled).toBe(true);
+		},
+	);
+
+	it('turns skills off while all consumers are off', () => {
+		const { proxy, skillsGate } = createGates(consumerSettings());
+		proxy.register(mock<SkillUsage>());
+
+		expect(skillsGate.isEnabled).toBe(false);
+	});
+
+	it('keeps skills off without the agents module, even with every consumer on', () => {
+		const { skillsGate } = createGates(
+			consumerSettings({ agents: true, assistant: true, mcp: true }),
+		);
+
+		expect(skillsGate.isEnabled).toBe(false);
+	});
+
+	it('treats a consumer module without settings as off', () => {
+		const { proxy, skillsGate } = createGates(new Map());
+		proxy.register(mock<SkillUsage>());
+
+		expect(skillsGate.isEnabled).toBe(false);
+	});
+
+	it('keeps workflow mentions off while skills are off, whatever the flag says', async () => {
+		const { postHog, mentionsGate } = createGates();
+		postHog.getFeatureFlagForInstance.mockResolvedValue('variant');
+
+		expect(await mentionsGate.isEnabled()).toBe(false);
 		expect(postHog.getFeatureFlagForInstance).not.toHaveBeenCalled();
 	});
 
 	it.each([
-		{ flag: true, expected: true },
+		{ flag: 'variant', expected: true },
+		{ flag: 'control', expected: false },
+		{ flag: true, expected: false },
 		{ flag: false, expected: false },
-		{ flag: 'test', expected: false },
 		{ flag: undefined, expected: false },
 	])(
-		'turns Assistant skills on only for the flag value true (flag: $flag)',
+		'turns workflow mentions on only for the flag value variant (flag: $flag)',
 		async ({ flag, expected }) => {
-			const { proxy, skillsGate, postHog, assistantGate } = createGates();
+			const { proxy, postHog, mentionsGate } = createGates();
 			postHog.getFeatureFlagForInstance.mockResolvedValue(flag);
-
 			proxy.register(mock<SkillUsage>());
 
-			expect(skillsGate.isEnabled).toBe(true);
-			expect(await assistantGate.isEnabled()).toBe(expected);
-			expect(postHog.getFeatureFlagForInstance).toHaveBeenCalledWith(ASSISTANT_SKILLS_FLAG);
+			expect(await mentionsGate.isEnabled()).toBe(expected);
+			expect(postHog.getFeatureFlagForInstance).toHaveBeenCalledWith(WORKFLOWS_IN_SKILLS_FLAG);
 		},
 	);
 
@@ -77,6 +126,52 @@ describe('skills gates', () => {
 		},
 	);
 
+	it.each([
+		{ flag: true, switchOn: true, expected: true },
+		{ flag: true, switchOn: false, expected: false },
+		{ flag: false, switchOn: true, expected: false },
+		{ flag: false, switchOn: false, expected: false },
+	])(
+		'turns Skill Sync on only with the flag and the switch on (flag: $flag, switch: $switchOn)',
+		async ({ flag, switchOn, expected }) => {
+			const { proxy, postHog, syncGate, skillSyncSettings } = createGates();
+			postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: flag });
+			skillSyncSettings.isEnabled.mockReturnValue(switchOn);
+			proxy.register(mock<SkillUsage>());
+
+			expect(await syncGate.isEnabled(user)).toBe(expected);
+		},
+	);
+
+	// n8n Assistant reads the flags of a turn once and asks the gate with them.
+	it.each([
+		{ name: 'everything on', flag: true, skillsOn: true, switchOn: true, expected: true },
+		{ name: 'skills off', flag: true, skillsOn: false, switchOn: true, expected: false },
+		{ name: 'the switch off', flag: true, skillsOn: true, switchOn: false, expected: false },
+		{ name: 'the flag off', flag: false, skillsOn: true, switchOn: true, expected: false },
+		{ name: 'a flag variant', flag: 'test', skillsOn: true, switchOn: true, expected: false },
+		{ name: 'no flag', flag: undefined, skillsOn: true, switchOn: true, expected: false },
+	])(
+		'answers $expected for flags that the caller already has, with $name',
+		({ flag, skillsOn, switchOn, expected }) => {
+			const { proxy, postHog, syncGate, skillSyncSettings } = createGates();
+			skillSyncSettings.isEnabled.mockReturnValue(switchOn);
+			if (skillsOn) proxy.register(mock<SkillUsage>());
+
+			expect(syncGate.isEnabledForFlags({ [SKILL_SYNC_FLAG]: flag })).toBe(expected);
+			expect(postHog.getFeatureFlags).not.toHaveBeenCalled();
+		},
+	);
+
+	it('answers 404 while the Skill Sync switch is off', async () => {
+		const { proxy, postHog, syncGate, skillSyncSettings } = createGates();
+		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
+		skillSyncSettings.isEnabled.mockReturnValue(false);
+		proxy.register(mock<SkillUsage>());
+
+		await expect(syncGate.assertEnabled(user)).rejects.toThrow(NotFoundError);
+	});
+
 	it('answers 404 for a user without the Skill Sync flag', async () => {
 		const { proxy, postHog, syncGate } = createGates();
 		proxy.register(mock<SkillUsage>());
@@ -98,7 +193,7 @@ describe('skills gates', () => {
 		await expect(
 			proxy.assertRenameKeepsNamesApart('skill-1', 'Old', 'New'),
 		).resolves.toBeUndefined();
-		expect(await proxy.markFollowersChanged('skill-1')).toEqual([]);
+		expect(await proxy.findFollowingAgentIds('skill-1')).toEqual([]);
 		await expect(proxy.refreshAgents(['agent-1'])).resolves.toBeUndefined();
 	});
 
@@ -126,7 +221,7 @@ describe('skills gates', () => {
 		usage.findUsage.mockResolvedValue(usedBy);
 		usage.countUsingAgents.mockResolvedValue(counts);
 		usage.findUsingAgentIds.mockResolvedValue(['agent-1']);
-		usage.markFollowersChanged.mockResolvedValue(['agent-2']);
+		usage.findFollowingAgentIds.mockResolvedValue(['agent-2']);
 		proxy.register(usage);
 		const ctx = { trx: undefined };
 
@@ -136,7 +231,7 @@ describe('skills gates', () => {
 		expect(await proxy.countUsingAgents(['skill-1'], ctx)).toBe(counts);
 		expect(await proxy.findUsingAgentIds('skill-1', ctx)).toEqual(['agent-1']);
 		await proxy.assertRenameKeepsNamesApart('skill-1', 'Old', 'New', ctx);
-		expect(await proxy.markFollowersChanged('skill-1', ctx, 'user-1')).toEqual(['agent-2']);
+		expect(await proxy.findFollowingAgentIds('skill-1', ctx)).toEqual(['agent-2']);
 		await proxy.refreshAgents(['agent-1'], 'push-ref');
 
 		expect(usage.findAgents).toHaveBeenCalledWith(['agent-1'], ctx);
@@ -145,7 +240,7 @@ describe('skills gates', () => {
 		expect(usage.countUsingAgents).toHaveBeenCalledWith(['skill-1'], ctx);
 		expect(usage.findUsingAgentIds).toHaveBeenCalledWith('skill-1', ctx);
 		expect(usage.assertRenameKeepsNamesApart).toHaveBeenCalledWith('skill-1', 'Old', 'New', ctx);
-		expect(usage.markFollowersChanged).toHaveBeenCalledWith('skill-1', ctx, 'user-1');
+		expect(usage.findFollowingAgentIds).toHaveBeenCalledWith('skill-1', ctx);
 		expect(usage.refreshAgents).toHaveBeenCalledWith(['agent-1'], 'push-ref');
 	});
 });

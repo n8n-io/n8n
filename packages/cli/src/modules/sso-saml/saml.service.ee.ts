@@ -2,7 +2,7 @@ import type { SamlPreferences, SamlPreferencesAttributeMapping } from '@n8n/api-
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
-import type { Settings, User } from '@n8n/db';
+import type { Person, Settings } from '@n8n/db';
 import {
 	AuthIdentityRepository,
 	isPerson,
@@ -12,6 +12,7 @@ import {
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { truncate } from '@n8n/utils/string/truncate';
 import { createPublicKey, randomBytes, X509Certificate } from 'crypto';
 import type express from 'express';
 import { Cipher, InstanceSettings } from 'n8n-core';
@@ -47,7 +48,11 @@ import {
 	updateUserFromSamlAttributes,
 } from './saml-helpers';
 import { SamlValidator } from './saml-validator';
-import { getServiceProviderInstance } from './service-provider.ee';
+import {
+	getServiceProviderEntityId,
+	getServiceProviderInstance,
+	getServiceProviderReturnUrl,
+} from './service-provider.ee';
 import type { SamlLoginBinding, SamlUserAttributes } from './types';
 
 const TEST_CONFIG_TTL_MS = 10 * 60 * 1000;
@@ -373,7 +378,7 @@ export class SamlService {
 		binding: SamlLoginBinding,
 		metadataOverride?: string,
 	): Promise<{
-		authenticatedUser: User | undefined;
+		authenticatedUser: Person | undefined;
 		attributes: SamlUserAttributes;
 		rawAttributes: Record<string, unknown>;
 		onboardingRequired: boolean;
@@ -492,20 +497,23 @@ export class SamlService {
 	}
 
 	private async applySsoProvisioning(
-		user: User,
+		person: Person,
 		attributes: SamlPreferencesAttributeMapping,
 		rawAttributes: Record<string, unknown>,
 	): Promise<void> {
 		if (await this.provisioningService.isExpressionMappingEnabled()) {
 			const context = buildSamlClaimsContext(rawAttributes);
-			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			await this.provisioningService.provisionExpressionMappedRolesForUser(person, context);
 			return;
 		}
 		// Called even when the attribute is missing so the configured default condition applies
-		await this.provisioningService.provisionInstanceRoleForUser(user, attributes?.n8nInstanceRole);
+		await this.provisioningService.provisionInstanceRoleForUser(
+			person,
+			attributes?.n8nInstanceRole,
+		);
 		if (attributes?.n8nProjectRoles) {
 			await this.provisioningService.provisionProjectRolesForUser(
-				user.id,
+				person.id,
 				attributes.n8nProjectRoles,
 			);
 		}
@@ -808,7 +816,7 @@ export class SamlService {
 				: this.getIdentityProviderInstance();
 			const samlRequest: ESamlHttpRequest = {
 				body: req.body,
-				query: req.query as Record<string, string | undefined>,
+				query: req.query,
 			};
 			parsedSamlResponse = await this.getServiceProviderInstance().parseLoginResponse(
 				idp,
@@ -816,11 +824,18 @@ export class SamlService {
 				samlRequest,
 			);
 		} catch (error) {
-			// throw error;
-			throw new AuthError(
-				// INFO: The error can be a string. Samlify rejects promises with strings.
-				`SAML Authentication failed. Could not parse SAML response. ${error instanceof Error ? error.message : error}`,
+			// INFO: The error can be a string. Samlify rejects promises with strings.
+			const reason = error instanceof Error ? error.message : String(error);
+			const loggedReason = truncate(reason.replace(/\s+/g, ' '), 200);
+			const expectedEntityId = getServiceProviderEntityId();
+			const expectedAcsUrl = getServiceProviderReturnUrl();
+			// The default text log format prints only the message, so the message holds the
+			// values that an admin compares with the identity provider settings
+			this.logger.warn(
+				`SAML response was rejected (${loggedReason}). n8n expects Entity ID ${expectedEntityId} and ACS URL ${expectedAcsUrl}`,
+				{ reason: loggedReason, expectedEntityId, expectedAcsUrl },
 			);
+			throw new AuthError(`SAML Authentication failed. Could not parse SAML response. ${reason}`);
 		}
 		const { attributes, missingAttributes, rawAttributes } = getMappedSamlAttributesFromFlowResult(
 			parsedSamlResponse,

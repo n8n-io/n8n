@@ -1,0 +1,53 @@
+{
+	"properties": {
+		"data": {
+			"properties": {
+				"success": {
+					"type": "boolean"
+				}
+			},
+			"type": "object"
+		},
+		"errors": {},
+		"meta": {
+			"properties": {
+				"requestId": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"sessionId": {
+			"type": "string"
+		},
+		"warnings": {
+			"items": {
+				"properties": {
+					"code": {
+						"type": "string"
+					},
+					"details": {
+						"properties": {
+							"timeoutSeconds": {
+								"type": "number"
+							},
+							"waitUntilEvent": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"message": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": ["array", "null"]
+		},
+		"windowId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

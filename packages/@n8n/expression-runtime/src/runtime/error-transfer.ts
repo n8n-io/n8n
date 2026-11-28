@@ -7,6 +7,15 @@
  * with the same name, message, stack, own keys and JSON form.
  */
 
+import {
+	getOwnPropertyDescriptor,
+	getOwnPropertyDescriptors,
+	hasOwn,
+	objectEntries,
+	objectKeys,
+	reflectGet,
+	sameValue,
+} from './intrinsics';
 import type { TransferSentinel } from './transfer';
 import { defineOwnValue, isPlainObject, transferTypeOf, TRANSFER_TYPE_KEY } from './transfer';
 
@@ -47,10 +56,13 @@ function dataPropsOf(
 ): Pick<ErrorValueSentinel, '__props' | '__nonEnumerableKeys'> {
 	const props: Record<string, unknown> = {};
 	const nonEnumerableKeys: string[] = [];
-	for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(error))) {
+	const entries = objectEntries(getOwnPropertyDescriptors(error));
+	for (let i = 0; i < entries.length; i++) {
+		const key = entries[i][0];
+		const descriptor = entries[i][1];
 		if (descriptor.enumerable || !BUILT_IN_ERROR_KEYS.has(key)) {
 			try {
-				const value: unknown = Reflect.get(error, key);
+				const value: unknown = reflectGet(error, key);
 				if (typeof value !== 'function') {
 					defineOwnValue(props, key, value);
 					if (!descriptor.enumerable) {
@@ -67,9 +79,9 @@ function dataPropsOf(
 
 /** The `cause` an Error got from its constructor options. That key is not enumerable. */
 function hiddenCauseOf(error: Error, encodeChild: Encode): Pick<ErrorValueSentinel, '__cause'> {
-	const descriptor = Object.getOwnPropertyDescriptor(error, 'cause');
+	const descriptor = getOwnPropertyDescriptor(error, 'cause');
 	if (descriptor !== undefined && !descriptor.enumerable) {
-		return { __cause: encodeChild(Reflect.get(error, 'cause')) };
+		return { __cause: encodeChild(reflectGet(error, 'cause')) };
 	}
 	return {};
 }
@@ -80,14 +92,14 @@ function jsonFormOf(
 	encodeChild: Encode,
 ): Pick<ErrorValueSentinel, '__json' | '__jsonKeys'> {
 	try {
-		const toJSON: unknown = Reflect.get(error, 'toJSON');
+		const toJSON: unknown = reflectGet(error, 'toJSON');
 		if (typeof toJSON === 'function') {
 			const json: unknown = toJSON.call(error);
 			// Find direct fields before transfer, while object identity is intact.
 			const keys =
 				typeof json === 'object' && json !== null && isPlainObject(json)
-					? Object.keys(json).filter(
-							(key) => Object.hasOwn(error, key) && Object.is(json[key], Reflect.get(error, key)),
+					? objectKeys(json).filter(
+							(key) => hasOwn(error, key) && sameValue(json[key], reflectGet(error, key)),
 						)
 					: [];
 			return { __json: encodeChild(json), __jsonKeys: keys };
@@ -114,20 +126,29 @@ export function errorToSentinel(error: Error, encodeChild: Encode): ErrorValueSe
 	};
 }
 
-/** Rebuild an Error from a marker. `decodeChild` rebuilds the values inside it. */
-export function rebuildErrorValue(sentinel: ErrorValueSentinel, decodeChild: Encode): Error {
+/**
+ * Rebuild an Error from a marker. `decodeChild` rebuilds the values inside it.
+ * When given, `onCreate` runs before `decodeChild` so cycles back to the Error
+ * resolve to the same instance.
+ */
+export function rebuildErrorValue(
+	sentinel: ErrorValueSentinel,
+	decodeChild: Encode,
+	onCreate?: (error: Error) => void,
+): Error {
 	const ErrorClass = STANDARD_ERRORS.get(sentinel.__name) ?? Error;
 	const error = new ErrorClass(typeof sentinel.__message === 'string' ? sentinel.__message : '');
+	onCreate?.(error);
 	const decoded = decodeChild(sentinel.__props);
 	const props = typeof decoded === 'object' && decoded !== null ? decoded : {};
 
 	// An own key keeps its place in the key order, so it is not defined twice.
-	Object.entries({ name: sentinel.__name, stack: sentinel.__stack })
-		.filter(([key, value]) => typeof value === 'string' && !Object.hasOwn(props, key))
-		.filter(([key, value]) => value !== Reflect.get(error, key))
+	objectEntries({ name: sentinel.__name, stack: sentinel.__stack })
+		.filter(([key, value]) => typeof value === 'string' && !hasOwn(props, key))
+		.filter(([key, value]) => value !== reflectGet(error, key))
 		.forEach(([key, value]) => defineOwnValue(error, key, value, false));
 	const nonEnumerableKeys = new Set(sentinel.__nonEnumerableKeys);
-	Object.entries(props).forEach(([key, value]) =>
+	objectEntries(props).forEach(([key, value]) =>
 		defineOwnValue(error, key, value, !nonEnumerableKeys.has(key)),
 	);
 
@@ -136,7 +157,7 @@ export function rebuildErrorValue(sentinel: ErrorValueSentinel, decodeChild: Enc
 	}
 	if ('__json' in sentinel) {
 		const json = decodeChild(sentinel.__json);
-		const keys = (sentinel.__jsonKeys ?? []).filter((key) => Object.hasOwn(error, key));
+		const keys = (sentinel.__jsonKeys ?? []).filter((key) => hasOwn(error, key));
 		defineOwnValue(
 			error,
 			'toJSON',
@@ -144,8 +165,8 @@ export function rebuildErrorValue(sentinel: ErrorValueSentinel, decodeChild: Enc
 				if (keys.length === 0 || typeof json !== 'object' || json === null) return json;
 				// Refresh direct fields. Keep omitted fields out and calculated values as captured.
 				const result = { ...json };
-				for (const key of keys) {
-					defineOwnValue(result, key, Reflect.get(this, key));
+				for (let i = 0; i < keys.length; i++) {
+					defineOwnValue(result, keys[i], reflectGet(this, keys[i]));
 				}
 				return result;
 			},

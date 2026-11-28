@@ -33,9 +33,8 @@ import {
 	PROJECT_VIEWER_ROLE_SLUG,
 	withMandatoryInstanceScopes,
 } from '@n8n/permissions';
-import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
 import { RoleCacheService, type RoleLoader } from './role-cache.service';
 import { RoleDeletionCheckProxy } from './role-deletion-check-proxy.service';
 import { EventService } from '../events/event.service';
@@ -225,7 +224,7 @@ export class RoleService {
 			return [];
 		}
 
-		const scopes = await this.scopeRepository.findByList(requested);
+		const scopes = await this.scopeRepository.findByList(requested, {});
 		if (scopes.length !== requested.length) {
 			const invalidScopes = requested.filter((slug) => !scopes.some((s) => s.slug === slug));
 			throw new Error(`The following scopes are invalid: ${invalidScopes.join(', ')}`);
@@ -505,7 +504,7 @@ export class RoleService {
 			throw new NotFoundError(`Role ${roleSlug} not found`);
 		}
 
-		const scopes = await this.scopeRepository.findByListOrFail(scopeSlugs);
+		const scopes = await this.scopeRepository.findByListOrFail(scopeSlugs, {});
 
 		const alreadyAssignedSlugs = new Set(role.scopes.map((s) => s.slug));
 		const scopesToAdd = scopes.filter((s) => !alreadyAssignedSlugs.has(s.slug));

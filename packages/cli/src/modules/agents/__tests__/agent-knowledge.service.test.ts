@@ -1,6 +1,5 @@
-import type { Logger } from '@n8n/backend-common';
-import type { OperationContext, Transaction } from '@n8n/db';
-import { NotFoundError } from '@n8n/errors';
+import type { OperationContext, Transaction, User } from '@n8n/db';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -8,16 +7,17 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
+import type { KnowledgeCollectionCatalogService } from '@/modules/knowledge/collections/knowledge-collection-catalog.service';
+import type { KnowledgeFileCleanupService } from '@/modules/knowledge/files/knowledge-file-cleanup.service';
 import type {
 	KnowledgeFileService,
-	UploadedKnowledgeFile,
+	KnowledgeFileUploadResult,
 } from '@/modules/knowledge/files/knowledge-file.service';
 import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
-import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
@@ -44,7 +44,7 @@ function makeMulterFile(overrides: Partial<Express.Multer.File> = {}): Express.M
 	};
 }
 
-const uploadedFile: UploadedKnowledgeFile = {
+const uploadedFile: KnowledgeFileUploadResult = {
 	file: {
 		id: 'file-1',
 		agentId,
@@ -59,10 +59,10 @@ const uploadedFile: UploadedKnowledgeFile = {
 describe('AgentKnowledgeService', () => {
 	let agentRepository: Mocked<AgentRepository>;
 	let knowledgeFileService: Mocked<KnowledgeFileService>;
-	let agentSandboxRuntimeService: Mocked<AgentSandboxRuntimeService>;
-	let agentKnowledgeMirrorService: Mocked<AgentKnowledgeMirrorService>;
+	let knowledgeRetrievalService: Mocked<KnowledgeRetrievalService>;
 	let projectDeletion: Mocked<AgentProjectDeletionRepository>;
-	let logger: Mocked<Logger>;
+	let knowledgeFileCleanupService: Mocked<KnowledgeFileCleanupService>;
+	let collectionCatalogService: Mocked<KnowledgeCollectionCatalogService>;
 	let service: AgentKnowledgeService;
 
 	function makeService(
@@ -71,11 +71,11 @@ describe('AgentKnowledgeService', () => {
 		return new AgentKnowledgeService(
 			agentRepository,
 			knowledgeFileService,
-			agentSandboxRuntimeService,
-			agentKnowledgeMirrorService,
+			knowledgeRetrievalService,
 			knowledgeAvailabilityService,
 			projectDeletion,
-			logger,
+			knowledgeFileCleanupService,
+			collectionCatalogService,
 		);
 	}
 
@@ -84,17 +84,17 @@ describe('AgentKnowledgeService', () => {
 		agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		knowledgeFileService = mock<KnowledgeFileService>();
-		agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>();
-		agentKnowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
+		knowledgeRetrievalService = mock<KnowledgeRetrievalService>();
 		projectDeletion = mock<AgentProjectDeletionRepository>();
 		projectDeletion.withWritableProject.mockImplementation(
 			async (_projectId, write, ctx = {}) => await write(ctx),
 		);
-		logger = mock<Logger>();
+		knowledgeFileCleanupService = mock<KnowledgeFileCleanupService>();
+		collectionCatalogService = mock<KnowledgeCollectionCatalogService>();
 		service = makeService();
 	});
 
-	it('uploads with the agent scope, reserves each row inside the project-deletion fence, and pre-warms the mirror', async () => {
+	it('uploads with the agent scope and reserves each row inside the project-deletion fence', async () => {
 		const ctx: OperationContext = { trx: mock<Transaction>() };
 		projectDeletion.withWritableProject.mockImplementation(
 			async (_projectId, write) => await write(ctx),
@@ -116,20 +116,6 @@ describe('AgentKnowledgeService', () => {
 			projectId,
 			expect.any(Function),
 		);
-		expect(agentKnowledgeMirrorService.prewarmMirrorInBackground).toHaveBeenCalledWith(
-			projectId,
-			agentId,
-		);
-	});
-
-	it('does not pre-warm the mirror when the upload is rejected', async () => {
-		knowledgeFileService.uploadFiles.mockRejectedValue(new Error('rejected'));
-
-		await expect(service.uploadFiles(agentId, projectId, [makeMulterFile()])).rejects.toThrow(
-			'rejected',
-		);
-
-		expect(agentKnowledgeMirrorService.prewarmMirrorInBackground).not.toHaveBeenCalled();
 	});
 
 	it('lists the files of the agent through the knowledge module', async () => {
@@ -140,76 +126,49 @@ describe('AgentKnowledgeService', () => {
 		expect(knowledgeFileService.listFiles).toHaveBeenCalledWith(scope);
 	});
 
-	it('warms the knowledge sandbox when the agent has files', async () => {
-		knowledgeFileService.hasFiles.mockResolvedValue(true);
-
+	it('warms the knowledge sandbox of the agent through the knowledge module', async () => {
 		await expect(service.warmKnowledgeSandbox(agentId, projectId)).resolves.toBeUndefined();
 
-		expect(knowledgeFileService.hasFiles).toHaveBeenCalledWith(scope);
-		expect(agentSandboxRuntimeService.warmKnowledgeSandbox).toHaveBeenCalledWith(
-			projectId,
-			agentId,
-		);
+		expect(knowledgeRetrievalService.warmSandbox).toHaveBeenCalledWith(scope);
 	});
 
-	it('does not warm the knowledge sandbox without files', async () => {
-		knowledgeFileService.hasFiles.mockResolvedValue(false);
+	it.each([true, false])(
+		'deletes a file with the agent scope and the project-deletion fence, and returns %s from the knowledge module',
+		async (deleted) => {
+			const ctx: OperationContext = { trx: mock<Transaction>() };
+			projectDeletion.withWritableProject.mockImplementation(
+				async (_projectId, write) => await write(ctx),
+			);
+			knowledgeFileService.deleteFile.mockImplementation(async (_scope, _fileId, writeFence) => {
+				await expect(writeFence(async (writeCtx) => writeCtx)).resolves.toBe(ctx);
+				return deleted;
+			});
 
-		await expect(service.warmKnowledgeSandbox(agentId, projectId)).resolves.toBeUndefined();
+			await expect(service.deleteFile(agentId, projectId, 'file-1')).resolves.toBe(deleted);
 
-		expect(agentSandboxRuntimeService.warmKnowledgeSandbox).not.toHaveBeenCalled();
-	});
-
-	it('returns false and leaves the sandbox alone when the agent has no such file', async () => {
-		knowledgeFileService.deleteFile.mockResolvedValue(false);
-
-		await expect(service.deleteFile(agentId, projectId, 'missing-file')).resolves.toBe(false);
-
-		expect(knowledgeFileService.deleteFile).toHaveBeenCalledWith(scope, 'missing-file');
-		expect(knowledgeFileService.hasFiles).not.toHaveBeenCalled();
-		expect(agentKnowledgeMirrorService.prewarmMirrorInBackground).not.toHaveBeenCalled();
-		expect(agentSandboxRuntimeService.destroyKnowledgeSandbox).not.toHaveBeenCalled();
-	});
-
-	it('pre-warms the mirror when files remain after a deletion', async () => {
-		knowledgeFileService.deleteFile.mockResolvedValue(true);
-		knowledgeFileService.hasFiles.mockResolvedValue(true);
-
-		await expect(service.deleteFile(agentId, projectId, 'file-1')).resolves.toBe(true);
-
-		expect(agentKnowledgeMirrorService.prewarmMirrorInBackground).toHaveBeenCalledWith(
-			projectId,
-			agentId,
-		);
-		expect(agentSandboxRuntimeService.destroyKnowledgeSandbox).not.toHaveBeenCalled();
-	});
-
-	it('destroys the knowledge sandbox after the final file is deleted', async () => {
-		knowledgeFileService.deleteFile.mockResolvedValue(true);
-		knowledgeFileService.hasFiles.mockResolvedValue(false);
-
-		await expect(service.deleteFile(agentId, projectId, 'file-1')).resolves.toBe(true);
-
-		expect(agentSandboxRuntimeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(
-			projectId,
-			agentId,
-		);
-		expect(agentKnowledgeMirrorService.prewarmMirrorInBackground).not.toHaveBeenCalled();
-	});
+			expect(knowledgeFileService.deleteFile).toHaveBeenCalledWith(
+				scope,
+				'file-1',
+				expect.any(Function),
+			);
+			expect(projectDeletion.withWritableProject).toHaveBeenCalledWith(
+				projectId,
+				expect.any(Function),
+			);
+		},
+	);
 
 	it('deletes all files of the agent through the knowledge module', async () => {
 		await expect(service.deleteAllFilesForAgent(projectId, agentId)).resolves.toBeUndefined();
 
 		expect(knowledgeFileService.deleteAll).toHaveBeenCalledWith(scope);
+		expect(knowledgeFileCleanupService.deleteStoredBytes).not.toHaveBeenCalled();
 	});
 
 	it('destroys the knowledge sandbox on request', async () => {
 		await service.destroyKnowledgeSandbox(projectId, agentId);
 
-		expect(agentSandboxRuntimeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(
-			projectId,
-			agentId,
-		);
+		expect(knowledgeRetrievalService.destroySandbox).toHaveBeenCalledWith(scope);
 	});
 
 	it.each([
@@ -224,8 +183,26 @@ describe('AgentKnowledgeService', () => {
 
 		expect(knowledgeFileService.uploadFiles).not.toHaveBeenCalled();
 		expect(knowledgeFileService.listFiles).not.toHaveBeenCalled();
-		expect(knowledgeFileService.hasFiles).not.toHaveBeenCalled();
+		expect(knowledgeRetrievalService.warmSandbox).not.toHaveBeenCalled();
 		expect(knowledgeFileService.deleteFile).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['uploadFiles', async () => await service.uploadFiles(agentId, projectId, [makeMulterFile()])],
+		['deleteFile', async () => await service.deleteFile(agentId, projectId, 'file-1')],
+	])('rejects %s for an archived agent, and still lists its files', async (_name, call) => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: agentId,
+			projectId,
+			isArchived: true,
+		} as never);
+
+		await expect(call()).rejects.toThrow('Cannot update an archived agent');
+		expect(knowledgeFileService.uploadFiles).not.toHaveBeenCalled();
+		expect(knowledgeFileService.deleteFile).not.toHaveBeenCalled();
+
+		await service.listFiles(agentId, projectId);
+		expect(knowledgeFileService.listFiles).toHaveBeenCalled();
 	});
 
 	it('removes the temp files of an upload that is rejected before it reaches the knowledge module', async () => {
@@ -264,28 +241,88 @@ describe('AgentKnowledgeService', () => {
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 			expect(knowledgeFileService.uploadFiles).not.toHaveBeenCalled();
 			expect(knowledgeFileService.listFiles).not.toHaveBeenCalled();
-			expect(knowledgeFileService.hasFiles).not.toHaveBeenCalled();
 			expect(knowledgeFileService.deleteFile).not.toHaveBeenCalled();
-			expect(agentSandboxRuntimeService.warmKnowledgeSandbox).not.toHaveBeenCalled();
+			expect(knowledgeRetrievalService.warmSandbox).not.toHaveBeenCalled();
 		});
 
-		it('keeps the stored blobs on agent deletion and warns, because the file entity is not registered', async () => {
+		it('deletes stored bytes without the file entity before the agent deletion cascade', async () => {
 			await service.deleteAllFilesForAgent(projectId, agentId);
 
 			expect(knowledgeFileService.deleteAll).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('Knowledge module is inactive'),
-				{ agentId },
-			);
+			expect(knowledgeFileCleanupService.deleteStoredBytes).toHaveBeenCalledWith(scope);
 		});
 
 		it('still destroys the sandbox, which needs no module entity', async () => {
 			await service.destroyKnowledgeSandbox(projectId, agentId);
 
-			expect(agentSandboxRuntimeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(
-				projectId,
-				agentId,
+			expect(knowledgeRetrievalService.destroySandbox).toHaveBeenCalledWith(scope);
+		});
+	});
+
+	describe('collections', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const collectionRef = { projectId, collectionId: 'collection-1' };
+
+		it('lists the collections of an agent of the project', async () => {
+			const collections = [
+				{ id: 'collection-1', name: 'Docs', description: 'd', fileCount: 1, usedByAgent: true },
+			];
+			collectionCatalogService.listForAgent.mockResolvedValue(collections);
+
+			await expect(service.listCollections(user, agentId, projectId)).resolves.toEqual(collections);
+			expect(collectionCatalogService.listForAgent).toHaveBeenCalledWith(user, projectId, agentId);
+		});
+
+		it('answers not found for an agent that is not in the project', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.listCollections(user, agentId, projectId)).rejects.toThrow(
+				NotFoundError,
 			);
+			expect(collectionCatalogService.listForAgent).not.toHaveBeenCalled();
+		});
+
+		describe.each([
+			['addCollection', 'addAgent'],
+			['removeCollection', 'removeAgent'],
+		] as const)('%s', (method, catalogMethod) => {
+			it('writes through the project-deletion fence', async () => {
+				const ctx: OperationContext = { trx: mock<Transaction>() };
+				projectDeletion.withWritableProject.mockImplementation(
+					async (_projectId, write) => await write(ctx),
+				);
+				collectionCatalogService[catalogMethod].mockImplementation(
+					async (_user, _ref, _agentId, writeFence) => {
+						await expect(writeFence(async (writeCtx) => writeCtx)).resolves.toBe(ctx);
+					},
+				);
+
+				await service[method](user, agentId, projectId, 'collection-1');
+
+				expect(collectionCatalogService[catalogMethod]).toHaveBeenCalledWith(
+					user,
+					collectionRef,
+					agentId,
+					expect.any(Function),
+				);
+				expect(projectDeletion.withWritableProject).toHaveBeenCalledWith(
+					projectId,
+					expect.any(Function),
+				);
+			});
+
+			it('refuses an archived agent and writes nothing', async () => {
+				agentRepository.findByIdAndProjectId.mockResolvedValue({
+					id: agentId,
+					projectId,
+					isArchived: true,
+				} as never);
+
+				await expect(service[method](user, agentId, projectId, 'collection-1')).rejects.toThrow(
+					BadRequestError,
+				);
+				expect(collectionCatalogService[catalogMethod]).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

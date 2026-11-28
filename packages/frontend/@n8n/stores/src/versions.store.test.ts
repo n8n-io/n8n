@@ -1,5 +1,5 @@
 import type { IVersionNotificationSettings } from '@n8n/api-types';
-import { useToast } from '@n8n/composables/useToast';
+import { isDroppedNotification, useToast } from '@n8n/composables/useToast';
 import { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@n8n/frontend-constants/versions';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
@@ -15,7 +15,7 @@ import { useVersionsStore } from './versions.store';
 
 vi.mock('@n8n/composables/useToast', () => {
 	const showToast = vi.fn();
-	const showMessage = vi.fn();
+	const showMessage = vi.fn(() => ({ close: vi.fn() }));
 	return {
 		useToast: () => {
 			return {
@@ -23,6 +23,7 @@ vi.mock('@n8n/composables/useToast', () => {
 				showMessage,
 			};
 		},
+		isDroppedNotification: vi.fn(() => false),
 	};
 });
 
@@ -182,6 +183,34 @@ describe('versions.store', () => {
 			// ... and is immediately marked as dismissed so it does not reappear on the
 			// next load, even though the user never explicitly closed it.
 			expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
+		});
+
+		it('should count the callout as open until it closes', async () => {
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
+			mockCurrentUser(null);
+
+			const versionsStore = useVersionsStore();
+			versionsStore.initialize(settings);
+			await versionsStore.fetchWhatsNew();
+
+			expect(versionsStore.isWhatsNewCalloutOpen).toBe(true);
+
+			vi.mocked(toast.showMessage).mock.calls[0][0].onClose?.();
+
+			expect(versionsStore.isWhatsNewCalloutOpen).toBe(false);
+		});
+
+		it('should not count a suppressed callout as open', async () => {
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
+			vi.mocked(isDroppedNotification).mockReturnValueOnce(true);
+			mockCurrentUser(null);
+
+			const versionsStore = useVersionsStore();
+			versionsStore.initialize(settings);
+			await versionsStore.fetchWhatsNew();
+
+			expect(toast.showMessage).toHaveBeenCalled();
+			expect(versionsStore.isWhatsNewCalloutOpen).toBe(false);
 		});
 
 		it("should open the what's new modal via the registered opener when the callout is clicked", async () => {

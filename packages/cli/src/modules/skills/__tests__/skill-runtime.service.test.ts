@@ -1,8 +1,6 @@
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-
 import type { SkillFile } from '../database/entities/skill-file.entity';
 import {
 	createSkillServices,
@@ -12,20 +10,21 @@ import {
 	versionRow,
 	resetSkillMocks,
 } from './test-utils/skill-services';
+import { SKILL_WORKFLOW_MENTION_HINT } from '../utils/skill-workflow-mention-hint';
 import type {
 	AssistantSkillContext,
 	AssistantSkillSummary,
 	ResolvedSkillRow,
 } from '../utils/skill-content';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	hasGlobalScope: vi.fn(),
 }));
 
 describe('SkillRuntimeService', () => {
-	const { skills, usage, txRunner, projectScope, runtime } = createSkillServices();
+	const { skills, usage, txRunner, projectScope, workflowsInSkillsGate, runtime } =
+		createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner }));
@@ -55,7 +54,7 @@ describe('SkillRuntimeService', () => {
 			skills.findAssistantSkill.mockImplementation(async (id) =>
 				id === row.skill.id ? row : null,
 			);
-			vi.mocked(userHasScopes).mockResolvedValue(true);
+			projectScope.hasScopes.mockResolvedValue(true);
 		});
 
 		it.each([
@@ -95,11 +94,11 @@ describe('SkillRuntimeService', () => {
 
 		it('uses the existing skill permission check for content reads', async () => {
 			row.skill.projectId = 'project-1';
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			projectScope.hasScopes.mockResolvedValue(false);
 			expect(await runtime.readForAssistant(context, 'skill-1')).toBeNull();
-			expect(userHasScopes).toHaveBeenCalledWith(context.user, ['projectSkill:read'], false, {
-				projectId: 'project-1',
-			});
+			expect(projectScope.hasScopes).toHaveBeenCalledWith(context.user, 'project-1', [
+				'projectSkill:read',
+			]);
 		});
 
 		it.each([
@@ -145,6 +144,30 @@ describe('SkillRuntimeService', () => {
 			});
 		});
 
+		it('adds the workflow hint to instructions that mention a workflow when the flag is on', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+			row.version.instructions = 'Run [Report](n8n://workflow/wf-1).';
+
+			expect((await runtime.readForAssistant(context, 'skill-1'))?.instructions).toBe(
+				`Run [Report](n8n://workflow/wf-1).\n\n${SKILL_WORKFLOW_MENTION_HINT}`,
+			);
+		});
+
+		it('keeps instructions without a workflow mention when the flag is on', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+
+			expect((await runtime.readForAssistant(context, 'skill-1'))?.instructions).toBe('Be brief.');
+		});
+
+		it('keeps instructions that mention a workflow when the flag is off', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(false);
+			row.version.instructions = 'Run [Report](n8n://workflow/wf-1).';
+
+			expect((await runtime.readForAssistant(context, 'skill-1'))?.instructions).toBe(
+				'Run [Report](n8n://workflow/wf-1).',
+			);
+		});
+
 		it('returns the path of each saved file without its content', async () => {
 			row = versionRow(row.skill, 1, { id: 'version-1' }, [
 				{ path: 'ref.md', content: 'Reference' },
@@ -160,7 +183,7 @@ describe('SkillRuntimeService', () => {
 				row.skill.projectId = 'project-1';
 				if (reason === 'disabled') row.skill.availableToAssistant = false;
 				if (reason === 'other-project') row.skill.projectId = 'project-2';
-				if (reason === 'permission') vi.mocked(userHasScopes).mockResolvedValue(false);
+				if (reason === 'permission') projectScope.hasScopes.mockResolvedValue(false);
 				skills.findAssistantSkillFile.mockResolvedValue(
 					reason === 'missing'
 						? null
@@ -193,6 +216,22 @@ describe('SkillRuntimeService', () => {
 				path: 'references/guide.md',
 				content: 'Guide.',
 			});
+		});
+
+		it('adds the workflow hint to a reference that mentions a workflow when the flag is on', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+			skills.findAssistantSkillFile.mockResolvedValue({
+				skill: row.skill,
+				file: mock<SkillFile>({
+					path: 'references/run.md',
+					content: 'Run [Report](n8n://workflow/wf-1).',
+				}),
+			});
+
+			expect(
+				(await runtime.readFileForAssistant(context, 'skill-1', 'version-1', 'references/run.md'))
+					?.content,
+			).toBe(`Run [Report](n8n://workflow/wf-1).\n\n${SKILL_WORKFLOW_MENTION_HINT}`);
 		});
 
 		it('allows instance skills without project access', async () => {
@@ -441,6 +480,7 @@ describe('SkillRuntimeService', () => {
 			expect(skills.findVersionsByIds).toHaveBeenCalledWith(
 				['skill_a-v2', 'skill_gone-v1'],
 				TX_CTX,
+				{},
 			);
 			expect([...versions]).toEqual([
 				[

@@ -1,13 +1,34 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { parseAgentSkillWorkflowMentions, type SkillWorkflowMention } from '@n8n/api-types';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
-import type { AgentSkill } from '../types';
+import { VIEWS } from '@/app/constants';
+import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
+import type { AgentSkill } from '@/features/agents/types';
+import { useSkillWorkflowNoteData } from '@/features/agents/composables/useSkillWorkflowNoteData';
+import {
+	AGENT_BLOCKING_NOTES,
+	getSkillWorkflowNotes,
+	type SkillWorkflowNote,
+} from '@/features/agents/utils/skillWorkflowNotes';
+import SkillWorkflowMentionPicker from './SkillWorkflowMentionPicker.vue';
 import SkillDiffCount from './skillVersions/SkillDiffCount.vue';
-import type { FileChange } from './skillVersions/skillVersionDiff';
+import type {
+	FileChange,
+	FileStatus,
+} from '@/features/agents/components/skillVersions/skillVersionDiff';
 
 const SKILL_FILE = 'SKILL.md';
+const statusLabels: Record<FileStatus, BaseTextKey> = {
+	added: 'agents.builder.skills.versions.fileAdded',
+	removed: 'agents.builder.skills.versions.fileDeleted',
+	modified: 'agents.builder.skills.versions.fileModified',
+};
+const statusIcons = { added: 'file-plus', removed: 'file-minus', modified: 'file-diff' } as const;
 
 const props = withDefaults(
 	defineProps<{
@@ -19,11 +40,23 @@ const props = withDefaults(
 		invalidPaths?: string[];
 		/** Compare mode: lines added and removed in each file, keyed by path. */
 		changeCounts?: Record<string, FileChange>;
+		mentionProjectId?: string;
+		mentionProjectName?: string;
+		instanceSkill?: boolean;
+		availableToMcp?: boolean;
+		outsideProjectWorkflowIds?: string[];
+		agentContext?: boolean;
 	}>(),
 	{
 		addReferenceDisabled: false,
 		readOnly: false,
 		invalidPaths: () => [],
+		mentionProjectId: undefined,
+		mentionProjectName: undefined,
+		instanceSkill: false,
+		availableToMcp: false,
+		outsideProjectWorkflowIds: () => [],
+		agentContext: false,
 	},
 );
 
@@ -31,10 +64,71 @@ const emit = defineEmits<{
 	select: [path: string];
 	'add-reference': [];
 	'remove-reference': [path: string];
+	'add-workflow': [mention: SkillWorkflowMention];
 }>();
 
 const i18n = useI18n();
-const references = computed(() => props.skill.references ?? []);
+const router = useRouter();
+const posthog = usePostHog();
+const references = computed(() =>
+	(props.skill.references ?? []).map(({ path }) => ({ path, change: props.changeCounts?.[path] })),
+);
+const workflowMentionsEnabled = computed(() =>
+	posthog.isVariantEnabled(
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+	),
+);
+const addWorkflowOpen = ref(false);
+const mentionedWorkflows = computed(() => parseAgentSkillWorkflowMentions(props.skill));
+const mentionedWorkflowIds = computed(() =>
+	mentionedWorkflows.value.map(({ workflowId }) => workflowId),
+);
+const { noteData } = useSkillWorkflowNoteData(mentionedWorkflowIds, workflowMentionsEnabled);
+const NOTE_TEXT_KEYS: Record<SkillWorkflowNote, BaseTextKey> = {
+	notFound: 'agents.builder.skills.workflowMentions.note.notFound',
+	archived: 'agents.builder.skills.workflowMentions.note.archived',
+	agentTrigger: 'agents.builder.skills.workflowMentions.note.agentTrigger',
+	mcpTrigger: 'agents.builder.skills.workflowMentions.note.mcpTrigger',
+	mcpUnavailable: 'agents.builder.skills.workflowMentions.note.mcpUnavailable',
+	unpublished: 'agents.builder.skills.workflowMentions.note.unpublished',
+	outsideProject: 'agents.builder.skills.workflowMentions.note.outsideProject',
+	instanceAccess: 'agents.builder.skills.workflowMentions.note.instanceAccess',
+};
+const workflowRows = computed(() =>
+	mentionedWorkflows.value.map((workflow) => {
+		const data = noteData.value.get(workflow.workflowId);
+		const allNotes =
+			data === undefined
+				? []
+				: getSkillWorkflowNotes(data, {
+						instanceSkill: props.instanceSkill,
+						availableToMCP: props.availableToMcp,
+						projectId: props.agentContext ? undefined : props.mentionProjectId,
+					});
+		const outsideProjectWarnings = props.outsideProjectWorkflowIds.includes(workflow.workflowId)
+			? [
+					i18n.baseText('agents.builder.validation.issue.tool.workflow.notInProject', {
+						interpolate: { id: workflow.name || workflow.workflowId },
+					}),
+				]
+			: [];
+		const isWarning = (note: SkillWorkflowNote) =>
+			props.agentContext && AGENT_BLOCKING_NOTES.includes(note);
+		const isCoveredByWarning = (note: SkillWorkflowNote) =>
+			note === 'instanceAccess' && outsideProjectWarnings.length > 0;
+		const toText = (note: SkillWorkflowNote) => i18n.baseText(NOTE_TEXT_KEYS[note]);
+		return {
+			...workflow,
+			warnings: [...outsideProjectWarnings, ...allNotes.filter(isWarning).map(toText)],
+			notes: allNotes.filter((note) => !isWarning(note) && !isCoveredByWarning(note)).map(toText),
+		};
+	}),
+);
+
+function workflowUrl(workflowId: string) {
+	return router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId } }).href;
+}
 
 function isInvalid(path: string) {
 	return props.invalidPaths.includes(path);
@@ -47,12 +141,7 @@ function referenceLabel(path: string) {
 		: path;
 	const status = props.changeCounts?.[path]?.status;
 	if (!status) return label;
-	const statusLabel = i18n.baseText(
-		status === 'added'
-			? 'agents.builder.skills.versions.fileAdded'
-			: 'agents.builder.skills.versions.fileDeleted',
-	);
-	return `${label}, ${statusLabel}`;
+	return `${label}, ${i18n.baseText(statusLabels[status])}`;
 }
 
 function isSelected(path: string) {
@@ -130,25 +219,21 @@ function testIdForPath(path: string) {
 						"
 					/>
 					<N8nText size="medium" :class="$style.path">{{ reference.path }}</N8nText>
-					<span v-if="props.changeCounts?.[reference.path]" :class="$style.count">
-						<!-- A file that only one version has: new in the later one, or deleted from it. -->
+					<span v-if="reference.change" :class="$style.count">
 						<N8nIcon
-							v-if="props.changeCounts[reference.path].status"
-							:icon="
-								props.changeCounts[reference.path].status === 'added' ? 'file-plus' : 'file-minus'
-							"
+							v-if="reference.change.status"
+							:icon="statusIcons[reference.change.status]"
 							size="small"
 							:class="
-								props.changeCounts[reference.path].status === 'added'
+								reference.change.status === 'added'
 									? $style.fileAdded
-									: $style.fileDeleted
+									: reference.change.status === 'removed'
+										? $style.fileDeleted
+										: undefined
 							"
-							:data-testid="`${testIdForPath(reference.path)}-${props.changeCounts[reference.path].status}`"
+							:data-testid="`${testIdForPath(reference.path)}-${reference.change.status}`"
 						/>
-						<SkillDiffCount
-							:count="props.changeCounts[reference.path]"
-							:hide-zero="!!props.changeCounts[reference.path].status"
-						/>
+						<SkillDiffCount :count="reference.change" :hide-zero="!!reference.change.status" />
 					</span>
 				</button>
 				<N8nButton
@@ -162,6 +247,85 @@ function testIdForPath(path: string) {
 					:data-testid="`${testIdForPath(reference.path)}-remove`"
 					@click="emit('remove-reference', reference.path)"
 				/>
+			</div>
+		</div>
+
+		<div v-if="workflowMentionsEnabled" :class="$style.section" data-testid="agent-skill-workflows">
+			<div :class="$style.sectionHeader">
+				<N8nText size="small" color="text-light" :class="$style.sectionTitle">
+					{{ i18n.baseText('agents.builder.skills.workflowMentions.title') }}
+				</N8nText>
+				<SkillWorkflowMentionPicker
+					v-if="!props.readOnly"
+					v-model:open="addWorkflowOpen"
+					mode="button"
+					:project-id="props.mentionProjectId"
+					:project-name="props.mentionProjectName"
+					:mentioned-workflow-ids="mentionedWorkflowIds"
+					@select="emit('add-workflow', $event)"
+				/>
+			</div>
+			<N8nText
+				v-if="mentionedWorkflows.length === 0"
+				size="small"
+				color="text-light"
+				:class="$style.sectionTitle"
+			>
+				{{ i18n.baseText('agents.builder.skills.workflowMentions.empty') }}
+			</N8nText>
+			<div
+				v-for="workflow in workflowRows"
+				:key="workflow.workflowId"
+				:class="[$style.item, $style.workflow]"
+				data-testid="agent-skill-workflow-item"
+			>
+				<a
+					:href="workflowUrl(workflow.workflowId)"
+					target="_blank"
+					rel="noopener"
+					:class="$style.workflowLink"
+					data-testid="agent-skill-workflow-link"
+					data-attr="agent-skill-workflow-link"
+				>
+					<N8nIcon icon="workflow" :size="16" :class="$style.icon" />
+					<N8nText size="medium" :class="$style.path">{{
+						workflow.name || workflow.workflowId
+					}}</N8nText>
+				</a>
+				<N8nTooltip v-if="workflow.notes.length > 0" as-child placement="right">
+					<template #content>
+						<p v-for="note in workflow.notes" :key="note" :class="$style.note">
+							{{ note }}
+						</p>
+					</template>
+					<span
+						:class="$style.noteIcon"
+						tabindex="0"
+						role="img"
+						:aria-label="workflow.notes.join(' ')"
+						data-testid="agent-skill-workflow-notes"
+						data-attr="agent-skill-workflow-notes"
+					>
+						<N8nIcon icon="info" :size="16" />
+					</span>
+				</N8nTooltip>
+				<N8nTooltip v-if="workflow.warnings.length > 0" as-child placement="right">
+					<template #content>
+						<p v-for="warning in workflow.warnings" :key="warning" :class="$style.note">
+							{{ warning }}
+						</p>
+					</template>
+					<span
+						:class="[$style.noteIcon, $style.invalidIcon]"
+						tabindex="0"
+						role="img"
+						:aria-label="workflow.warnings.join(' ')"
+						data-testid="agent-skill-workflow-warnings"
+						data-attr="agent-skill-workflow-warnings"
+					>
+						<N8nIcon icon="triangle-alert" :size="16" />
+					</span>
+				</N8nTooltip>
 			</div>
 		</div>
 	</nav>
@@ -262,6 +426,47 @@ function testIdForPath(path: string) {
 	margin-left: auto;
 	margin-right: var(--spacing--2xs);
 	flex-shrink: 0;
+}
+
+.workflow {
+	cursor: default;
+
+	&:hover {
+		background: transparent;
+	}
+}
+
+.workflowLink {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	color: inherit;
+	text-decoration: none;
+
+	&:hover .path {
+		text-decoration: underline;
+	}
+}
+
+.noteIcon {
+	display: inline-flex;
+	flex-shrink: 0;
+	color: var(--text-color--subtler);
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+		border-radius: var(--radius--3xs);
+	}
+}
+
+.note {
+	margin: 0;
+
+	& + & {
+		margin-top: var(--spacing--2xs);
+	}
 }
 
 .invalidIcon {

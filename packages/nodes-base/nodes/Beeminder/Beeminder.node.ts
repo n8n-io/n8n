@@ -10,6 +10,7 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	jsonParse,
+	requestPath,
 	assertParamIsString,
 	validateNodeParameters,
 	assertParamIsNumber,
@@ -1010,7 +1011,7 @@ export class Beeminder implements INodeType {
 			// Get all the available groups to display them to user so that they can
 			// select them easily
 			async getGoals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = '/users/me/goals.json';
+				const endpoint = requestPath`/users/me/goals.json`;
 
 				const returnData: INodePropertyOptions[] = [];
 				const goals = await beeminderApiRequest.call(this, 'GET', endpoint);
@@ -1093,7 +1094,7 @@ async function executeDatapointCreate(
 
 	const options = context.getNodeParameter('additionalFields', itemIndex);
 	if (options.timestamp) {
-		options.timestamp = moment.tz(options.timestamp, timezone).unix();
+		options.timestamp = moment.tz(options.timestamp as string, timezone).unix();
 	}
 
 	validateNodeParameters(
@@ -1151,7 +1152,7 @@ async function executeDatapointUpdate(
 	assertParamIsString('datapointId', datapointId, context.getNode());
 	const options = context.getNodeParameter('updateFields', itemIndex);
 	if (options.timestamp) {
-		options.timestamp = moment.tz(options.timestamp, timezone).unix();
+		options.timestamp = moment.tz(options.timestamp as string, timezone).unix();
 	}
 
 	validateNodeParameters(
@@ -1394,7 +1395,7 @@ async function executeGoalUpdate(
 		options.roadall = jsonParse(options.roadall);
 	}
 	if ('goaldate' in options && options.goaldate) {
-		options.goaldate = moment.tz(options.goaldate, timezone).unix();
+		options.goaldate = moment.tz(options.goaldate as string, timezone).unix();
 	}
 	validateNodeParameters(
 		options,
@@ -1523,7 +1524,7 @@ async function executeUserOperations(
 	if (operation === 'get') {
 		const options = context.getNodeParameter('additionalFields', itemIndex);
 		if (options.diff_since) {
-			options.diff_since = moment.tz(options.diff_since, timezone).unix();
+			options.diff_since = moment.tz(options.diff_since as string, timezone).unix();
 		}
 		validateNodeParameters(
 			options,

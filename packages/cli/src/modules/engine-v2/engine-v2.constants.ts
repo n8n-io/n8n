@@ -1,9 +1,6 @@
 /** Prefix for every route the data plane calls. Auth and body limits mount on it. */
 export const CONTROL_PLANE_PREFIX = '/internal';
 
-/** Where the data plane posts lifecycle event batches. Shared, so the two sides cannot disagree. */
-export const STATUS_CALLBACK_PATH = `${CONTROL_PLANE_PREFIX}/status-callback`;
-
 /** Where the data plane asks for the decrypted data of one credential. */
 export const CREDENTIALS_RESOLVE_PATH = `${CONTROL_PLANE_PREFIX}/credentials/resolve`;
 
@@ -17,5 +14,8 @@ export const DATA_TABLES_CALL_PATH = `${CONTROL_PLANE_PREFIX}/data-tables/call`;
  */
 export const DATA_TABLES_CALL_REFUSED_STATUS = 422;
 
-/** Where the data plane asks for the graph of a sub-workflow a step calls. */
-export const SUB_WORKFLOWS_RESOLVE_PATH = `${CONTROL_PLANE_PREFIX}/sub-workflows/resolve`;
+/**
+ * Where the data plane asks for a workflow to start: a sub-workflow that a step
+ * calls, or the error workflow of an execution that failed.
+ */
+export const WORKFLOWS_RESOLVE_PATH = `${CONTROL_PLANE_PREFIX}/workflows/resolve`;

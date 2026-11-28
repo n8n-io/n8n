@@ -71,11 +71,15 @@ erDiagram
 }
 "agents" {
   varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
   boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
+  varchar identityId FK
   TEXT integrations
+  boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   INTEGER publicationRevision
   INTEGER revision
@@ -112,6 +116,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_8_ emoji
   varchar_128_ id PK
+  boolean isTestChat
   varchar ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId

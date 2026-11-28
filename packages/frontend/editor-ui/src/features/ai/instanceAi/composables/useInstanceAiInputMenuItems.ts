@@ -1,17 +1,34 @@
-import { computed, watch } from 'vue';
+import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { useRouter } from 'vue-router';
+import type { SkillListItem } from '@n8n/api-types';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useDebounceFn } from '@vueuse/core';
 import { VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import {
+	canWriteInstanceSkillScope,
+	canWriteProjectSkillScope,
+	isContextSkillsEnabled,
+} from '@/features/settings/context/context.utils';
+import { getSkills } from '@/features/settings/context/skills.api';
 import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
 import type { NodeIconSource, ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
-import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
+import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '@/features/ai/instanceAi/constants';
+import { injectOpenResource } from '@/features/ai/instanceAi/openResourceContext';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useBrowserUseConnection } from './useBrowserUseConnection';
 import { useMcpServerConnect } from './useMcpServerConnect';
+import { useProjectResourceSearch } from './useProjectResourceSearch';
+
+const OPEN_RESOURCE_ITEM_ID = 'open-resource';
 
 type InputMenuItemData = {
 	status?: ToolConnectionStatus;
@@ -21,15 +38,99 @@ type InputMenuItemData = {
 
 export type InputMenuItem = DropdownMenuItemProps<string, InputMenuItemData>;
 
-export function useInstanceAiInputMenuItems(attachFiles: () => void) {
+export function useInstanceAiInputMenuItems(
+	attachFiles: () => void,
+	projectId?: MaybeRefOrGetter<string | undefined>,
+) {
 	const i18n = useI18n();
+	const rootStore = useRootStore();
 	const uiStore = useUIStore();
+	const projectsStore = useProjectsStore();
 	const router = useRouter();
 	const settingsStore = useInstanceAiSettingsStore();
 	const mcpStore = useInstanceAiMcpStore();
 	const { ignorePendingConnectResult } = useMcpServerConnect();
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
 	const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
+	const shouldShowSkills = computed(() => isContextSkillsEnabled());
+	const canCreateSkill = computed(
+		() =>
+			canWriteInstanceSkillScope() ||
+			canWriteProjectSkillScope(projectsStore.personalProject?.id) ||
+			projectsStore.myProjects.some(
+				(project) => project.type === 'team' && canWriteProjectSkillScope(project.id),
+			),
+	);
+	const openResource = injectOpenResource();
+	const resourceSearch = useProjectResourceSearch({
+		projectId: () => openResource?.projectId(),
+		excludedTabs: () => openResource?.excludedTabs() ?? [],
+	});
+	const debouncedResourceSearch = useDebounceFn(
+		async (term: string) => await resourceSearch.search(term),
+		getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
+	);
+
+	/** Loads the resources when their sub-menu opens, so the menu itself sends no requests. */
+	function handleSubMenuToggle(itemId: string, open: boolean) {
+		if (itemId === OPEN_RESOURCE_ITEM_ID && open) void resourceSearch.search();
+	}
+
+	function handleSearch(term: string, itemId?: string) {
+		if (itemId === OPEN_RESOURCE_ITEM_ID) void debouncedResourceSearch(term);
+	}
+
+	const openResourceItem = computed((): InputMenuItem | undefined => {
+		if (!openResource?.projectId() || !openResource.isAvailable()) return undefined;
+
+		const results = resourceSearch.results.value;
+		const children: InputMenuItem[] =
+			results.length > 0
+				? results.map((resource) => ({
+						id: `${OPEN_RESOURCE_ITEM_ID}:${resource.type}:${resource.id}`,
+						label: resource.name,
+						icon: { type: 'icon', value: resource.icon },
+						data: { action: () => openResource.open(resource) },
+					}))
+				: [
+						{
+							id: `${OPEN_RESOURCE_ITEM_ID}-empty`,
+							label: i18n.baseText('instanceAi.previewTabBar.noResources'),
+							disabled: true,
+						},
+					];
+
+		return {
+			id: OPEN_RESOURCE_ITEM_ID,
+			label: i18n.baseText('instanceAi.inputMenu.openResource.label'),
+			icon: { type: 'icon', value: 'folder-open' },
+			divided: true,
+			searchable: true,
+			searchPlaceholder: i18n.baseText('instanceAi.previewTabBar.searchResources'),
+			loading: resourceSearch.isLoading.value && results.length === 0,
+			children,
+		};
+	});
+
+	const skills = ref<SkillListItem[]>([]);
+	const skillsLoadState = ref<'loading' | 'loaded' | 'error'>('loading');
+	const { next: nextSkillsLoad } = useLatestFetch();
+
+	async function refreshSkills() {
+		const isLatest = nextSkillsLoad();
+		if (!shouldShowSkills.value) return;
+		skills.value = [];
+		skillsLoadState.value = 'loading';
+		try {
+			// Without `take`, the API returns every visible skill.
+			const result = await getSkills(rootStore.restApiContext);
+			if (!isLatest()) return;
+			skills.value = result.data;
+			skillsLoadState.value = 'loaded';
+		} catch {
+			if (isLatest()) skillsLoadState.value = 'error';
+		}
+	}
 
 	void settingsStore.fetch();
 	watch(
@@ -52,6 +153,76 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 		// A new tab keeps the chat and its unsent draft.
 		window.open(router.resolve({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES }).href, '_blank');
 	}
+
+	function openSkillSettings(query: { skillId?: string; create?: string } = {}) {
+		window.open(
+			router.resolve({ name: VIEWS.SETTINGS_CONTEXT_SKILLS, query }).href,
+			'_blank',
+			'noopener',
+		);
+	}
+
+	const skillMenuItems = computed<InputMenuItem[]>(() => {
+		const children: InputMenuItem[] = [];
+		const availableSkills = skills.value
+			.filter(
+				(skill) =>
+					skill.availableToAssistant &&
+					skill.name.trim() &&
+					skill.description.trim() &&
+					(skill.scope === 'instance' ||
+						(skill.scope === 'project' && skill.projectId === toValue(projectId))),
+			)
+			.sort((left, right) => left.name.localeCompare(right.name));
+
+		if (skillsLoadState.value !== 'loaded' || availableSkills.length === 0) {
+			children.push({
+				id: 'skills-status',
+				label: i18n.baseText(
+					skillsLoadState.value === 'loading'
+						? 'instanceAi.inputMenu.skills.loading'
+						: skillsLoadState.value === 'error'
+							? 'instanceAi.inputMenu.skills.loadError'
+							: 'instanceAi.inputMenu.skills.empty',
+				),
+				disabled: true,
+			});
+		} else {
+			for (const scope of ['project', 'instance'] as const) {
+				const group = availableSkills.filter((skill) => skill.scope === scope);
+				if (group.length === 0) continue;
+				children.push(
+					{
+						id: `skills-${scope}`,
+						label: i18n.baseText(`settings.context.skills.scope.${scope}`),
+						header: true,
+						divided: children.length > 0,
+					},
+					...group.map((skill) => ({
+						id: `skill-${skill.id}`,
+						label: skill.name,
+						data: { action: () => openSkillSettings({ skillId: skill.id }) },
+					})),
+				);
+			}
+		}
+
+		children.push({
+			id: 'manage-skills',
+			label: i18n.baseText('instanceAi.inputMenu.skills.manage'),
+			divided: true,
+			data: { action: () => openSkillSettings() },
+		});
+		if (canCreateSkill.value) {
+			children.push({
+				id: 'create-skill',
+				label: i18n.baseText('instanceAi.inputMenu.skills.create'),
+				icon: { type: 'icon', value: 'plus' },
+				data: { action: () => openSkillSettings({ create: 'true' }) },
+			});
+		}
+		return children;
+	});
 
 	function createConnectionItem({
 		id,
@@ -245,16 +416,34 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 			);
 		}
 
+		if (shouldShowSkills.value) {
+			items.push({
+				id: 'skills',
+				label: i18n.baseText('instanceAi.inputMenu.skills.label'),
+				icon: { type: 'icon', value: 'book-open' },
+				children: skillMenuItems.value,
+			});
+		}
+
+		// Opening a resource and Preferences both leave the message as it is, so they share a group.
+		if (openResourceItem.value) items.push(openResourceItem.value);
+
 		items.push({
 			id: 'preferences',
 			label: i18n.baseText('instanceAi.inputMenu.preferences.label'),
 			icon: { type: 'icon', value: 'brain' },
-			divided: true,
+			divided: !openResourceItem.value,
 			data: { action: openPreferenceSettings },
 		});
 
 		return items;
 	});
 
-	return { menuItems, disconnectedConnectionCount };
+	return {
+		menuItems,
+		disconnectedConnectionCount,
+		refreshSkills,
+		handleSubMenuToggle,
+		handleSearch,
+	};
 }

@@ -473,13 +473,13 @@ export abstract class TaskRequester {
 				status: 'success',
 				data: encoded,
 			});
-		} catch (e) {
+		} catch (error) {
 			this.sendMessage({
 				type: 'requester:rpcresponse',
 				taskId,
 				callId,
 				status: 'error',
-				data: e,
+				data: error instanceof Error ? { ...error, message: error.message } : error,
 			});
 		}
 	}

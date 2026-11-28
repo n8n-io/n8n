@@ -5,6 +5,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
 
+import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -16,7 +17,7 @@ import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/
 import type { WorkflowRepository } from '@n8n/db';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type {
@@ -28,7 +29,6 @@ import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storag
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
-import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
@@ -46,7 +46,7 @@ vi.mock('../json-config/from-json-config', async () => {
 
 const config: AgentJsonConfig = {
 	name: 'Child Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help with delegated work.',
 };
 
@@ -61,13 +61,12 @@ function makeService(sandboxFilesEnabled = true) {
 	const sandboxRuntimeService = mock<AgentSandboxRuntimeService>();
 	sandboxRuntimeService.isEnabled.mockReturnValue(true);
 	const workspaceService = mock<AgentWorkspaceService>();
-	const fileRepository = mock<KnowledgeFileRepository>();
-	fileRepository.hasFilesForAgent.mockResolvedValue(false);
+	const knowledgeRetriever = mock<KnowledgeRetrievalService>();
+	knowledgeRetriever.hasFiles.mockResolvedValue(false);
 
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
-		fileRepository,
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		mock<N8NCheckpointStorage>(),
@@ -80,7 +79,7 @@ function makeService(sandboxFilesEnabled = true) {
 		mock<AiService>(),
 		outboundHttp,
 		workspaceService,
-		mock<AgentKnowledgeMirrorService>(),
+		knowledgeRetriever,
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
@@ -90,6 +89,7 @@ function makeService(sandboxFilesEnabled = true) {
 		mock<AgentSandboxFilesService>({
 			isEnabled: vi.fn().mockResolvedValue(sandboxFilesEnabled),
 		}),
+		mock<WorkflowsInSkillsFlagGate>(),
 	);
 
 	return { service, workspaceService };

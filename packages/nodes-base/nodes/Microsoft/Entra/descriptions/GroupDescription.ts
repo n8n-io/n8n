@@ -7,7 +7,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { ignoreHttpStatusErrorsConfig } from './common';
 import {
@@ -548,17 +548,13 @@ const createFields: INodeProperties[] = [
 									await microsoftApiRequest.call(
 										this,
 										'PATCH',
-										`/groups/${encodeURIComponent(groupId)}`,
+										requestPath`/groups/${groupId}`,
 										body,
 									);
 									merge(item.json, body);
 								} catch (error) {
 									try {
-										await microsoftApiRequest.call(
-											this,
-											'DELETE',
-											`/groups/${encodeURIComponent(groupId)}`,
-										);
+										await microsoftApiRequest.call(this, 'DELETE', requestPath`/groups/${groupId}`);
 									} catch {}
 									throw error;
 								}
@@ -1190,7 +1186,7 @@ const updateFields: INodeProperties[] = [
 								await microsoftApiRequest.call(
 									this,
 									'PATCH',
-									`/groups/${encodeURIComponent(groupId)}`,
+									requestPath`/groups/${groupId}`,
 									body,
 								);
 							}

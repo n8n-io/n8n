@@ -2,6 +2,7 @@
 import type { InstanceAiMessage } from '@n8n/api-types';
 import type { RatingFeedback } from '@n8n/design-system';
 import {
+	N8nAttachmentGroup,
 	N8nButton,
 	N8nCallout,
 	N8nChatActions,
@@ -18,8 +19,11 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
+import { toAnsweredQuestionsToolCall } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import AiTypingIndicator from '../../shared/components/AiTypingIndicator.vue';
+import { isAwaitingFirstOutput } from '../builderAgents';
 
 const props = defineProps<{
 	message: InstanceAiMessage;
@@ -33,6 +37,7 @@ const showDebugInfo = ref(false);
 const isUser = computed(() => props.message.role === 'user');
 const isStreaming = computed(() => props.message.isStreaming);
 const showContent = computed(() => props.message.content.length > 0 || isStreaming.value);
+const showTypingIndicator = computed(() => isAwaitingFirstOutput(props.message));
 
 const runError = computed(() => {
 	const tree = props.message.agentTree;
@@ -99,6 +104,11 @@ const attachments = computed(() =>
 		return name && name !== attachment.name ? { ...attachment, name } : attachment;
 	}),
 );
+
+const resourceAttachments = computed(() =>
+	attachments.value.filter((item) => item.type !== 'file'),
+);
+const fileAttachments = computed(() => attachments.value.filter((item) => item.type === 'file'));
 
 /**
  * Answered questions that end the timeline, like the onboarding card that the host answers with
@@ -187,11 +197,19 @@ function formatJson(value: unknown): string {
 				]"
 			>
 				<AttachmentPreview
-					v-for="(attachment, index) in attachments"
+					v-for="(attachment, index) in resourceAttachments"
 					:key="index"
 					:attachment="attachment"
 					:is-removable="false"
 				/>
+				<N8nAttachmentGroup v-if="fileAttachments.length > 0" :class="$style.fileAttachments">
+					<AttachmentPreview
+						v-for="(attachment, index) in fileAttachments"
+						:key="index"
+						:attachment="attachment"
+						:is-removable="false"
+					/>
+				</N8nAttachmentGroup>
 			</div>
 		</template>
 
@@ -251,11 +269,7 @@ function formatJson(value: unknown): string {
 				<span>{{ statusMessage }}</span>
 			</div>
 
-			<!-- Blinking cursor while waiting for response -->
-			<span
-				v-else-if="isStreaming && !props.message.content && !props.message.agentTree"
-				:class="$style.blinkingCursor"
-			/>
+			<AiTypingIndicator v-else-if="showTypingIndicator" :class="$style.typingIndicator" />
 
 			<!-- Run stopped indicator (survives reload via the persisted cancelled status) -->
 			<div
@@ -296,13 +310,18 @@ function formatJson(value: unknown): string {
 		</template>
 
 		<template v-if="trailingAnswer" #after-actions>
-			<AnsweredQuestions :tool-call="trailingAnswer" />
+			<AnsweredQuestions :tool-call="toAnsweredQuestionsToolCall(trailingAnswer)" />
 		</template>
 	</N8nChatMessage>
 </template>
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
+
+.fileAttachments {
+	min-width: 0;
+	width: 100%;
+}
 
 .userAttachmentsAfterText {
 	margin-top: var(--spacing--2xs);
@@ -352,23 +371,8 @@ function formatJson(value: unknown): string {
 	}
 }
 
-.blinkingCursor {
-	display: inline-block;
-	width: 2px;
-	height: 1.2em;
-	background: var(--color--text);
-	animation: cursor-blink 1s step-end infinite;
-	vertical-align: text-bottom;
-}
-
-@keyframes cursor-blink {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0;
-	}
+.typingIndicator {
+	margin-top: var(--spacing--xs);
 }
 
 .runLevelError {

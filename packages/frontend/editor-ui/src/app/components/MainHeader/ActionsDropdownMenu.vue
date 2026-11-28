@@ -178,7 +178,10 @@ function handleFileImport() {
 			// Gate here, at the emitter: NodeView's 'importWorkflowData' handler is shared with
 			// the AI builder's version restore, which must not nudge.
 			void mcpJsonNudgeTrigger.gate('import_file', () =>
-				nodeViewEventBus.emit('importWorkflowData', { data: workflowData }),
+				nodeViewEventBus.emit('importWorkflowData', {
+					data: workflowData,
+					warnRestrictedNodes: true,
+				}),
 			);
 		};
 		reader.readAsText(inputRef.files[0]);
@@ -620,13 +623,19 @@ defineExpose({
 		<!-- The zero-size anchor pins the checklist popover (start-aligned, no offset)
 		 to the canvas top-left corner, 16px in from the header's bottom-left edge. -->
 		<span :class="$style.checklistAnchor">
-			<WorkflowProductionChecklist v-if="!isNewWorkflow" ref="productionChecklist" hide-trigger />
+			<WorkflowProductionChecklist
+				v-if="!isNewWorkflow"
+				ref="productionChecklist"
+				hide-trigger
+				:disable-auto-open="onExecutionsTab"
+			/>
 		</span>
 		<!-- sub-menu-max-height: ~12 rows of 32px; a longer submenu (e.g. dependencies) scrolls -->
 		<N8nDropdownMenu
 			:items="workflowMenuItems"
 			data-test-id="workflow-menu"
 			content-test-id="workflow-menu"
+			extra-popper-class="ignore-key-press-canvas"
 			placement="bottom-start"
 			max-height="var(--reka-dropdown-menu-content-available-height)"
 			:sub-menu-max-height="384"

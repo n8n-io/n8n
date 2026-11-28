@@ -17,7 +17,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Logger } from '@n8n/backend-common';
 
-import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/engine-lifecycle-event-subscriptions';
+import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/lifecycle-events/engine-lifecycle-event-subscriptions';
 import { createInMemoryExecutionChannel } from '@/modules/engine-v2/execution-channel/in-memory-execution-channel';
 import { ExecutionChannelReceiver } from '@/modules/engine-v2/execution-channel/execution-channel-receiver';
 import { createLifecycleEventCodec } from '@/modules/engine-v2/execution-channel/lifecycle-event-frame';
@@ -167,6 +167,20 @@ describe('lifecycle events of engine v2 runs', () => {
 		expect(sentMessages()).toEqual([
 			{
 				message: expect.objectContaining({
+					type: 'executionStarted',
+					data: expect.objectContaining({
+						executionId,
+						workflowId: workflow.id,
+						mode: 'manual',
+						workflowName: workflow.name,
+						// A full run starts from no run data.
+						flattedRunData: '[{}]',
+					}),
+				}),
+				pushRef: 'push-1',
+			},
+			{
+				message: expect.objectContaining({
 					type: 'nodeExecuteBefore',
 					data: expect.objectContaining({ executionId, nodeName: TRIGGER_NAME }),
 				}),
@@ -209,6 +223,76 @@ describe('lifecycle events of engine v2 runs', () => {
 		]);
 		// The terminal event ends the session, and the subscription with it.
 		expect(Container.get(EngineV2PushRegistry).get(executionId)).toBeUndefined();
+	});
+
+	test('shows a step that waits as waiting, and as running again once it resumes', async () => {
+		let setNodeId = '';
+		startExecution.mockImplementation(async (request: StartExecutionRequest) => {
+			const nodeId = request.graph.nodes.find((n) => n.name === SET_NAME)!.id;
+			setNodeId = nodeId;
+			const [started, stepStarted] = runEvents(request.executionId, request.workflowId, nodeId);
+			const stepWaiting: LifecycleEvent = {
+				type: 'step:waiting',
+				executionId: request.executionId,
+				stepId: 'step-1',
+				nodeId,
+				nodeName: SET_NAME,
+				iteration: 0,
+				at,
+			};
+			await lifecycleEventSender.send(
+				[started, stepStarted, stepWaiting],
+				new AbortController().signal,
+			);
+			return { executionId: request.executionId };
+		});
+
+		const { workflow, executionId } = await manualRun('push-1');
+
+		expect(sentMessages().at(-1)).toEqual({
+			message: expect.objectContaining({
+				type: 'nodeExecuteAfter',
+				data: expect.objectContaining({
+					executionId,
+					nodeName: SET_NAME,
+					data: expect.objectContaining({ executionStatus: 'waiting' }),
+				}),
+			}),
+			pushRef: 'push-1',
+		});
+		// The run is not over, so the editor keeps its session.
+		expect(Container.get(EngineV2PushRegistry).get(executionId)).toBeDefined();
+
+		const [firstStart] = sentMessages()
+			.map(({ message }) => message)
+			.filter((m) => m.type === 'nodeExecuteBefore' && m.data.nodeName === SET_NAME);
+		const [, stepStarted, stepCompleted] = runEvents(executionId, workflow.id, setNodeId);
+		pushSend().mockClear();
+
+		await lifecycleEventSender.send([stepStarted, stepCompleted], new AbortController().signal);
+
+		expect(sentMessages()).toEqual([
+			{
+				message: {
+					type: 'nodeExecuteBefore',
+					data: { ...firstStart.data, sequenceNumber: expect.any(Number) },
+				},
+				pushRef: 'push-1',
+			},
+			{
+				message: expect.objectContaining({
+					type: 'nodeExecuteAfter',
+					data: expect.objectContaining({
+						nodeName: SET_NAME,
+						data: expect.objectContaining({ executionStatus: 'success' }),
+					}),
+				}),
+				pushRef: 'push-1',
+			},
+			expect.objectContaining({
+				message: expect.objectContaining({ type: 'nodeExecuteAfterData' }),
+			}),
+		]);
 	});
 
 	test('stops relaying once the run has finished', async () => {

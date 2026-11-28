@@ -92,11 +92,11 @@ export function suggestReplacementModels(
 
 function formatReplacementGuidance(suggestions: string[]): string {
 	if (suggestions.length === 0) {
-		return 'Use get_node_parameter_options on the chat-model node with its connected credential to list allowed models.';
+		return 'Run get_node_parameter_options through call_tool on the chat-model node with its connected credential to list allowed models.';
 	}
 	return (
 		`Prefer one of: ${suggestions.map((id) => `"${id}"`).join(', ')}. ` +
-		'Confirm with get_node_parameter_options against the connected credential before repairing.'
+		'Confirm by running get_node_parameter_options through call_tool against the connected credential before repairing.'
 	);
 }
 
@@ -275,7 +275,7 @@ export async function computeUnavailableLocatorIssues(
 		const resourceType = isModel ? 'allowed models' : 'allowed options';
 		issues[entry.name] = [
 			`"${sanitizeForGuidance(entry.currentValue)}" isn't available with the connected credential "${sanitizeForGuidance(credential.name)}". ` +
-				`Pick a value the credential offers instead — use get_node_parameter_options to list ${resourceType}.`,
+				`Pick a value the credential offers instead — run get_node_parameter_options through call_tool to list ${resourceType}.`,
 		];
 	}
 	return issues;
@@ -311,7 +311,7 @@ export async function computeChatModelValidationIssues(
 
 	const typeVersion = node.typeVersion ?? 1;
 	const parameters = (node.parameters ?? {}) as Record<string, unknown>;
-	const catalog = await loadCatalogWithTimeout(context.modelFetch);
+	const catalog = await loadCatalogWithTimeout(context.catalogFetch ?? context.modelFetch);
 	const issues = computeCatalogChatModelIssues(node.type, parameters, catalog);
 
 	const entry = resolveChatModelCatalogEntry(node.type);
@@ -392,7 +392,7 @@ export interface ChatModelRecoveryContext {
  * replacement suggestions per node, and n8n-credits availability.
  */
 export async function collectChatModelRecoveryContext(
-	context: Pick<InstanceAiContext, 'credentialService' | 'modelFetch'>,
+	context: Pick<InstanceAiContext, 'credentialService' | 'modelFetch' | 'catalogFetch'>,
 	nodes: ReadonlyArray<{ name?: string; type?: string }>,
 	connections: IConnections | Record<string, unknown> | undefined,
 ): Promise<ChatModelRecoveryContext> {
@@ -403,7 +403,7 @@ export async function collectChatModelRecoveryContext(
 		return { relatedNodeNames, suggestionsByNodeName, creditsCoveredNodeNames };
 	}
 
-	const catalog = await loadCatalogWithTimeout(context.modelFetch);
+	const catalog = await loadCatalogWithTimeout(context.catalogFetch ?? context.modelFetch);
 	const gatewaySupportByCredType = new Map<string, boolean>();
 	for (const node of nodes) {
 		if (!node.name || !isChatModelNode(node.type)) continue;

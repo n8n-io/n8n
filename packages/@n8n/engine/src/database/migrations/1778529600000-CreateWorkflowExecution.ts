@@ -49,6 +49,14 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 							'Which lifecycle events the caller subscribes to (none or all). NULL means none.',
 					},
 					{
+						name: 'stale_after',
+						type: 'timestamptz',
+						precision: 3,
+						isNullable: true,
+						comment:
+							'When the engine treats a queued execution as stuck. Written when the row becomes queued. NULL in every other status.',
+					},
+					{
 						name: 'created_at',
 						type: 'timestamptz',
 						precision: 3,
@@ -96,6 +104,12 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 				name: 'idx_workflow_execution_parent_execution_id',
 				columnNames: ['parent_execution_id'],
 				where: 'parent_execution_id IS NOT NULL',
+			}),
+			// For the search for stuck executions. Only queued rows are in the index.
+			new TableIndex({
+				name: 'idx_workflow_execution_stale_after',
+				columnNames: ['stale_after'],
+				where: "status = 'queued'",
 			}),
 		]);
 	}

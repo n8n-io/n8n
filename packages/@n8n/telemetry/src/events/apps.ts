@@ -92,7 +92,7 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 			change_source: z
 				.enum(['initial', 'chat', 'restore', 'retry', 'bindings'])
 				.describe(
-					"'initial' is the first version of the app, 'chat' a later change from the Assistant, 'bindings' a change of the resources the app can use",
+					"'initial' is the first version of the app with code, 'chat' a later change from the Assistant, 'bindings' a change of the resources the app can use. A bindings change before any code builds an empty scaffold, which is 'bindings', not 'initial'",
 				),
 			status: z.enum(['succeeded', 'failed']),
 			attempts: z.number().describe('Build attempts, including automatic retries'),
@@ -117,6 +117,15 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 			project_id: z.string(),
 			version_id: z.string().describe('The new draft version that holds the bindings'),
 			user_id: z.string(),
+			thread_id: z
+				.string()
+				.optional()
+				.describe('The n8n Assistant thread that made the change. Absent outside the Assistant'),
+			source: z
+				.enum(['assistant', 'user'])
+				.describe(
+					"'assistant' is a change from the n8n Assistant, 'user' a change in Configure mode or through the API",
+				),
 			workflow_count: z.number(),
 			data_table_count: z.number(),
 			agent_count: z.number(),

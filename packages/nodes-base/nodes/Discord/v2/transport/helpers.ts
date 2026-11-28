@@ -4,7 +4,8 @@ import type {
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IRequestOptions,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
 
@@ -53,11 +54,12 @@ function isRateLimitError(
 
 export async function requestApi(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	options: IRequestOptions,
+	options: LegacyRequestOptions,
 	credentialType: string,
-	endpoint: string,
+	endpoint: RequestPath,
 ) {
-	const useCustomAuth = credentialType === 'discordOAuth2Api' && endpoint !== '/users/@me/guilds';
+	const useCustomAuth =
+		credentialType === 'discordOAuth2Api' && endpoint.value !== '/users/@me/guilds';
 
 	if (useCustomAuth) {
 		const credentials = await this.getCredentials('discordOAuth2Api');

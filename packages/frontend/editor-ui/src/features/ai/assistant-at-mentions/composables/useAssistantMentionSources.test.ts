@@ -5,14 +5,21 @@ import { createPinia, setActivePinia } from 'pinia';
 import { effectScope, nextTick, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { listAgentsPage } from '@/features/agents/composables/useAgentApi';
+
 import type { AssistantMentionItem, MentionSourceProvider } from '../assistantAtMentions.types';
 import { buildWorkflowMentionItem } from '../utils/buildMentionItems';
 import {
+	createAgentMentionSourceProvider,
 	createArtifactMentionSourceProvider,
 	createWorkflowMentionSourceProvider,
 	useAssistantMentionSources,
 } from './useAssistantMentionSources';
 import { useArtifactMentionIndex } from './useArtifactMentionIndex';
+
+vi.mock('@/features/agents/composables/useAgentApi', () => ({
+	listAgentsPage: vi.fn(),
+}));
 
 function makeWorkflow(id: string, name: string): IWorkflowDb {
 	return {
@@ -87,11 +94,7 @@ describe('createWorkflowMentionSourceProvider', () => {
 				includeScopes: false,
 			},
 		});
-		expect(items.map(({ workflowId }) => workflowId)).toEqual([
-			'recent',
-			'backfill-1',
-			'backfill-2',
-		]);
+		expect(items.map(({ entityId }) => entityId)).toEqual(['recent', 'backfill-1', 'backfill-2']);
 	});
 
 	it('does not backfill when ten recent workflows are available', async () => {
@@ -124,7 +127,7 @@ describe('createWorkflowMentionSourceProvider', () => {
 			artifactWorkflowIds: [],
 		});
 
-		expect((await source.browse()).map(({ workflowId }) => workflowId)).toEqual(['recent']);
+		expect((await source.browse()).map(({ entityId }) => entityId)).toEqual(['recent']);
 	});
 
 	it('backfills project workflows when the recent lookup fails', async () => {
@@ -142,7 +145,7 @@ describe('createWorkflowMentionSourceProvider', () => {
 			artifactWorkflowIds: ['artifact'],
 		});
 
-		expect((await source.browse()).map(({ workflowId }) => workflowId)).toEqual(['backfill']);
+		expect((await source.browse()).map(({ entityId }) => entityId)).toEqual(['backfill']);
 	});
 
 	it('rejects when both the recent lookup and the backfill fail', async () => {
@@ -202,7 +205,7 @@ describe('createWorkflowMentionSourceProvider', () => {
 				includeScopes: false,
 			},
 		});
-		expect(results.map(({ workflowId }) => workflowId)).toEqual(['artifact', 'result']);
+		expect(results.map(({ entityId }) => entityId)).toEqual(['artifact', 'result']);
 	});
 
 	it('overfetches enough workflow matches to replace excluded results', async () => {
@@ -224,7 +227,7 @@ describe('createWorkflowMentionSourceProvider', () => {
 			expect.objectContaining({ options: expect.objectContaining({ take: 11 }) }),
 		);
 		expect(results).toHaveLength(10);
-		expect(results.map(({ workflowId }) => workflowId)).not.toContain('workflow-0');
+		expect(results.map(({ entityId }) => entityId)).not.toContain('workflow-0');
 	});
 
 	it('does not issue unscoped browse or search requests', async () => {
@@ -579,9 +582,7 @@ describe('useAssistantMentionSources', () => {
 
 		artifacts.value = [{ id: '2', name: 'Workflow 2' }];
 		await vi.waitFor(() =>
-			expect(sources.browseSections.value[0].items.map(({ workflowId }) => workflowId)).toEqual([
-				'2',
-			]),
+			expect(sources.browseSections.value[0].items.map(({ entityId }) => entityId)).toEqual(['2']),
 		);
 		scope.stop();
 	});
@@ -644,5 +645,61 @@ describe('useAssistantMentionSources', () => {
 
 		expect(searchSpy).toHaveBeenCalledTimes(1);
 		scope.stop();
+	});
+});
+
+describe('createAgentMentionSourceProvider', () => {
+	const agent = { id: 'a1', name: 'Support agent', projectId: 'project-1' };
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.mocked(listAgentsPage).mockReset();
+		vi.mocked(listAgentsPage).mockResolvedValue({
+			count: 1,
+			data: [agent] as unknown as Awaited<ReturnType<typeof listAgentsPage>>['data'],
+		});
+	});
+
+	it('browses the most recently updated agents of the project', async () => {
+		const source = createAgentMentionSourceProvider({ projectId: ref('project-1') });
+
+		const items = await source.browse();
+
+		expect(listAgentsPage).toHaveBeenCalledWith(expect.anything(), 'project-1', {
+			limit: 10,
+			sortBy: 'updatedAt:desc',
+		});
+		expect(items).toEqual([
+			{
+				key: 'agent:a1',
+				kind: 'agent',
+				source: 'agents',
+				label: 'Support agent',
+				breadcrumbs: ['Support agent'],
+				entityId: 'a1',
+				projectId: 'project-1',
+			},
+		]);
+	});
+
+	it('searches the agents of the project by name', async () => {
+		const source = createAgentMentionSourceProvider({ projectId: ref('project-1') });
+
+		await source.search('  support ');
+
+		expect(listAgentsPage).toHaveBeenCalledWith(expect.anything(), 'project-1', {
+			limit: 10,
+			sortBy: 'updatedAt:desc',
+			filter: { query: 'support' },
+		});
+	});
+
+	it('lists nothing without a project or a query', async () => {
+		const withoutProject = createAgentMentionSourceProvider({ projectId: ref(undefined) });
+		const withProject = createAgentMentionSourceProvider({ projectId: ref('project-1') });
+
+		expect(await withoutProject.browse()).toEqual([]);
+		expect(await withProject.search('   ')).toEqual([]);
+		expect(listAgentsPage).not.toHaveBeenCalled();
 	});
 });

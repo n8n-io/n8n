@@ -8,10 +8,12 @@ import {
 	createAgent,
 	deleteN8nChatThread,
 	deleteSystemAgentThread,
+	generateAgentTestScenarios,
 	getAgentBackgroundJobs,
 	getAgentBudgetSpend,
 	getAgentChatQueue,
 	getAgentTaskCancellation,
+	getIntegrationAccount,
 	getN8nChatAgent,
 	getN8nChatThread,
 	removeAgentQueuedMessage,
@@ -48,6 +50,21 @@ const restApiContext = { baseUrl: '/rest', pushRef: 'push-ref' };
 describe('useAgentApi', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('getIntegrationAccount', () => {
+		it('requests the account of the integration type with GET', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ botName: 'bot' });
+
+			await expect(
+				getIntegrationAccount(restApiContext, 'project-1', 'agent-1', 'slack/x'),
+			).resolves.toEqual({ botName: 'bot' });
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/project-1/agents/v2/agent-1/integrations/slack%2Fx/account',
+			);
+		});
 	});
 
 	describe('listAttachableSkills', () => {
@@ -143,8 +160,8 @@ describe('useAgentApi', () => {
 			vi.mocked(getFullApiResponse).mockResolvedValueOnce(response);
 
 			const result = await listAgentsPage(restApiContext, 'project-1', {
-				skip: 10,
-				take: 25,
+				offset: 10,
+				limit: 25,
 				sortBy: 'name:asc',
 				filter: { query: 'support' },
 			});
@@ -154,8 +171,8 @@ describe('useAgentApi', () => {
 				'GET',
 				'/projects/project-1/agents/v2',
 				{
-					skip: 10,
-					take: 25,
+					offset: 10,
+					limit: 25,
 					sortBy: 'name:asc',
 					filter: { query: 'support' },
 				},
@@ -180,14 +197,14 @@ describe('useAgentApi', () => {
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2',
-				{ skip: 0, take: 250 },
+				{ offset: 0, limit: 250 },
 			);
 			expect(getFullApiResponse).toHaveBeenNthCalledWith(
 				2,
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2',
-				{ skip: 1, take: 250 },
+				{ offset: 1, limit: 250 },
 			);
 		});
 	});
@@ -217,6 +234,25 @@ describe('useAgentApi', () => {
 				['GET', '/agents/system/assistant/chat/thread-1/messages'],
 				['GET', '/agents/system/assistant/chat/thread-1/queue'],
 				['DELETE', '/agents/system/assistant/chat/runs/run-1'],
+			]);
+		});
+
+		it('reads a page of chat messages, with the cursor only when set', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue({ messages: [], openSuspensions: [] });
+
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1');
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1', 'chat', {
+				limit: 20,
+			});
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1', 'chat', {
+				limit: 20,
+				cursor: 'cursor-1',
+			});
+
+			expect(vi.mocked(makeRestApiRequest).mock.calls.map((call) => call.slice(3))).toEqual([
+				[],
+				[{ limit: '20' }],
+				[{ limit: '20', cursor: 'cursor-1' }],
 			]);
 		});
 
@@ -378,6 +414,18 @@ describe('useAgentApi', () => {
 				'/projects/p1/agents/v2/a1/n8n-chat/th-1/files',
 			);
 		});
+
+		it('lists the files of a system agent session on the system route, without a project', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ files: [] });
+
+			await getSessionFiles(restApiContext, 'p1', 'assistant', 'th-1', 'system');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/agents/system/assistant/chat/th-1/files',
+			);
+		});
 	});
 
 	describe('getChatMessages', () => {
@@ -392,6 +440,24 @@ describe('useAgentApi', () => {
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2/agent-1/chat/agent-1%3Achat%3Abot-1-2%231/messages',
+			);
+		});
+	});
+
+	describe('generateAgentTestScenarios', () => {
+		it('posts to the test-scenarios endpoint with encoded identifiers and optional previousScenarios', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ scenarios: ['Scenario 1'] });
+
+			const result = await generateAgentTestScenarios(restApiContext, 'project/1', 'agent/1', {
+				previousScenarios: ['Old scenario'],
+			});
+
+			expect(result).toEqual({ scenarios: ['Scenario 1'] });
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'POST',
+				'/projects/project%2F1/agents/v2/agent%2F1/chat/test-scenarios',
+				{ previousScenarios: ['Old scenario'] },
 			);
 		});
 	});
@@ -521,15 +587,15 @@ describe('useAgentApi', () => {
 
 			const result = await listN8nChatAgents(restApiContext, {
 				query: '  support  ',
-				skip: 10,
-				take: 50,
+				offset: 10,
+				limit: 50,
 				sortBy: 'usage:desc',
 			});
 
 			expect(getFullApiResponse).toHaveBeenCalledWith(restApiContext, 'GET', '/agents/v2', {
 				filter: { availableInChat: true, query: 'support' },
-				skip: 10,
-				take: 50,
+				offset: 10,
+				limit: 50,
 				sortBy: 'usage:desc',
 			});
 			expect(result).toBe(response);
@@ -538,19 +604,19 @@ describe('useAgentApi', () => {
 		it('omits the query from the filter when blank — not given, empty, or whitespace-only', async () => {
 			vi.mocked(getFullApiResponse).mockResolvedValue({ count: 0, data: [] });
 
-			await listN8nChatAgents(restApiContext, { skip: 0, take: 50 });
-			await listN8nChatAgents(restApiContext, { query: '   ', skip: 0, take: 50 });
+			await listN8nChatAgents(restApiContext, { offset: 0, limit: 50 });
+			await listN8nChatAgents(restApiContext, { query: '   ', offset: 0, limit: 50 });
 
 			expect(getFullApiResponse).toHaveBeenNthCalledWith(1, restApiContext, 'GET', '/agents/v2', {
 				filter: { availableInChat: true },
-				skip: 0,
-				take: 50,
+				offset: 0,
+				limit: 50,
 				sortBy: undefined,
 			});
 			expect(getFullApiResponse).toHaveBeenNthCalledWith(2, restApiContext, 'GET', '/agents/v2', {
 				filter: { availableInChat: true },
-				skip: 0,
-				take: 50,
+				offset: 0,
+				limit: 50,
 				sortBy: undefined,
 			});
 		});
@@ -594,7 +660,7 @@ describe('useAgentApi', () => {
 		it('posts the initial config and reserved agent id', async () => {
 			const config: AgentJsonConfig = {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 			};
 
@@ -613,25 +679,22 @@ describe('useAgentApi', () => {
 	});
 
 	describe('duplicateAgent', () => {
-		it('fetches the source agent and config, then creates a clone with the new name', async () => {
+		it('fetches the source agent, then creates a clone with the new name', async () => {
+			const sourceConfig = {
+				name: 'Support Agent',
+				model: 'anthropic/claude-sonnet-5-5',
+				instructions: 'Triage tickets.',
+			} as unknown as AgentJsonConfig;
 			const sourceAgent = {
 				id: 'agent-1',
 				name: 'Support Agent',
-				schema: { personalisation: { icon: 'bot' } },
+				config: sourceConfig,
 				tools: { refund_tool: { code: 'return 1', descriptor: { name: 'refund_tool' } } },
 				skills: { skill_abc: { name: 'Triage', description: '', instructions: '' } },
 			} as unknown as AgentResource;
-			const sourceConfig = {
-				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
-				instructions: 'Triage tickets.',
-			} as unknown as AgentJsonConfig;
 			const cloned = { id: 'agent-2', name: 'Support Agent (copy)' } as unknown as AgentResource;
-			// getAgent, getAgentConfig, then createAgent — in Promise.all order then sequential.
-			// getAgentConfig returns the AgentConfigResponse envelope { config, configHash }.
 			vi.mocked(makeRestApiRequest)
 				.mockResolvedValueOnce(sourceAgent)
-				.mockResolvedValueOnce({ config: sourceConfig, configHash: 'hash-1' })
 				.mockResolvedValueOnce(cloned);
 
 			const result = await duplicateAgent(
@@ -642,23 +705,16 @@ describe('useAgentApi', () => {
 			);
 
 			expect(result).toBe(cloned);
-			// getAgent + getAgentConfig fetched in parallel.
 			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
 				1,
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2/agent-1',
 			);
-			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
-				2,
-				restApiContext,
-				'GET',
-				'/projects/project-1/agents/v2/agent-1/config',
-			);
 			// createAgent posts the copied config with the new name overriding the source name;
 			// tasks are dropped and integrations are copied without their credential.
 			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
-				3,
+				2,
 				restApiContext,
 				'POST',
 				'/projects/project-1/agents/v2',
@@ -672,16 +728,9 @@ describe('useAgentApi', () => {
 		});
 
 		it('copies channels without their credential so the clone opens as drafts', async () => {
-			const sourceAgent = {
-				id: 'agent-1',
-				name: 'Support Agent',
-				schema: { personalisation: { icon: 'bot' } },
-				tools: {},
-				skills: {},
-			} as unknown as AgentResource;
 			const sourceConfig = {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				integrations: [
 					{ type: 'telegram', credentialId: 'cred-telegram-1' },
@@ -689,15 +738,21 @@ describe('useAgentApi', () => {
 					{ type: 'n8n_chat', credentialId: '' },
 				],
 			} as unknown as AgentJsonConfig;
+			const sourceAgent = {
+				id: 'agent-1',
+				name: 'Support Agent',
+				config: sourceConfig,
+				tools: {},
+				skills: {},
+			} as unknown as AgentResource;
 			const cloned = { id: 'agent-2', name: 'Support Agent (copy)' } as unknown as AgentResource;
 			vi.mocked(makeRestApiRequest)
 				.mockResolvedValueOnce(sourceAgent)
-				.mockResolvedValueOnce({ config: sourceConfig, configHash: 'hash-1' })
 				.mockResolvedValueOnce(cloned);
 
 			await duplicateAgent(restApiContext, 'project-1', 'agent-1', 'Support Agent (copy)');
 
-			const [, , , postBody] = vi.mocked(makeRestApiRequest).mock.calls[2] as [
+			const [, , , postBody] = vi.mocked(makeRestApiRequest).mock.calls[1] as [
 				unknown,
 				string,
 				string,

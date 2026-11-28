@@ -1,4 +1,5 @@
 import type {
+	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -7,9 +8,57 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
+import { UserError } from '@n8n/errors';
+
+import { formatAndValidatePem } from '../../utils/pem';
+
 import { getDateAsStringTypeParsers } from '@utils/postgres';
 
 import { pgInsert, pgQueryV2 } from '../Postgres/v1/genericFunctions';
+
+type QuestDbSsl = boolean | { ca?: string; rejectUnauthorized?: false };
+
+type QuestDbConfig = {
+	host: string;
+	port: number;
+	database: string;
+	user: string;
+	password: string;
+	ssl: QuestDbSsl;
+};
+
+function buildSsl(credentials: ICredentialDataDecryptedObject): QuestDbSsl {
+	if (['disable', undefined].includes(credentials.ssl as string | undefined)) return false;
+
+	// Skipping verification makes a CA unreachable, so refuse the pair rather than
+	// letting the user believe the CA they supplied is being checked.
+	const skipVerification = credentials.allowUnauthorizedCerts === true;
+	const ca = (credentials.caCertificate as string | undefined)?.trim();
+
+	if (ca && skipVerification) {
+		throw new UserError('Set a CA Certificate or Ignore SSL Issues, not both', {
+			level: 'warning',
+			description:
+				'Ignoring SSL issues skips certificate verification entirely, so the CA Certificate would never be used.',
+		});
+	}
+
+	if (skipVerification) return { rejectUnauthorized: false };
+	if (ca) return { ca: formatAndValidatePem(ca, 'QuestDB', 'CA certificate') };
+
+	return true;
+}
+
+export function getQuestDbConfig(credentials: ICredentialDataDecryptedObject): QuestDbConfig {
+	return {
+		host: credentials.host as string,
+		port: credentials.port as number,
+		database: credentials.database as string,
+		user: credentials.user as string,
+		password: credentials.password as string,
+		ssl: buildSsl(credentials),
+	};
+}
 
 export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,7 +67,7 @@ export class QuestDb implements INodeType {
 
 		icon: 'file:questdb.png',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Get, add and update data in QuestDB',
 		defaults: {
 			name: 'QuestDB',
@@ -204,20 +253,15 @@ export class QuestDb implements INodeType {
 
 		const pgp = pgPromise();
 
-		const config = {
-			host: credentials.host as string,
-			port: credentials.port as number,
-			database: credentials.database as string,
-			user: credentials.user as string,
-			password: credentials.password as string,
-			ssl: !['disable', undefined].includes(credentials.ssl as string | undefined),
-			sslmode: (credentials.ssl as string) || 'disable',
-		};
+		const config = getQuestDbConfig(credentials);
 
 		const db = pgp({
 			...config,
 			// Return date/timestamp columns as strings so node output stays JSON-safe
-			...(this.getNode().typeVersion >= 1.1 ? { types: getDateAsStringTypeParsers(pgp) } : {}),
+			...(this.getNode().typeVersion >= 1.1
+				? // QuestDB sends a UTC value, so the zoneless reading would strip a real offset, ENT-882
+					{ types: getDateAsStringTypeParsers(pgp, { legacyUtcTimestamps: true }) }
+				: {}),
 		});
 
 		let returnItems: INodeExecutionData[] = [];
@@ -236,6 +280,7 @@ export class QuestDb implements INodeType {
 			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
 				overrideMode: mode,
 				resolveExpression: true,
+				literalExpressions: this.getNode().typeVersion >= 1.2,
 			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);

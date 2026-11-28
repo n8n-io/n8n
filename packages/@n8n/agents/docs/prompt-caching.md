@@ -10,11 +10,11 @@ explicitly (via `.instructions(text, { providerOptions })`, call-level
 ```typescript
 // Defaults tuned for agent workloads: Anthropic gets a 1h instruction
 // breakpoint, OpenAI gets 24h retention plus an auto-generated cache key.
-new Agent('assistant').model('anthropic/claude-sonnet-4-5').promptCaching().instructions(LONG_SYSTEM_PROMPT);
+new Agent('assistant').model('anthropic/claude-sonnet-5-5').promptCaching().instructions(LONG_SYSTEM_PROMPT);
 
 // Override a field, or disable a provider entirely.
 new Agent('assistant')
-  .model('anthropic/claude-sonnet-4-5')
+  .model('anthropic/claude-sonnet-5-5')
   .promptCaching({ anthropic: { ttl: '5m' } })
   .instructions(LONG_SYSTEM_PROMPT);
 
@@ -24,26 +24,35 @@ new Agent('assistant')
   .instructions(LONG_SYSTEM_PROMPT);
 ```
 
-## The n8n Agent JSON config is a mandatory, simplified surface
+## The n8n Agent JSON config is a simplified surface
 
 The richer SDK shape above (OpenAI key/retention overrides) is for direct SDK
 callers. The n8n Agent product (JSON config / builder UI) exposes
 `config.promptCaching: { enabled: boolean; anthropic?: { ttl?: '5m' | '1h' } }`
 and passes explicit settings to `agent.promptCaching(config.promptCaching)`.
 
-- **Mandatory in the builder.** For OpenAI, Anthropic, and Claude on OpenRouter
-  or Vertex, the config is always force-written with `{ enabled: true, ... }` by the
-  builder agent's write-path normalizer and the model picker — regardless of
-  what the LLM or a prior config said; there is no user-facing way to disable
-  it. Other models do not get the field.
+- **On by default in the builder.** For OpenAI, Anthropic, and Claude on
+  OpenRouter, Vertex, or Microsoft Foundry, the builder agent's write-path
+  normalizer and the model picker write `{ enabled: true, ... }` when the config
+  has no explicit setting. They keep an explicit `{ enabled: false }`. A builder
+  write that omits `promptCaching` keeps the stored setting. The user turns caching off with
+  the Prompt caching switch in the Advanced panel, for example when a proxy
+  rejects the OpenAI `prompt_cache_key` / `prompt_cache_retention` fields. When
+  it is off, the runtime sends no cache fields. Other models do not get the
+  field.
+- **Rejected cache fields get a readable error.** When a provider answers 400
+  or 422 and the payload names `prompt_cache_key` or `prompt_cache_retention`,
+  the runtime replaces the error with `PromptCacheParamsError`. Its message tells
+  the user to turn off Prompt caching. The provider error stays on `cause`.
 - **Existing routed Claude agents get the default on their next run.** When a
-  saved `openrouter/anthropic/claude-*` or `google-vertex/claude-*` agent has no
+  saved `openrouter/anthropic/claude-*`, `google-vertex/claude-*`, or
+  `azure-openai/anthropic/<deployment>` agent has no
   cache config, the JSON loader supplies `{ enabled: true }`. This does not
   change the saved config. Explicit settings, including `enabled: false`, pass
   through unchanged. Standalone SDK use stays opt-in.
-- **Claude cache duration defaults to `1h`.** The Advanced panel renders
-  a Cache duration dropdown (`5m` / `1h`) for Anthropic and routed Claude agents.
-  OpenAI has no sub-config or UI (its caching is fully automatic server-side).
+- **Claude cache duration defaults to `1h`.** When caching is on, the Advanced
+  panel renders a Cache duration dropdown (`5m` / `1h`) for Anthropic and routed
+  Claude agents. OpenAI has only the switch (its caching is automatic server-side).
   The TTL is preserved when switching between the supported Claude routes.
 
 ## Native tool deferral
@@ -91,8 +100,10 @@ does not guarantee support for every future model.
 The runtime checks the model version, API route, and effective endpoint before
 the request. Older versions, excluded variants, unknown model ID formats, other
 providers, Chat Completions, and custom endpoints use the complete eager catalog.
-Gateway credits also stays eager. Direct SDK callers keep the existing
-`search_tools` and `load_tool` behavior unless they enable this policy.
+Gateway credits also stays eager. When native search is not available, or the
+agent sets `.toolDeferral({ mode: 'tool-catalog' })`, deferred tools go behind the
+tool catalog: the prompt lists their names, and the model uses `find_tools` and
+`call_tool`.
 
 Discovered definitions stay at their original history positions. OpenAI appends
 search results to the conversation. Anthropic expands tool references in the
@@ -120,51 +131,20 @@ prefix byte-stable, which both OpenAI's automatic caching and Anthropic's
 enabled.
 
 Tools can attach a `systemInstruction` fragment (`Tool.systemInstruction(...)`)
-that gets merged into the system prompt. Native deferral includes all catalog
-fragments from the first request and keeps them stable after discovery. Legacy
-deferred tools loaded mid-conversation
-via `load_tool` are a special case: if a newly loaded tool has a
-`systemInstruction`, merging it into the same cached instructions string the
-moment it loads would change that string's bytes — a full-prefix cache miss
-for OpenAI, and an invalidated breakpoint for Anthropic, for the rest of the
-conversation.
+that gets merged into the system prompt. Native deferral and the tool catalog both include all deferred-tool
+fragments from the first request. Neither mode adds tools mid-run, so
+`RuntimeContextBuilder.composeEffectiveInstructions()` keeps every fragment
+(base tools, the tool catalog controllers `find_tools` / `call_tool`, deferred
+tools, the episodic-memory tools) in the cached instructions message. The
+uncached second system message carries only host volatile instructions and
+observation-log memory (see `buildSystemMessages`).
 
-`RuntimeContextBuilder.composeEffectiveInstructions()` avoids this by
-splitting fragments by stability:
-
-- **Stable** (base tools, the deferred-tool controllers `search_tools` /
-  `load_tool`, the episodic-memory tools) stay in the cached instructions
-  message — this set never changes for the life of a run.
-- **Volatile** (tools loaded via `load_tool` during the conversation) are
-  routed into the same uncached second system message that observation-log
-  memory uses (see `buildSystemMessages`), not dropped — the model still
-  sees the instruction the moment the tool loads, just outside the cached
-  prefix.
-
-Runtime skills follow the same principle. `ActiveSkills.modelMessages()`
-appends the current skill body to the tool result that activated it: a
-`load_skill` call, or any tool that calls `ctx.loadSkill`. Recorded `load_skill`
-results are collapsed to `{ skillId, active }` first, so an obsolete persisted
-body is never replayed. A programmatic activation stamps its tool call with the
-skill id, so the skill re-anchors to the same result on later turns. The
-top-level system prompt does not mention an anchored skill, so activating and
-carrying a skill never rewrites the cached prefix. The `<active_skills>` block
-is a recovery path. `instructions()` moves a skill into it only when no
-visible, successfully resolved tool result can carry it: observational memory
-masked the result, the activating call failed, or no record of the activation
-exists.
-
-The block is not part of the base instructions. `buildSystemMessages` sends it
-as its own system message, after the base instructions and before the volatile
-message. The tools and base instructions in front of it stay byte-identical, so
-they stay cached when a skill moves into the block. On the native Anthropic API
-and for Claude on Vertex, the block reuses the instruction cache options. It gets
-its own breakpoint and stays cached when memory compacts again later.
-`buildSkillInstructionCacheOptions` drops that breakpoint when it would leave
-no slot for the conversation breakpoint next to caller breakpoints on tools,
-history messages, and their content parts.
-Providers without split system messages get the block merged after the base
-instructions, as before.
+Runtime skills follow the same principle. A skill body is the plain result of
+its `load_skill` call. The runtime does not track loaded skills, re-inject
+bodies, or add skill text to the system prompt, so loading a skill never
+rewrites the cached prefix. The result stays in history like any other tool
+result. When observational memory compacts that result away, the model calls
+`load_skill` again if it still needs the skill.
 
 Tools that a registered skill lists in `dependencies.tools` are active for the
 whole run. `AgentRuntime` moves them out of the deferred set at construction.
@@ -245,13 +225,14 @@ back to memory, checkpoints, or `AgentMessageList`):
   read the cached prefix instead of reprocessing the whole transcript on
   every call.
 - **Tool-definitions breakpoint.** The runtime puts a `cacheControl` marker on
-  the last eligible local tool when the catalog is static. This includes the
-  complete eager catalog and native tool search. In native mode, the selected
+  the last eligible local tool when the toolset is static. This includes a
+  complete eager toolset, native tool search, and the tool catalog. The tool
+  catalog sends the eager tools and the fixed `find_tools` / `call_tool`
+  controllers. It does not send the deferred tools. In native mode, the selected
   tool must be non-deferred. The runtime never puts a generated cache marker on
   a deferred tool. A caller-supplied marker makes that tool eager and stays
-  unchanged. Legacy `load_tool` catalogs have no automatic tool breakpoint
-  because their definitions can change during the conversation. Runtime memory
-  tools do not change this rule. Their definitions stay stable within a run.
+  unchanged. Runtime memory tools do not change this rule. Their definitions
+  stay stable within a run.
 
 Both markers reuse the configured Anthropic TTL (`getAnthropicCacheTtl`).
 
@@ -315,8 +296,11 @@ these two options only influence routing and retention.
   or the excess traffic overflows to additional machines (each a cache miss).
 - **`promptCacheRetention: '24h'` (default).** Extends retention beyond the
   default ~5–10 minute in-memory window. It's free on `gpt-4.1`, `gpt-5`, and
-  `gpt-5.1`; on `gpt-5.5` and later, `'24h'` is the only supported value.
+  `gpt-5.1`; on `gpt-5.5` and `gpt-5.6`, `'24h'` is the only supported value.
   Pass `'in_memory'` explicitly to opt back into the short-lived default.
+  GPT-6 and later do not accept the option. For them n8n never sends a
+  retention, even when one is set, and assumes the 30 minute minimum lifetime
+  that OpenAI documents for GPT-5.6 and later.
 
 ## Reading cache usage and cost
 
@@ -347,8 +331,7 @@ rate in the estimate.
 
 ## What this does not do
 
-- The tool-definitions breakpoint covers one static catalog. Legacy
-  `search_tools` / `load_tool` catalogs have no automatic tool caching. In native
+- The tool-definitions breakpoint covers one static catalog. In native
   mode, a caller cache marker keeps the marked tool eager.
 - Only one moving conversation-history breakpoint is added per call — there
   is no second/dual breakpoint for splitting "older, stable" history from

@@ -1,0 +1,26 @@
+operationId: getPromotionSettings
+tags:
+  - Promotions
+summary: 'Beta: Get the promotion settings'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Returns who can promote, approve, and apply in their own projects, and whether every promote needs a review. Instance owners and admins can always promote, approve, and apply.
+
+  Requires the `securitySettings:manage` API key scope.
+x-required-scope: securitySettings:manage
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/promotionSettingsPublicDto.generated.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

@@ -8,6 +8,7 @@ import {
 	N8N_CHAT_ACTION_TOOL_NAME,
 	WAIT_TOOL_NAME,
 	type AgentChatMessagesResponse,
+	type AgentPersistedMessageDto,
 	type AgentSseEvent,
 } from '@n8n/api-types';
 
@@ -236,6 +237,7 @@ function buildHook(
 		channel?: Ref<'chat' | 'n8n-chat' | 'system'>;
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
 		onStreamEvent?: UseAgentChatStreamParams['onStreamEvent'];
+		messageReferences?: UseAgentChatStreamParams['messageReferences'];
 	} = {},
 ) {
 	const scope = effectScope();
@@ -294,7 +296,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 
 			expect(hook.messages.value.filter(({ id }) => id === 'exec-stopped:stopped')).toHaveLength(1);
 			expect(hook.messages.value.at(-1)).toMatchObject({
-				content: 'agentSessions.stopped',
+				id: 'exec-stopped:stopped',
 				executionId: 'exec-stopped',
 			});
 			expect(hook.messages.value.flatMap(({ toolCalls }) => toolCalls ?? [])).toEqual(
@@ -346,7 +348,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				resolvedAt: expect.any(Number),
 			});
 			expect(assistant.status).toBe('success');
-			expect(hook.messages.value.at(-1)?.content).toBe('agentSessions.stopped');
+			expect(hook.messages.value.at(-1)?.id).toBe('exec-stopped:stopped');
 			expect(cancelAgentChatExecutionMock).not.toHaveBeenCalled();
 		},
 	);
@@ -1443,6 +1445,95 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		hook.detachStream();
 	});
 
+	it('sends a resume once the response of the suspended turn ends', async () => {
+		let closeTurn = () => {};
+		const fetchMock = vi
+			.fn()
+			.mockImplementationOnce(async (_url: string, init: RequestInit) => {
+				const turn = makeControllableSseResponse(
+					[
+						{
+							type: 'tool-call-suspended',
+							payload: {
+								toolCallId: 'tc-1',
+								runId: 'run-1',
+								toolName: 'calculator',
+								input: { type: 'approval', toolName: 'calculator', args: {} },
+							},
+						},
+					],
+					init.signal ?? null,
+				);
+				closeTurn = turn.close;
+				return turn.response;
+			})
+			.mockImplementationOnce(async () => makeSseResponse([{ type: 'done' }]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		void hook.sendMessage('hi');
+		await vi.waitFor(() => expect(hook.messages.value.at(-1)?.interactive).toBeDefined());
+		expect(hook.isStreaming.value).toBe(true);
+
+		const resume = hook.resume({
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			resumeData: { approved: true },
+		});
+		await flushPromises();
+		expect(fetchMock).toHaveBeenCalledOnce();
+
+		closeTurn();
+
+		expect(await resume).toBe('sent');
+		expect(String(fetchMock.mock.calls[1][0])).toContain('/resume');
+	});
+
+	it('sends only the first of two resumes that wait for the same turn to end', async () => {
+		const suspended = (toolCallId: string): AgentSseEvent => ({
+			type: 'tool-call-suspended',
+			payload: {
+				toolCallId,
+				runId: 'run-1',
+				toolName: 'calculator',
+				input: { type: 'approval', toolName: 'calculator', args: {} },
+			},
+		});
+		let closeTurn = () => {};
+		const fetchMock = vi
+			.fn()
+			.mockImplementationOnce(async (_url: string, init: RequestInit) => {
+				const turn = makeControllableSseResponse(
+					[suspended('tc-1'), suspended('tc-2')],
+					init.signal ?? null,
+				);
+				closeTurn = turn.close;
+				return turn.response;
+			})
+			.mockImplementationOnce(async () => makeSseResponse([{ type: 'done' }]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		void hook.sendMessage('hi');
+		await vi.waitFor(() => expect(hook.messages.value.at(-1)?.toolCalls).toHaveLength(2));
+
+		const first = hook.resume({
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			resumeData: { approved: true },
+		});
+		const second = hook.resume({
+			runId: 'run-1',
+			toolCallId: 'tc-2',
+			resumeData: { approved: true },
+		});
+		closeTurn();
+
+		expect(await first).toBe('sent');
+		expect(await second).toBe('busy');
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
 	it('breaks out of the consume loop on `done` so isStreaming flips back to false', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
@@ -2123,6 +2214,96 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.status).toBe('awaitingUser');
 	});
 
+	it('shows the tool that a tool catalog call_tool call runs', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				toolName: 'call_tool',
+				input: { tool: 'list_workflows', arguments: { limit: 5 } },
+			},
+			{ type: 'tool-result', toolCallId: 'tc-1', toolName: 'call_tool', output: { workflows: [] } },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('list my workflows');
+		await flushPromises();
+		await nextTick();
+
+		const toolCall = hook.messages.value[1].toolCalls?.[0];
+		expect(toolCall?.tool).toBe('list_workflows');
+		expect(toolCall?.input).toEqual({ limit: 5 });
+		expect(toolCall?.output).toEqual({ workflows: [] });
+	});
+
+	it('names the tool of a call_tool call from its streamed input, before the full input', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{ type: 'tool-input-delta', toolCallId: 'tc-1', delta: '{"tool": "search_' },
+			{ type: 'tool-input-delta', toolCallId: 'tc-1', delta: 'nodes", "arguments": {"que' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('find the gmail node');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].tool).toBe('search_nodes');
+	});
+
+	it('starts the tool name of a call_tool call again in a new stream', async () => {
+		const interrupted: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{ type: 'tool-input-delta', toolCallId: 'tc-1', delta: '{"tool": "sear' },
+		];
+		const next: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{ type: 'tool-input-delta', toolCallId: 'tc-1', delta: '{"tool": "list_workflows", ' },
+		];
+		globalThis.fetch = vi
+			.fn()
+			.mockResolvedValueOnce(makeSseResponse(interrupted))
+			.mockResolvedValueOnce(makeSseResponse(next)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('find the gmail node');
+		await flushPromises();
+		await hook.sendMessage('list my workflows');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value.at(-1)?.toolCalls?.[0].tool).toBe('list_workflows');
+	});
+
+	it('keeps call_tool when the streamed input does not start with the tool name', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{
+				type: 'tool-input-delta',
+				toolCallId: 'tc-1',
+				delta: '{"arguments": {"tool": "fake"}, "tool": "search_',
+			},
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('find the gmail node');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].tool).toBe('call_tool');
+	});
+
 	// -----------------------------------------------------------------------
 	// Error event handling
 	// -----------------------------------------------------------------------
@@ -2643,6 +2824,139 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		const assistant = hook.messages.value[1];
 		expect(assistant.toolCalls?.[0].state).toBe('done');
 		expect(assistant.toolCalls?.[0].output).toBe(42);
+	});
+
+	it.each(['chat', 'n8n-chat'] as const)(
+		'shows the files of a respond on the assistant message in the %s channel',
+		async (channel) => {
+			const file = {
+				fileId: 'att-1',
+				fileName: 'report.pdf',
+				mimeType: 'application/pdf',
+				sizeBytes: 2048,
+			};
+			const events: AgentSseEvent[] = [
+				{ type: 'start-step' },
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-files',
+					toolName: 'chat_action',
+					input: { action: 'respond', input: { message: { text: 'Report' }, fileIds: ['att-1'] } },
+				},
+				{ type: 'finish-step' },
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-files',
+					toolName: 'chat_action',
+					output: { ok: true, files: [file] },
+				},
+				{ type: 'done' },
+			];
+			globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+			const hook = buildHook(undefined, { channel: ref(channel) });
+			await hook.sendMessage('send the report');
+			await flushPromises();
+			await nextTick();
+
+			expect(hook.messages.value[1].attachments).toEqual([file]);
+		},
+	);
+
+	describe('files with a card', () => {
+		const file = {
+			fileId: 'att-1',
+			fileName: 'report.pdf',
+			mimeType: 'application/pdf',
+			sizeBytes: 2048,
+		};
+		const cardCall = (components: unknown[]): AgentSseEvent => ({
+			type: 'tool-call',
+			toolCallId: 'tc-card',
+			toolName: N8N_CHAT_ACTION_TOOL_NAME,
+			input: {
+				action: 'respond',
+				input: { message: { card: { components } }, fileIds: ['att-1'] },
+			},
+		});
+
+		it.each(['chat', 'n8n-chat'] as const)(
+			'shows the files of a static card in the %s channel',
+			async (channel) => {
+				globalThis.fetch = vi.fn(async () =>
+					makeSseResponse([
+						cardCall([{ type: 'section', text: 'The report' }]),
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-card',
+							toolName: N8N_CHAT_ACTION_TOOL_NAME,
+							output: { ok: true, files: [file], messageContext: {} },
+						},
+						{ type: 'done' },
+					]),
+				) as typeof fetch;
+
+				const hook = buildHook(undefined, { channel: ref(channel) });
+				await hook.sendMessage('send the report');
+				await flushPromises();
+
+				expect(hook.messages.value[1].attachments).toEqual([file]);
+			},
+		);
+
+		it.each(['chat', 'n8n-chat'] as const)(
+			'keeps the files of an interactive card while suspended and after the answer in the %s channel',
+			async (channel) => {
+				globalThis.fetch = vi
+					.fn()
+					.mockResolvedValueOnce(
+						makeSseResponse([
+							cardCall([{ type: 'button', label: 'Approve', value: 'approve' }]),
+							{
+								type: 'tool-call-suspended',
+								payload: {
+									toolCallId: 'tc-card',
+									runId: 'run-card',
+									toolName: N8N_CHAT_ACTION_TOOL_NAME,
+									input: { type: 'integration_action', action: 'respond', files: [file] },
+								},
+							},
+						]),
+					)
+					.mockResolvedValueOnce(
+						makeSseResponse([
+							{
+								type: 'tool-result',
+								toolCallId: 'tc-card',
+								toolName: N8N_CHAT_ACTION_TOOL_NAME,
+								output: { value: 'approve' },
+							},
+							{ type: 'text-delta', id: 't1', delta: 'Approved.' },
+							{ type: 'done' },
+						]),
+					) as unknown as typeof fetch;
+
+				const hook = buildHook(undefined, { channel: ref(channel) });
+				await hook.sendMessage('send the report for approval');
+				await flushPromises();
+
+				const card = hook.messages.value[1];
+				expect(card.status).toBe('awaitingUser');
+				expect(card.attachments).toEqual([file]);
+
+				await hook.resume({
+					runId: 'run-card',
+					toolCallId: 'tc-card',
+					resumeData: { value: 'approve' },
+				});
+				await flushPromises();
+
+				const cardAfterAnswer = hook.messages.value.find(({ id }) => id === card.id);
+				expect(cardAfterAnswer?.toolCalls?.[0].state).toBe('done');
+				expect(cardAfterAnswer?.attachments).toEqual([file]);
+				expect(hook.messages.value.flatMap(({ attachments }) => attachments ?? [])).toEqual([file]);
+			},
+		);
 	});
 
 	it('marks cancellation tool results as cancelled instead of done', async () => {
@@ -3200,6 +3514,7 @@ describe('useAgentChatStream — loadHistory', () => {
 			'a1',
 			'thread-1',
 			'chat',
+			{ limit: 20 },
 		);
 		const msg = hook.messages.value.at(-1)!;
 		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
@@ -3219,6 +3534,182 @@ describe('useAgentChatStream — loadHistory', () => {
 
 		expect(onSessionCreated).toHaveBeenCalledOnce();
 		expect(onSessionCreated).toHaveBeenCalledWith('thread-new');
+	});
+});
+
+describe('useAgentChatStream — older messages', () => {
+	function turn(executionId: string, text: string): AgentPersistedMessageDto[] {
+		return [
+			{
+				id: `${executionId}:user`,
+				role: 'user',
+				executionId,
+				content: [{ type: 'text', text }],
+			},
+			{
+				id: `${executionId}:assistant`,
+				role: 'assistant',
+				executionId,
+				content: [{ type: 'text', text: `Reply to ${text}` }],
+			},
+		];
+	}
+
+	const page = (
+		messages: AgentPersistedMessageDto[],
+		nextCursor: string | null,
+	): AgentChatMessagesResponse => ({
+		messages,
+		openSuspensions: [],
+		activeExecutionId: null,
+		nextCursor,
+	});
+
+	const ids = (hook: ReturnType<typeof buildHook>) => hook.messages.value.map(({ id }) => id);
+
+	it('loads the newest page first, then adds the older pages before it', async () => {
+		getChatMessagesMock
+			.mockResolvedValueOnce(page(turn('e3', 'Third'), 'cursor-2'))
+			.mockResolvedValueOnce(page(turn('e2', 'Second'), 'cursor-1'))
+			.mockResolvedValueOnce(page(turn('e1', 'First'), null));
+		const hook = buildHook('thread-1', { channel: ref('system') });
+
+		await hook.loadHistory();
+		expect(hook.hasOlderMessages.value).toBe(true);
+		expect(ids(hook)).toEqual(['e3:user', 'e3:assistant']);
+
+		await hook.loadOlderMessages();
+		expect(getChatMessagesMock).toHaveBeenLastCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+			'system',
+			{ limit: 20, cursor: 'cursor-2' },
+		);
+		await hook.loadOlderMessages();
+
+		expect(ids(hook)).toEqual([
+			'e1:user',
+			'e1:assistant',
+			'e2:user',
+			'e2:assistant',
+			'e3:user',
+			'e3:assistant',
+		]);
+		expect(hook.hasOlderMessages.value).toBe(false);
+	});
+
+	it('keeps the loaded older pages when the newest page refreshes', async () => {
+		getChatMessagesMock
+			.mockResolvedValueOnce(page(turn('e2', 'Second'), 'cursor-1'))
+			.mockResolvedValueOnce(page(turn('e1', 'First'), null))
+			.mockResolvedValueOnce(page([...turn('e2', 'Second'), ...turn('e3', 'Third')], 'cursor-1'));
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+		await hook.loadOlderMessages();
+
+		hook.refresh();
+		await vi.waitFor(() => expect(getChatMessagesMock).toHaveBeenCalledTimes(3));
+		await flushPromises();
+
+		expect(ids(hook)).toEqual([
+			'e1:user',
+			'e1:assistant',
+			'e2:user',
+			'e2:assistant',
+			'e3:user',
+			'e3:assistant',
+		]);
+		expect(hook.hasOlderMessages.value).toBe(false);
+	});
+
+	it('drops the older pages when the newest page no longer overlaps them', async () => {
+		getChatMessagesMock
+			.mockResolvedValueOnce(page(turn('e2', 'Second'), 'cursor-1'))
+			.mockResolvedValueOnce(page(turn('e1', 'First'), null))
+			.mockResolvedValueOnce(page(turn('e9', 'Much later'), 'cursor-8'));
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+		await hook.loadOlderMessages();
+
+		hook.refresh();
+		await vi.waitFor(() => expect(getChatMessagesMock).toHaveBeenCalledTimes(3));
+		await flushPromises();
+
+		expect(ids(hook)).toEqual(['e9:user', 'e9:assistant']);
+		expect(hook.hasOlderMessages.value).toBe(true);
+	});
+
+	it('rejects a failed page and keeps its cursor for a retry', async () => {
+		getChatMessagesMock
+			.mockResolvedValueOnce(page(turn('e2', 'Second'), 'cursor-1'))
+			.mockRejectedValueOnce(new Error('offline'))
+			.mockResolvedValueOnce(page(turn('e1', 'First'), null));
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+
+		await expect(hook.loadOlderMessages()).rejects.toThrow('offline');
+		expect(hook.hasOlderMessages.value).toBe(true);
+
+		// The retry loads the page, so the failed load did not leave a lock behind.
+		await hook.loadOlderMessages();
+		expect(ids(hook)).toEqual(['e1:user', 'e1:assistant', 'e2:user', 'e2:assistant']);
+	});
+
+	it('drops a page that arrives after the chat moved to another thread', async () => {
+		const older = Promise.withResolvers<AgentChatMessagesResponse>();
+		getChatMessagesMock
+			.mockResolvedValueOnce(page(turn('e2', 'Second'), 'cursor-1'))
+			.mockReturnValueOnce(older.promise)
+			.mockResolvedValue(page(turn('x1', 'Other thread'), null));
+		const sessionId = ref<string | undefined>('thread-1');
+		const scope = effectScope();
+		hookScopes.push(scope);
+		const hook = scope.run(() =>
+			useAgentChatStream({
+				projectId: ref('p1'),
+				agentId: ref('a1'),
+				continueSessionId: sessionId,
+			}),
+		)!;
+		await hook.loadHistory();
+
+		const loading = hook.loadOlderMessages();
+		sessionId.value = 'thread-2';
+		await vi.waitFor(() => expect(ids(hook)).toEqual(['x1:user', 'x1:assistant']));
+		older.resolve(page(turn('e1', 'First'), null));
+		await loading;
+
+		expect(ids(hook)).toEqual(['x1:user', 'x1:assistant']);
+	});
+
+	it('returns the whole thread for a copy without changing the loaded messages', async () => {
+		getChatMessagesMock
+			.mockResolvedValueOnce(page(turn('e2', 'Second'), 'cursor-1'))
+			.mockResolvedValueOnce({
+				messages: [...turn('e1', 'First'), ...turn('e2', 'Second')],
+				openSuspensions: [],
+			});
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+
+		const thread = await hook.getFullHistory();
+
+		expect(getChatMessagesMock).toHaveBeenLastCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+			'chat',
+		);
+		expect(thread.map(({ id }) => id)).toEqual([
+			'e1:user',
+			'e1:assistant',
+			'e2:user',
+			'e2:assistant',
+		]);
+		expect(ids(hook)).toEqual(['e2:user', 'e2:assistant']);
 	});
 });
 
@@ -4168,10 +4659,8 @@ describe('useAgentChatStream — execution recovery', () => {
 			for (const hook of [first, second]) {
 				expect(hook.isStreaming.value).toBe(false);
 				expect(hook.isCancelling.value).toBe(false);
-				expect(hook.messages.value.map((message) => message.content)).toEqual(
-					status === 'cancelled'
-						? ['retained answer', 'agentSessions.stopped']
-						: ['retained answer'],
+				expect(hook.messages.value.map((message) => message.id)).toEqual(
+					status === 'cancelled' ? ['exec-1:assistant', 'exec-1:stopped'] : ['exec-1:assistant'],
 				);
 			}
 			expect(fetch).not.toHaveBeenCalled();
@@ -4602,6 +5091,45 @@ describe('useAgentChatStream — queued submissions', () => {
 		await vi.waitFor(() =>
 			expect(hook.messages.value.map(({ id }) => id)).toEqual(['canonical-input', 'A:assistant']),
 		);
+	});
+
+	it('keeps the last queue without an error while queue refreshes fail and reloads it on reconnect', async () => {
+		const queued = {
+			id: '1',
+			message: 'A',
+			createdAt: new Date().toISOString(),
+			steeringExecutionId: null,
+		};
+		getAgentChatQueueMock.mockResolvedValue({ items: [queued] });
+		connectionState.isConnected = true;
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+		expect(hook.queuedMessages.value).toEqual([queued]);
+
+		connectionState.isConnected = false;
+		await flushPromises();
+		getAgentChatQueueMock.mockRejectedValue(new Error("Can't connect to n8n."));
+		for (let i = 0; i < 3; i++) {
+			for (const listener of [...pushListeners])
+				listener({
+					type: 'agentMessageQueueUpdated',
+					data: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1' },
+				});
+			await flushPromises();
+		}
+
+		expect(getAgentChatQueueMock.mock.calls.length).toBeGreaterThan(1);
+		expect(showQueueErrorMock).not.toHaveBeenCalledWith(
+			expect.anything(),
+			'agents.chat.queue.loadError',
+		);
+		expect(hook.queuedMessages.value).toEqual([queued]);
+
+		const refreshed = { ...queued, id: '2', message: 'B' };
+		getAgentChatQueueMock.mockResolvedValue({ items: [refreshed] });
+		connectionState.isConnected = true;
+		await flushPromises();
+		expect(hook.queuedMessages.value).toEqual([refreshed]);
 	});
 
 	it('keeps an accepted steer reserved when the queue refresh fails', async () => {
@@ -5528,6 +6056,7 @@ describe('useAgentChatStream — n8n Chat channel', () => {
 			'a1',
 			'thread-1',
 			'n8n-chat',
+			{ limit: 20 },
 		);
 		expect(getAgentChatQueueMock).toHaveBeenCalledWith(
 			{ baseUrl: 'http://localhost:5678' },
@@ -5656,6 +6185,20 @@ describe('useAgentChatStream — client context', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(sentBody()).toEqual({ message: 'hello' });
 		expect(sentBody()).not.toHaveProperty('clientContext');
+	});
+
+	it('gives the sent message the references that the host reads from its client context', async () => {
+		mockChatFetch();
+		const references = [{ type: 'workflow', id: 'wf-1' }];
+		const messageReferences = vi.fn(() => references);
+		const hook = buildHook('thread-1', { newSession: ref(true), messageReferences });
+		const clientContext = { attachments: references };
+
+		void hook.sendMessage('hello', undefined, undefined, clientContext);
+
+		expect(messageReferences).toHaveBeenCalledWith(clientContext);
+		expect(hook.messages.value[0]).toMatchObject({ role: 'user', content: 'hello', references });
+		await flushPromises();
 	});
 });
 
@@ -5790,5 +6333,255 @@ describe('useAgentChatStream — interaction extensions', () => {
 			extensionKey: TEST_EXTENSION_KEY,
 			runId: 'run-ext',
 		});
+	});
+});
+
+describe('useAgentChatStream — first message of a new session', () => {
+	beforeEach(() => {
+		pushListeners.length = 0;
+		vi.stubGlobal('localStorage', { getItem: vi.fn(() => '') });
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('shows the message when it is sent and keeps it until its run starts', async () => {
+		let stream!: ReturnType<typeof makeControllableSseResponse>;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (_url, init: RequestInit) => {
+				stream = makeControllableSseResponse([], init.signal ?? null);
+				return stream.response;
+			}),
+		);
+		// Before the run starts, the server holds the message in its queue, not in history.
+		getChatMessagesMock.mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		getAgentChatQueueMock.mockResolvedValue({
+			items: [{ id: 'q-1', message: 'Hello', createdAt: new Date().toISOString() }],
+		});
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		const sending = hook.sendMessage('Hello');
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['Hello']);
+		expect(hook.messagingState.value).toBe('waitingFirstChunk');
+
+		stream.emit([{ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-new' }]);
+		await sending;
+		await flushPromises();
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['Hello']);
+		expect(hook.queuedMessages.value).toEqual([]);
+
+		stream.emit([
+			{
+				type: 'execution-started',
+				executionId: 'A',
+				sessionId: 'thread-new',
+				inputMessageIds: ['server-id'],
+			},
+		]);
+		await flushPromises();
+		expect(hook.messages.value).toEqual([
+			expect.objectContaining({ id: 'server-id', content: 'Hello', executionId: 'A' }),
+		]);
+		stream.close([{ type: 'done', executionId: 'A' }]);
+		hook.detachStream();
+	});
+
+	it('shows the message once when history holds its run before the run starts', async () => {
+		let stream!: ReturnType<typeof makeControllableSseResponse>;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (_url, init: RequestInit) => {
+				stream = makeControllableSseResponse([], init.signal ?? null);
+				return stream.response;
+			}),
+		);
+		// The run starts on the server before its stream event reaches the chat.
+		getChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'server-id',
+					role: 'user',
+					content: [{ type: 'text', text: 'Hello' }],
+					executionId: 'A',
+				},
+			],
+			openSuspensions: [],
+			activeExecutionId: 'A',
+		});
+		getAgentChatQueueMock.mockResolvedValue({ items: [] });
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		const sending = hook.sendMessage('Hello');
+		stream.emit([{ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-new' }]);
+		await sending;
+		await flushPromises();
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['Hello']);
+
+		stream.emit([
+			{
+				type: 'execution-started',
+				executionId: 'A',
+				sessionId: 'thread-new',
+				inputMessageIds: ['server-id'],
+			},
+		]);
+		await flushPromises();
+		expect(hook.messages.value).toEqual([
+			expect.objectContaining({ id: 'server-id', content: 'Hello', executionId: 'A' }),
+		]);
+		stream.close([{ type: 'done', executionId: 'A' }]);
+		hook.detachStream();
+	});
+
+	it('shows the message once when its run starts before the history refresh', async () => {
+		let stream!: ReturnType<typeof makeControllableSseResponse>;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (_url, init: RequestInit) => {
+				stream = makeControllableSseResponse([], init.signal ?? null);
+				return stream.response;
+			}),
+		);
+		getChatMessagesMock.mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		getAgentChatQueueMock.mockResolvedValue({ items: [] });
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		// Like the panel, an accepted send clears the credits stop, which rebuilds the list.
+		const sending = hook.sendMessage('Hello', undefined, () =>
+			hook.clearBudgetNotices(new Set(['budget.credits'])),
+		);
+		stream.emit([
+			{ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-new' },
+			{
+				type: 'execution-started',
+				executionId: 'A',
+				sessionId: 'thread-new',
+				inputMessageIds: ['server-id'],
+			},
+		]);
+		await sending;
+		await flushPromises();
+		expect(hook.messages.value).toEqual([
+			expect.objectContaining({ id: 'server-id', content: 'Hello', executionId: 'A' }),
+		]);
+		stream.close([{ type: 'done', executionId: 'A' }]);
+		hook.detachStream();
+	});
+
+	it('keeps an accepted message when the stream drops before its run starts', async () => {
+		let stream!: ReturnType<typeof makeControllableSseResponse>;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (_url, init: RequestInit) => {
+				stream = makeControllableSseResponse([], init.signal ?? null);
+				return stream.response;
+			}),
+		);
+		getChatMessagesMock.mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		const queued = { id: 'q-1', message: 'Hello', createdAt: new Date().toISOString() };
+		getAgentChatQueueMock.mockResolvedValue({ items: [queued] });
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		const sending = hook.sendMessage('Hello');
+		stream.emit([{ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-new' }]);
+		await sending;
+		await flushPromises();
+
+		stream.close();
+		await flushPromises();
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['Hello']);
+		expect(hook.queuedMessages.value).toEqual([]);
+		expect(hook.messagingState.value).toBe('waitingFirstChunk');
+
+		// The run starts on the server, and a push refresh brings its history.
+		getChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'server-id',
+					role: 'user',
+					content: [{ type: 'text', text: 'Hello' }],
+					executionId: 'A',
+				},
+			],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		getAgentChatQueueMock.mockResolvedValue({ items: [] });
+		for (const listener of [...pushListeners]) {
+			listener({
+				type: 'agentExecutionUpdated',
+				data: { projectId: 'p1', agentId: 'a1', threadId: 'thread-new', executionId: 'A' },
+			});
+		}
+		await flushPromises();
+
+		expect(hook.messages.value).toEqual([
+			expect.objectContaining({ id: 'server-id', content: 'Hello' }),
+		]);
+		expect(hook.messagingState.value).toBe('idle');
+		hook.detachStream();
+	});
+
+	it('removes the message when the stream drops before the server accepts it', async () => {
+		let stream!: ReturnType<typeof makeControllableSseResponse>;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (_url, init: RequestInit) => {
+				stream = makeControllableSseResponse([], init.signal ?? null);
+				return stream.response;
+			}),
+		);
+		getChatMessagesMock.mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		getAgentChatQueueMock.mockResolvedValue({ items: [] });
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		const sending = hook.sendMessage('Hello');
+		stream.close();
+		await sending;
+		await flushPromises();
+
+		expect(hook.messages.value).toEqual([]);
+		expect(hook.messagingState.value).toBe('idle');
+	});
+
+	it.each([
+		[
+			'refuses a busy turn',
+			() =>
+				makeSseResponse([{ type: 'error', message: 'Busy', errorCode: 'turn_already_running' }]),
+		],
+		[
+			'answers with an HTTP error',
+			() => new Response(null, { status: 500, statusText: 'Server error' }),
+		],
+	] as const)('removes the message when the server %s', async (_case, response) => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => response()),
+		);
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		const sending = hook.sendMessage('Hello');
+		expect(hook.messages.value).toHaveLength(1);
+		await sending;
+		await flushPromises();
+
+		expect(hook.messages.value).toEqual([]);
+		expect(hook.messagingState.value).toBe('idle');
 	});
 });

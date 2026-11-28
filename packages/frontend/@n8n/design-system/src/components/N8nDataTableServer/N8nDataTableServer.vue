@@ -33,6 +33,7 @@ import type {
 	CoreColumn,
 	CoreOptions,
 	DeepKeys,
+	HeaderContext,
 	PaginationState,
 	Row,
 	RowSelectionState,
@@ -49,7 +50,7 @@ import { ElSkeletonItem } from 'element-plus';
 import get from 'lodash/get.js';
 import { computed, h, shallowRef, useSlots, useTemplateRef, watch } from 'vue';
 
-import { useHorizontalScrollEdges } from '../../composables/useHorizontalScrollEdges';
+import { useScrollEdges } from '../../composables/useScrollEdges';
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nPagination, { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 
@@ -60,6 +61,8 @@ const props = withDefaults(
 		items: T[];
 		headers: Array<TableHeader<T>>;
 		itemsLength: number;
+		/** Server page count when groups make pages differ in size. */
+		pageCount?: number;
 		loading?: boolean;
 		multiSort?: boolean;
 
@@ -91,6 +94,28 @@ const props = withDefaults(
 		 * @default 0
 		 */
 		pinColumns?: number;
+		/**
+		 * How many trailing columns stay visible while the table scrolls horizontally.
+		 * Leading pinned columns take precedence if the counts overlap.
+		 * @default 0
+		 */
+		pinEndColumns?: number;
+		/**
+		 * The group of a row. The table shows a group row before the first row of each group,
+		 * with one cell for each column, filled by the `group.<column>` slots. A row without a
+		 * group gets no group row. The rows must arrive sorted by group.
+		 */
+		groupBy?: (row: T) => string | undefined;
+		/**
+		 * Group rows with no rows of their own on this page, such as an empty group or a group
+		 * that the server folded. Each shows before the row at `index`, or after the last row
+		 * when `index` is past it.
+		 */
+		extraGroups?: Array<{ group: string; index: number }>;
+		/** Groups that the user folded. Their group rows stay, and their rows are not rendered. */
+		collapsedGroups?: string[];
+		/** Props of the group row of a group, such as a class. */
+		groupRowProps?: (group: string) => { class?: VueClass };
 	}>(),
 	{
 		itemSelectable: undefined,
@@ -100,14 +125,23 @@ const props = withDefaults(
 		showAll: false,
 		rowProps: undefined,
 		pinColumns: 0,
+		pinEndColumns: 0,
+		groupBy: undefined,
+		extraGroups: () => [],
+		collapsedGroups: () => [],
+		groupRowProps: undefined,
 	},
 );
 
 const slots = useSlots();
 defineSlots<{
 	[key: `item.${string}`]: (props: { value: unknown; item: T }) => void;
+	/** The content of a column header, in place of its title. */
+	[key: `header.${string}`]: () => void;
 	item: (props: { item: T; cells: Array<Cell<T, unknown>> }) => void;
 	cover?: () => void;
+	/** One cell of a group row. `item` is the first row of the group, or undefined for an extra group. */
+	[key: `group.${string}`]: (props: { item: T | undefined; group: string }) => void;
 }>();
 
 const emit = defineEmits<{
@@ -115,6 +149,7 @@ const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'click:row': [event: MouseEvent, payload: { item: T }];
+	'click:group': [event: MouseEvent, payload: { group: string }];
 }>();
 
 const data = shallowRef<T[]>(props.items.concat());
@@ -127,11 +162,68 @@ watch(
 	{ deep: true },
 );
 
+/** The group whose group row shows before the row at `index`, if that row starts a group. */
+function groupStartingAt(rows: Array<Row<T>>, index: number): string | undefined {
+	if (!props.groupBy) return undefined;
+	const group = props.groupBy(rows[index].original);
+	if (group === undefined) return undefined;
+	return index > 0 && props.groupBy(rows[index - 1].original) === group ? undefined : group;
+}
+
+type BodyEntry =
+	| { kind: 'group'; key: string; group: string; item: T | undefined }
+	| { kind: 'row'; key: string; row: Row<T> };
+
+/** The rows of the body in order: the data rows, with each group row before its first row. */
+function bodyEntries(): BodyEntry[] {
+	const rows = table.getRowModel().rows;
+	const entries: BodyEntry[] = [];
+	const extrasAt = (index: number, last: boolean) =>
+		props.extraGroups
+			.filter((extra) => (last ? extra.index >= index : extra.index === index))
+			.map(
+				({ group }): BodyEntry => ({
+					kind: 'group',
+					key: `group-${group}`,
+					group,
+					item: undefined,
+				}),
+			);
+	rows.forEach((row, index) => {
+		entries.push(...extrasAt(index, false));
+		const group = groupStartingAt(rows, index);
+		if (group !== undefined) {
+			entries.push({ kind: 'group', key: `group-${group}-${row.id}`, group, item: row.original });
+		}
+		entries.push({ kind: 'row', key: row.id, row });
+	});
+	entries.push(...extrasAt(rows.length, true));
+	return entries;
+}
+
+function isRowCollapsed(row: T): boolean {
+	const group = props.groupBy?.(row);
+	return group !== undefined && props.collapsedGroups.includes(group);
+}
+
+function groupCellAlign(column: CoreColumn<T, unknown>) {
+	const align = getColumnMeta(column).cellProps.align;
+	return align ? `cell-align--${align}` : undefined;
+}
+
 function itemKeySlot(info: CellContext<T, unknown>) {
 	const slotName = `item.${info.column.id}` as const;
 	return slots[slotName]
 		? slots[slotName]({ item: info.row.original, value: info.getValue() })
 		: info.getValue();
+}
+
+/** Renders the `header.<column>` slot when the page gives one, or else the title. */
+function headerSlot(column: TableHeader<T>) {
+	return (context: HeaderContext<T, unknown>) => {
+		const slot = slots[`header.${context.column.id}`];
+		return slot ? slot() : getHeaderTitle(column);
+	};
 }
 
 function isValueAccessor(column: TableHeader<T>): column is Required<TableHeader<T>> {
@@ -174,7 +266,7 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 		return columnHelper.accessor(column.value, {
 			id: column.key,
 			cell: itemKeySlot,
-			header: () => getHeaderTitle(column),
+			header: headerSlot(column),
 			enableSorting: !column.disableSort,
 			enableResizing: column.resize ?? true,
 			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
@@ -189,7 +281,7 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 		return columnHelper.accessor(column.value, {
 			id: column.key ?? column.value,
 			cell: itemKeySlot,
-			header: () => getHeaderTitle(column),
+			header: headerSlot(column),
 			enableSorting: !column.disableSort,
 			enableResizing: column.resize ?? true,
 			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
@@ -215,7 +307,7 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 			return columnHelper.accessor(column.key, {
 				id: accessor,
 				cell: itemKeySlot,
-				header: () => getHeaderTitle(column),
+				header: headerSlot(column),
 				enableSorting: !column.disableSort,
 				enableResizing: column.resize ?? true,
 				minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
@@ -230,7 +322,7 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 
 		return columnHelper.display({
 			id: `display_column_${index}`,
-			header: () => getHeaderTitle(column),
+			header: headerSlot(column),
 			size: column.width,
 			meta: {
 				cellProps: {
@@ -246,19 +338,34 @@ const columnsDefinition = computed(() => {
 });
 
 const columnPinning = computed<ColumnPinningState>(() => {
-	if (props.pinColumns <= 0) return { left: [], right: [] };
-
-	const pinnedCount = props.pinColumns + (props.showSelect ? 1 : 0);
-	const left = columnsDefinition.value
-		.slice(0, pinnedCount)
+	const ids = columnsDefinition.value
 		.map((column) => column.id)
 		.filter((id): id is string => id !== undefined);
-
-	return { left, right: [] };
+	const pinnedCount = props.pinColumns > 0 ? props.pinColumns + (props.showSelect ? 1 : 0) : 0;
+	const left = ids.slice(0, pinnedCount);
+	const right =
+		props.pinEndColumns > 0
+			? ids.slice(-props.pinEndColumns).filter((id) => !left.includes(id))
+			: [];
+	return { left, right };
 });
 
+// Only the sorted header gets aria-sort, as in the WAI-ARIA sortable table pattern.
+function getAriaSort(column: Column<T, unknown>) {
+	const direction = column.getIsSorted();
+	if (!direction) return undefined;
+	return direction === 'asc' ? 'ascending' : 'descending';
+}
+
 function getPinnedCellBindings(column: Column<T, unknown>) {
-	if (column.getIsPinned() !== 'left') return undefined;
+	const side = column.getIsPinned();
+	if (!side) return undefined;
+	if (side === 'right') {
+		return {
+			class: column.getIsFirstColumn('right') ? 'is-pinned is-pinned-end-edge' : 'is-pinned',
+			style: { right: `${column.getAfter('right')}px` },
+		};
+	}
 
 	return {
 		class: column.getIsLastColumn('left') ? 'is-pinned is-pinned-edge' : 'is-pinned',
@@ -268,7 +375,50 @@ function getPinnedCellBindings(column: Column<T, unknown>) {
 
 const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
 const tableElement = useTemplateRef<HTMLTableElement>('tableElement');
-const { canScrollLeft, canScrollRight } = useHorizontalScrollEdges(scrollContainer, tableElement);
+const { canScrollLeft, canScrollRight } = useScrollEdges(scrollContainer, {
+	axis: 'horizontal',
+	content: tableElement,
+});
+
+// The browser scrolls a focused element into view only when it is fully hidden, and it counts a
+// cell under the sticky header or a pinned column as visible. So keyboard focus moves the cell
+// clear of them here. A scroll padding would also make a focused header or pinned cell scroll
+// the table away. A pointer focus does not scroll: the table would move under the pointer.
+let isPointerFocus = false;
+
+// The browser moves the focus in the same task as pointerdown, so the flag covers only that focus.
+function markPointerFocus() {
+	isPointerFocus = true;
+	setTimeout(() => (isPointerFocus = false));
+}
+
+function revealKeyboardFocus(event: FocusEvent) {
+	const container = scrollContainer.value;
+	if (isPointerFocus || !container || !(event.target instanceof Element)) return;
+	event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+
+	const cell = event.target.closest('td, th');
+	if (!cell || !container.contains(cell)) return;
+	const cellRect = cell.getBoundingClientRect();
+
+	if (!cell.classList.contains('is-pinned')) {
+		const viewLeft = container.getBoundingClientRect().left + container.clientLeft;
+		const clearLeft = viewLeft + table.getLeftTotalSize();
+		const clearRight = viewLeft + container.clientWidth - table.getRightTotalSize();
+		if (cellRect.left < clearLeft) {
+			container.scrollLeft -= clearLeft - cellRect.left;
+		} else if (cellRect.right > clearRight) {
+			// A cell wider than the clear area keeps its start in view.
+			container.scrollLeft += Math.min(cellRect.right - clearRight, cellRect.left - clearLeft);
+		}
+	}
+
+	const header = tableElement.value?.tHead;
+	if (header && !header.contains(cell)) {
+		const covered = header.getBoundingClientRect().bottom - cellRect.top;
+		if (covered > 0) container.scrollTop -= covered;
+	}
+}
 
 const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
@@ -302,7 +452,9 @@ const paginationState = computed<PaginationState>(() => ({
 }));
 
 const showPagination = computed(
-	() => props.pagination && props.itemsLength > Math.min(...props.pageSizes),
+	() =>
+		props.pagination &&
+		(props.itemsLength > Math.min(...props.pageSizes) || (props.pageCount ?? 0) > 1),
 );
 
 const sortBy = defineModel<SortingState>('sort-by', { default: [], required: false });
@@ -398,6 +550,9 @@ const table = useVueTable({
 	get columns() {
 		return columnsDefinition.value;
 	},
+	get pageCount() {
+		return props.pageCount;
+	},
 	get rowCount() {
 		return props.itemsLength;
 	},
@@ -456,9 +611,18 @@ const table = useVueTable({
 	<div>
 		<div
 			class="n8n-data-table-server-wrapper"
-			:class="{ 'is-scrolled-left': canScrollLeft, 'can-scroll-right': canScrollRight }"
+			:class="{
+				'is-scrolled-left': canScrollLeft,
+				'can-scroll-right': canScrollRight,
+				'has-pinned-end': pinEndColumns > 0,
+			}"
 		>
-			<div ref="scrollContainer" class="table-scroll">
+			<div
+				ref="scrollContainer"
+				class="table-scroll"
+				@focusin="revealKeyboardFocus"
+				@pointerdown.capture="markPointerFocus"
+			>
 				<table
 					ref="tableElement"
 					class="n8n-data-table-server"
@@ -476,7 +640,6 @@ const table = useVueTable({
 								<th
 									v-bind="getPinnedCellBindings(header.column)"
 									:style="{
-										cursor: header.column.getCanSort() ? 'pointer' : undefined,
 										width: `${header.getSize()}px`,
 										maxWidth: `${header.getSize()}px`,
 									}"
@@ -484,17 +647,35 @@ const table = useVueTable({
 										'cell-select': header.column.id === SELECT_COLUMN_ID,
 										[`cell-align--${getColumnMeta(header.column).cellProps.align}`]: true,
 									}"
-									@mousedown="header.column.getToggleSortingHandler()?.($event)"
+									:aria-sort="getAriaSort(header.column)"
 								>
 									<div class="cell-content">
+										<!-- A resize drag that ends on the title sends its click to the th, so it does not sort. -->
+										<button
+											v-if="header.column.getCanSort()"
+											type="button"
+											class="sort-button"
+											@click="header.column.getToggleSortingHandler()?.($event)"
+										>
+											<FlexRender
+												v-if="!header.isPlaceholder"
+												:render="header.column.columnDef.header"
+												:props="header.getContext()"
+											/>
+											<!-- aria-sort on the th already tells the direction. -->
+											<span
+												v-if="header.column.getIsSorted()"
+												class="sort-indicator"
+												aria-hidden="true"
+											>
+												{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
+											</span>
+										</button>
 										<FlexRender
-											v-if="!header.isPlaceholder"
+											v-else-if="!header.isPlaceholder"
 											:render="header.column.columnDef.header"
 											:props="header.getContext()"
 										/>
-										<template v-if="header.column.getCanSort()">
-											{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
-										</template>
 									</div>
 
 									<div
@@ -535,37 +716,66 @@ const table = useVueTable({
 								</td>
 							</tr>
 						</template>
-						<template v-else-if="table.getRowModel().rows.length">
-							<template v-for="row in table.getRowModel().rows" :key="row.id">
-								<slot name="item" v-bind="{ item: row.original, cells: row.getVisibleCells() }">
-									<tr
-										v-bind="getRowProps(row.original, row.index)"
-										@click="emit('click:row', $event, { item: row.original })"
+						<!-- Extra groups show with no rows too, such as a group with no rows of its own. -->
+						<template v-else>
+							<template v-for="entry in bodyEntries()" :key="entry.key">
+								<tr
+									v-if="entry.kind === 'group'"
+									class="group-row"
+									v-bind="groupRowProps?.(entry.group)"
+									data-test-id="data-table-group-row"
+									@click="emit('click:group', $event, { group: entry.group })"
+								>
+									<td
+										v-for="column in table.getVisibleFlatColumns()"
+										:key="column.id"
+										v-bind="getPinnedCellBindings(column)"
+										:style="{
+											width: `${column.getSize()}px`,
+											maxWidth: `${column.getSize()}px`,
+										}"
+										:class="groupCellAlign(column)"
 									>
-										<template v-for="cell in row.getVisibleCells()" :key="cell.id">
-											<td
-												v-bind="getPinnedCellBindings(cell.column)"
-												:style="{
-													width: `${cell.column.getSize()}px`,
-													maxWidth: `${cell.column.getSize()}px`,
-												}"
-												:class="{
-													'cell-select': cell.column.id === SELECT_COLUMN_ID,
-													[`cell-align--${getColumnMeta(cell.column).cellProps.align}`]: Boolean(
-														getColumnMeta(cell.column).cellProps.align,
-													),
-												}"
-											>
-												<div class="cell-content">
-													<FlexRender
-														:render="cell.column.columnDef.cell"
-														:props="cell.getContext()"
-													/>
-												</div>
-											</td>
-										</template>
-									</tr>
-								</slot>
+										<slot
+											:name="`group.${column.id}`"
+											v-bind="{ item: entry.item, group: entry.group }"
+										/>
+									</td>
+								</tr>
+								<template v-else-if="!isRowCollapsed(entry.row.original)">
+									<slot
+										name="item"
+										v-bind="{ item: entry.row.original, cells: entry.row.getVisibleCells() }"
+									>
+										<tr
+											v-bind="getRowProps(entry.row.original, entry.row.index)"
+											@click="emit('click:row', $event, { item: entry.row.original })"
+										>
+											<template v-for="cell in entry.row.getVisibleCells()" :key="cell.id">
+												<td
+													v-bind="getPinnedCellBindings(cell.column)"
+													:style="{
+														width: `${cell.column.getSize()}px`,
+														maxWidth: `${cell.column.getSize()}px`,
+													}"
+													:class="{
+														'cell-select': cell.column.id === SELECT_COLUMN_ID,
+														[`cell-align--${getColumnMeta(cell.column).cellProps.align}`]: Boolean(
+															getColumnMeta(cell.column).cellProps.align,
+														),
+													}"
+												>
+													<div class="cell-content">
+														<FlexRender
+															:render="cell.column.columnDef.cell"
+															:props="cell.getContext()"
+														/>
+													</div>
+												</td>
+											</template>
+										</tr>
+									</slot>
+								</template>
 							</template>
 						</template>
 					</tbody>
@@ -576,7 +786,9 @@ const table = useVueTable({
 			<N8nPagination
 				:page="page + 1"
 				:items-per-page="itemsPerPage"
-				:total="itemsLength"
+				:total="
+					pageCount !== undefined && itemsPerPage > 0 ? pageCount * itemsPerPage : itemsLength
+				"
 				:page-sizes="pageSizes"
 				:show-all="showAll"
 				:show-total="false"
@@ -589,10 +801,50 @@ const table = useVueTable({
 
 <style lang="scss" scoped>
 @use '../../css/mixins/motion';
+@use '../../css/mixins/focus';
 
 .n8n-data-table-server {
 	height: 100%;
 	font-size: var(--font-size--sm);
+
+	.sort-indicator {
+		margin-inline-start: var(--spacing--4xs);
+	}
+
+	.sort-button {
+		/* A button is an atomic inline box, so it truncates the title itself. */
+		display: block;
+		width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		padding: 0;
+		border: none;
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: inherit;
+		cursor: pointer;
+
+		/* Clicks anywhere in the header cell sort, as before the button. The resizer stays on top. */
+		&::after {
+			content: '';
+			position: absolute;
+			inset: 0;
+			border-radius: var(--radius);
+		}
+
+		/* The ring outlines the whole cell, which is the click target. */
+		&:focus-visible {
+			outline: none;
+		}
+
+		&:focus-visible::after {
+			@include focus.focus-ring;
+			/* Inset, so a neighbouring sticky cell cannot cover the ring. */
+			outline-offset: calc(-1 * var(--focus--border-width));
+		}
+	}
 
 	table {
 		width: 100%;
@@ -658,9 +910,17 @@ const table = useVueTable({
 	tbody tr {
 		background-color: var(--color--background--light-3);
 		border-bottom: 1px solid var(--color--foreground);
+		// No border at all: a transparent one still takes 1px and shows the darker
+		// background behind the table in dark mode.
 		&:last-child {
-			border-color: transparent;
+			border-bottom: none;
 		}
+	}
+
+	/* A group row heads the rows below it: a quiet colour and no hover. */
+	tbody > tr.group-row,
+	tbody > tr.group-row:hover {
+		background-color: var(--color--background--light-2);
 	}
 
 	td {
@@ -732,6 +992,14 @@ const table = useVueTable({
 
 	&.can-scroll-right::after {
 		opacity: 1;
+	}
+
+	&.has-pinned-end::after {
+		display: none;
+	}
+
+	&.can-scroll-right .is-pinned-end-edge {
+		border-left: var(--border);
 	}
 }
 

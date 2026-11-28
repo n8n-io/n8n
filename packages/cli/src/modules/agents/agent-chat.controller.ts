@@ -3,7 +3,9 @@ import {
 	type AgentBackgroundJobsResponse,
 	type AgentSessionFilesResponse,
 	AgentChatMessageDto,
+	AgentPreviewChatMessageDto,
 	AgentChatCancelDto,
+	AgentChatMessagesQueryDto,
 	AgentTaskCancellationDto,
 	type AgentTaskCancellationState,
 	AgentChatQueueUpdateDto,
@@ -12,6 +14,8 @@ import {
 	type AgentChatMessagesResponse,
 	type AgentChatQueueResponse,
 	AgentChatResumeDto,
+	GenerateAgentTestScenariosDto,
+	type GenerateAgentTestScenariosResponse,
 	N8N_CHAT_INTEGRATION_TYPE,
 } from '@n8n/api-types';
 import { AgentsConfig } from '@n8n/config';
@@ -56,6 +60,7 @@ import { messagesToDto } from './agent-message-mapper';
 import type { FlushableResponse } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
+import { AgentTestScenariosService } from './agent-test-scenarios.service';
 import { AgentsService } from './agents.service';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
@@ -64,6 +69,7 @@ import {
 	productionChatMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 } from './utils/agent-memory-scope';
+import { isOlderChatHistoryPage, parseChatHistoryPage } from './utils/chat-history-page';
 import {
 	ownCheckpoint,
 	threadMessagesResponse,
@@ -88,6 +94,7 @@ export class AgentChatController {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly chatRelay: AgentChatRelayService,
 		private readonly plans: AgentPlanService,
+		private readonly agentTestScenariosService: AgentTestScenariosService,
 	) {}
 
 	private async requireProductionChat(agentId: string, projectId: string): Promise<void> {
@@ -255,11 +262,11 @@ export class AgentChatController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		res: FlushableResponse,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentChatMessageDto,
+		@Body payload: AgentPreviewChatMessageDto,
 	) {
 		const { projectId } = req.params;
 		// The text-or-attachment invariant is enforced by the DTO schema.
-		const { message, sessionId, messageId, newSession, attachments } = payload;
+		const { message, sessionId, messageId, newSession, attachments, mode } = payload;
 
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
@@ -304,6 +311,7 @@ export class AgentChatController {
 					kind: 'preview',
 					message,
 					messageId,
+					...(mode ? { mode } : {}),
 					attachments: await this.chatRelay.storeChatAttachments({
 						attachments,
 						agentId,
@@ -450,8 +458,11 @@ export class AgentChatController {
 	@ProjectScope('agent:execute')
 	async getProductionChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Query query: AgentChatMessagesQueryDto = {},
 	): Promise<AgentChatMessagesResponse> {
 		const { projectId, agentId, threadId } = req.params;
+		const page = parseChatHistoryPage(query);
 		await this.requireProductionChat(agentId, projectId);
 		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
 		const history = await this.agentExecutionOrchestratorService.getConversationHistory({
@@ -459,8 +470,10 @@ export class AgentChatController {
 			projectId,
 			agentId,
 			userId: req.user.id,
+			page,
 		});
 		if (!history) throw new NotFoundError('Session not found');
+		if (isOlderChatHistoryPage(page)) return threadMessagesResponse(history, null);
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
 		return threadMessagesResponse(
 			history,
@@ -1063,8 +1076,11 @@ export class AgentChatController {
 	@ProjectScope('agent:read')
 	async getChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Query query: AgentChatMessagesQueryDto = {},
 	): Promise<AgentChatMessagesResponse> {
 		const { projectId, agentId, threadId } = req.params;
+		const page = parseChatHistoryPage(query);
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const thread = await this.agentExecutionService.findThreadById(threadId);
@@ -1079,7 +1095,9 @@ export class AgentChatController {
 			projectId,
 			agentId,
 			userId: req.user.id,
+			page,
 		});
+		// Also for a page of older turns: the checkpoint can deny access to the thread.
 		const checkpoint = await this.findReadableCheckpoint(
 			thread,
 			threadId,
@@ -1088,7 +1106,7 @@ export class AgentChatController {
 			req.user.id,
 		);
 		if (!history && !checkpoint) throw new NotFoundError(`Thread "${threadId}" not found`);
-		return threadMessagesResponse(history, checkpoint);
+		return threadMessagesResponse(history, isOlderChatHistoryPage(page) ? null : checkpoint);
 	}
 
 	@Get('/:agentId/chat/messages')
@@ -1193,5 +1211,21 @@ export class AgentChatController {
 		}
 		await this.agentTestChatService.clearTestChatMessages(agentId, req.user.id);
 		return { ok: true };
+	}
+
+	@Post('/:agentId/chat/test-scenarios')
+	@ProjectScope('agent:execute')
+	async generateTestScenarios(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: unknown,
+		@Body payload: GenerateAgentTestScenariosDto,
+	): Promise<GenerateAgentTestScenariosResponse> {
+		const { projectId, agentId } = req.params;
+		return await this.agentTestScenariosService.generateTestScenarios(
+			req.user,
+			projectId,
+			agentId,
+			payload,
+		);
 	}
 }

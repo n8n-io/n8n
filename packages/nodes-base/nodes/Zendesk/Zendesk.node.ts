@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { validateJSON, zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 import { organizationFields, organizationOperations } from './OrganizationDescription';
@@ -172,7 +172,7 @@ export class Zendesk implements INodeType {
 					this,
 					'ticket_fields',
 					'GET',
-					'/ticket_fields',
+					requestPath`/ticket_fields`,
 				);
 				for (const field of fields) {
 					if (customFields.includes(field.type as string)) {
@@ -190,7 +190,12 @@ export class Zendesk implements INodeType {
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const groups = await zendeskApiRequestAllItems.call(this, 'groups', 'GET', '/groups');
+				const groups = await zendeskApiRequestAllItems.call(
+					this,
+					'groups',
+					'GET',
+					requestPath`/groups`,
+				);
 				for (const group of groups) {
 					const groupName = group.name;
 					const groupId = group.id;
@@ -205,7 +210,7 @@ export class Zendesk implements INodeType {
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const tags = await zendeskApiRequestAllItems.call(this, 'tags', 'GET', '/tags');
+				const tags = await zendeskApiRequestAllItems.call(this, 'tags', 'GET', requestPath`/tags`);
 				for (const tag of tags) {
 					const tagName = tag.name;
 					const tagId = tag.name;
@@ -221,7 +226,12 @@ export class Zendesk implements INodeType {
 			// select them easily
 			async getLocales(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const locales = await zendeskApiRequestAllItems.call(this, 'locales', 'GET', '/locales');
+				const locales = await zendeskApiRequestAllItems.call(
+					this,
+					'locales',
+					'GET',
+					requestPath`/locales`,
+				);
 				for (const locale of locales) {
 					const localeName = `${locale.locale} - ${locale.name}`;
 					const localeId = locale.locale;
@@ -241,7 +251,7 @@ export class Zendesk implements INodeType {
 					this,
 					'user_fields',
 					'GET',
-					'/user_fields',
+					requestPath`/user_fields`,
 				);
 				for (const field of fields) {
 					const fieldName = field.title;
@@ -261,7 +271,7 @@ export class Zendesk implements INodeType {
 					this,
 					'organization_fields',
 					'GET',
-					'/organization_fields',
+					requestPath`/organization_fields`,
 				);
 				for (const field of fields) {
 					const fieldName = field.title;
@@ -280,7 +290,7 @@ export class Zendesk implements INodeType {
 					this,
 					'organizations',
 					'GET',
-					'/organizations',
+					requestPath`/organizations`,
 					{},
 					{},
 				);
@@ -363,7 +373,9 @@ export class Zendesk implements INodeType {
 									.customFieldsValues as IDataObject[];
 							}
 						}
-						responseData = await zendeskApiRequest.call(this, 'POST', '/tickets', { ticket: body });
+						responseData = await zendeskApiRequest.call(this, 'POST', requestPath`/tickets`, {
+							ticket: body,
+						});
 						responseData = responseData.ticket;
 					}
 					//https://developer.zendesk.com/rest_api/docs/support/tickets#update-ticket
@@ -433,9 +445,14 @@ export class Zendesk implements INodeType {
 								body.comment = comment;
 							}
 						}
-						responseData = await zendeskApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, {
-							ticket: body,
-						});
+						responseData = await zendeskApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/tickets/${ticketId}`,
+							{
+								ticket: body,
+							},
+						);
 						responseData = responseData.ticket;
 					}
 					//https://developer.zendesk.com/rest_api/docs/support/tickets#show-ticket
@@ -444,7 +461,9 @@ export class Zendesk implements INodeType {
 						const ticketType = this.getNodeParameter('ticketType', i) as string;
 						const ticketId = this.getNodeParameter('id', i) as string;
 						const endpoint =
-							ticketType === 'regular' ? `/tickets/${ticketId}` : `/suspended_tickets/${ticketId}`;
+							ticketType === 'regular'
+								? requestPath`/tickets/${ticketId}`
+								: requestPath`/suspended_tickets/${ticketId}`;
 						responseData = await zendeskApiRequest.call(this, 'GET', endpoint, {});
 						responseData = responseData.ticket || responseData.suspended_ticket;
 					}
@@ -471,7 +490,8 @@ export class Zendesk implements INodeType {
 						if (options.sortOrder) {
 							qs.sort_order = options.sortOrder;
 						}
-						const endpoint = ticketType === 'regular' ? '/search' : '/suspended_tickets';
+						const endpoint =
+							ticketType === 'regular' ? requestPath`/search` : requestPath`/suspended_tickets`;
 						const property = ticketType === 'regular' ? 'results' : 'suspended_tickets';
 						if (returnAll) {
 							responseData = await zendeskApiRequestAllItems.call(
@@ -495,7 +515,9 @@ export class Zendesk implements INodeType {
 						const ticketType = this.getNodeParameter('ticketType', i) as string;
 						const ticketId = this.getNodeParameter('id', i) as string;
 						const endpoint =
-							ticketType === 'regular' ? `/tickets/${ticketId}` : `/suspended_tickets/${ticketId}`;
+							ticketType === 'regular'
+								? requestPath`/tickets/${ticketId}`
+								: requestPath`/suspended_tickets/${ticketId}`;
 						responseData = await zendeskApiRequest.call(this, 'DELETE', endpoint, {});
 						responseData = { success: true };
 					}
@@ -506,7 +528,7 @@ export class Zendesk implements INodeType {
 							responseData = await zendeskApiRequest.call(
 								this,
 								'PUT',
-								`/suspended_tickets/${ticketId}/recover`,
+								requestPath`/suspended_tickets/${ticketId}/recover`,
 								{},
 							);
 							responseData = responseData.ticket;
@@ -523,7 +545,7 @@ export class Zendesk implements INodeType {
 						responseData = await zendeskApiRequest.call(
 							this,
 							'GET',
-							`/ticket_fields/${ticketFieldId}`,
+							requestPath`/ticket_fields/${ticketFieldId}`,
 							{},
 						);
 						responseData = responseData.ticket_field;
@@ -536,7 +558,7 @@ export class Zendesk implements INodeType {
 								this,
 								'ticket_fields',
 								'GET',
-								'/ticket_fields',
+								requestPath`/ticket_fields`,
 								{},
 								qs,
 							);
@@ -547,7 +569,7 @@ export class Zendesk implements INodeType {
 								this,
 								'ticket_fields',
 								'GET',
-								'/ticket_fields',
+								requestPath`/ticket_fields`,
 								{},
 								qs,
 							);
@@ -580,7 +602,9 @@ export class Zendesk implements INodeType {
 								delete body.userFieldsUi;
 							}
 						}
-						responseData = await zendeskApiRequest.call(this, 'POST', '/users', { user: body });
+						responseData = await zendeskApiRequest.call(this, 'POST', requestPath`/users`, {
+							user: body,
+						});
 						responseData = responseData.user;
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#update-user
@@ -605,15 +629,25 @@ export class Zendesk implements INodeType {
 							}
 						}
 
-						responseData = await zendeskApiRequest.call(this, 'PUT', `/users/${userId}`, {
-							user: body,
-						});
+						responseData = await zendeskApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/users/${userId}`,
+							{
+								user: body,
+							},
+						);
 						responseData = responseData.user;
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#show-user
 					if (operation === 'get') {
 						const userId = this.getNodeParameter('id', i) as string;
-						responseData = await zendeskApiRequest.call(this, 'GET', `/users/${userId}`, {});
+						responseData = await zendeskApiRequest.call(
+							this,
+							'GET',
+							requestPath`/users/${userId}`,
+							{},
+						);
 						responseData = responseData.user;
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#list-users
@@ -628,14 +662,14 @@ export class Zendesk implements INodeType {
 								this,
 								'users',
 								'GET',
-								'/users',
+								requestPath`/users`,
 								{},
 								qs,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
 							qs.per_page = limit;
-							responseData = await zendeskApiRequest.call(this, 'GET', '/users', {}, qs);
+							responseData = await zendeskApiRequest.call(this, 'GET', requestPath`/users`, {}, qs);
 							responseData = responseData.users;
 						}
 					}
@@ -645,7 +679,7 @@ export class Zendesk implements INodeType {
 						responseData = await zendeskApiRequest.call(
 							this,
 							'GET',
-							`/users/${userId}/organizations`,
+							requestPath`/users/${userId}/organizations`,
 							{},
 						);
 						responseData = responseData.organizations;
@@ -662,21 +696,32 @@ export class Zendesk implements INodeType {
 								this,
 								'users',
 								'GET',
-								'/users/search',
+								requestPath`/users/search`,
 								{},
 								qs,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
 							qs.per_page = limit;
-							responseData = await zendeskApiRequest.call(this, 'GET', '/users/search', {}, qs);
+							responseData = await zendeskApiRequest.call(
+								this,
+								'GET',
+								requestPath`/users/search`,
+								{},
+								qs,
+							);
 							responseData = responseData.users;
 						}
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#delete-user
 					if (operation === 'delete') {
 						const userId = this.getNodeParameter('id', i) as string;
-						responseData = await zendeskApiRequest.call(this, 'DELETE', `/users/${userId}`, {});
+						responseData = await zendeskApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/users/${userId}`,
+							{},
+						);
 						responseData = responseData.user;
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#show-user-related-information
@@ -685,7 +730,7 @@ export class Zendesk implements INodeType {
 						responseData = await zendeskApiRequest.call(
 							this,
 							'GET',
-							`/users/${userId}/related`,
+							requestPath`/users/${userId}/related`,
 							{},
 						);
 						responseData = responseData.user_related;
@@ -725,7 +770,7 @@ export class Zendesk implements INodeType {
 							}
 						}
 
-						responseData = await zendeskApiRequest.call(this, 'POST', '/organizations', {
+						responseData = await zendeskApiRequest.call(this, 'POST', requestPath`/organizations`, {
 							organization: body,
 						});
 						responseData = responseData.organization;
@@ -733,12 +778,22 @@ export class Zendesk implements INodeType {
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#delete-organization
 					if (operation === 'delete') {
 						const organizationId = this.getNodeParameter('id', i) as string;
-						await zendeskApiRequest.call(this, 'DELETE', `/organizations/${organizationId}`, {});
+						await zendeskApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/organizations/${organizationId}`,
+							{},
+						);
 						responseData = { success: true };
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#count-organizations
 					if (operation === 'count') {
-						responseData = await zendeskApiRequest.call(this, 'GET', '/organizations/count', {});
+						responseData = await zendeskApiRequest.call(
+							this,
+							'GET',
+							requestPath`/organizations/count`,
+							{},
+						);
 						responseData = responseData.count;
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#show-organization
@@ -747,7 +802,7 @@ export class Zendesk implements INodeType {
 						responseData = await zendeskApiRequest.call(
 							this,
 							'GET',
-							`/organizations/${organizationId}`,
+							requestPath`/organizations/${organizationId}`,
 							{},
 						);
 						responseData = responseData.organization;
@@ -761,14 +816,20 @@ export class Zendesk implements INodeType {
 								this,
 								'organizations',
 								'GET',
-								'/organizations',
+								requestPath`/organizations`,
 								{},
 								qs,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
 							qs.per_page = limit;
-							responseData = await zendeskApiRequest.call(this, 'GET', '/organizations', {}, qs);
+							responseData = await zendeskApiRequest.call(
+								this,
+								'GET',
+								requestPath`/organizations`,
+								{},
+								qs,
+							);
 							responseData = responseData.organizations;
 						}
 					}
@@ -778,7 +839,7 @@ export class Zendesk implements INodeType {
 						responseData = await zendeskApiRequest.call(
 							this,
 							'GET',
-							`/organizations/${organizationId}/related`,
+							requestPath`/organizations/${organizationId}/related`,
 							{},
 						);
 						responseData = responseData.organization_related;
@@ -814,7 +875,7 @@ export class Zendesk implements INodeType {
 						responseData = await zendeskApiRequest.call(
 							this,
 							'PUT',
-							`/organizations/${organizationId}`,
+							requestPath`/organizations/${organizationId}`,
 							{ organization: body },
 						);
 						responseData = responseData.organization;

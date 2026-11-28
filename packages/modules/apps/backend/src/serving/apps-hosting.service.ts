@@ -7,6 +7,14 @@ import type { IncomingMessage } from 'node:http';
 
 import { AppHostService } from './app-host.service';
 
+function isServiceWorkerScriptRequest(req: IncomingMessage): boolean {
+	const { headers } = req;
+	return (
+		String(headers['service-worker']).toLowerCase() === 'script' ||
+		String(headers['sec-fetch-dest']).toLowerCase() === 'serviceworker'
+	);
+}
+
 @Service()
 export class AppsHostingService {
 	readonly router: Router = Router();
@@ -21,7 +29,14 @@ export class AppsHostingService {
 			next();
 			return;
 		}
-		res.set('Cache-Control', 'no-store');
+		res.set({
+			'Cache-Control': 'no-store',
+			'Content-Security-Policy': this.hosts.contentSecurityPolicy(req),
+		});
+		if (isServiceWorkerScriptRequest(req)) {
+			res.sendStatus(404);
+			return;
+		}
 		if (!this.hosts.namespace(req) && !this.hosts.previewNamespace(req)) {
 			res.sendStatus(404);
 			return;

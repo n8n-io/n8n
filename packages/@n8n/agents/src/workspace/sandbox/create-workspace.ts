@@ -37,6 +37,7 @@ function buildSandbox(
 			logger,
 			apiUrl: config.daytonaApiUrl,
 			labels: config.labels,
+			...(config.egress !== undefined ? { networkBlockAll: config.egress === 'none' } : {}),
 			...(config.ephemeral !== undefined ? { ephemeral: config.ephemeral } : {}),
 			...(config.autoStopInterval !== undefined
 				? { autoStopInterval: config.autoStopInterval }
@@ -52,6 +53,7 @@ function buildSandbox(
 			language: 'typescript',
 			timeout: config.timeout ?? 300_000,
 			createTimeoutSeconds: config.createTimeoutSeconds ?? 300,
+			...(config.quickStart ? { quickStart: true } : {}),
 			errorReporter: options.errorReporter,
 			createStrategyMode: mode,
 		});
@@ -60,6 +62,7 @@ function buildSandbox(
 	if (provider === 'n8n-sandbox') {
 		return new N8nSandboxServiceSandbox({
 			id: config.id,
+			egress: config.egress,
 			...(config.ephemeral !== undefined ? { ephemeral: config.ephemeral } : {}),
 			apiKey: config.apiKey,
 			serviceUrl: config.serviceUrl,

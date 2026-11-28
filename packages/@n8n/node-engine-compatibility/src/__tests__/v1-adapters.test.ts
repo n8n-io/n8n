@@ -131,9 +131,126 @@ describe('toV1Execution', () => {
 				},
 			],
 		});
-		expect(toV1Sources(graph).get('b')).toEqual([
+		expect(toV1Sources(graph, {}, 'b', 0)).toEqual([
 			null,
 			{ previousNode: 'A', previousNodeOutput: 1 },
+		]);
+	});
+
+	it('names the pass of a predecessor inside the loop', () => {
+		expect(toV1Sources(graph, {}, 'body', 2)).toEqual([
+			{ previousNode: 'Loop', previousNodeOutput: 1, previousNodeRun: 2 },
+		]);
+	});
+
+	it('names the last pass of a loop for the node after it', () => {
+		// Trigger -> Loop, Loop o1 -> Body -> (back) Loop, Loop o0 -> After
+		const withExit = converter.convert(
+			v1Workflow(
+				[
+					{ id: 't', name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
+					{ id: 'loop', name: 'Loop', type: 'n8n-nodes-base.splitInBatches', typeVersion: 3 },
+					{ id: 'body', name: 'Body', type: 'n8n-nodes-base.noOp' },
+					{ id: 'after', name: 'After', type: 'n8n-nodes-base.noOp' },
+				],
+				{
+					Trigger: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+					Loop: {
+						main: [
+							[{ node: 'After', type: 'main', index: 0 }],
+							[{ node: 'Body', type: 'main', index: 0 }],
+						],
+					},
+					Body: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+				},
+			),
+		);
+		const outputsByNode = { loop: { 0: items({}), 1: items({}), 2: items({}) } };
+
+		expect(toV1Sources(withExit, outputsByNode, 'after', 0)).toEqual([
+			{ previousNode: 'Loop', previousNodeOutput: 0, previousNodeRun: 2 },
+		]);
+	});
+
+	describe('a slot that several edges feed, around a loop', () => {
+		it("reads the loop's done edge at the loop's last pass", () => {
+			// Trigger ──► Loop ─o1─► Body ─(back)─► Loop, Loop o0 ──► Done, Trigger ──► Side ──► Done
+			const afterLoop: WorkflowGraph = {
+				nodes: [
+					{ id: 't', name: 'Trigger', type: 'trigger' },
+					{ id: 'loop', name: 'Loop', type: 'batch', config: { batchSize: 1 } },
+					{ id: 'body', name: 'Body', type: 'v1-node' },
+					{ id: 'side', name: 'Side', type: 'v1-node' },
+					{ id: 'done', name: 'Done', type: 'v1-node' },
+				],
+				edges: [
+					{ from: 't', to: 'loop', outputIndex: 0, inputIndex: 0 },
+					{ from: 'loop', to: 'body', outputIndex: 1, inputIndex: 0 },
+					{ from: 'body', to: 'loop', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+					{ from: 'loop', to: 'done', outputIndex: 0, inputIndex: 0 },
+					{ from: 't', to: 'side', outputIndex: 0, inputIndex: 0 },
+					{ from: 'side', to: 'done', outputIndex: 0, inputIndex: 0 },
+				],
+			};
+			const outputsByNode = {
+				loop: { 0: [null, [{ json: {} }]], 1: [[{ json: {} }], null] },
+				side: { 0: items({}) },
+			};
+
+			expect(toV1Sources(afterLoop, outputsByNode, 'done', 0)).toEqual([
+				{ previousNode: 'Loop', previousNodeOutput: 0, previousNodeRun: 1 },
+			]);
+		});
+
+		it('reads each edge inside a loop body at the same pass', () => {
+			// Trigger ──► Loop ─o1─► If ─o0─► A ─┐
+			//                          └─o1─► B ─┴─► Join ─(back)─► Loop
+			const bodyJoin: WorkflowGraph = {
+				nodes: [
+					{ id: 't', name: 'Trigger', type: 'trigger' },
+					{ id: 'loop', name: 'Loop', type: 'batch', config: { batchSize: 1 } },
+					{ id: 'i', name: 'If', type: 'v1-node' },
+					{ id: 'a', name: 'A', type: 'v1-node' },
+					{ id: 'b', name: 'B', type: 'v1-node' },
+					{ id: 'j', name: 'Join', type: 'v1-node' },
+				],
+				edges: [
+					{ from: 't', to: 'loop', outputIndex: 0, inputIndex: 0 },
+					{ from: 'loop', to: 'i', outputIndex: 1, inputIndex: 0 },
+					{ from: 'i', to: 'a', outputIndex: 0, inputIndex: 0 },
+					{ from: 'i', to: 'b', outputIndex: 1, inputIndex: 0 },
+					{ from: 'a', to: 'j', outputIndex: 0, inputIndex: 0 },
+					{ from: 'b', to: 'j', outputIndex: 0, inputIndex: 0 },
+					{ from: 'j', to: 'loop', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+				],
+			};
+			// A ran on pass 0 only; on pass 1 only B sent items.
+			const outputsByNode = {
+				i: { 0: [[{ json: {} }], null], 1: [null, [{ json: {} }]] },
+				a: { 0: items({}) },
+				b: { 1: items({}) },
+			};
+
+			expect(toV1Sources(bodyJoin, outputsByNode, 'j', 1)).toEqual([
+				{ previousNode: 'B', previousNodeOutput: 0, previousNodeRun: 1 },
+			]);
+		});
+	});
+
+	it('rebuilds run data inside a loop with the pass each run read', () => {
+		const execution = toV1Execution(
+			graph,
+			{
+				loop: { 0: [null, [{ json: { p: 0 } }]], 1: [null, [{ json: { p: 1 } }]] },
+				body: { 0: items({ p: 0 }), 1: items({ p: 1 }) },
+			},
+			'body',
+			1,
+		);
+
+		expect(execution.runData.Body.map((run) => run.source)).toEqual([
+			[{ previousNode: 'Loop', previousNodeOutput: 1 }],
+			[{ previousNode: 'Loop', previousNodeOutput: 1, previousNodeRun: 1 }],
 		]);
 	});
 
@@ -143,7 +260,9 @@ describe('toV1Execution', () => {
 		expect(execution.connections.Body).toEqual({
 			main: [[{ node: 'Loop', type: 'main', index: 0 }]],
 		});
-		expect(toV1Sources(graph).get('loop')).toEqual([{ previousNode: 'B', previousNodeOutput: 0 }]);
+		expect(toV1Sources(graph, {}, 'loop', 0)).toEqual([
+			{ previousNode: 'B', previousNodeOutput: 0 },
+		]);
 	});
 
 	it('omits nodes whose config is unreadable', () => {

@@ -1,17 +1,22 @@
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
 import { AllowAllAdmittance } from './admittance';
 import { SharedSecretIdentityVerifier } from './auth';
-import { createDataSource } from './database';
+import { createDataSource, runMigrations } from './database';
+import { noopExecutionFilesDeleter } from './dependencies';
 import { createConsoleLogger } from './logging';
+import { createInMemoryWorkQueues } from './queue';
 import { noopExecutionResponseSender } from './response-channel';
+import { retentionPolicyFromHours } from './retention';
 import { createEngineRuntime } from './runtime';
+import { assertSecureTransport, createEngineHttpServer, openEngineTls } from './tls';
 
 const logger = createConsoleLogger();
 
 async function main(): Promise<void> {
 	const config = Container.get(EngineConfig);
+	const { pruneData, pruneDataMaxAge, pruneDataMaxCount } = Container.get(ExecutionsConfig);
 
 	// Refused rather than degraded: an engine with nowhere to record an execution
 	// would report healthy while being unable to run one.
@@ -23,9 +28,19 @@ async function main(): Promise<void> {
 		throw new Error('engine: N8N_ENGINE_AUTH_SECRET is not set');
 	}
 
-	const dataSource = createDataSource(config.databaseUrl);
+	// Before the database, so a bad certificate fails the boot in a second.
+	const tls = openEngineTls(config, logger);
+	assertSecureTransport(config, tls !== undefined, {}, logger);
+
+	const dataSource = createDataSource(config.databaseUrl, {
+		poolSize: config.databasePoolSize,
+		connectTimeoutMS: config.databaseConnectionTimeoutMs,
+	});
 	await dataSource.initialize();
-	await dataSource.runMigrations();
+	logger.info(
+		'Running the engine migrations. This waits while another engine process holds the migration lock.',
+	);
+	await runMigrations(dataSource);
 
 	const runtime = createEngineRuntime({
 		dataSource,
@@ -35,11 +50,25 @@ async function main(): Promise<void> {
 		// Nothing in this process waits for a response: the caller reads the run
 		// over the API instead.
 		responseSender: noopExecutionResponseSender,
+		// Runs no `v1-node` steps, so it writes no binary files.
+		externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
+		queues: createInMemoryWorkQueues({
+			concurrency: {
+				step: config.stepConcurrency,
+				orchestration: config.orchestrationConcurrency,
+			},
+			logger,
+		}),
+		retention: retentionPolicyFromHours({
+			enabled: pruneData,
+			maxAgeHours: pruneDataMaxAge,
+			maxCount: pruneDataMaxCount,
+		}),
 	});
 	runtime.start();
 
-	const server = runtime.app.listen(config.port, config.host, () => {
-		logger.info(`listening on http://${config.host}:${config.port}`);
+	const server = createEngineHttpServer(runtime.app, tls).listen(config.port, config.host, () => {
+		logger.info(`listening on ${tls ? 'https' : 'http'}://${config.host}:${config.port}`);
 	});
 
 	let shuttingDown = false;
@@ -47,6 +76,7 @@ async function main(): Promise<void> {
 		if (shuttingDown) return;
 		shuttingDown = true;
 		logger.info(`received ${signal}, shutting down`);
+		tls?.close();
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => (error ? reject(error) : resolve()));
 		});

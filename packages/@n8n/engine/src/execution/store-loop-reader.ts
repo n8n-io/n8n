@@ -1,6 +1,6 @@
-import { UnexpectedError, type JsonValue } from '../common';
+import { UnexpectedError } from '../common';
 import type { WorkflowLoop } from '../graph';
-import type { LoopReader } from './batch-step';
+import type { LoopReader, SourcedList } from './batch-step';
 import { stepKeyId } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import type { StepStore } from './step-store';
@@ -18,8 +18,8 @@ export function createStoreLoopReader(
 	loop: WorkflowLoop,
 	terminalIterations: Map<string, number>,
 ): LoopReader {
-	// TODO(CAT-3982): same-slot convergence gets a defined meaning. We should
-	// have rejected this graph at validation time.
+	// A batch node does not concatenate several entries or returns yet.
+	// `validateLoops` rejects them.
 	if (loop.entryEdges.length > 1 || loop.backEdges.length > 1) {
 		throw new UnexpectedError(
 			`batch node ${loop.batchNodeId} has ${loop.entryEdges.length} entry edges and ${loop.backEdges.length} back-edges; validated loops have at most one of each`,
@@ -52,7 +52,14 @@ export function createStoreLoopReader(
 					`batch node ${loop.batchNodeId} reads ${entryEdge.from} at iteration ${source.key.iteration}, which has no step`,
 				);
 			}
-			return step.outputs?.[entryEdge.outputIndex] ?? null;
+			return {
+				items: step.outputs?.[entryEdge.outputIndex] ?? null,
+				from: {
+					nodeId: entryEdge.from,
+					outputIndex: entryEdge.outputIndex,
+					iteration: source.key.iteration,
+				},
+			};
 		},
 
 		async readArrivals(iteration) {
@@ -65,14 +72,21 @@ export function createStoreLoopReader(
 			}));
 			const steps = await stepStore.loadStepsByKeys(executionId, keys);
 
-			return keys.map((key): JsonValue => {
+			return keys.map((key): SourcedList => {
 				const step = steps[stepKeyId(key)];
 				if (!step) {
 					throw new UnexpectedError(
 						`batch node ${loop.batchNodeId} reads ${backEdge.from} at iteration ${key.iteration}, which has no step`,
 					);
 				}
-				return step.outputs?.[backEdge.outputIndex] ?? null;
+				return {
+					items: step.outputs?.[backEdge.outputIndex] ?? null,
+					from: {
+						nodeId: backEdge.from,
+						outputIndex: backEdge.outputIndex,
+						iteration: key.iteration,
+					},
+				};
 			});
 		},
 	};

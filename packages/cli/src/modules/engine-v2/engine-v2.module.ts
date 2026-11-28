@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { EngineConfig, ExecutionsConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig, PrometheusMetricsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -15,10 +15,10 @@ import { randomBytes } from 'node:crypto';
  *
  * Main-only. In-process mode is regular mode only: the in-process engine uses
  * `InMemoryWorkQueue`, so its work does not survive the process and cannot be
- * shared with other mains or workers. In `remote` mode (`N8N_ENGINE_MODE`) a
- * separate `n8n engine` process hosts the data plane; this module then starts
- * only the control plane server, the client that dials the engine, and the Redis
- * subscriber of the execution channel.
+ * shared with other mains or workers. In `remote` mode (`N8N_ENGINE_MODE`) one
+ * or more `n8n engine` processes host the data plane, with its work queues in
+ * Redis; this module then starts only the control plane server, the client that
+ * dials the engine, and the Redis subscriber of the execution channel.
  */
 @BackendModule({ name: 'engine-v2', instanceTypes: ['main'] })
 export class EngineV2Module implements ModuleInterface {
@@ -28,6 +28,9 @@ export class EngineV2Module implements ModuleInterface {
 
 	async init() {
 		const engineConfig = Container.get(EngineConfig);
+		const logger = Container.get(Logger).scoped('engine-v2');
+		const { EngineMtls } = await import('./engine-mtls.js');
+		const mtls = Container.get(EngineMtls);
 
 		if (engineConfig.mode === 'in-process' && Container.get(ExecutionsConfig).mode === 'queue') {
 			throw new UserError('The in-process engine does not support queue mode.');
@@ -35,22 +38,28 @@ export class EngineV2Module implements ModuleInterface {
 
 		if (engineConfig.mode === 'remote') {
 			assertRemoteConfig(engineConfig);
+			mtls.assertSecureTransport({ N8N_ENGINE_BASE_URL: engineConfig.baseUrl });
+		} else if (mtls.enabled) {
+			throw new UserError(
+				'N8N_ENGINE_TLS_* applies only to N8N_ENGINE_MODE=remote. Both planes run in this process and talk over loopback, so remove the TLS settings.',
+			);
 		} else if (!engineConfig.authSecret) {
 			// Both planes live in this process, so a generated secret is enough and the
 			// integrated engine is never unauthenticated. A separate DP must be given one.
 			engineConfig.authSecret = randomBytes(32).toString('hex');
 		}
 
-		// Before the engine, so nothing is reported with no server to receive it.
-		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
+		// Before the engine, so its first step can resolve credentials.
+		const { EngineControlPlaneServer } = await import(
+			'./control-plane/engine-control-plane-server.js'
+		);
 		await Container.get(EngineControlPlaneServer).start();
 
-		const logger = Container.get(Logger).scoped('engine-v2');
 		const { EngineV2WebhookResponseRegistry } = await import(
 			'./webhook-response/webhook-response-registry.service.js'
 		);
 		const { EngineV2LifecycleSubscriptions } = await import(
-			'./engine-lifecycle-event-subscriptions.js'
+			'./lifecycle-events/engine-lifecycle-event-subscriptions.js'
 		);
 		if (engineConfig.mode === 'in-process') {
 			// Hand both endpoints over before the engine starts. A short run can answer
@@ -68,8 +77,26 @@ export class EngineV2Module implements ModuleInterface {
 			Container.get(EngineV2WebhookResponseRegistry).useReceiver(responseReceiver);
 			Container.get(EngineV2LifecycleSubscriptions).useReceiver(lifecycleEventReceiver);
 
+			const { createInMemoryWorkQueues } = await import('@n8n/engine');
+			const queues = createInMemoryWorkQueues({
+				concurrency: {
+					orchestration: engineConfig.orchestrationConcurrency,
+					step: engineConfig.stepConcurrency,
+				},
+				logger,
+			});
+			// Main serves the global registry on its own `/metrics` and already
+			// registers the Node.js default metrics there.
+			const metricsRegistry = Container.get(PrometheusMetricsConfig).enable
+				? (await import('prom-client')).register
+				: undefined;
 			const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
-			await Container.get(EngineV2Runtime).init({ responseSender, lifecycleEventSender });
+			await Container.get(EngineV2Runtime).init({
+				responseSender,
+				lifecycleEventSender,
+				queues,
+				metricsRegistry,
+			});
 		} else {
 			// The remote data plane publishes over Redis, so only the subscribing end
 			// runs here.
@@ -153,9 +180,14 @@ export class EngineV2Module implements ModuleInterface {
 			await Promise.all([this.channelPublisher?.stop(), this.channelSubscriber?.stop()]);
 		}
 
-		// After the engine, so its final flush still has somewhere to land.
-		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
+		// After the engine, so a step that still runs can resolve credentials.
+		const { EngineControlPlaneServer } = await import(
+			'./control-plane/engine-control-plane-server.js'
+		);
 		await Container.get(EngineControlPlaneServer).stop();
+
+		const { EngineMtls } = await import('./engine-mtls.js');
+		Container.get(EngineMtls).close();
 	}
 }
 

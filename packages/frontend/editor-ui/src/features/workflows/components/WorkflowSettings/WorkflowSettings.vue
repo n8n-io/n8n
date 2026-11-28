@@ -26,6 +26,7 @@ import {
 	N8nIconButton,
 	N8nOption,
 	N8nSelect,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -38,6 +39,7 @@ import {
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,
 	channelsToPolicy,
+	pickVersionedSettings,
 	policyToChannels,
 } from 'n8n-workflow';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
@@ -68,8 +70,14 @@ import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings
 import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import WorkflowCustomTelemetryTags from '@/features/workflows/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
+import {
+	confirmEngineV2Switch,
+	findEngineV2Issues,
+	hasBlockingGroup,
+} from '@n8n/frontend-module-engine-v2';
+import { useOpenEngineV2Findings } from '@/app/composables/useOpenEngineV2Findings';
 
-import { ElCol, ElRow, ElSwitch } from 'element-plus';
+import { ElCol, ElRow } from 'element-plus';
 
 const i18n = useI18n();
 const externalHooks = useExternalHooks();
@@ -259,8 +267,16 @@ const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('r
 const isEngineTypeSettingVisible = computed(() => settingsStore.isModuleActive('engine-v2'));
 
 const engineTypeOptions = computed(() => [
-	{ key: 'v1', value: i18n.baseText('workflowSettings.engineType.v1') },
-	{ key: 'v2', value: i18n.baseText('workflowSettings.engineType.v2') },
+	{
+		key: 'v1',
+		value: i18n.baseText('workflowSettings.engineType.v1'),
+		description: i18n.baseText('workflowSettings.engineType.v1.description'),
+	},
+	{
+		key: 'v2',
+		value: i18n.baseText('workflowSettings.engineType.v2'),
+		description: i18n.baseText('workflowSettings.engineType.v2.description'),
+	},
 ]);
 
 // The backend runs a workflow without `engineType` on v1. Show that as v1, but write the
@@ -273,6 +289,56 @@ const engineType = computed({
 		workflowSettings.value.engineType = value;
 	},
 });
+
+// Production keeps running the published engine until the user publishes again.
+const isEngineTypeChangePendingPublish = computed(() => {
+	const activeVersion = workflowDocumentStore.value.activeVersion;
+	if (!activeVersion) return false;
+	return pickVersionedSettings(activeVersion.settings).engineType !== engineType.value;
+});
+
+const openEngineV2Findings = useOpenEngineV2Findings();
+
+// The engine v2 findings of the workflow with the settings that Save would send, whatever the
+// selected engine. So the confirmation counts the issues that the saved workflow would have.
+const engineV2Issues = computed(() => {
+	if (!isEngineTypeSettingVisible.value) return [];
+	return findEngineV2Issues({
+		nodes: workflowDocumentStore.value.allNodes,
+		connections: workflowDocumentStore.value.connectionsBySourceNode,
+		settings: settingsToSave(),
+	});
+});
+
+// A select change, not a watch: loading the settings also writes `engineType`, and that must
+// not ask anything.
+async function onEngineTypeChange(value: 'v1' | 'v2') {
+	const previous = workflowSettings.value.engineType;
+	engineType.value = value;
+	if (value !== 'v2' || previous === 'v2' || engineV2Issues.value.length === 0) return;
+
+	const confirmed = await confirmEngineV2Switch({
+		count: engineV2Issues.value.length,
+		hasBlocking: hasBlockingGroup(engineV2Issues.value),
+		hasPublishedVersion: !!workflowDocumentStore.value.activeVersion,
+	});
+
+	if (!confirmed) {
+		// Restore the exact value, so Save sends what it would have sent without the change.
+		if (previous === undefined) delete workflowSettings.value.engineType;
+		else workflowSettings.value.engineType = previous;
+		return;
+	}
+
+	const hasIssues = engineV2Issues.value.length > 0;
+	if ((await saveSettings()) && hasIssues) {
+		await openEngineV2Findings(workflowId.value);
+	}
+}
+
+const isExecutionLogicSettingVisible = computed(
+	() => !(isEngineTypeSettingVisible.value && engineType.value === 'v2'),
+);
 
 const isProductionRedactionLockedByFloor = computed(
 	() => instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all',
@@ -705,8 +771,37 @@ const saveCustomTelemetryTags = async (customTelemetryTags: ICustomTelemetryTag[
 	}
 };
 
-const saveSettings = async () => {
-	if (hasCustomTelemetryTagErrors.value) return;
+/**
+ * Floor-locked redaction channels are display-only: the coercion watch forces the locked
+ * select(s) to "redact" for clarity, but that must never be persisted as the workflow's own
+ * choice. Rebuild the saved policy from the stored value for floor-locked channels and the
+ * current selection for editable ones. (ENT-35)
+ */
+function redactionPolicyToSave(): WorkflowSettings.RedactionPolicy | undefined {
+	const original = policyToChannels(originalRedactionPolicy.value ?? 'none');
+	const production = isProductionRedactionLockedByFloor.value
+		? original.production
+		: redactProductionData.value === 'redact';
+	const manual = isManualRedactionLockedByFloor.value
+		? original.manual
+		: redactManualData.value === 'redact';
+	// Preserve the original value verbatim (including `undefined`) when nothing the user could
+	// edit changed, so we never send a below-floor *change* the backend rejects under enforcement.
+	const unchanged = production === original.production && manual === original.manual;
+	return unchanged ? originalRedactionPolicy.value : channelsToPolicy({ production, manual });
+}
+
+/** A copy of the settings as Save sends them, without the checks and messages of Save. */
+function settingsToSave(): IWorkflowSettings {
+	return {
+		...workflowSettings.value,
+		...(isRedactionSettingVisible.value && { redactionPolicy: redactionPolicyToSave() }),
+	};
+}
+
+/** Saves the settings and closes the modal. Returns true only when the save succeeds. */
+const saveSettings = async (): Promise<boolean> => {
+	if (hasCustomTelemetryTagErrors.value) return false;
 
 	// Set that the active state should be changed
 	const data: WorkflowDataUpdate & { settings: IWorkflowSettings } = {
@@ -724,7 +819,7 @@ const saveSettings = async () => {
 			i18n.baseText('workflowSettings.showError.saveSettings1.title'),
 			{ message: i18n.baseText('workflowSettings.showError.saveSettings1.message') + ':' },
 		);
-		return;
+		return false;
 	}
 
 	if (
@@ -745,7 +840,7 @@ const saveSettings = async () => {
 			i18n.baseText('workflowSettings.showError.saveSettings2.title'),
 			{ message: i18n.baseText('workflowSettings.showError.saveSettings2.message') + ':' },
 		);
-		return;
+		return false;
 	}
 	delete data.settings.maxExecutionTimeout;
 
@@ -757,24 +852,8 @@ const saveSettings = async () => {
 		data.settings.credentialResolverId = '';
 	}
 
-	// Floor-locked redaction channels are display-only: the coercion watch forces the locked
-	// select(s) to "redact" for clarity, but that must never be persisted as the workflow's own
-	// choice. Rebuild the saved policy from the stored value for floor-locked channels and the
-	// current selection for editable ones. (ENT-35)
 	if (isRedactionSettingVisible.value) {
-		const original = policyToChannels(originalRedactionPolicy.value ?? 'none');
-		const production = isProductionRedactionLockedByFloor.value
-			? original.production
-			: redactProductionData.value === 'redact';
-		const manual = isManualRedactionLockedByFloor.value
-			? original.manual
-			: redactManualData.value === 'redact';
-		// Preserve the original value verbatim (including `undefined`) when nothing the user could
-		// edit changed, so we never send a below-floor *change* the backend rejects under enforcement.
-		const unchanged = production === original.production && manual === original.manual;
-		data.settings.redactionPolicy = unchanged
-			? originalRedactionPolicy.value
-			: channelsToPolicy({ production, manual });
+		data.settings.redactionPolicy = redactionPolicyToSave();
 	}
 
 	isLoading.value = true;
@@ -786,7 +865,7 @@ const saveSettings = async () => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.showError.saveSettings3.title'));
 		isLoading.value = false;
-		return;
+		return false;
 	}
 
 	// Get the settings without the defaults set for local workflow settings
@@ -838,6 +917,8 @@ const saveSettings = async () => {
 			duration: 0,
 		});
 	}
+
+	return true;
 };
 
 const toggleTimeout = () => {
@@ -880,8 +961,8 @@ onMounted(async () => {
 
 	if (!workflowsStore.isWorkflowSaved[workflowDocumentStore.value.workflowId]) {
 		toast.showMessage({
-			title: 'No workflow active',
-			message: 'No workflow active to display settings of.',
+			title: i18n.baseText('workflowSettings.showMessage.noWorkflowActive.title'),
+			message: i18n.baseText('workflowSettings.showMessage.noWorkflowActive.message'),
 			type: 'error',
 			duration: 0,
 		});
@@ -922,8 +1003,8 @@ onMounted(async () => {
 
 		await Promise.all(promises);
 	} catch (error) {
-		toast.showError(error, 'Problem loading settings', {
-			message: 'The following error occurred loading the data:',
+		toast.showError(error, i18n.baseText('workflowSettings.showError.loadSettings.title'), {
+			message: i18n.baseText('workflowSettings.showError.loadSettings.message'),
 		});
 	}
 
@@ -986,9 +1067,10 @@ onMounted(async () => {
 	// Fetch the instance redaction floor AFTER workflowSettings has been assigned, so
 	// the floor-coercion watch sees the loaded settings (not the initial empty object).
 	// The FE gates this fetch on the `DataRedaction` license, while the endpoint itself is
-	// gated by `feat:personalSpacePolicy` + `securitySettings:manage`. A license mismatch
-	// (one licensed, the other not) is intentionally absorbed by the try/catch fail-open
-	// below: the floor stays `'off'` and no enforcement is applied client-side.
+	// gated by `feat:personalSpacePolicy` or `feat:workflowReviews`, plus
+	// `securitySettings:manage`. A license mismatch (one licensed, the other not) is
+	// intentionally absorbed by the try/catch fail-open below: the floor stays `'off'`
+	// and no enforcement is applied client-side.
 	if (isDataRedactionLicensed.value) {
 		try {
 			const response = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
@@ -1068,25 +1150,44 @@ onBeforeUnmount(() => {
 							</template>
 							<N8nIcon icon="circle-help" />
 						</N8nTooltip>
+						<N8nTooltip v-if="isEngineTypeChangePendingPublish" placement="top">
+							<template #content>
+								{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish') }}
+							</template>
+							<N8nBadge
+								variant="warning"
+								leading-icon="clock"
+								:class="$style['engine-type-pending-badge']"
+								data-test-id="workflow-settings-engine-type-pending-publish"
+							>
+								{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish.badge') }}
+							</N8nBadge>
+						</N8nTooltip>
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
-							v-model="engineType"
+							:model-value="engineType"
 							size="medium"
 							:disabled="isWorkflowSettingsReadOnly"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-engine-type-select"
+							@update:model-value="onEngineTypeChange"
 						>
 							<N8nOption
 								v-for="option in engineTypeOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"
-							/>
+							>
+								<div class="list-option">
+									<div class="option-headline">{{ option.value }}</div>
+									<div class="option-description">{{ option.description }}</div>
+								</div>
+							</N8nOption>
 						</N8nSelect>
 					</ElCol>
 				</ElRow>
-				<ElRow>
+				<ElRow v-if="isExecutionLogicSettingVisible">
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.executionLogic') }}
 					</ElCol>
@@ -1680,13 +1781,15 @@ onBeforeUnmount(() => {
 										}}</span
 									>
 								</template>
-								<ElSwitch
+								<N8nSwitch
+									:class="$style['setting-switch']"
+									size="large"
 									:disabled="!isDataRedactionLicensed || readOnlyEnv || isCallerRedactionLocked"
-									:label="i18n.baseText('workflowSettings.redactCallerExecutions')"
+									:aria-label="i18n.baseText('workflowSettings.redactCallerExecutions')"
 									:model-value="workflowSettings.redactCallerExecutions !== false"
 									data-test-id="workflow-settings-redact-caller-executions"
 									@update:model-value="toggleRedactCallerExecutions"
-								></ElSwitch>
+								/>
 							</N8nTooltip>
 						</ElCol>
 					</ElRow>
@@ -1703,13 +1806,15 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14">
 						<div>
-							<ElSwitch
-								ref="inputField"
+							<N8nSwitch
+								:class="$style['setting-switch']"
+								size="large"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:aria-label="i18n.baseText('workflowSettings.timeoutWorkflow')"
 								:model-value="(workflowSettings.executionTimeout ?? -1) > -1"
 								data-test-id="workflow-settings-timeout-workflow"
 								@update:model-value="toggleTimeout"
-							></ElSwitch>
+							/>
 						</div>
 					</ElCol>
 				</ElRow>
@@ -1779,13 +1884,15 @@ onBeforeUnmount(() => {
 								<template #content>
 									{{ mcpToggleTooltip }}
 								</template>
-								<ElSwitch
-									ref="inputField"
+								<N8nSwitch
+									id="availableInMCP"
+									:class="$style['setting-switch']"
+									size="large"
 									:disabled="mcpToggleDisabled"
 									:model-value="workflowSettings.availableInMCP ?? false"
 									data-test-id="workflow-settings-available-in-mcp"
 									@update:model-value="toggleAvailableInMCP"
-								></ElSwitch>
+								/>
 							</N8nTooltip>
 						</div>
 					</ElCol>
@@ -1950,7 +2057,7 @@ onBeforeUnmount(() => {
 		align-items: center;
 	}
 
-	:global(.el-switch) {
+	.setting-switch {
 		padding: var(--spacing--md) 0;
 	}
 }
@@ -1980,6 +2087,15 @@ onBeforeUnmount(() => {
 		svg {
 			opacity: 1;
 		}
+	}
+}
+
+.engine-type-pending-badge {
+	margin-left: var(--spacing--3xs);
+
+	// `.setting-name` hides label icons until hover. The badge icon stays visible.
+	svg {
+		opacity: 1;
 	}
 }
 
