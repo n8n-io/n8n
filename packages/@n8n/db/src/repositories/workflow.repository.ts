@@ -405,6 +405,14 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return count > 0;
 	}
 
+	async moveToFolder(id: string, folderId: string | null, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).update(
+			WorkflowEntity,
+			{ id },
+			{ parentFolder: folderId === null ? null : { id: folderId } },
+		);
+	}
+
 	async updateContent(
 		id: string,
 		content: QueryDeepPartialEntity<WorkflowEntity>,
@@ -793,6 +801,22 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 					},
 					{ shared: { project: true } },
 				)),
+			);
+		}
+
+		return workflows;
+	}
+
+	/** Only the published workflows among `workflowIds`. */
+	async findWithActiveVersionByIds(workflowIds: string[]): Promise<WorkflowEntity[]> {
+		const workflows: WorkflowEntity[] = [];
+
+		for (const chunk of chunkIds(workflowIds)) {
+			workflows.push(
+				...(await this.find({
+					where: { id: In(chunk), activeVersionId: Not(IsNull()) },
+					relations: { activeVersion: true },
+				})),
 			);
 		}
 

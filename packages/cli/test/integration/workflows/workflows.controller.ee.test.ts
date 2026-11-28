@@ -30,6 +30,7 @@ import {
 	CredentialsRepository,
 	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
@@ -2340,6 +2341,13 @@ describe('PATCH /workflows/:workflowId', () => {
 });
 
 describe('PUT /:workflowId/transfer', () => {
+	const workflowsConfig = Container.get(GlobalConfig).workflows;
+	const publicationServiceDefault = workflowsConfig.useWorkflowPublicationService;
+
+	afterEach(() => {
+		workflowsConfig.useWorkflowPublicationService = publicationServiceDefault;
+	});
+
 	test('cannot transfer into the same project', async () => {
 		const destinationProject = await createTeamProject('Team Project', member);
 
@@ -2505,6 +2513,7 @@ describe('PUT /:workflowId/transfer', () => {
 	);
 
 	test('removes and re-adds the workflow from the active workflow manager during the transfer', async () => {
+		workflowsConfig.useWorkflowPublicationService = false;
 		//
 		// ARRANGE
 		//
@@ -2628,6 +2637,7 @@ describe('PUT /:workflowId/transfer', () => {
 	});
 
 	test('deactivates the workflow if it cannot be added to the active workflow manager again and returns the WorkflowActivationError as data', async () => {
+		workflowsConfig.useWorkflowPublicationService = false;
 		//
 		// ARRANGE
 		//
@@ -3001,6 +3011,7 @@ describe('PUT /:workflowId/transfer', () => {
 	});
 
 	test('moves and unpublishes the workflow when its republish fails for an unknown reason', async () => {
+		workflowsConfig.useWorkflowPublicationService = false;
 		//
 		// ARRANGE
 		//

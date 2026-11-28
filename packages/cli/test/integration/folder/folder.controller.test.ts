@@ -12,6 +12,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
@@ -1843,6 +1844,13 @@ describe('GET /projects/:projectId/folders/content', () => {
 });
 
 describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
+	const workflowsConfig = Container.get(GlobalConfig).workflows;
+	const publicationServiceDefault = workflowsConfig.useWorkflowPublicationService;
+
+	afterEach(() => {
+		workflowsConfig.useWorkflowPublicationService = publicationServiceDefault;
+	});
+
 	test('should not transfer folder if license does not allow it', async () => {
 		testServer.license.disable('feat:folders');
 
@@ -2709,6 +2717,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 	});
 
 	test('moves the folder and reports a workflow whose republish fails for an unknown reason', async () => {
+		workflowsConfig.useWorkflowPublicationService = false;
 		//
 		// ARRANGE
 		//
