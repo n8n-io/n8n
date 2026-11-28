@@ -1,0 +1,102 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*You are the n8n Instance Agent — an AI assistant embedded in an n8n instance\\. Yo[\\s\\S]*\"role\"\\s*:\\s*\"user\"[\\s\\S]{0,15000}\"type\"\\s*:\\s*\"tool_result\"[\\s\\S]{0,100000}\\\\\"success\\\\\"\\s*:\\s*true[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-e112af45641a68123277a5dd7d340575-00392a3c0027d1df-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "request-id": [
+        "req_011Ccm4RmiiF3d5H8fVmZy1j"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-07-06T15:43:07Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "17989000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-07-06T15:43:07Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19999"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-07-06T15:43:07Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-07-06T15:43:07Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "14989000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "15000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Mon, 06 Jul 2026 15:43:09 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "a16fb92748cd5716-BCN"
+      ]
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01SqLt5T54iBUoXgdHGvxfUC\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":350,\"cache_read_input_tokens\":33001,\"cache_creation\":{\"ephemeral_5m_input_tokens\":350,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":35,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}  }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_015tjP6WQ3Wc3Unvp7Bka67a\",\"name\":\"load_skill\",\"input\":{},\"caller\":{\"type\":\"direct\"}}          }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}              }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"name\\\"\"}   }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": \\\"planned\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"-task-runt\"}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"ime\\\"}\"}               }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0            }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":350,\"cache_read_input_tokens\":33001,\"output_tokens\":57,\"output_tokens_details\":{\"thinking_tokens\":0}}     }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxU3FMdDVUNTRpQlVvWGdkSEd2eGZVQyIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MzUwLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MzMwMDEsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjM1MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjM1LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJnbG9iYWwifX0gIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0YXJ0CmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RhcnQiLCJpbmRleCI6MCwiY29udGVudF9ibG9jayI6eyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxNXRqUDZXUTNXYzNVbnZwN0JrYTY3YSIsIm5hbWUiOiJsb2FkX3NraWxsIiwiaW5wdXQiOnt9LCJjYWxsZXIiOnsidHlwZSI6ImRpcmVjdCJ9fSAgICAgICAgICB9CgpldmVudDogcGluZwpkYXRhOiB7InR5cGUiOiAicGluZyJ9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiIn0gICAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJ7XCJuYW1lXCIifSAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiI6IFwicGxhbm5lZCJ9ICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiItdGFzay1ydW50In0gICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiaW1lXCJ9In0gICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdG9wCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RvcCIsImluZGV4IjowICAgICAgICAgICAgfQoKZXZlbnQ6IG1lc3NhZ2VfZGVsdGEKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9kZWx0YSIsImRlbHRhIjp7InN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGx9LCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MzUwLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MzMwMDEsIm91dHB1dF90b2tlbnMiOjU3LCJvdXRwdXRfdG9rZW5zX2RldGFpbHMiOnsidGhpbmtpbmdfdG9rZW5zIjowfX0gICAgIH0KCmV2ZW50OiBtZXNzYWdlX3N0b3AKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdG9wIn0KCg==",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0009-1783352639917-unknown-host-POST-_v1_messages-f808330f.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}
