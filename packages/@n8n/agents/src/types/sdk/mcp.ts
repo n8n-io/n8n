@@ -70,6 +70,14 @@ export interface McpServerConfig {
 	connectionTimeoutMs?: number;
 
 	/**
+	 * Maximum time in milliseconds without a reply to a tool call of this
+	 * server. The SDK restarts this timer each time the server reports progress,
+	 * so a call that reports progress can run longer. When omitted, the MCP SDK
+	 * default applies (60s).
+	 */
+	callTimeoutMs?: number;
+
+	/**
 	 * Require human-in-the-loop approval for tool calls from this server.
 	 *
 	 * - `true` — every tool from this server requires approval before execution.

@@ -258,6 +258,7 @@ export class McpConnection {
 		try {
 			const result = (await this.client.callTool({ name, arguments: args }, CallToolResultSchema, {
 				...(options?.abortSignal ? { signal: options.abortSignal } : {}),
+				...(this.config.callTimeoutMs !== undefined ? { timeout: this.config.callTimeoutMs } : {}),
 				// Reset the SDK's 60s idle timeout on progress notifications so a
 				// long-running MCP call that streams progress stays alive, while
 				// a stalled call (no progress) dies at the idle deadline.

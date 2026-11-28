@@ -1,0 +1,182 @@
+import { isRecord } from '@n8n/utils/is-record';
+
+export interface Lookup {
+	tool: string;
+	args: Record<string, unknown>;
+}
+
+const MAX_LABELS = 2;
+const MAX_PEOPLE = 4;
+const MAX_TEAMS = 2;
+// Keys of a real result that name a person.
+const PERSON_KEYS: ReadonlySet<string> = new Set([
+	'assignee',
+	'creator',
+	'lead',
+	'delegate',
+	'author',
+	'user',
+]);
+
+export const text = (value: unknown): string | undefined =>
+	typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
+
+// The people a real result names: an object with an id, or a plain name.
+function peopleIn(result: unknown): string[] {
+	const found = new Set<string>();
+	const visit = (value: unknown, depth: number) => {
+		if (depth > 6 || found.size >= MAX_PEOPLE) return;
+		if (Array.isArray(value)) {
+			for (const item of value.slice(0, 50)) visit(item, depth + 1);
+		} else if (isRecord(value)) {
+			for (const [key, item] of Object.entries(value)) {
+				const query = PERSON_KEYS.has(key)
+					? isRecord(item)
+						? (text(item.id) ?? text(item.name))
+						: text(item)
+					: undefined;
+				if (query) found.add(query);
+				else visit(item, depth + 1);
+			}
+		}
+	};
+	visit(result, 0);
+	return [...found].slice(0, MAX_PEOPLE);
+}
+
+// The teams that a real result names. An issue shows its team as a name.
+function teamsIn(result: unknown): string[] {
+	const found = new Set<string>();
+	const visit = (value: unknown, depth: number) => {
+		if (depth > 6 || found.size >= MAX_TEAMS) return;
+		if (Array.isArray(value)) {
+			for (const item of value.slice(0, 50)) visit(item, depth + 1);
+		} else if (isRecord(value)) {
+			for (const [key, item] of Object.entries(value)) {
+				const name = key === 'team' ? text(item) : undefined;
+				if (name) found.add(name);
+				else visit(item, depth + 1);
+			}
+		}
+	};
+	visit(result, 0);
+	return [...found].slice(0, MAX_TEAMS);
+}
+
+/**
+ * Real reads for the objects that a Linear call needs in the gym, before the model plans: the team
+ * (with its states), the project, the user of the connection, the labels, the parent issue and the
+ * people that the real result names. The gym answers "Could not find referenced X" for an object it
+ * does not hold. A list with no items does not hold it either, so the call's own result can not be
+ * the source. The gym also refuses a user without an email, and the result shows names only.
+ */
+export function linearLookups(
+	tool: string,
+	args: Record<string, unknown>,
+	result?: unknown,
+): Lookup[] {
+	const found: Lookup[] = [];
+	const team = text(args.team);
+	const project = text(args.project);
+	if (team) {
+		found.push({ tool: 'get_team', args: { query: team } });
+		found.push({ tool: 'list_issue_statuses', args: { team } });
+	}
+	if (project) found.push({ tool: 'get_project', args: { query: project } });
+	// The connected user: real name and email. The same read serves the whole chat.
+	found.push({ tool: 'whoami', args: {} });
+	const assignee = text(args.assignee);
+	// "me" is the connected user. whoami has it.
+	if (assignee && assignee !== 'me') found.push({ tool: 'get_user', args: { query: assignee } });
+	const parent = text(args.parentId);
+	if (parent) found.push({ tool: 'get_issue', args: { id: parent } });
+	// The issue that the call works on: `id` of save_issue, `issueId` of the comment tools. Without
+	// its real copy the gym makes a stub issue with no title.
+	const target = tool === 'save_issue' ? text(args.id) : text(args.issueId);
+	if (target) found.push({ tool: 'get_issue', args: { id: target } });
+	const labels = [args.label, ...(Array.isArray(args.labels) ? args.labels : [args.labels])]
+		.flatMap((l) => text(l) ?? [])
+		.slice(0, MAX_LABELS);
+	for (const name of labels)
+		found.push({ tool: 'list_issue_labels', args: team ? { name, team } : { name } });
+	// The team of an issue in the result, with its states. The gym team has the default state only.
+	for (const name of teamsIn(result)) {
+		found.push({ tool: 'get_team', args: { query: name } });
+		found.push({ tool: 'list_issue_statuses', args: { team: name } });
+	}
+	for (const query of peopleIn(result)) found.push({ tool: 'get_user', args: { query } });
+	// The call itself already is the real read of its own object. A repeat is read once.
+	const seen = new Set<string>();
+	return found.filter((l) => {
+		const key = `${l.tool} ${JSON.stringify(l.args)}`;
+		if (l.tool === tool || seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+}
+
+/**
+ * The gym refuses a user without an email. When the real data has none, give the user one that
+ * can not clash with a real address and is the same for the same user. A real email stays.
+ */
+export function withUserEmails(overlay: Record<string, unknown>): Record<string, unknown> {
+	const native = overlay.native;
+	if (!isRecord(native)) return overlay;
+	const linear = native.linear;
+	if (!isRecord(linear) || !Array.isArray(linear.users)) return overlay;
+	const users = linear.users.map((u: unknown) => {
+		if (!isRecord(u) || text(u.email)) return u;
+		const basis = text(u.id) ?? text(u.ref) ?? text(u.name) ?? 'user';
+		const slug =
+			basis
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '')
+				.slice(0, 12) || 'user';
+		return { ...u, email: `user-${slug}@unknown.invalid` };
+	});
+	return { ...overlay, native: { ...native, linear: { ...linear, users } } };
+}
+
+// The issues of a real result: a list of them, one issue, or one issue in an `issue` field.
+function issuesIn(result: unknown): Array<Record<string, unknown>> {
+	if (isRecord(result) && Array.isArray(result.issues)) return result.issues.filter(isRecord);
+	if (isRecord(result) && isRecord(result.issue)) return [result.issue];
+	return isRecord(result) && text(result.id) ? [result] : [];
+}
+
+/**
+ * A model may leave out the description of an issue when the prompt shows it cut. The real result
+ * has it whole. Fill it in by code, for the issue with the same identifier (team key and number).
+ * An issue whose team key is not known matches by number, only when one real issue has that number.
+ */
+export function withIssueDescriptions(
+	overlay: Record<string, unknown>,
+	result?: unknown,
+): Record<string, unknown> {
+	const native = overlay.native;
+	if (!isRecord(native) || !isRecord(native.linear) || !Array.isArray(native.linear.issues)) {
+		return overlay;
+	}
+	// Identifier in lower case -> description.
+	const described = new Map<string, string>();
+	for (const issue of issuesIn(result)) {
+		const identifier = text(issue.id)?.toLowerCase();
+		const description = text(issue.description);
+		if (identifier && description) described.set(identifier, issue.description as string);
+	}
+	if (described.size === 0) return overlay;
+	const teams = Array.isArray(native.linear.teams) ? native.linear.teams.filter(isRecord) : [];
+	const keyOfTeam = (ref: unknown): string | undefined =>
+		text(teams.find((team) => team.ref === ref || team.id === ref)?.key)?.toLowerCase();
+	const issues = native.linear.issues.map((item: unknown) => {
+		if (!isRecord(item) || text(item.description) || typeof item.number !== 'number') return item;
+		const issueNumber = item.number;
+		const key = keyOfTeam(item.team);
+		const matches = [...described].filter(([identifier]) =>
+			key ? identifier === `${key}-${issueNumber}` : identifier.endsWith(`-${issueNumber}`),
+		);
+		const description = !key && matches.length !== 1 ? undefined : matches[0]?.[1];
+		return description ? { ...item, description } : item;
+	});
+	return { ...overlay, native: { ...native, linear: { ...native.linear, issues } } };
+}
