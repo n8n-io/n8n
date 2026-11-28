@@ -15,9 +15,14 @@ function gateWith(flags: Record<string, unknown> | undefined) {
 }
 
 describe('SafeTestingFlagGate', () => {
-	it('is on only when the flag is exactly true for the user', async () => {
-		await expect(gateWith({ [AGENT_SAFE_TESTING_FLAG]: true }).isEnabled(user)).resolves.toBe(true);
-		await expect(gateWith({ [AGENT_SAFE_TESTING_FLAG]: 'true' }).isEnabled(user)).resolves.toBe(
+	it('is on only when the user is in the test variant', async () => {
+		await expect(gateWith({ [AGENT_SAFE_TESTING_FLAG]: 'test' }).isEnabled(user)).resolves.toBe(
+			true,
+		);
+		await expect(gateWith({ [AGENT_SAFE_TESTING_FLAG]: true }).isEnabled(user)).resolves.toBe(
+			false,
+		);
+		await expect(gateWith({ [AGENT_SAFE_TESTING_FLAG]: 'control' }).isEnabled(user)).resolves.toBe(
 			false,
 		);
 		await expect(gateWith({}).isEnabled(user)).resolves.toBe(false);
@@ -27,7 +32,7 @@ describe('SafeTestingFlagGate', () => {
 	it('answers 404 while the flag is off, so the surface looks unknown', async () => {
 		await expect(gateWith({}).assertEnabled(user)).rejects.toThrow(NotFoundError);
 		await expect(
-			gateWith({ [AGENT_SAFE_TESTING_FLAG]: true }).assertEnabled(user),
+			gateWith({ [AGENT_SAFE_TESTING_FLAG]: 'test' }).assertEnabled(user),
 		).resolves.toBeUndefined();
 	});
 });

@@ -4,25 +4,29 @@ import { ref } from 'vue';
 
 import { useAgentSafeTestingFlag } from '../composables/useAgentSafeTestingFlag';
 
-const flagState = ref<boolean | string | undefined>(false);
-const isFeatureEnabled = vi.fn(() => flagState.value === true);
+const flagState = ref<boolean | string | undefined>(undefined);
+const isVariantEnabled = vi.fn((_flag: string, variant: string) => flagState.value === variant);
 
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled }),
+	usePostHog: () => ({ isVariantEnabled }),
 }));
 
 describe('useAgentSafeTestingFlag', () => {
-	it('returns true only when the safe-testing PostHog flag is enabled', () => {
-		flagState.value = true;
+	it('returns true only in the test variant of the safe-testing experiment', () => {
+		flagState.value = 'test';
 		const enabled = useAgentSafeTestingFlag();
 
 		expect(enabled.value).toBe(true);
-		expect(isFeatureEnabled).toHaveBeenCalledWith(AGENT_SAFE_TESTING_FLAG);
+		expect(isVariantEnabled).toHaveBeenCalledWith(AGENT_SAFE_TESTING_FLAG, 'test');
 	});
 
-	it('returns false when the safe-testing flag is off or unset', () => {
-		flagState.value = false;
+	it('returns false in control, for a boolean flag, or when unset', () => {
 		const enabled = useAgentSafeTestingFlag();
+
+		flagState.value = 'control';
+		expect(enabled.value).toBe(false);
+
+		flagState.value = true;
 		expect(enabled.value).toBe(false);
 
 		flagState.value = undefined;

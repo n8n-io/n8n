@@ -3,6 +3,9 @@ import { z } from 'zod';
 /** PostHog flag: agent draft runs are test runs that send nothing to real services. */
 export const AGENT_SAFE_TESTING_FLAG = '140_agent_safe_testing';
 
+/** The flag is multivariate. Only this variant turns safe testing on; `control` keeps it off. */
+export const AGENT_SAFE_TESTING_TEST_VARIANT = 'test';
+
 /**
  * How a preview chat runs, chosen when it starts. `test` sends every tool call to a
  * simulation; `live` runs the draft against real services, as before safe testing.

@@ -233,6 +233,20 @@ const n8nChatHint = z
 	.enum(['channel_chip', 'new_chat_sidebar'])
 	.describe('Which n8n Chat hint popover the event is about');
 
+const safeTestingBackend = z
+	.enum(['llm-mock', 'shared-simulation-layer', 'none'])
+	.describe('The simulation backend of the test chat; none when no simulated world opened');
+
+const blockedReasonCounts = z.object({
+	unsupported_by_simulator: z.number().int(),
+	simulator_unavailable: z.number().int(),
+	not_simulatable: z.number().int(),
+});
+
+const agentChatMode = z
+	.enum(['test', 'live'])
+	.describe('test runs tools against a simulated world (safe testing); live runs them for real');
+
 const agentPublish = {
 	...agentActorIdentity,
 	...agentCapabilityProfile,
@@ -914,6 +928,9 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			mode: z.literal('test').describe('Constant dimension kept for warehouse-schema stability'),
+			chat_mode: agentChatMode
+				.optional()
+				.describe('The chat mode of the test panel; absent when safe testing is off'),
 			status: agentStatus,
 			agent_config: agentConfigFingerprint,
 			push_ref: pushRef,
@@ -1399,6 +1416,103 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			hint: n8nChatHint,
 			agent_id: z.string().optional().describe('The agent on screen; absent for new_chat_sidebar'),
 			variant: n8nChatVariant,
+			push_ref: pushRef,
+		}),
+	},
+	AGENT_TEST_RUN_STARTED: {
+		name: 'Agent test run started',
+		description:
+			'A test chat stored its test marker before its first turn ran, so the chat runs against a simulated world (safe testing). Fires once per test chat. The tool counts describe the agent tools at that moment.',
+		properties: z.object({
+			...agentActorIdentity,
+			backend: safeTestingBackend,
+			world_opened: z.boolean().describe('False when the simulator was missing or failed to start'),
+			simulated_tool_count: z.number().int(),
+			blocked_tool_count: z.number().int(),
+			blocked_tools_by_reason: blockedReasonCounts,
+		}),
+	},
+	AGENT_TEST_RUN_TURN_FINISHED: {
+		name: 'Agent test run turn finished',
+		description:
+			'One turn of a test chat (safe testing) ended. Counts the simulated tool calls of the turn by route, reason and evidence. Live turns do not fire it.',
+		properties: z.object({
+			...agentActorIdentity,
+			backend: safeTestingBackend,
+			status: z
+				.enum(['completed', 'suspended', 'failed'])
+				.describe('suspended means the turn waits for a tool approval'),
+			tool_call_count: z.number().int(),
+			tool_calls_by_route: z.object({
+				simulated: z.number().int(),
+				simulated_made_up: z.number().int(),
+				blocked: z.number().int(),
+			}),
+			tool_calls_by_reason: blockedReasonCounts.extend({
+				served_from_world: z.number().int(),
+				invented_by_llm: z.number().int(),
+			}),
+			tool_calls_by_evidence: z
+				.object({
+					real_read: z.number().int(),
+					world_read: z.number().int(),
+					world_write: z.number().int(),
+				})
+				.describe('A call can report more than one kind of evidence'),
+			held_action_count: z.number().int().describe('Write calls held for the user to run later'),
+		}),
+	},
+	USER_RAN_HELD_AGENT_ACTIONS: {
+		name: 'User ran held agent actions',
+		description:
+			'The backend replayed held write actions of a test chat against the real apps, after the user confirmed "Run N actions".',
+		properties: z.object({
+			...agentActorIdentity,
+			backend: safeTestingBackend,
+			requested_count: z.number().int(),
+			done_count: z.number().int(),
+			failed_count: z.number().int(),
+			already_committed_count: z
+				.number()
+				.int()
+				.describe('Actions that ran in an earlier request and did not run again'),
+		}),
+	},
+	AGENT_HELD_ACTIONS_SHOWN: {
+		name: 'Agent held actions shown',
+		description:
+			'A finished test chat reply showed the "N actions on hold" tray for the first time. Fires once per reply that ran in this browser session, while its actions have not run. A reply loaded from history, for example after a reload, does not fire it.',
+		properties: z.object({
+			agent_id: z.string(),
+			action_count: z.number().int(),
+			push_ref: pushRef,
+		}),
+	},
+	USER_OPENED_HELD_ACTION_PREVIEW: {
+		name: 'User opened held action preview',
+		description: 'The user expanded one held action in the tray of a test chat reply.',
+		properties: z.object({
+			agent_id: z.string(),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_RUN_HELD_AGENT_ACTIONS: {
+		name: 'User clicked run held agent actions',
+		description:
+			'The user clicked "Run N actions" in the held actions tray. A confirmation modal opens next. "User ran held agent actions" fires after the user confirms.',
+		properties: z.object({
+			agent_id: z.string(),
+			action_count: z.number().int(),
+			push_ref: pushRef,
+		}),
+	},
+	USER_STARTED_NEW_AGENT_TEST_RUN: {
+		name: 'User started new agent test run',
+		description:
+			'The user reset the test chat to a new test run, which clears the chat and its simulated world. Fires after the reset succeeds.',
+		properties: z.object({
+			agent_id: z.string(),
+			had_messages: z.boolean().describe('The chat had messages before the reset'),
 			push_ref: pushRef,
 		}),
 	},

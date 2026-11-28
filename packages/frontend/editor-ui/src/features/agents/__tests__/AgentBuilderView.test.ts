@@ -8158,7 +8158,7 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 	it('runs in test mode with the Hold & Replay empty state and starter chips when the flag is on', async () => {
 		const wrapper = await renderView({
 			seedStores: () => {
-				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: 'test' } };
 			},
 		});
 
@@ -8205,7 +8205,7 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 
 		const wrapper = await renderView({
 			seedStores: () => {
-				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: 'test' } };
 			},
 			stubs: {
 				AgentTestDock: {
@@ -8274,7 +8274,7 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 
 		const wrapper = await renderView({
 			seedStores: () => {
-				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: 'test' } };
 			},
 			stubs: {
 				AgentTestDock: {
@@ -8323,7 +8323,7 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 
 		const wrapper = await renderView({
 			seedStores: () => {
-				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: 'test' } };
 			},
 			stubs: {
 				AgentTestDock: {
@@ -8405,7 +8405,7 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 		const sendMessageFromOutside = vi.fn();
 		const wrapper = await renderView({
 			seedStores: () => {
-				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: 'test' } };
 			},
 			stubs: {
 				AgentChatPanel: {

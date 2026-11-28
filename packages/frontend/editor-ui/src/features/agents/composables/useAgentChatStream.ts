@@ -738,7 +738,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		clearTimeout(retryTimer);
 	});
 
-	async function clearHistory(): Promise<void> {
+	/** Returns false when the request failed, so the chat did not change. */
+	async function clearHistory(): Promise<boolean> {
 		try {
 			await clearTestChatMessages(
 				rootStore.restApiContext,
@@ -747,8 +748,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			);
 			messages.value = [];
 			resetOlderMessages();
+			return true;
 		} catch (error) {
 			showError(error, locale.baseText('agents.chat.clearHistory.error'));
+			return false;
 		}
 	}
 

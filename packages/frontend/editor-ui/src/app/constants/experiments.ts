@@ -1,4 +1,6 @@
 import {
+	AGENT_SAFE_TESTING_FLAG,
+	AGENT_SAFE_TESTING_TEST_VARIANT,
 	AGENTS_N8N_CHAT_FLAG,
 	CUSTOM_MCP_SERVERS_FLAG,
 	CUSTOM_MCP_SERVERS_FLAG_VARIANT,
@@ -234,6 +236,12 @@ export const TEST_BUTTON_PRIMARY_COLOR_EXPERIMENT = createExperiment(
 
 export const AGENTS_INVOCATION_STEP_EXPERIMENT = createExperiment('153_agents_invocation_step');
 
+/** A/B test. The `test` arm runs agent test chats safely: sends and changes are held. */
+export const AGENT_SAFE_TESTING_EXPERIMENT = createExperiment(AGENT_SAFE_TESTING_FLAG, {
+	control: 'control',
+	test: AGENT_SAFE_TESTING_TEST_VARIANT,
+});
+
 export const AGENT_TEST_SCENARIOS_EXPERIMENT = createExperiment('156_agent_test_scenarios');
 export const AGENT_BUILDER_EXPERIMENT_COHORT = createExperiment(
 	'133_agent_builder_experiment_cohort',
@@ -329,5 +337,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name,
 	TEST_BUTTON_PRIMARY_COLOR_EXPERIMENT.name,
 	AGENTS_INVOCATION_STEP_EXPERIMENT.name,
+	AGENT_SAFE_TESTING_EXPERIMENT.name,
 	AGENT_TEST_SCENARIOS_EXPERIMENT.name,
 ];

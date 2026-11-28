@@ -415,4 +415,46 @@ describe('useAgentTelemetry', () => {
 
 		expect(trackMock).not.toHaveBeenCalled();
 	});
+
+	it('adds chat_mode to a submitted message only when it is known', () => {
+		const telemetry = useAgentTelemetry();
+		const agentConfig = { skills: [], tasks: [], triggers: [], memory: null, config_version: 'v1' };
+		telemetry.trackSubmittedMessage({
+			agentId: 'ag-1',
+			status: 'draft',
+			agentConfig,
+			chatMode: 'test',
+		});
+		telemetry.trackSubmittedMessage({ agentId: 'ag-1', status: 'draft', agentConfig });
+
+		expect(trackMock.mock.calls[0][1]).toMatchObject({ chat_mode: 'test' });
+		expect(trackMock.mock.calls[1][1]).not.toHaveProperty('chat_mode');
+	});
+
+	it('tracks held actions and new test runs with ids and counts only', () => {
+		const telemetry = useAgentTelemetry();
+		telemetry.trackHeldActionsShown({ agentId: 'ag-1', actionCount: 2 });
+		telemetry.trackOpenedHeldActionPreview({ agentId: 'ag-1' });
+		telemetry.trackClickedRunHeldActions({ agentId: 'ag-1', actionCount: 2 });
+		telemetry.trackStartedNewTestRun({ agentId: 'ag-1', hadMessages: true });
+
+		expect(trackMock.mock.calls).toEqual([
+			[
+				TELEMETRY_EVENT.AGENTS.AGENT_HELD_ACTIONS_SHOWN,
+				{ agent_id: 'ag-1', action_count: 2, push_ref: 'session-xyz' },
+			],
+			[
+				TELEMETRY_EVENT.AGENTS.USER_OPENED_HELD_ACTION_PREVIEW,
+				{ agent_id: 'ag-1', push_ref: 'session-xyz' },
+			],
+			[
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_RUN_HELD_AGENT_ACTIONS,
+				{ agent_id: 'ag-1', action_count: 2, push_ref: 'session-xyz' },
+			],
+			[
+				TELEMETRY_EVENT.AGENTS.USER_STARTED_NEW_AGENT_TEST_RUN,
+				{ agent_id: 'ag-1', had_messages: true, push_ref: 'session-xyz' },
+			],
+		]);
+	});
 });

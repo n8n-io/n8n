@@ -70,6 +70,16 @@ function slackTool(session: SimulationSession, swallowErrors = false) {
 }
 
 describe('SimulationSession', () => {
+	it('counts a turn as admitted only when the test chat marker is stored', async () => {
+		const markTestChat = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValue(new Error('x'));
+		const session = new SimulationSession({ testChatId: 't', capabilities: [], markTestChat });
+
+		await session.markTestChat();
+		await expect(session.markTestChat()).rejects.toThrow('x');
+
+		expect(session.admittedTurns()).toBe(1);
+	});
+
 	it('runs local built-in tools normally and gives them no route', async () => {
 		const session = new SimulationSession({
 			testChatId: 't',

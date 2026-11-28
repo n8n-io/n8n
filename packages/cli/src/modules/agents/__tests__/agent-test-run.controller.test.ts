@@ -1,7 +1,7 @@
 import type { Agent as RuntimeAgent, BuiltTool } from '@n8n/agents';
 import { AgentTestRunResetDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { Publisher } from '@n8n/backend-services';
+import type { Publisher, TelemetryProxy } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
@@ -164,7 +164,12 @@ describe('AgentTestRunController', () => {
 		const runtimeCache = mock<AgentRuntimeCacheService>();
 		runtimeCache.getRuntime.mockResolvedValue(mock<AgentRuntime>({ agent }));
 
-		const commitService = new HeldActionCommitService(mock<Logger>(), sessions, runtimeCache);
+		const commitService = new HeldActionCommitService(
+			mock<Logger>(),
+			sessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 		const controller = new AgentTestRunController(
 			mock<SafeTestingFlagGate>(),
 			sessions,
