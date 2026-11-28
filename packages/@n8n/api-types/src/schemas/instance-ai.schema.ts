@@ -12,12 +12,7 @@ import { z } from 'zod';
 import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { assistantArtifactTypeSchema } from './assistant-thread-tabs.schema';
-import {
-	appNameSchema,
-	appNamespaceSchema,
-	appPreviewElementSchema,
-	appVisibilitySchema,
-} from './app.schema';
+import { appNameSchema, appNamespaceSchema, appPreviewElementSchema } from './app.schema';
 import { MAX_APP_BINDINGS } from './app-binding.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
@@ -914,7 +909,6 @@ const appBlueprintBindingSchema = z.discriminatedUnion('status', [
 export const appBlueprintSchema = z.object({
 	name: appNameSchema,
 	namespace: appNamespaceSchema,
-	visibility: appVisibilitySchema,
 	description: z.string().trim().min(1).max(500),
 	theme: z.enum(['light', 'dark', 'both']),
 	bindings: z.array(appBlueprintBindingSchema).max(MAX_APP_BINDINGS).optional(),

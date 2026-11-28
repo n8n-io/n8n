@@ -7,7 +7,6 @@ import AppBlueprintCard from '../AppBlueprintCard.vue';
 const blueprint: AppBlueprint = {
 	name: 'Weekly planner',
 	namespace: 'weekly-planner',
-	visibility: 'project',
 	description: 'Plan the week and track completed tasks.',
 	theme: 'both',
 	bindings: [
@@ -52,13 +51,12 @@ describe('AppBlueprintCard', () => {
 
 		expect(getByTestId('instance-ai-app-blueprint-name')).toHaveValue('Weekly planner');
 		expect(queryByTestId('instance-ai-app-blueprint-namespace')).not.toBeInTheDocument();
-		expect(queryByTestId('instance-ai-app-blueprint-visibility')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-app-blueprint-theme')).not.toBeInTheDocument();
 	});
 
-	it('keeps the proposed namespace and theme and makes the app available to the project only', async () => {
+	it('keeps the proposed namespace and theme', async () => {
 		const { emitted, getByTestId } = renderComponent({
-			props: { blueprint: { ...blueprint, visibility: 'instance', theme: 'dark' } },
+			props: { blueprint: { ...blueprint, theme: 'dark' } },
 		});
 
 		await userEvent.click(getByTestId('instance-ai-app-blueprint-start'));
@@ -67,7 +65,7 @@ describe('AppBlueprintCard', () => {
 			{
 				kind: 'appBlueprint',
 				approved: true,
-				blueprint: { ...blueprint, visibility: 'project', theme: 'dark' },
+				blueprint: { ...blueprint, theme: 'dark' },
 			},
 		]);
 	});

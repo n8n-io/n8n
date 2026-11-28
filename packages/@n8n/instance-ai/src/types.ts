@@ -1368,7 +1368,6 @@ export interface InstanceAiAppService {
 	createApp(input: {
 		name: string;
 		namespace: string;
-		visibility?: AppResponse['visibility'];
 		id?: string;
 	}): Promise<AppResponse>;
 	listApps(query: { name?: string }): Promise<AppListResponse>;

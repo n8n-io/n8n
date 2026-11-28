@@ -20,14 +20,10 @@ const appId = '11111111-1111-4111-8111-111111111111';
 const callbackUrl = `https://sales.apps.example.com/_n8n/auth/${appId}/callback`;
 const previewCallbackUrl = `https://sales--preview.apps.example.com/_n8n/auth/${appId}/callback`;
 
-function setup({
-	visibility = 'project',
-	host = 'published',
-}: { visibility?: App['visibility']; host?: AppHostKind } = {}) {
+function setup({ host = 'published' }: { host?: AppHostKind } = {}) {
 	const app = mock<App>({
 		id: appId,
 		namespace: 'sales',
-		visibility,
 		publishedVersionId: 'version',
 	});
 	const apps = mock<AppRepository>();
@@ -85,13 +81,13 @@ const sessionCookie = { '__Host-n8n-app-session': 'app-token' };
 
 describe('AppAuthService', () => {
 	it('requires a published app', async () => {
-		const { service, req, res, apps } = setup({ visibility: 'instance' });
+		const { service, req, res, apps } = setup();
 		apps.findByNamespace.mockResolvedValue(null);
 		await expect(service.authenticate(req, res, vi.fn())).rejects.toThrow('App not found');
 	});
 
-	it('authenticates instance apps with the session cookie', async () => {
-		const { service, req, res, admission } = setup({ visibility: 'instance' });
+	it('authenticates apps with the session cookie', async () => {
+		const { service, req, res, admission } = setup();
 		req.cookies = { '__Host-n8n-app-session': 'app-token' };
 		const next = vi.fn();
 		await service.authenticate(req, res, next);

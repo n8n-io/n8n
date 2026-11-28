@@ -10347,7 +10347,6 @@ describe('createContext: appService', () => {
 		await context.appService?.createApp({
 			name: 'Todos',
 			namespace: 'todos',
-			visibility: 'instance',
 			id: APP_ID,
 		});
 
@@ -10356,7 +10355,7 @@ describe('createContext: appService', () => {
 		});
 		expect(apps.createApp).toHaveBeenCalledWith(
 			'project-1',
-			{ name: 'Todos', namespace: 'todos', visibility: 'instance' },
+			{ name: 'Todos', namespace: 'todos' },
 			{ id: APP_ID, actor: { userId: 'user-1', threadId: 'thread-1' } },
 		);
 	});

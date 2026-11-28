@@ -38,7 +38,6 @@ function setup({ bindings = [], ...app }: Partial<App> & { bindings?: AppBinding
 	const stored = {
 		id: APP_ID,
 		projectId: 'p1',
-		visibility: 'project',
 		draftVersionId: DRAFT_ID,
 		publishedVersionId: null,
 		...app,

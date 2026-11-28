@@ -194,7 +194,6 @@ erDiagram
   varchar_36_ projectId FK
   uuid publishedVersionId FK
   timestamp_3__with_time_zone updatedAt
-  varchar_16_ visibility
 }
 "public.data_table" {
   timestamp_3__with_time_zone createdAt

@@ -658,7 +658,6 @@ describe('mapAgentChunkToEvent', () => {
 		const appBlueprint = {
 			name: 'Planner',
 			namespace: 'planner',
-			visibility: 'project',
 			description: 'Plan weekly tasks.',
 			theme: 'both',
 		};

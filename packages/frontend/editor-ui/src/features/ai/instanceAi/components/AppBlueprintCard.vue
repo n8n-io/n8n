@@ -35,12 +35,10 @@ const bindingIcons: Record<AppBlueprintBinding['kind'], IconName> = {
 	agent: 'robot',
 };
 
-// The user only edits the title. The server makes the namespace unique,
-// and apps are only available in their project.
+// The user only edits the title. The server makes the namespace unique.
 const editedBlueprint = computed<AppBlueprint>(() => ({
 	name: name.value.trim(),
 	namespace: props.blueprint.namespace,
-	visibility: 'project',
 	description: props.blueprint.description,
 	theme: props.blueprint.theme,
 	...(props.blueprint.bindings ? { bindings: props.blueprint.bindings } : {}),

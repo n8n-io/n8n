@@ -418,7 +418,6 @@ export class TelemetryEventRelay extends EventRelay {
 			'trusted-source-healthy': (event) => this.trustedSourceHealthy(event),
 			'trusted-source-first-authenticated': (event) => this.trustedSourceFirstAuthenticated(event),
 			'app-created': (event) => this.appCreated(event),
-			'app-visibility-changed': (event) => this.appVisibilityChanged(event),
 			'app-deleted': (event) => this.appDeleted(event),
 			'app-published': (event) => this.appPublished(event),
 			'app-unpublished': (event) => this.appUnpublished(event),
@@ -719,33 +718,12 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #region Apps
 
-	private appCreated({
-		userId,
-		threadId,
-		appId,
-		projectId,
-		visibility,
-	}: RelayEventMap['app-created']) {
+	private appCreated({ userId, threadId, appId, projectId }: RelayEventMap['app-created']) {
 		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_CREATED_APP, {
 			app_id: appId,
 			project_id: projectId,
 			user_id: userId,
 			thread_id: threadId,
-			visibility,
-		});
-	}
-
-	private appVisibilityChanged({
-		userId,
-		appId,
-		from,
-		to,
-	}: RelayEventMap['app-visibility-changed']) {
-		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_CHANGED_APP_VISIBILITY, {
-			app_id: appId,
-			user_id: userId,
-			from,
-			to,
 		});
 	}
 
@@ -761,14 +739,12 @@ export class TelemetryEventRelay extends EventRelay {
 		userId,
 		appId,
 		versionId,
-		visibility,
 		isFirstPublish,
 	}: RelayEventMap['app-published']) {
 		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_PUBLISHED_APP, {
 			app_id: appId,
 			version_id: versionId,
 			user_id: userId,
-			access_level: visibility,
 			is_first_publish: isFirstPublish,
 		});
 	}

@@ -52,20 +52,11 @@ export class AppPublicationService {
 						);
 					}
 				}
-				await this.apps.setPublishedVersion(projectId, appId, versionId, details.visibility, ctx);
+				await this.apps.setPublishedVersion(projectId, appId, versionId, ctx);
 				return app;
 			},
 			{ subKey: appStorageLockSubKey(appId) },
 		);
-		const visibility = details.visibility ?? before.visibility;
-		if (visibility !== before.visibility) {
-			this.events.emit('app-visibility-changed', {
-				...actor,
-				appId,
-				from: before.visibility,
-				to: visibility,
-			});
-		}
 		if (before.publishedVersionId === versionId) return;
 		if (versionId === null) {
 			this.events.emit('app-unpublished', { ...actor, appId });
@@ -74,7 +65,6 @@ export class AppPublicationService {
 				...actor,
 				appId,
 				versionId,
-				visibility,
 				isFirstPublish: before.publishedVersionId === null,
 			});
 		}

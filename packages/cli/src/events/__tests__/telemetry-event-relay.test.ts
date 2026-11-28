@@ -6869,21 +6869,14 @@ describe('TelemetryEventRelay', () => {
 		it.each([
 			[
 				'app-created',
-				{ userId: 'user-1', threadId: 'thread-1', appId, projectId: 'p-1', visibility: 'project' },
+				{ userId: 'user-1', threadId: 'thread-1', appId, projectId: 'p-1' },
 				TELEMETRY_EVENT.APPS.USER_CREATED_APP,
 				{
 					app_id: appId,
 					project_id: 'p-1',
 					user_id: 'user-1',
 					thread_id: 'thread-1',
-					visibility: 'project',
 				},
-			],
-			[
-				'app-visibility-changed',
-				{ userId: 'user-1', appId, from: 'project', to: 'instance' },
-				TELEMETRY_EVENT.APPS.USER_CHANGED_APP_VISIBILITY,
-				{ app_id: appId, user_id: 'user-1', from: 'project', to: 'instance' },
 			],
 			[
 				'app-deleted',
@@ -6893,13 +6886,12 @@ describe('TelemetryEventRelay', () => {
 			],
 			[
 				'app-published',
-				{ userId: 'user-1', appId, versionId: 'v-1', visibility: 'instance', isFirstPublish: true },
+				{ userId: 'user-1', appId, versionId: 'v-1', isFirstPublish: true },
 				TELEMETRY_EVENT.APPS.USER_PUBLISHED_APP,
 				{
 					app_id: appId,
 					version_id: 'v-1',
 					user_id: 'user-1',
-					access_level: 'instance',
 					is_first_publish: true,
 				},
 			],

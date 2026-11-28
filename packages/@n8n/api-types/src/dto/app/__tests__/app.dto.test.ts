@@ -25,11 +25,10 @@ describe('app DTOs', () => {
 		);
 	});
 
-	it('trims names and namespaces and defaults to project visibility', () => {
+	it('trims names and namespaces', () => {
 		expect(CreateAppDto.parse({ name: ' App ', namespace: ' my-app ' })).toEqual({
 			name: 'App',
 			namespace: 'my-app',
-			visibility: 'project',
 		});
 	});
 
@@ -44,14 +43,7 @@ describe('app DTOs', () => {
 		expect(CreateAppDto.safeParse({ name, namespace: 'app' }).success).toBe(false);
 	});
 
-	it.each(['project', 'instance'])('accepts %s visibility', (visibility) => {
-		expect(CreateAppDto.parse({ name: 'App', namespace: 'app', visibility }).visibility).toBe(
-			visibility,
-		);
-		expect(UpdateAppDto.parse({ visibility }).visibility).toBe(visibility);
-	});
-
-	it.each(['public', 'none', 'n8n', 'private', ''])('rejects visibility %j', (visibility) => {
+	it.each(['project', 'instance'])('rejects the %s visibility field', (visibility) => {
 		expect(CreateAppDto.safeParse({ name: 'App', namespace: 'app', visibility }).success).toBe(
 			false,
 		);
@@ -81,7 +73,6 @@ describe('app DTOs', () => {
 			projectId: 'aBcDeFgHiJkLmNoP',
 			name: 'App',
 			namespace: 'app',
-			visibility: 'project',
 			draftVersionId: uuid,
 			publishedVersionId: null,
 			publishedUrl: null,
@@ -113,20 +104,18 @@ describe('app DTOs', () => {
 		expect(PublishAppDto.safeParse({ versionId, label: 'a'.repeat(129) }).success).toBe(false);
 	});
 
-	it('accepts an optional description and visibility for publication', () => {
+	it('accepts an optional description for publication', () => {
 		const dto = PublishAppDto.parse({
 			versionId,
 			label: 'v1',
 			description: ' Adds charts ',
-			visibility: 'instance',
 		});
 		expect(dto).toEqual({
 			versionId,
 			label: 'v1',
 			description: 'Adds charts',
-			visibility: 'instance',
 		});
-		expect(PublishAppDto.safeParse({ versionId, label: 'v1', visibility: 'none' }).success).toBe(
+		expect(PublishAppDto.safeParse({ versionId, label: 'v1', visibility: 'project' }).success).toBe(
 			false,
 		);
 		expect(

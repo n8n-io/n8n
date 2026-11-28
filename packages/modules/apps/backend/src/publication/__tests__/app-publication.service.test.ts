@@ -38,22 +38,15 @@ describe('AppPublicationService', () => {
 	it('publishes an explicitly selected version without advancing the draft', async () => {
 		const { service, apps } = setup();
 		await service.publish('project', appId, versionId);
-		expect(apps.setPublishedVersion).toHaveBeenCalledWith(
-			'project',
-			appId,
-			versionId,
-			undefined,
-			{},
-		);
+		expect(apps.setPublishedVersion).toHaveBeenCalledWith('project', appId, versionId, {});
 		expect(apps.advanceDraft).not.toHaveBeenCalled();
 	});
 
-	it('saves the version details and the visibility in the publication lock', async () => {
+	it('saves the version details in the publication lock', async () => {
 		const { service, apps, versions, locks } = setup();
 		await service.publish('project', appId, versionId, {
 			label: 'Launch',
 			description: 'Adds charts',
-			visibility: 'instance',
 		});
 		expect(locks.withLockContext).toHaveBeenCalledOnce();
 		expect(versions.setDetails).toHaveBeenCalledWith(
@@ -61,13 +54,7 @@ describe('AppPublicationService', () => {
 			{ label: 'Launch', description: 'Adds charts' },
 			{},
 		);
-		expect(apps.setPublishedVersion).toHaveBeenCalledWith(
-			'project',
-			appId,
-			versionId,
-			'instance',
-			{},
-		);
+		expect(apps.setPublishedVersion).toHaveBeenCalledWith('project', appId, versionId, {});
 	});
 
 	it('stores an empty description as null', async () => {
@@ -85,9 +72,9 @@ describe('AppPublicationService', () => {
 		versions.findVersionById.mockResolvedValue(
 			mock<AppVersion>({ id: versionId, appId, buildStatus: 'failed', bundleArtifactId: null }),
 		);
-		await expect(
-			service.publish('project', appId, versionId, { label: 'Launch', visibility: 'instance' }),
-		).rejects.toThrow('successful app version');
+		await expect(service.publish('project', appId, versionId, { label: 'Launch' })).rejects.toThrow(
+			'successful app version',
+		);
 		expect(versions.setDetails).not.toHaveBeenCalled();
 		expect(apps.setPublishedVersion).not.toHaveBeenCalled();
 	});
@@ -180,7 +167,7 @@ describe('AppPublicationService', () => {
 		await service.publish('project', appId, null);
 		expect(versions.findVersionById).not.toHaveBeenCalled();
 		expect(versions.setDetails).not.toHaveBeenCalled();
-		expect(apps.setPublishedVersion).toHaveBeenCalledWith('project', appId, null, undefined, {});
+		expect(apps.setPublishedVersion).toHaveBeenCalledWith('project', appId, null, {});
 	});
 
 	describe('telemetry events', () => {
@@ -193,9 +180,7 @@ describe('AppPublicationService', () => {
 			'emits app-published with isFirstPublish $isFirstPublish',
 			async ({ publishedVersionId, isFirstPublish }) => {
 				const { service, apps, events } = setup();
-				apps.findInProject.mockResolvedValue(
-					mock<App>({ id: appId, visibility: 'instance', publishedVersionId }),
-				);
+				apps.findInProject.mockResolvedValue(mock<App>({ id: appId, publishedVersionId }));
 
 				await service.publish('project', appId, versionId, {}, actor);
 
@@ -203,7 +188,6 @@ describe('AppPublicationService', () => {
 					...actor,
 					appId,
 					versionId,
-					visibility: 'instance',
 					isFirstPublish,
 				});
 			},
@@ -232,47 +216,6 @@ describe('AppPublicationService', () => {
 			await service.publish('project', appId, target, {}, actor);
 
 			expect(events.emit).not.toHaveBeenCalled();
-		});
-
-		it('reports the visibility chosen in the publish dialog and its change', async () => {
-			const { service, apps, events } = setup();
-			apps.findInProject.mockResolvedValue(
-				mock<App>({ id: appId, visibility: 'project', publishedVersionId: null }),
-			);
-
-			await service.publish(
-				'project',
-				appId,
-				versionId,
-				{ label: 'Launch', visibility: 'instance' },
-				actor,
-			);
-
-			expect(events.emit).toHaveBeenCalledWith('app-visibility-changed', {
-				...actor,
-				appId,
-				from: 'project',
-				to: 'instance',
-			});
-			expect(events.emit).toHaveBeenCalledWith(
-				'app-published',
-				expect.objectContaining({ visibility: 'instance' }),
-			);
-			expect(events.emit).toHaveBeenCalledTimes(2);
-		});
-
-		it('reports only the visibility change when the published version is published again', async () => {
-			const { service, apps, events } = setup();
-			apps.findInProject.mockResolvedValue(
-				mock<App>({ id: appId, visibility: 'project', publishedVersionId: versionId }),
-			);
-
-			await service.publish('project', appId, versionId, { visibility: 'instance' }, actor);
-
-			expect(events.emit).toHaveBeenCalledExactlyOnceWith(
-				'app-visibility-changed',
-				expect.objectContaining({ from: 'project', to: 'instance' }),
-			);
 		});
 
 		it('emits nothing when the publish is rejected', async () => {

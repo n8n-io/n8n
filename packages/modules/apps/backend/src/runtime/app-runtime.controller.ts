@@ -168,7 +168,7 @@ export class AppRuntimeController {
 	@Get('/me', routeOptions)
 	async me(req: AppRuntimeRequest, res: Response) {
 		await this.answer(res, () => {
-			const { app, user } = this.context(req);
+			const { user } = this.context(req);
 			const body: AppRuntimeMeResponse = {
 				user: {
 					id: user.id,
@@ -176,7 +176,6 @@ export class AppRuntimeController {
 					firstName: user.firstName ?? null,
 					lastName: user.lastName ?? null,
 				},
-				visibility: app.visibility,
 			};
 			return body;
 		});

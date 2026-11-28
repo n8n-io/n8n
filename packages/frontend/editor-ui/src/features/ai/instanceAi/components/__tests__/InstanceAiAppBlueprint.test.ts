@@ -25,7 +25,6 @@ const defaultProps = {
 	blueprint: {
 		name: 'Weekly planner',
 		namespace: 'weekly-planner',
-		visibility: 'project' as const,
 		description: 'Plan the week and track completed tasks.',
 		theme: 'both' as const,
 	},

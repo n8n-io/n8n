@@ -1,4 +1,3 @@
-import type { AppVisibility } from '@n8n/api-types';
 import '@n8n/backend-services';
 
 export type AppActor = { userId?: string; threadId?: string };
@@ -14,17 +13,11 @@ export type AppInteractionType = 'workflow_run' | 'data_table_write' | 'agent_me
 export type AppBuildOrigin = AppActor & { changeSource?: AppChangeSource };
 
 export interface AppEventMap {
-	'app-created': AppActor & { appId: string; projectId: string; visibility: AppVisibility };
-	'app-visibility-changed': AppActor & {
-		appId: string;
-		from: AppVisibility;
-		to: AppVisibility;
-	};
+	'app-created': AppActor & { appId: string; projectId: string };
 	'app-deleted': AppActor & { appId: string; wasPublished: boolean };
 	'app-published': AppActor & {
 		appId: string;
 		versionId: string;
-		visibility: AppVisibility;
 		isFirstPublish: boolean;
 	};
 	'app-unpublished': AppActor & { appId: string };

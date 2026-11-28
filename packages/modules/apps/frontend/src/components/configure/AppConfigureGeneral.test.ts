@@ -23,7 +23,6 @@ const app = (name = 'Expense tracker', overrides: Partial<AppResponse> = {}): Ap
 	projectId: 'project-1',
 	name,
 	namespace: 'expenses',
-	visibility: 'project',
 	draftVersionId: null,
 	publishedVersionId: null,
 	publishedUrl: null,

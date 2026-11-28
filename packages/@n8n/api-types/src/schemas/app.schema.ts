@@ -17,9 +17,6 @@ export const appVersionNameSchema = z.string().trim().min(1).max(128);
 
 export const appVersionDescriptionSchema = z.string().trim().max(2000);
 
-export const appVisibilitySchema = z.enum(['project', 'instance']);
-export type AppVisibility = z.infer<typeof appVisibilitySchema>;
-
 export const appBuildStatusSchema = z.enum(['queued', 'running', 'succeeded', 'failed']);
 export type AppBuildStatus = z.infer<typeof appBuildStatusSchema>;
 
@@ -28,7 +25,6 @@ export const appSchema = z.object({
 	projectId: z.string(),
 	name: appNameSchema,
 	namespace: appNamespaceSchema,
-	visibility: appVisibilitySchema,
 	draftVersionId: z.string().uuid().nullable(),
 	publishedVersionId: z.string().uuid().nullable(),
 	publishedUrl: z.string().url().nullable(),

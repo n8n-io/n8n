@@ -188,7 +188,6 @@ describe('AssistantConfirmationCard', () => {
 		const appBlueprint = {
 			name: 'Planner',
 			namespace: 'planner',
-			visibility: 'project' as const,
 			description: 'Plan weekly tasks.',
 			theme: 'both' as const,
 		};

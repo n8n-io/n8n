@@ -80,7 +80,7 @@ describe('AppsService', () => {
 		expect(appRepository.list).toHaveBeenCalledWith(projectIds, query);
 	});
 
-	it('creates an app with project visibility by default', async () => {
+	it('creates an app in the project', async () => {
 		const { service, appRepository } = createService();
 		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
 		const app = mock<App>({
@@ -96,11 +96,8 @@ describe('AppsService', () => {
 		appRepository.createApp.mockResolvedValue(app);
 
 		const response = await service.createApp('project-1', dto);
-		expect(appRepository.createApp).toHaveBeenCalledWith(
-			'project-1',
-			expect.objectContaining({ visibility: 'project' }),
-		);
-		expect(response.visibility).toBe('project');
+		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', dto);
+		expect(response).toMatchObject({ id: app.id, projectId: 'project-1' });
 	});
 
 	it('creates an app with a caller-provided id', async () => {
@@ -114,7 +111,10 @@ describe('AppsService', () => {
 
 		await service.createApp('project-1', dto, { id });
 
-		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', { ...dto, id });
+		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', {
+			...dto,
+			id,
+		});
 	});
 
 	it('rejects a caller-provided id that is not a UUID', async () => {
@@ -157,7 +157,6 @@ describe('AppsService', () => {
 		const dto = UpdateAppDto.parse({
 			name: 'Updated app',
 			namespace: 'updated-app',
-			visibility: 'instance',
 		});
 		const app = mock<App>({
 			id: appId,
@@ -180,7 +179,6 @@ describe('AppsService', () => {
 			projectId: 'project-1',
 			name: 'Updated app',
 			namespace: 'updated-app',
-			visibility: 'instance',
 			draftVersionId: '22222222-2222-4222-8222-222222222222',
 			publishedVersionId: '33333333-3333-4333-8333-333333333333',
 			createdAt: '2026-10-13T00:00:00.000Z',
@@ -213,7 +211,9 @@ describe('AppsService', () => {
 		await expect(service.updateApp('project-1', appId, { namespace })).resolves.toMatchObject({
 			namespace,
 		});
-		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', dto);
+		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', {
+			...dto,
+		});
 		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, {
 			namespace,
 		});
@@ -390,7 +390,7 @@ describe('AppsService', () => {
 
 		it('emits app-created with the actor', async () => {
 			const { service, appRepository, events } = createService();
-			const dto = CreateAppDto.parse({ name: 'App', namespace: 'app', visibility: 'instance' });
+			const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
 			appRepository.projectExists.mockResolvedValue(true);
 			appRepository.createApp.mockResolvedValue(appRow({ projectId: 'project-1', ...dto }));
 
@@ -400,7 +400,6 @@ describe('AppsService', () => {
 				...actor,
 				appId,
 				projectId: 'project-1',
-				visibility: 'instance',
 			});
 		});
 
@@ -414,38 +413,9 @@ describe('AppsService', () => {
 			expect(events.emit).not.toHaveBeenCalled();
 		});
 
-		it('emits app-visibility-changed only when the visibility changes', async () => {
+		it('emits nothing when an app is updated', async () => {
 			const { service, appRepository, events } = createService();
-			appRepository.findInProject.mockResolvedValue(
-				mock<App>({ id: appId, visibility: 'project' }),
-			);
-			appRepository.updateApp.mockResolvedValue(appRow({ visibility: 'instance' }));
-
-			await service.updateApp('project-1', appId, { visibility: 'instance' }, { userId: 'user-1' });
-
-			expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-visibility-changed', {
-				userId: 'user-1',
-				appId,
-				from: 'project',
-				to: 'instance',
-			});
-		});
-
-		it('emits nothing when a save keeps the visibility', async () => {
-			const { service, appRepository, events } = createService();
-			appRepository.findInProject.mockResolvedValue(
-				mock<App>({ id: appId, visibility: 'instance' }),
-			);
-			appRepository.updateApp.mockResolvedValue(appRow({ visibility: 'instance' }));
-
-			await service.updateApp('project-1', appId, { visibility: 'instance' });
-
-			expect(events.emit).not.toHaveBeenCalled();
-		});
-
-		it('does not read the app before an update without visibility', async () => {
-			const { service, appRepository, events } = createService();
-			appRepository.updateApp.mockResolvedValue(appRow({ visibility: 'instance' }));
+			appRepository.updateApp.mockResolvedValue(appRow({}));
 
 			await service.updateApp('project-1', appId, { name: 'Renamed' });
 

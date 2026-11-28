@@ -12,13 +12,11 @@
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | publishedVersionId | uuid |  | true |  | [public.app_version](public.app_version.md) | Published app version; null when unpublished |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| visibility | varchar(16) | 'project'::character varying | false |  |  | App access: everyone, project members, or instance users |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_app_visibility | CHECK | CHECK (((visibility)::text = ANY ((ARRAY['project'::character varying, 'instance'::character varying])::text[]))) |
 | FK_f84dd7eb539e46e0c233fa09b20 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_9478629fc093d229df09e560aea | PRIMARY KEY | PRIMARY KEY (id) |
 | app_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -29,7 +27,6 @@
 | app_projectId_not_null | n | NOT NULL "projectId" |
 | app_publishedVersionId_foreign | FOREIGN KEY | FOREIGN KEY ("publishedVersionId") REFERENCES app_version(id) ON DELETE SET NULL |
 | app_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| app_visibility_not_null | n | NOT NULL visibility |
 
 ## Indexes
 
@@ -60,7 +57,6 @@ erDiagram
   varchar_36_ projectId FK
   uuid publishedVersionId FK
   timestamp_3__with_time_zone updatedAt
-  varchar_16_ visibility
 }
 "public.app_version" {
   uuid appId FK

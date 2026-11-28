@@ -203,7 +203,7 @@ describe('apps.api', () => {
 	});
 
 	it('publishes a version of an app with its details', async () => {
-		const publication = { versionId: 'v-1', label: 'Launch', visibility: 'instance' as const };
+		const publication = { versionId: 'v-1', label: 'Launch' };
 
 		await publishApp(context, 'project-1', 'app-1', publication);
 

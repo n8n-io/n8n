@@ -3868,7 +3868,7 @@ export class InstanceAiAdapterService {
 		};
 
 		return {
-			createApp: async ({ name, namespace, visibility, id }) => {
+			createApp: async ({ name, namespace, id }) => {
 				const { apps } = await services('app:create');
 				// The user doesn't see the namespace on the plan card, so a taken
 				// namespace moves on to the next numbered one instead of failing.
@@ -3876,7 +3876,7 @@ export class InstanceAiAdapterService {
 					try {
 						return await apps.createApp(
 							projectId,
-							CreateAppDto.parse({ name, namespace: candidate, visibility }),
+							CreateAppDto.parse({ name, namespace: candidate }),
 							{ id, actor },
 						);
 					} catch (error) {

@@ -141,9 +141,7 @@ project under a key. The app uses the key, never a resource ID.
 3. Remove a binding that the app no longer uses with `unbind_app_resource` and
    its `key`.
 4. Grant only the permissions that the app uses. Every visitor who can open
-   the app can use its bindings. On an `instance` app, this is every user of
-   the instance. Ask the user before you give an `instance` app write access, a
-   workflow or agent chat.
+   the app can use its bindings.
 5. Read `warnings` in each result. A missing resource or an unpublished
    workflow or agent gives the app an error. Tell the user about it.
 
@@ -225,12 +223,15 @@ The value has the format `user:<id>`. Read `appVisitor` only in a Code node.
 ## Several apps
 
 One conversation can build several apps for one requirement, for example a
-dashboard for all users and an admin app for the project. Create one app for
-each audience or access level. Each app has its own folder. Commit each app separately and always pass
-the right `appId`.
+form and a dashboard. Each app has its own folder. Commit each app separately
+and always pass the right `appId`.
 
 ## Publishing and access
 
 You cannot publish apps. Tell the user to publish with the Publish button of
-the app. The app uses the visibility that the user approved in the blueprint.
-The user can change it in the app settings.
+the app. Only members of the app's project who can view apps can open it.
+Instance owners and admins can open every app. To give other users access to an
+app in a team project, the user adds them to that project. A personal project
+cannot have other members, so only its owner and the instance owners and admins
+can open its apps. To share such an app, build it in a team project. An app
+cannot be open to the whole instance.
