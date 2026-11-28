@@ -38,8 +38,12 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		resetLength: 30_000,
 	};
 
-	/** Whether any client has lost connection to Redis. */
-	private lostConnection = false;
+	/**
+	 * Clients that lost their connection and have not recovered yet. Tracked per
+	 * client, because one client recovering does not mean the others did, e.g. Bull's
+	 * command client can recover while its blocking client, which consumes jobs, has not.
+	 */
+	private readonly lostClients = new Set<symbol>();
 
 	/**
 	 * Whether to exit the process when Redis stays unreachable past the timeout.
@@ -59,12 +63,14 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		this.registerListeners();
 	}
 
+	/** Whether every client is connected to Redis. */
 	isConnected() {
-		return !this.lostConnection;
+		return this.lostClients.size === 0;
 	}
 
 	createClient(options: RedisClientCreateOptions) {
-		const { retryStrategy, resetRetryState } = this.makeRetryStrategy();
+		const clientId = Symbol(options.type);
+		const { retryStrategy, resetRetryState } = this.makeRetryStrategy(clientId);
 
 		const client =
 			this.clusterNodes().length > 0
@@ -79,10 +85,15 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		client.on('ready', () => {
 			resetRetryState();
-			if (this.lostConnection) {
+			if (this.lostClients.delete(clientId) && this.lostClients.size === 0) {
 				this.emit('connection-recovered');
-				this.lostConnection = false;
 			}
+		});
+
+		// A client that ended (disconnect() or quit()) never becomes ready again, so it must not keep the service unhealthy.
+		// ioredis does not emit `end` if disconnect() is called while the client waits to reconnect.
+		client.on('end', () => {
+			this.lostClients.delete(clientId);
 		});
 
 		this.clients.add(client);
@@ -237,7 +248,10 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	 * timeout exceeds a limit, exit the process. Reset the cumulative timeout
 	 * on successful reconnect or if >30s between reconnection attempts.
 	 */
-	private makeRetryStrategy(): { retryStrategy: RetryStrategy; resetRetryState: () => void } {
+	private makeRetryStrategy(clientId: symbol): {
+		retryStrategy: RetryStrategy;
+		resetRetryState: () => void;
+	} {
 		let lastAttemptTs = 0;
 		let cumulativeTimeout = 0;
 
@@ -260,7 +274,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 				}
 			}
 
-			this.lostConnection = true;
+			this.lostClients.add(clientId);
 			this.emit('connection-lost', cumulativeTimeout);
 
 			return this.config.retryInterval;
