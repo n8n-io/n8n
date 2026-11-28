@@ -1,4 +1,5 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
@@ -537,6 +538,24 @@ describe('McpClient', () => {
 		expect(result).toEqual([
 			[{ json: { error: { message: 'Tool call failed' } }, pairedItem: { item: 0 } }],
 		]);
+	});
+
+	it.each([false, true])('preserves HTTP status with continueOnFail=%s', async (continueOnFail) => {
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		const error = new StreamableHTTPError(429, 'Error POSTing to endpoint: ');
+		client.callTool.mockRejectedValue(error);
+		executeFunctions.continueOnFail.mockReturnValue(continueOnFail);
+		const execution = new McpClient().execute.call(executeFunctions);
+		const message = `HTTP 429: ${error.message}`;
+
+		if (continueOnFail) {
+			await expect(execution).resolves.toMatchObject([[{ json: { error: { message } } }]]);
+		} else {
+			await expect(execution).rejects.toMatchObject({ message });
+		}
+		expect(client.close).toHaveBeenCalledOnce();
 	});
 
 	it('should close client connection after successful execution', async () => {

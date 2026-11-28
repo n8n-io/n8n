@@ -27,6 +27,7 @@ import type { McpAuthenticationOption, McpServerTransport, McpTool } from './typ
 import {
 	connectMcpClientForCredential,
 	getAllTools,
+	getMcpHttpErrorMessage,
 	isStructuredContent,
 	mapToNodeOperationError,
 } from './utils';
@@ -118,6 +119,10 @@ async function connectAndGetTools(
 		return { client: client.result, mcpTools, error: null };
 	} catch (error) {
 		await client.result.close();
+		const message = getMcpHttpErrorMessage(error);
+		if (message && error instanceof Error) {
+			throw new NodeOperationError(ctx.getNode(), error, { message });
+		}
 		throw error;
 	}
 }
@@ -218,7 +223,10 @@ async function connectOrThrow(
 	const { client, mcpTools, error } = await connectAndGetTools(ctx, config);
 
 	if (error) {
-		throw new NodeOperationError(node, error.error, { itemIndex });
+		throw new NodeOperationError(node, error.error, {
+			itemIndex,
+			message: getMcpHttpErrorMessage(error.error),
+		});
 	}
 	if (!mcpTools?.length) {
 		await client.close();
@@ -273,14 +281,18 @@ async function runToolCall(opts: {
 				? pick(toolArguments, Object.keys(schema.properties ?? {}))
 				: toolArguments;
 
-		const result = await client.callTool(
-			{ name: tool.name, arguments: sanitizedToolArguments },
-			CallToolResultSchema,
-			{
+		const result = await client
+			.callTool({ name: tool.name, arguments: sanitizedToolArguments }, CallToolResultSchema, {
 				timeout,
 				signal: ctx.getExecutionCancelSignal(),
-			},
-		);
+			})
+			.catch((error: unknown) => {
+				const message = getMcpHttpErrorMessage(error);
+				if (message && error instanceof Error) {
+					throw new NodeOperationError(node, error, { message, itemIndex });
+				}
+				throw error;
+			});
 
 		if (node.typeVersion >= 1.3 && result.isError) {
 			const errorMessage =

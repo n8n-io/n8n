@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { McpError, ErrorCode, CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { proxyFetch } from '@n8n/ai-utilities';
 import { Container } from '@n8n/di';
@@ -2221,5 +2222,42 @@ describe('McpClientTool', () => {
 			expect(Client.prototype.close).toHaveBeenCalledTimes(2);
 			expect(manager.size).toBe(0);
 		});
+
+		it.each([1.3, 1.4])('preserves HTTP status from a v%s toolkit call', async (version) => {
+			const error = new StreamableHTTPError(503, 'Error POSTing to endpoint: ');
+			vi.mocked(Client.prototype.callTool).mockRejectedValue(error);
+
+			await expect(new McpClientTool().execute.call(createCtx(version))).rejects.toMatchObject({
+				message: `HTTP 503: ${error.message}`,
+				cause: error,
+			});
+		});
+
+		it.each([1.3, 1.4])(
+			'preserves HTTP status when a v%s toolkit cannot connect',
+			async (version) => {
+				const error = new StreamableHTTPError(503, 'Error POSTing to endpoint: ');
+				vi.mocked(Client.prototype.connect).mockRejectedValue(error);
+
+				await expect(new McpClientTool().execute.call(createCtx(version))).rejects.toMatchObject({
+					message: `HTTP 503: ${error.message}`,
+					cause: error,
+				});
+			},
+		);
+
+		it.each([1.3, 1.4])(
+			'preserves HTTP status when a v%s toolkit cannot list tools',
+			async (version) => {
+				const error = new StreamableHTTPError(429, 'Error POSTing to endpoint: ');
+				vi.mocked(Client.prototype.listTools).mockRejectedValue(error);
+
+				await expect(new McpClientTool().execute.call(createCtx(version))).rejects.toMatchObject({
+					message: `HTTP 429: ${error.message}`,
+					cause: error,
+				});
+				expect(Client.prototype.close).toHaveBeenCalledOnce();
+			},
+		);
 	});
 });
