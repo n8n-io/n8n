@@ -39,7 +39,7 @@ describe('Session bindings of a deleted task session', () => {
 	});
 
 	/** A task session that messaged one recipient, as a task run send leaves it. */
-	async function createBoundTaskSession() {
+	async function createBoundTaskSession(parentThreadId?: string) {
 		const taskThreadId = randomUUID();
 		const recipientThreadId = `${agentId}:whatsapp:${randomUUID()}`;
 		const origin = { threadId: taskThreadId, resourceId: `task:${randomUUID()}` };
@@ -51,6 +51,8 @@ describe('Session bindings of a deleted task session', () => {
 			ownerId: null,
 			accessScope: 'project',
 			sessionNumber: 1,
+			parentThreadId: parentThreadId ?? null,
+			parentAgentId: parentThreadId ? agentId : null,
 		});
 		const messageContext = Container.get(IntegrationMessageContextService);
 		await messageContext.bindSession(recipientThreadId, origin, {
@@ -60,27 +62,37 @@ describe('Session bindings of a deleted task session', () => {
 		return { taskThreadId, recipientThreadId, origin };
 	}
 
-	it("clears the reply binding so the next reply uses the recipient's own session", async () => {
-		const { taskThreadId, recipientThreadId, origin } = await createBoundTaskSession();
-		const messageContext = Container.get(IntegrationMessageContextService);
-		expect(await messageContext.resolveSessionReplyScope(recipientThreadId)).toMatchObject({
-			binding: origin,
-		});
+	it.each(['task session', 'parent session'])(
+		'clears the reply binding when deleting the %s',
+		async (target) => {
+			const parent = target === 'parent session' ? await createBoundTaskSession() : undefined;
+			const { taskThreadId, recipientThreadId, origin } = await createBoundTaskSession(
+				parent?.taskThreadId,
+			);
+			const messageContext = Container.get(IntegrationMessageContextService);
+			expect(await messageContext.resolveSessionReplyScope(recipientThreadId)).toMatchObject({
+				binding: origin,
+			});
 
-		await expect(
-			Container.get(AgentExecutionService).deleteThread(projectId, agentId, taskThreadId, userId),
-		).resolves.toBe(true);
+			await expect(
+				Container.get(AgentExecutionService).deleteThread(
+					projectId,
+					agentId,
+					parent?.taskThreadId ?? taskThreadId,
+					userId,
+				),
+			).resolves.toBe(true);
 
-		// The bridge runs a reply in the bound session when this returns a scope.
-		// That session no longer exists, so the reply would fail with "Session not found".
-		expect(await messageContext.resolveSessionReplyScope(recipientThreadId)).toBeNull();
-		const recipientThread = await Container.get(AgentThreadRepository).findOneBy({
-			id: recipientThreadId,
-		});
-		const metadata = jsonParse<Record<string, unknown>>(recipientThread!.metadata!);
-		expect(metadata.continueAs).toBeUndefined();
-		expect(metadata.outboundMessages).toBeUndefined();
-	});
+			// Check the stored binding before reply routing can clear it.
+			const recipientThread = await Container.get(AgentThreadRepository).findOneBy({
+				id: recipientThreadId,
+			});
+			const metadata = jsonParse<Record<string, unknown>>(recipientThread!.metadata!);
+			expect(metadata.continueAs).toBeUndefined();
+			expect(metadata.outboundMessages).toBeUndefined();
+			expect(await messageContext.resolveSessionReplyScope(recipientThreadId)).toBeNull();
+		},
+	);
 
 	it('recovers on the next reply and the next task send when the cleanup fails', async () => {
 		const { taskThreadId, recipientThreadId } = await createBoundTaskSession();
