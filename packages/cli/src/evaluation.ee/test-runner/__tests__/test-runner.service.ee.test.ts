@@ -163,6 +163,43 @@ describe('TestRunnerService', () => {
 		});
 	});
 
+	describe('resolveCaseOutputs (per-case output capture)', () => {
+		const resolveOutputs = (execution: IRun, workflow: IWorkflowBase) =>
+			(
+				testRunnerService as unknown as {
+					resolveCaseOutputs(
+						execution: IRun,
+						workflow: IWorkflowBase,
+						endNodeName: string | undefined,
+					): Record<string, unknown>;
+				}
+			).resolveCaseOutputs(execution, workflow, undefined);
+
+		// The editor does not store `operation` when it is the node default (`setOutputs`).
+		test.each([
+			{ stored: 'no operation', parameters: {} },
+			{ stored: 'the setOutputs operation', parameters: { operation: 'setOutputs' } },
+		])('reads the Set Outputs node data when the node stores $stored', ({ parameters }) => {
+			// A plain object, because `mock()` returns a function for a missing `operation`.
+			const workflow = {
+				nodes: [{ name: 'Set Outputs', type: EVALUATION_NODE_TYPE, parameters }],
+			} as unknown as IWorkflowBase;
+			const execution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							'Set Outputs': [
+								{ data: { main: [[{ json: {}, evaluationData: { echo: 'echo: hi' } }]] } },
+							],
+						},
+					},
+				},
+			});
+
+			expect(resolveOutputs(execution, workflow)).toEqual({ echo: 'echo: hi' });
+		});
+	});
+
 	describe('findEvaluationTriggerNode', () => {
 		test('should find the trigger node in a workflow', () => {
 			// Setup a test workflow with a trigger node

@@ -395,14 +395,13 @@ export class TestRunnerService {
 	static getEvaluationNodes(
 		workflow: IWorkflowBase,
 		operation: 'setMetrics' | 'setOutputs' | 'setInputs',
-		{ isDefaultOperation }: { isDefaultOperation: boolean } = { isDefaultOperation: false },
 	) {
 		return workflow.nodes.filter(
 			(node) =>
 				node.type === EVALUATION_NODE_TYPE &&
 				node.disabled !== true &&
-				(node.parameters.operation === operation ||
-					(isDefaultOperation && node.parameters.operation === undefined)),
+				// The editor does not store `operation` when it is the node default.
+				(node.parameters.operation ?? 'setOutputs') === operation,
 		);
 	}
 
@@ -411,7 +410,7 @@ export class TestRunnerService {
 	}
 
 	static getEvaluationSetOutputsNodes(workflow: IWorkflowBase) {
-		return this.getEvaluationNodes(workflow, 'setOutputs', { isDefaultOperation: true });
+		return this.getEvaluationNodes(workflow, 'setOutputs');
 	}
 
 	private extractDatasetTriggerOutput(execution: IRun, workflow: IWorkflowBase) {
