@@ -154,6 +154,45 @@ describe('McpServerToolsService reads for an approval card', () => {
 	});
 });
 
+describe('McpServerToolsService.listTools', () => {
+	it('reports a moved workflow tool as broken with reason moved', async () => {
+		const servers = mock<McpServerRepository>();
+		const tools = mock<McpServerToolRepository>();
+		const { workflows, textDrafts } = mockMcpServerPorts();
+		const now = new Date();
+		servers.findInProject.mockResolvedValue(mock<McpServer>({ id: SERVER_ID }));
+		tools.listByServer.mockResolvedValue([
+			mock<McpServerTool>({
+				id: '7b0c2a52-3c1f-4f53-9a51-0c0d8c3a0a04',
+				serverId: SERVER_ID,
+				kind: 'workflow',
+				targetId: 'workflow-moved',
+				toolName: 'moved_tool',
+				description: 'Moved workflow',
+				draftSource: 'edited',
+				position: 0,
+				createdAt: now,
+				updatedAt: now,
+			}),
+		]);
+		workflows.check.mockResolvedValue({ callable: false, reason: 'moved' });
+		const service = new McpServerToolsService(
+			servers,
+			tools,
+			workflows,
+			textDrafts,
+			mock<EventService>(),
+			mock<Logger>(),
+		);
+
+		const result = await service.listTools(PROJECT_ID, SERVER_ID);
+
+		expect(result).toEqual([
+			expect.objectContaining({ toolName: 'moved_tool', brokenReason: 'moved' }),
+		]);
+	});
+});
+
 describe('McpServerToolsService.updateTool', () => {
 	const TOOL_ID = '7b0c2a52-3c1f-4f53-9a51-0c0d8c3a0a02';
 

@@ -93,10 +93,14 @@ export const mcpServerToolCandidateReasonSchema = z.enum([
 ]);
 export type McpServerToolCandidateReason = z.infer<typeof mcpServerToolCandidateReasonSchema>;
 
-/** Why a tool is broken. A broken tool stays in the list, and a call returns the reason. */
+/**
+ * Why a tool is broken. A broken tool stays in the list, and a call returns the reason.
+ * `moved`: the workflow still exists, but another project owns it now.
+ */
 export const mcpServerToolBrokenReasonSchema = z.enum([
 	...mcpServerWorkflowUnavailableReasonSchema.options,
 	'deleted',
+	'moved',
 ]);
 export type McpServerToolBrokenReason = z.infer<typeof mcpServerToolBrokenReasonSchema>;
 

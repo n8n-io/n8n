@@ -488,10 +488,11 @@ describe('GET /projects/:projectId/mcp-servers/:serverId', () => {
 		const unpublish = await createToolWorkflow('Unpublish me');
 		const remove = await createToolWorkflow('Delete me');
 		const retrigger = await createToolWorkflow('Change my trigger');
+		const move = await createToolWorkflow('Move me');
 		await testServer
 			.authAgentFor(editor)
 			.post(`${base(serverId)}/tools`)
-			.send({ workflowIds: [unpublish.id, remove.id, retrigger.id] })
+			.send({ workflowIds: [unpublish.id, remove.id, retrigger.id, move.id] })
 			.expect(200);
 
 		const workflows = Container.get(WorkflowRepository);
@@ -501,6 +502,11 @@ describe('GET /projects/:projectId/mcp-servers/:serverId', () => {
 		await Container.get(WorkflowHistoryRepository).update(
 			{ workflowId: retrigger.id },
 			{ nodes: [MANUAL_TRIGGER] },
+		);
+		const other = await createTeamProject('Other', owner);
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: move.id, role: 'workflow:owner' },
+			{ projectId: other.id },
 		);
 
 		const response = await testServer.authAgentFor(editor).get(base(serverId)).expect(200);
@@ -514,6 +520,7 @@ describe('GET /projects/:projectId/mcp-servers/:serverId', () => {
 			['unpublish_me', 'not_published'],
 			['delete_me', 'deleted'],
 			['change_my_trigger', 'missing_trigger'],
+			['move_me', 'moved'],
 		]);
 	});
 

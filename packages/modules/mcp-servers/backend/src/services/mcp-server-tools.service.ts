@@ -73,18 +73,20 @@ const CHECK_BATCH_SIZE = 10;
 /** The most workflow checks for one search of candidates. */
 const CANDIDATE_CHECK_BUDGET = 200;
 
-/** `null` for `not_found`: a workflow that the project does not own is no candidate. */
+/** `null` for `not_found` and `moved`: a workflow that the project does not own is no candidate. */
 const UNAVAILABLE_REASONS: Record<WorkflowToolRefusal, McpServerWorkflowUnavailableReason | null> =
 	{
 		not_found: null,
+		moved: null,
 		not_published: 'not_published',
 		no_supported_trigger: 'missing_trigger',
 		incompatible_nodes: 'incompatible_nodes',
 		not_callable: 'caller_policy',
 	};
 
-/** A workflow that the project no longer owns, or that is archived, counts as deleted. */
+/** A workflow that is gone or archived counts as deleted. */
 function toBrokenReason(refusal: WorkflowToolRefusal): McpServerToolBrokenReason {
+	if (refusal === 'moved') return 'moved';
 	return UNAVAILABLE_REASONS[refusal] ?? 'deleted';
 }
 

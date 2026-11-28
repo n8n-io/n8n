@@ -354,6 +354,24 @@ describe('Custom MCP server runtime with a real MCP client', () => {
 		await client.close();
 	});
 
+	it('reports a moved workflow when its tool is called', async () => {
+		const otherProject = await createTeamProject('Marketing');
+		const movedWorkflow = await createActiveWorkflow(
+			{ name: 'Moved summary', nodes: [TRIGGER], connections: {} },
+			otherProject,
+		);
+		await addTool(serverId, 'moved_tool', movedWorkflow.id, 2);
+		const client = await connect(await tokenFor(member, resourceUrl(serverSlug)));
+
+		const result = await client.callTool({ name: 'moved_tool', arguments: {} });
+
+		expect(result).toEqual({
+			isError: true,
+			content: [{ type: 'text', text: expect.stringContaining('moved to another project') }],
+		});
+		await client.close();
+	});
+
 	it('says that the server is busy when the cap of runs in flight is full', async () => {
 		const config = Container.get(McpServersConfig);
 		const cap = config.maxConcurrentRuns;
