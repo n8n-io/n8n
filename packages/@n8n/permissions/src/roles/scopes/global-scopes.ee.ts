@@ -45,6 +45,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'credential:manageInstance',
 	'credential:use',
 	'credentialTypePolicy:manage',
+	'credentialTypePolicy:manageRequestFed',
 	'community:register',
 	'communityPackage:install',
 	'communityPackage:uninstall',

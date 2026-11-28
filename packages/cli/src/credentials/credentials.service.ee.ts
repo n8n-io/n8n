@@ -12,7 +12,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
@@ -22,7 +22,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { RoleService, CredentialsFinderService } from '@n8n/backend-services';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
-import { CredentialsService } from './credentials.service';
+import { CredentialsService, RUNTIME_CREDENTIAL_LOCKED_MESSAGE } from './credentials.service';
 import { validateAccessToReferencedSecretProviders } from './validation';
 
 @Service()
@@ -48,6 +48,7 @@ export class EnterpriseCredentialsService {
 		entityManager?: EntityManager,
 	) {
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
+		await this.credentialsService.assertNotRuntimeById(credentialId);
 		const canShare = await em.exists(CredentialsEntity, {
 			where: { id: credentialId, usageScope: 'project' },
 		});
@@ -211,6 +212,9 @@ export class EnterpriseCredentialsService {
 			credential,
 			`Could not find the credential with the id "${credentialId}". Make sure you have the permission to move it.`,
 		);
+		if (credential.isRuntime) {
+			throw new BadRequestError(RUNTIME_CREDENTIAL_LOCKED_MESSAGE);
+		}
 
 		const destinationProject = await this.projectService.getProjectWithScope(
 			user,
@@ -243,6 +247,9 @@ export class EnterpriseCredentialsService {
 			credential,
 			`Could not find the credential with the id "${credentialId}". Make sure you have the permission to move it.`,
 		);
+		if (credential.isRuntime) {
+			throw new BadRequestError(RUNTIME_CREDENTIAL_LOCKED_MESSAGE);
+		}
 
 		// 2. get destination project
 		const destinationProject = await this.projectService.getProjectWithScope(

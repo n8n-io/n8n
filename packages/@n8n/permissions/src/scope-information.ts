@@ -158,6 +158,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		description:
 			'Allows managing which credential types are available, on the instance or in a project.',
 	},
+	'credentialTypePolicy:manageRequestFed': {
+		displayName: 'Manage Request-fed Credential Type Policies',
+		description:
+			'Allows managing which credential types may receive a value from the incoming request, on the instance or in a project.',
+	},
 	'encryptionKey:manage': {
 		displayName: 'Manage Encryption Keys',
 		description: 'Allows listing and rotating instance encryption keys.',

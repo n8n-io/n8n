@@ -26,6 +26,8 @@ export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 		await import('./type-availability-policy-project.controller.js');
 		await import('./credential-type-policy-instance.controller.js');
 		await import('./credential-type-policy-project.controller.js');
+		await import('./request-fed-credential-type-policy-instance.controller.js');
+		await import('./request-fed-credential-type-policy-project.controller.js');
 		await import('./available-types.controller.js');
 		await import('./available-credential-types.controller.js');
 		await import('./sub-workflow-policy-check.controller.js');
@@ -55,6 +57,12 @@ export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 		Container.get(InstalledTypeRestrictionsProxy).registerProvider(
 			Container.get(NodeTypePolicyInstalledTypeRestrictionsProvider),
 		);
+
+		// The runtime credential overlay asks this class, and only once the module is live.
+		const { RequestFedCredentialTypePolicy } = await import(
+			'./request-fed-credential-type-policy.js'
+		);
+		RequestFedCredentialTypePolicy.isActive = true;
 
 		// Loaded before the process takes work, so the first decision already reads memory.
 		const { TypeAvailabilityPolicySnapshot } = await import(

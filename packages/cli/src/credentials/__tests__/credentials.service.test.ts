@@ -51,7 +51,10 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
 import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
-import { CredentialsService } from '@/credentials/credentials.service';
+import {
+	CredentialsService,
+	RUNTIME_CREDENTIAL_LOCKED_MESSAGE,
+} from '@/credentials/credentials.service';
 import type { InstanceCredentialUseRegistry } from '@/credentials/instance-credential-use.registry';
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
@@ -3892,6 +3895,18 @@ describe('CredentialsService', () => {
 			},
 		);
 
+		it.each([true, false])('maps isRuntime=%s into the workflow-scoped list', async (isRuntime) => {
+			const credential = Object.assign(new CredentialsEntity(), regularCredential, { isRuntime });
+			credentialsFinderService.findCredentialsForUser.mockResolvedValue([credential]);
+			credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([credential]);
+
+			const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+				workflowId: 'workflow-1',
+			});
+
+			expect(result[0].isRuntime).toBe(isRuntime);
+		});
+
 		it.each([null, 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH)])(
 			'returns the stored description in a workflow-scoped list',
 			async (description) => {
@@ -5947,5 +5962,132 @@ describe('CredentialsService', () => {
 
 			expect(service.isOAuthCredentialType('httpBasicAuth')).toBe(false);
 		});
+	});
+});
+
+describe('run-time credential protection', () => {
+	const postHogClient = mock<PostHogClient>();
+	const runtimeCredential = {
+		id: 'runtime-stub',
+		name: 'Run-time stub',
+		type: 'httpBearerAuth',
+		isRuntime: true,
+		isResolvable: false,
+		isManaged: false,
+		usageScope: 'project',
+	} as CredentialsEntity;
+	const user = mock<User>({ id: 'user-1' });
+
+	const credentialsRepository = mock<CredentialsRepository>();
+	const credentialsFinderService = mock<CredentialsFinderService>();
+	const credentialsTester = mock<CredentialsTester>();
+	const externalHooks = mock<ExternalHooks>();
+	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const service = new CredentialsService(
+		credentialsRepository,
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		credentialsTester,
+		externalHooks,
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		credentialsFinderService,
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		policyEnforcementService,
+		new CredentialDescriptionsService(postHogClient),
+		mock(),
+		mock(),
+	);
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(runtimeCredential);
+		credentialsRepository.findOneBy.mockResolvedValue(runtimeCredential);
+		credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(runtimeCredential);
+	});
+
+	it('refuses update', async () => {
+		await expect(
+			service.update(
+				runtimeCredential.id,
+				{ ...runtimeCredential, data: 'x' } as unknown as ICredentialsDb,
+				{ kind: 'user', user },
+			),
+		).rejects.toThrow(RUNTIME_CREDENTIAL_LOCKED_MESSAGE);
+		expect(externalHooks.run).not.toHaveBeenCalled();
+		expect(credentialsRepository.updateContent).not.toHaveBeenCalled();
+	});
+
+	it('refuses description changes', async () => {
+		await expect(service.updateDescription(user, runtimeCredential.id, 'text')).rejects.toThrow(
+			RUNTIME_CREDENTIAL_LOCKED_MESSAGE,
+		);
+	});
+
+	it('refuses delete', async () => {
+		await expect(service.delete(user, runtimeCredential.id)).rejects.toThrow(
+			RUNTIME_CREDENTIAL_LOCKED_MESSAGE,
+		);
+		expect(externalHooks.run).not.toHaveBeenCalled();
+		expect(credentialsRepository.remove).not.toHaveBeenCalled();
+	});
+
+	it('refuses delete of an unowned credential', async () => {
+		await expect(service.deleteUnowned(ownerUser, runtimeCredential.id)).rejects.toThrow(
+			RUNTIME_CREDENTIAL_LOCKED_MESSAGE,
+		);
+		expect(credentialsRepository.delete).not.toHaveBeenCalled();
+	});
+
+	it('refuses OAuth token clearing', async () => {
+		await expect(
+			service.clearOauthTokenData(runtimeCredential, { kind: 'user', user }),
+		).rejects.toThrow(RUNTIME_CREDENTIAL_LOCKED_MESSAGE);
+	});
+
+	it('refuses test by id', async () => {
+		await expect(service.testById(user, runtimeCredential.id)).rejects.toThrow(
+			RUNTIME_CREDENTIAL_LOCKED_MESSAGE,
+		);
+		expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
+	});
+
+	it('refuses test with posted data', async () => {
+		await expect(
+			service.testWithCredentials(user, {
+				id: runtimeCredential.id,
+				name: runtimeCredential.name,
+				type: runtimeCredential.type,
+				data: {},
+			}),
+		).rejects.toThrow(RUNTIME_CREDENTIAL_LOCKED_MESSAGE);
+		expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
+	});
+
+	it('refuses probe', async () => {
+		await expect(service.probeById(user, runtimeCredential.id)).rejects.toThrow(
+			RUNTIME_CREDENTIAL_LOCKED_MESSAGE,
+		);
+		expect(credentialsTester.probeCredentialAuth).not.toHaveBeenCalled();
+	});
+
+	it('does not refuse an ordinary credential', () => {
+		expect(() => service.assertNotRuntime({ isRuntime: false })).not.toThrow();
+		expect(() => service.assertNotRuntime(null)).not.toThrow();
 	});
 });

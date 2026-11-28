@@ -12,3 +12,16 @@ export const NODE_TYPES_KIND = 'node-types';
  * gated on `credentialTypePolicy:manage` rather than `nodeTypePolicy:manage`.
  */
 export const CREDENTIAL_TYPES_KIND = 'credential-types';
+
+/**
+ * The third policy kind: which credential types may receive a value from the incoming request
+ * through a run-time stub credential. Rules name credential types, so it evaluates like
+ * `CREDENTIAL_TYPES_KIND`. Its REST surface mounts on `/request-fed-credential-type-policies`,
+ * gated on `credentialTypePolicy:manageRequestFed`.
+ */
+export const REQUEST_FED_CREDENTIAL_TYPES_KIND = 'request-fed-credential-types';
+
+/** Kinds whose rules name credential types, with `extends` selectors and ancestor matching. */
+export function isCredentialTypeKind(kind: string): boolean {
+	return kind === CREDENTIAL_TYPES_KIND || kind === REQUEST_FED_CREDENTIAL_TYPES_KIND;
+}

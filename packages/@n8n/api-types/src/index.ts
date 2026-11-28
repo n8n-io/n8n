@@ -189,6 +189,7 @@ export {
 	promotionReviewIdParamSchema,
 	promotionProviderIdParamSchema,
 	roleMappingRuleIdParamSchema,
+	runtimeCredentialRuleAliasParamSchema,
 	roleSlugParamSchema,
 	tagIdParamSchema,
 	testRunIdParamSchema,

@@ -399,6 +399,16 @@ paths:
       $ref: ./handlers/settings/spec/paths/getRateLimitSettings.generated.yml
     put:
       $ref: ./handlers/settings/spec/paths/updateRateLimitSettings.generated.yml
+  /request-fed-credential-type-policies/instance:
+    get:
+      $ref: ./handlers/request-fed-credential-type-policies/spec/paths/getRequestFedCredentialTypeInstancePolicy.generated.yml
+    put:
+      $ref: ./handlers/request-fed-credential-type-policies/spec/paths/putRequestFedCredentialTypeInstancePolicy.generated.yml
+  /request-fed-credential-type-policies/projects/{projectId}:
+    get:
+      $ref: ./handlers/request-fed-credential-type-policies/spec/paths/getRequestFedCredentialTypeProjectPolicy.generated.yml
+    put:
+      $ref: ./handlers/request-fed-credential-type-policies/spec/paths/putRequestFedCredentialTypeProjectPolicy.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
@@ -424,6 +434,24 @@ paths:
       $ref: ./handlers/roles/spec/paths/updateRole.generated.yml
     delete:
       $ref: ./handlers/roles/spec/paths/deleteRole.generated.yml
+  /runtime-credential-rules:
+    get:
+      $ref: ./handlers/runtime-credential-rules/spec/paths/listRuntimeCredentialRules.generated.yml
+    post:
+      $ref: ./handlers/runtime-credential-rules/spec/paths/createRuntimeCredentialRule.generated.yml
+  /runtime-credential-rules/impact:
+    post:
+      $ref: ./handlers/runtime-credential-rules/spec/paths/checkRuntimeCredentialRuleImpact.generated.yml
+  /runtime-credential-rules/{ruleAlias}:
+    get:
+      $ref: ./handlers/runtime-credential-rules/spec/paths/getRuntimeCredentialRule.generated.yml
+    put:
+      $ref: ./handlers/runtime-credential-rules/spec/paths/replaceRuntimeCredentialRule.generated.yml
+    delete:
+      $ref: ./handlers/runtime-credential-rules/spec/paths/deleteRuntimeCredentialRule.generated.yml
+  /projects/{projectId}/runtime-credential-rules:
+    get:
+      $ref: ./handlers/projects/spec/paths/listProjectRuntimeCredentialRules.generated.yml
   /settings/security-policy:
     get:
       $ref: ./handlers/settings/spec/paths/getSecurityPolicy.generated.yml

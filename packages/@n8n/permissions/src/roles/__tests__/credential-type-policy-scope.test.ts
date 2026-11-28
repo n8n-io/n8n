@@ -59,7 +59,7 @@ describe('credentialTypePolicy:manage default grants', () => {
 
 describe('credentialTypePolicy:manage as an API key scope', () => {
 	it('is declared in API_KEY_RESOURCES, consumed by the credential-type-policies public API', () => {
-		expect(API_KEY_RESOURCES.credentialTypePolicy).toEqual(['manage']);
+		expect(API_KEY_RESOURCES.credentialTypePolicy).toEqual(['manage', 'manageRequestFed']);
 		expect(isApiKeyScope('credentialTypePolicy:manage')).toBe(true);
 	});
 
@@ -79,5 +79,34 @@ describe('credentialTypePolicy:manage as an API key scope', () => {
 
 	it('is therefore not stripped from keys on demotion to member', () => {
 		expect(getOwnerOnlyApiKeyScopes()).not.toContain('credentialTypePolicy:manage');
+	});
+});
+
+describe('credentialTypePolicy:manageRequestFed', () => {
+	it('is independent of credentialTypePolicy:manage', () => {
+		expect(
+			hasGlobalScope(
+				principal('custom:credential-policy-manager-only', ['credentialTypePolicy:manage']),
+				'credentialTypePolicy:manageRequestFed',
+			),
+		).toBe(false);
+	});
+
+	it('is granted to instance owners, admins and project admins', () => {
+		expect(GLOBAL_OWNER_SCOPES).toContain('credentialTypePolicy:manageRequestFed');
+		expect(GLOBAL_ADMIN_SCOPES).toContain('credentialTypePolicy:manageRequestFed');
+		expect(REGULAR_PROJECT_ADMIN_SCOPES).toContain('credentialTypePolicy:manageRequestFed');
+	});
+
+	it('is not granted to editors or viewers', () => {
+		expect(PROJECT_EDITOR_SCOPES).not.toContain('credentialTypePolicy:manageRequestFed');
+		expect(PROJECT_VIEWER_SCOPES).not.toContain('credentialTypePolicy:manageRequestFed');
+	});
+
+	it('is an API key scope that an owner and a member can mint, so a project admin can reach the project routes', () => {
+		expect(isApiKeyScope('credentialTypePolicy:manageRequestFed')).toBe(true);
+		expect(OWNER_API_KEY_SCOPES).toContain('credentialTypePolicy:manageRequestFed');
+		expect(MEMBER_API_KEY_SCOPES).toContain('credentialTypePolicy:manageRequestFed');
+		expect(getOwnerOnlyApiKeyScopes()).not.toContain('credentialTypePolicy:manageRequestFed');
 	});
 });

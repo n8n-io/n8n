@@ -559,6 +559,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			isManaged: true,
 			isGlobal: true,
 			isResolvable: true,
+			isRuntime: true,
 			resolvableAllowFallback: true,
 			resolverId: true,
 			usageScope: true,

@@ -29,6 +29,7 @@ export type PubSubCommandMap = {
 
 	// # region Credentials
 	'reload-overwrite-credentials': never;
+	'reload-runtime-credential-rules': never;
 	// #endregion
 
 	// # region SSO

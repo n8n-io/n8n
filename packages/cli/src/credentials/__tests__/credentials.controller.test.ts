@@ -147,7 +147,7 @@ describe('CredentialsController', () => {
 			async (forAgent) => {
 				const fixed = mock<
 					Awaited<ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>>[number]
-				>({ id: 'fixed', isResolvable: false });
+				>({ id: 'fixed', isResolvable: false, isRuntime: false });
 				const getUsableCredentials = vi
 					.spyOn(credentialsService, 'getCredentialsAUserCanUseInAWorkflow')
 					.mockResolvedValue([fixed]);
@@ -1365,6 +1365,46 @@ describe('CredentialsController', () => {
 			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
 			expect(emittedEventNames).not.toContain('private-credential-toggled-to-private');
 			expect(emittedEventNames).not.toContain('private-credential-toggled-to-static');
+		});
+	});
+
+	describe('run-time credentials', () => {
+		const runtimeCredential = mock<CredentialsEntity>({
+			id: 'runtime-stub',
+			type: 'httpBearerAuth',
+			isManaged: false,
+			isRuntime: true,
+		});
+
+		beforeEach(() => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(runtimeCredential);
+		});
+
+		it('refuses PATCH', async () => {
+			await expect(
+				credentialsController.updateCredentials({
+					user: { id: 'u1' },
+					params: { credentialId: runtimeCredential.id },
+					body: { name: 'renamed' },
+				} as unknown as CredentialRequest.Update),
+			).rejects.toThrow('cannot be changed');
+			expect(updateSpy).not.toHaveBeenCalled();
+		});
+
+		it('refuses share changes', async () => {
+			await expect(
+				credentialsController.shareCredentials({
+					user: { id: 'u1' },
+					params: { credentialId: runtimeCredential.id },
+					body: { shareWithIds: ['project-1'] },
+				} as unknown as CredentialRequest.Share),
+			).rejects.toThrow('cannot be changed');
+		});
+
+		it('refuses OAuth disconnect', async () => {
+			await expect(
+				credentialsController.disconnectOauthToken(req, res, runtimeCredential.id),
+			).rejects.toThrow('cannot be changed');
 		});
 	});
 

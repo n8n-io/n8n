@@ -50,6 +50,7 @@ const EXPECTED_GROUPS: Record<string, string[]> = {
 		'CredentialTypePolicy',
 		'LogStreaming',
 		'NodeTypePolicy',
+		'RuntimeCredentialRule',
 		'SecurityPolicy',
 		'SettingsLdap',
 		'SettingsOtel',

@@ -12,6 +12,7 @@ import {
 import { CredentialTypePolicyRestrictionsProvider } from '../credential-restrictions.provider';
 import { NodeTypePolicyInstalledTypeRestrictionsProvider } from '../installed-type-restrictions.provider';
 import { NodeTypePolicyRestrictedTypesProvider } from '../restricted-node-types.provider';
+import { RequestFedCredentialTypePolicy } from '../request-fed-credential-type-policy';
 import { TypeAvailabilityPolicySnapshot } from '../type-availability-policy-snapshot';
 // Importing the module runs the @BackendModule decorator, registering its metadata.
 import { TypeAvailabilityPoliciesModule } from '../type-availability-policies.module';
@@ -68,6 +69,8 @@ describe('TypeAvailabilityPoliciesModule', () => {
 			'TypeAvailabilityPolicyProjectController',
 			'CredentialTypePolicyInstanceController',
 			'CredentialTypePolicyProjectController',
+			'RequestFedCredentialTypePolicyInstanceController',
+			'RequestFedCredentialTypePolicyProjectController',
 			'AvailableTypesController',
 			'AvailableCredentialTypesController',
 			'SubWorkflowPolicyCheckController',
@@ -124,6 +127,16 @@ describe('TypeAvailabilityPoliciesModule', () => {
 				{ type: 'slackApi', projectId: 'project-1' },
 			]),
 		).resolves.toEqual(restrictions);
+	}, 30_000);
+
+	it('activates the request-fed credential type policy on init', async () => {
+		RequestFedCredentialTypePolicy.isActive = false;
+		const module = new TypeAvailabilityPoliciesModule();
+
+		await module.init();
+
+		expect(RequestFedCredentialTypePolicy.isActive).toBe(true);
+		RequestFedCredentialTypePolicy.isActive = false;
 	}, 30_000);
 
 	it('loads the policy snapshot on init, before the process takes work', async () => {

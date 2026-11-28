@@ -6,7 +6,8 @@ import {
 	isEntityNotFoundError,
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { RuntimeCredentialProxyService } from '@n8n/backend-services';
+import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { Credentials, FULL_ACCESS_NODE_TYPES, getAdditionalKeys } from 'n8n-core';
 import type {
@@ -661,7 +662,71 @@ export class CredentialsHelper extends ICredentialsHelper {
 			this.assertTriggerSupportsEndUserCredential(credentialsEntity, additionalData, executeData);
 		}
 
-		if (shouldAttemptDynamicResolution) {
+		// Values from the request. Applied after expression resolution, so that a request value
+		// such as `={{ $secrets.x }}` is data and never an expression.
+		let runtimeOverlay: ICredentialDataDecryptedObject | undefined;
+
+		if (credentialsEntity.isRuntime) {
+			// Denied types fail before any request value is read.
+			const { RequestFedCredentialTypePolicy } = await import(
+				'@/modules/type-availability-policies/request-fed-credential-type-policy.js'
+			);
+			if (RequestFedCredentialTypePolicy.isActive) {
+				await Container.get(RequestFedCredentialTypePolicy).assertAllowed(
+					credentialsEntity.type,
+					additionalData.projectId ?? null,
+				);
+			}
+
+			// The request supplies the secret for this execution. It is never stored on the row.
+			// There is no fallback to the placeholder values: a missing value throws.
+			const runtimeData = await Container.get(
+				RuntimeCredentialProxyService,
+			).getRuntimeCredentialData(
+				additionalData.executionContext,
+				credentialsEntity.id,
+				credentialsEntity.type,
+			);
+			runtimeOverlay = { ...runtimeData };
+
+			// The rule limits where the secret can go. It reuses the allowed domain fields that
+			// HTTP Request, GraphQL and other nodes already check. Set last, so that no request
+			// value or transform can replace them.
+			const allowedDomains = Container.get(RuntimeCredentialProxyService).getAllowedDomainsForStub(
+				credentialsEntity.id,
+			);
+			if (allowedDomains) {
+				runtimeOverlay = {
+					...runtimeOverlay,
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains,
+				};
+			}
+
+			// Audit trail: ids and names only, never the value. Sent once for each execution, stub and node.
+			const alias = Container.get(RuntimeCredentialProxyService).getRuleAliasForStub(
+				credentialsEntity.id,
+			);
+			if (alias !== undefined) {
+				// The engine removes this value from the output of the node that is running.
+				const aliases = (additionalData.currentNodeRuntimeCredentialAliases ??= []);
+				if (!aliases.includes(alias)) aliases.push(alias);
+				const { RuntimeCredentialUsageAudit } = await import(
+					'@/modules/runtime-credentials/runtime-credential-usage-audit.service.js'
+				);
+				Container.get(RuntimeCredentialUsageAudit).record({
+					alias,
+					credentialId: credentialsEntity.id,
+					credentialType: credentialsEntity.type,
+					workflowId: additionalData.workflowId,
+					executionId: additionalData.executionId,
+					nodeName: consumerNode?.name,
+					nodeType: consumerNode?.type,
+				});
+			}
+			// This is not an end-user credential, so the run is not marked as using one. Marking it
+			// would redact the execution data and label the run "end-user credentials".
+		} else if (shouldAttemptDynamicResolution) {
 			// Resolve dynamic credentials if configured (EE feature)
 			const resolveResult = await this.dynamicCredentialsProxy.resolveIfNeeded(
 				{
@@ -686,7 +751,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		if (raw === true) {
-			return this.trackStoredData(decryptedDataOriginal, credentialsEntity);
+			return this.trackStoredData(
+				runtimeOverlay ? { ...decryptedDataOriginal, ...runtimeOverlay } : decryptedDataOriginal,
+				credentialsEntity,
+			);
 		}
 
 		if (
@@ -711,7 +779,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 			expressionResolveValues,
 			options?.managedVersion,
 		);
-		return this.trackStoredData(decryptedData, credentialsEntity);
+		return this.trackStoredData(
+			runtimeOverlay ? { ...decryptedData, ...runtimeOverlay } : decryptedData,
+			credentialsEntity,
+		);
 	}
 
 	private trackStoredData<T extends ICredentialDataDecryptedObject>(
@@ -958,6 +1029,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<void> {
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+
+		// A run-time credential holds the caller's token for one execution. A refreshed
+		// token must never be written to a row that other callers use.
+		if (credentialsEntity.isRuntime) return;
 
 		const resolverId =
 			credentialsEntity.resolverId ??

@@ -74,6 +74,7 @@ describe('ExecutionContextService', () => {
 		mockRegistry = {
 			getHookByName: vi.fn(),
 			getGlobalHooks: vi.fn().mockReturnValue([]),
+			getPostNodeHooks: vi.fn().mockReturnValue([]),
 			getSubExecutionHooks: vi.fn().mockReturnValue([]),
 		} as unknown as Mocked<ExecutionContextHookRegistry>;
 
@@ -1016,6 +1017,120 @@ describe('ExecutionContextService', () => {
 			});
 
 			expect(result.triggerItems).toEqual(modifiedItems);
+		});
+
+		describe('post-node hooks', () => {
+			const baseContext = (): IExecutionContext => ({
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'webhook',
+			});
+
+			beforeEach(() => {
+				mockCipher.decryptV2.mockResolvedValue('{}');
+				mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+			});
+
+			it('runs global, then node configured, then post-node hooks', async () => {
+				const calls: string[] = [];
+				const hookConfig = { hooks: [{ hookName: 'configured', isAllowedToFail: false }] };
+				const startItem = createMockStartItem(hookConfig);
+				const globalHook = mock<IContextEstablishmentHook>();
+				const configuredHook = mock<IContextEstablishmentHook>();
+				const postHook = mock<IContextEstablishmentHook>();
+				globalHook.execute.mockImplementation(async () => {
+					calls.push('global');
+					return {};
+				});
+				configuredHook.execute.mockImplementation(async () => {
+					calls.push('configured');
+					return {};
+				});
+				postHook.execute.mockImplementation(async () => {
+					calls.push('post');
+					return {};
+				});
+				mockRegistry.getGlobalHooks.mockReturnValue([globalHook]);
+				mockRegistry.getPostNodeHooks.mockReturnValue([postHook]);
+				mockRegistry.getHookByName.mockReturnValue(configuredHook);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue({
+					data: { contextEstablishmentHooks: hookConfig },
+				});
+
+				await service.augmentExecutionContextWithHooks(mockWorkflow, startItem, baseContext());
+
+				expect(calls).toEqual(['global', 'configured', 'post']);
+			});
+
+			it('passes the items that node configured hooks changed to the post-node hook', async () => {
+				const original: INodeExecutionData[] = [{ json: { token: 'secret' } }];
+				const masked: INodeExecutionData[] = [{ json: { token: '**********' } }];
+				const hookConfig = { hooks: [{ hookName: 'configured', isAllowedToFail: false }] };
+				const startItem = createMockStartItem(hookConfig, original);
+				const configuredHook = mock<IContextEstablishmentHook>();
+				const postHook = mock<IContextEstablishmentHook>();
+				configuredHook.execute.mockResolvedValue({ triggerItems: masked });
+				postHook.execute.mockResolvedValue({});
+				mockRegistry.getPostNodeHooks.mockReturnValue([postHook]);
+				mockRegistry.getHookByName.mockReturnValue(configuredHook);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue({
+					data: { contextEstablishmentHooks: hookConfig },
+				});
+
+				await service.augmentExecutionContextWithHooks(mockWorkflow, startItem, baseContext());
+
+				expect(postHook.execute).toHaveBeenCalledWith(
+					expect.objectContaining({ triggerItems: masked, options: {} }),
+				);
+			});
+
+			it('runs a post-node hook when the start node has no configured hooks', async () => {
+				const startItem = createMockStartItem();
+				const postHook = mock<IContextEstablishmentHook>();
+				postHook.execute.mockResolvedValue({});
+				mockRegistry.getPostNodeHooks.mockReturnValue([postHook]);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(undefined);
+
+				await service.augmentExecutionContextWithHooks(mockWorkflow, startItem, baseContext());
+
+				expect(postHook.execute).toHaveBeenCalledTimes(1);
+			});
+
+			it('runs a post-node hook when the hook parameters fail to parse', async () => {
+				const startItem = createMockStartItem();
+				const postHook = mock<IContextEstablishmentHook>();
+				postHook.execute.mockResolvedValue({});
+				mockRegistry.getPostNodeHooks.mockReturnValue([postHook]);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue({
+					error: new Error('invalid'),
+				});
+
+				await service.augmentExecutionContextWithHooks(mockWorkflow, startItem, baseContext());
+
+				expect(mockLogger.warn).toHaveBeenCalled();
+				expect(postHook.execute).toHaveBeenCalledTimes(1);
+			});
+
+			it('applies triggerItems and contextUpdate from a post-node hook', async () => {
+				const startItem = createMockStartItem();
+				const cleared: INodeExecutionData[] = [{ json: {} }];
+				const postHook = mock<IContextEstablishmentHook>();
+				postHook.execute.mockResolvedValue({
+					triggerItems: cleared,
+					contextUpdate: { redaction: { version: 2, production: true, manual: true } },
+				});
+				mockRegistry.getPostNodeHooks.mockReturnValue([postHook]);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(undefined);
+
+				const result = await service.augmentExecutionContextWithHooks(
+					mockWorkflow,
+					startItem,
+					baseContext(),
+				);
+
+				expect(result.triggerItems).toEqual(cleared);
+				expect(result.context.redaction).toEqual({ version: 2, production: true, manual: true });
+			});
 		});
 
 		it('should pass modified trigger items to subsequent hooks', async () => {

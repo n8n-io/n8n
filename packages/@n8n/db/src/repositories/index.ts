@@ -79,6 +79,11 @@ export {
 } from './project.repository';
 export { RoleRepository } from './role.repository';
 export { RoleMappingRuleRepository } from './role-mapping-rule.repository';
+export {
+	RuntimeCredentialRuleRepository,
+	type RuntimeCredentialRuleRow,
+	type RuntimeCredentialRuleChanges,
+} from './runtime-credential-rule.repository';
 export { ScheduledJobRepository } from './scheduled-job.repository';
 export type {
 	NewScheduledJob,

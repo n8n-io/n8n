@@ -647,6 +647,20 @@ export type RelayEventMap = ModuleEventMap & {
 		loginId?: string;
 	};
 
+	/**
+	 * A node resolved a run-time stub credential. Sent once for each execution, stub and node.
+	 * Holds ids and names, never the value.
+	 */
+	'runtime-credential-used': {
+		alias: string;
+		credentialId: string;
+		credentialType: string;
+		workflowId?: string;
+		executionId?: string;
+		nodeName?: string;
+		nodeType?: string;
+	};
+
 	/** A user retrieved the decrypted data of a credential through `includeData=true`. */
 	'credentials-data-read': {
 		user: UserLike;

@@ -509,4 +509,67 @@ describe('ExecutionContextHookRegistry', () => {
 			expect(registry.getSubExecutionHooks()).toEqual([]);
 		});
 	});
+
+	describe('post-node hooks', () => {
+		it('exposes hooks decorated with runAfterNodeHooks: true via getPostNodeHooks()', async () => {
+			@ContextEstablishmentHook({ alwaysExecute: false, runAfterNodeHooks: true })
+			class PostHook implements IContextEstablishmentHook {
+				hookDescription = { name: 'test.post' };
+				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+					return {};
+				}
+				isApplicableToTriggerNode(_nodeType: string): boolean {
+					return false;
+				}
+			}
+
+			await registry.init();
+
+			const postHooks = registry.getPostNodeHooks();
+			expect(postHooks).toHaveLength(1);
+			expect(postHooks[0]).toBeInstanceOf(PostHook);
+			expect(registry.getGlobalHooks()).toEqual([]);
+		});
+
+		it('runs a hook with both alwaysExecute and runAfterNodeHooks only in the post phase', async () => {
+			@ContextEstablishmentHook({ alwaysExecute: true, runAfterNodeHooks: true })
+			class BothHook implements IContextEstablishmentHook {
+				hookDescription = { name: 'test.both' };
+				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+					return {};
+				}
+				isApplicableToTriggerNode(_nodeType: string): boolean {
+					return false;
+				}
+			}
+
+			await registry.init();
+
+			expect(registry.getGlobalHooks()).toEqual([]);
+			expect(registry.getPostNodeHooks()[0]).toBeInstanceOf(BothHook);
+		});
+
+		it('clears post-node hooks on re-initialization', async () => {
+			@ContextEstablishmentHook({ alwaysExecute: false, runAfterNodeHooks: true })
+			// @ts-expect-error - Class is used via decorator side-effect
+			class PostHook implements IContextEstablishmentHook {
+				hookDescription = { name: 'test.post-clear' };
+				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+					return {};
+				}
+				isApplicableToTriggerNode(_nodeType: string): boolean {
+					return false;
+				}
+			}
+
+			await registry.init();
+			expect(registry.getPostNodeHooks()).toHaveLength(1);
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(hookMetadata as any).contextEstablishmentHooks.clear();
+			await registry.init();
+
+			expect(registry.getPostNodeHooks()).toEqual([]);
+		});
+	});
 });

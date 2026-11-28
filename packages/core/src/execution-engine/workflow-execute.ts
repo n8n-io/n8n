@@ -74,6 +74,10 @@ import * as NodeExecuteFunctions from '@/node-execute-functions';
 import { assertExecutionDataExists } from '@/utils/assertions';
 
 import { establishExecutionContext } from './execution-context';
+import {
+	buildRuntimeCredentialScrubber,
+	type RuntimeCredentialScrubber,
+} from './runtime-credential-scrubber';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import {
 	ExecuteContext,
@@ -127,6 +131,14 @@ function normalizeUnhandledAxiosError(error: unknown, node: INode): ExecutionBas
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
+
+	/** The run-time values do not change during a run, so they are decrypted once. */
+	private runtimeCredentialValues?: Promise<Array<{ alias: string; value: string }>>;
+
+	private readonly runtimeCredentialScrubbers = new Map<
+		string,
+		RuntimeCredentialScrubber | undefined
+	>();
 
 	private readonly abortController = new AbortController();
 	timedOut: boolean = false;
@@ -1792,6 +1804,7 @@ export class WorkflowExecute {
 		this.additionalData.currentNodeUsedDynamicCredentials = false;
 		this.additionalData.currentNodeAttemptedDynamicCredentials = false;
 		this.additionalData.currentNodeUsedCredentialIds = undefined;
+		this.additionalData.currentNodeRuntimeCredentialAliases = undefined;
 
 		const reportedUsage = executionData.metadata?.dynamicCredentialsUsage;
 		if (reportedUsage) {
@@ -2307,6 +2320,7 @@ export class WorkflowExecute {
 		continueExecution: boolean;
 		nodeSuccessData: INodeExecutionData[][] | null | undefined;
 	}> {
+		(await this.getRuntimeCredentialScrubber())?.scrubError(executionError);
 		taskData.error = executionError;
 		taskData.executionStatus = 'error';
 
@@ -2387,6 +2401,30 @@ export class WorkflowExecute {
 		} else {
 			nodeRunData.push(taskData);
 		}
+	}
+
+	/**
+	 * Returns the scrubber for the run-time values that the current node used, or `undefined`
+	 * when it used none. The decrypted values are cached for the run. The scrubber is cached for
+	 * each set of aliases.
+	 */
+	private async getRuntimeCredentialScrubber() {
+		const aliases = this.additionalData.currentNodeRuntimeCredentialAliases;
+		const { getRuntimeCredentialValues } = this.additionalData;
+		if (!aliases?.length || !getRuntimeCredentialValues) return undefined;
+
+		this.runtimeCredentialValues ??= getRuntimeCredentialValues(this.runExecutionData).catch(
+			() => [],
+		);
+		const key = [...new Set(aliases)].sort().join('\u0000');
+		let scrubber = this.runtimeCredentialScrubbers.get(key);
+		if (!scrubber) {
+			const wanted = new Set(aliases);
+			const values = (await this.runtimeCredentialValues).filter(({ alias }) => wanted.has(alias));
+			scrubber = buildRuntimeCredentialScrubber(values);
+			this.runtimeCredentialScrubbers.set(key, scrubber);
+		}
+		return scrubber;
 	}
 
 	/**
@@ -2716,6 +2754,13 @@ export class WorkflowExecute {
 					}
 
 					this.normalizeNodeErrors(nodeSuccessData!);
+
+					// Pinned data is the user's own data and stays as it is.
+					if (!this.getPinnedOutput(executionNode)) {
+						nodeSuccessData =
+							(await this.getRuntimeCredentialScrubber())?.scrubOutputs(nodeSuccessData) ??
+							nodeSuccessData;
+					}
 
 					// Node executed successfully. So add data and go on.
 					taskData.data = {

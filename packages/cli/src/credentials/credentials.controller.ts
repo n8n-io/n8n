@@ -41,6 +41,7 @@ import { CredentialDescriptionsService } from './credential-descriptions.service
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
+import { addRuntimeRuleAlias } from './runtime-rule-alias';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
@@ -136,7 +137,7 @@ export class CredentialsController {
 			});
 		}
 
-		return credentials;
+		return credentials.map(addRuntimeRuleAlias);
 	}
 
 	@Get('/for-workflow')
@@ -155,9 +156,11 @@ export class CredentialsController {
 			excludePersonalRoute: forAgent === 'true',
 			excludeResolvable: forAgent === 'true',
 		};
-		return forAssistant === 'true'
-			? await this.credentialsService.getCredentialsAUserCanUseThemselves(req.user, options)
-			: await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, options);
+		const credentials =
+			forAssistant === 'true'
+				? await this.credentialsService.getCredentialsAUserCanUseThemselves(req.user, options)
+				: await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, options);
+		return credentials.map(addRuntimeRuleAlias);
 	}
 
 	@Get('/new')
@@ -212,7 +215,7 @@ export class CredentialsController {
 			});
 		}
 
-		return { ...credential, scopes };
+		return { ...addRuntimeRuleAlias(credential), scopes };
 	}
 
 	// TODO: Write at least test cases for the failure paths.
@@ -348,6 +351,8 @@ export class CredentialsController {
 		if (credential.isManaged) {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
+
+		this.credentialsService.assertNotRuntime(credential);
 
 		const isChangingAuthType = body.type !== undefined && body.type !== credential.type;
 
@@ -527,6 +532,8 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
+		this.credentialsService.assertNotRuntime(credential);
+
 		if (!this.credentialsService.isOAuthCredentialType(credential.type)) {
 			throw new BadRequestError('Only OAuth credentials can be disconnected');
 		}
@@ -592,6 +599,8 @@ export class CredentialsController {
 		if (!credential) {
 			throw new ForbiddenError();
 		}
+
+		this.credentialsService.assertNotRuntime(credential);
 
 		const currentProjectIds = credential.shared
 			.filter((sc) => sc.role === 'credential:user')

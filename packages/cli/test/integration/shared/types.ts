@@ -83,6 +83,7 @@ type ModuleName =
 	| 'log-streaming'
 	| 'ldap'
 	| 'redaction'
+	| 'runtime-credentials'
 	| 'source-control'
 	| 'promotions'
 	| 'n8n-packages'

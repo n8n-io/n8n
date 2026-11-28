@@ -1,3 +1,4 @@
+import { RuntimeCredentialProxyService } from '@n8n/backend-services';
 import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import type { CredentialsRepository, User, WorkflowRepository } from '@n8n/db';
 import type {
@@ -8,6 +9,7 @@ import type {
 	ICredentialType,
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionTypes } from 'n8n-workflow';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -675,6 +677,74 @@ describe('WorkflowValidationService', () => {
 			// Should be invalid because authentication='basicAuth' but no credential is set
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('Missing required credential: Basic Auth');
+		});
+	});
+
+	describe('validateRuntimeCredentials', () => {
+		const node = (name: string, type: string, credId?: string): INode => ({
+			name,
+			type,
+			id: `node-${name}`,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: credId ? { gmailOAuth2: { id: credId, name: 'Gmail' } } : undefined,
+		});
+		const nodeTypesWithTrigger = () => {
+			const nodeTypes = mock<NodeTypes>();
+			nodeTypes.getByNameAndVersion.mockImplementation(
+				(type) =>
+					({
+						description: { group: type.includes('webhook') ? ['trigger'] : ['transform'] },
+					}) as unknown as INodeType,
+			);
+			return nodeTypes;
+		};
+		const ruleApplies = (applies: boolean) =>
+			vi
+				.spyOn(Container.get(RuntimeCredentialProxyService), 'hasCredentialRuleForTrigger')
+				.mockReturnValue(applies);
+
+		afterEach(() => vi.restoreAllMocks());
+
+		it('is valid when the workflow has no run-time credential', async () => {
+			mockCredentialsRepository.find.mockResolvedValue([]);
+			const nodes = [
+				node('Webhook', 'n8n-nodes-base.webhook'),
+				node('Gmail', 'n8n-nodes-base.gmail', 'c1'),
+			];
+
+			await expect(
+				service.validateRuntimeCredentials(nodes, nodeTypesWithTrigger()),
+			).resolves.toEqual({ isValid: true });
+		});
+
+		it('is valid when a rule applies to one of the triggers', async () => {
+			mockCredentialsRepository.find.mockResolvedValue([{ id: 'c1', name: 'Gmail' } as any]);
+			ruleApplies(true);
+			const nodes = [
+				node('Webhook', 'n8n-nodes-base.webhook'),
+				node('Gmail', 'n8n-nodes-base.gmail', 'c1'),
+			];
+
+			await expect(
+				service.validateRuntimeCredentials(nodes, nodeTypesWithTrigger()),
+			).resolves.toEqual({ isValid: true });
+		});
+
+		it('names the credential when no rule applies to any trigger', async () => {
+			mockCredentialsRepository.find.mockResolvedValue([{ id: 'c1', name: 'Gmail' } as any]);
+			ruleApplies(false);
+			const nodes = [
+				node('Webhook', 'n8n-nodes-base.webhook'),
+				node('Gmail', 'n8n-nodes-base.gmail', 'c1'),
+			];
+
+			const result = await service.validateRuntimeCredentials(nodes, nodeTypesWithTrigger());
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('"Gmail"');
+			expect(result.error).toContain('no run-time input rule applies');
 		});
 	});
 

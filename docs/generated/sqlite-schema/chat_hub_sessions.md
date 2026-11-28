@@ -97,13 +97,14 @@ erDiagram
   boolean isGlobal
   boolean isManaged
   boolean isResolvable
+  boolean isRuntime
   varchar_128_ name
-  DATETIME pendingAuthorizationExpiresAt
+  datetime pendingAuthorizationExpiresAt
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
   varchar_32_ type
   datetime_3_ updatedAt
-  VARCHAR_16_ usageScope
+  varchar_16_ usageScope
 }
 "chat_hub_messages" {
   varchar_36_ agentId FK

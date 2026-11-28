@@ -73,6 +73,13 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	@Column({ type: 'varchar', nullable: true })
 	resolverId: string | null;
 
+	/**
+	 * Whether the credential gets its secret values from the incoming request at
+	 * run time. The stored data holds placeholders only.
+	 */
+	@Column({ default: false })
+	isRuntime: boolean;
+
 	@Column({ type: 'varchar', length: 16, default: 'project' })
 	usageScope: CredentialUsageScope;
 

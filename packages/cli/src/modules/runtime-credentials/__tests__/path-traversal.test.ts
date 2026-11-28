@@ -153,4 +153,50 @@ describe('extractAndClear', () => {
 		extractAndClear(obj, 'tags[*]');
 		expect((obj.tags as unknown[]).length).toBe(3);
 	});
+
+	it('writes the replacement value instead of undefined', () => {
+		const obj: IDataObject = { headers: { authorization: 'Bearer abc' } };
+		const result = extractAndClear(obj, 'headers.authorization', '[moved]');
+		expect(result).toBe('Bearer abc');
+		expect(obj).toEqual({ headers: { authorization: '[moved]' } });
+	});
+
+	describe('glob keys', () => {
+		it('matches every key that fits the pattern', () => {
+			const obj: IDataObject = { headers: { 'x-auth-a': '1', 'x-auth-b': '2', other: '3' } };
+			const result = extractAndClear(obj, 'headers.x-auth-*');
+			expect(result).toEqual(['1', '2']);
+			expect(obj).toEqual({
+				headers: { 'x-auth-a': undefined, 'x-auth-b': undefined, other: '3' },
+			});
+		});
+
+		it('matches a star in the middle of a key', () => {
+			const obj: IDataObject = { h: { 'x-a-token': '1', 'x-token': '2' } };
+			expect(extractAndClear(obj, 'h.x-*-token')).toBe('1');
+		});
+
+		it('returns undefined when no key matches', () => {
+			const obj: IDataObject = { h: { a: 1 } };
+			expect(extractAndClear(obj, 'h.zz*')).toBeUndefined();
+			expect(obj).toEqual({ h: { a: 1 } });
+		});
+	});
+
+	describe('unsafe keys', () => {
+		it.each(['__proto__.polluted', 'a.__proto__', 'constructor.name', 'a.prototype'])(
+			'never matches %s',
+			(path) => {
+				const obj: IDataObject = { a: { b: 1 } };
+				expect(extractAndClear(obj, path)).toBeUndefined();
+				expect(({} as IDataObject).polluted).toBeUndefined();
+				expect(typeof Object.prototype.toString).toBe('function');
+			},
+		);
+
+		it('does not match an own __proto__ key through a glob', () => {
+			const obj = JSON.parse('{"h":{"__proto__":"x","a":"y"}}') as IDataObject;
+			expect(extractAndClear(obj, 'h.*')).toBe('y');
+		});
+	});
 });

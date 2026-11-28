@@ -3,19 +3,132 @@ import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
+import type { RuntimeCredentialRuleRepository } from '@n8n/db';
+
 import type { RuntimeCredentialsConfig } from '../runtime-credentials.config';
 import type { SensitiveFieldRules } from '../runtime-credentials.schemas';
-import { RuntimeCredentialsService } from '../runtime-credentials.service';
+import { RuntimeCredentialsService, runtimeStubId } from '../runtime-credentials.service';
 
 const item = (json: IDataObject): INodeExecutionData => ({ json });
 
 describe('RuntimeCredentialsService', () => {
 	let service: RuntimeCredentialsService;
 	let config: MockProxy<RuntimeCredentialsConfig>;
+	let ruleRepository: MockProxy<RuntimeCredentialRuleRepository>;
 
 	beforeEach(() => {
 		config = mock<RuntimeCredentialsConfig>();
-		service = new RuntimeCredentialsService(mockLogger(), config);
+		ruleRepository = mock<RuntimeCredentialRuleRepository>();
+		service = new RuntimeCredentialsService(mockLogger(), config, ruleRepository);
+	});
+
+	describe('database rules', () => {
+		const row = {
+			alias: 'db_token',
+			nodeType: 'n8n-nodes-base.webhook',
+			path: 'headers.authorization',
+			credentialType: 'httpHeaderAuth',
+			transform: null,
+			allowedDomains: null,
+		};
+
+		beforeEach(() => {
+			config.sensitiveFieldRules = JSON.stringify({
+				env_token: { nodeType: '*', path: 'headers.x-env', credentialType: 'httpHeaderAuth' },
+			});
+			service.init();
+		});
+
+		it('serves environment and database rules together', async () => {
+			ruleRepository.findAll.mockResolvedValue([row]);
+			await service.loadDatabaseRules();
+
+			expect(
+				service
+					.getCredentialRules()
+					.map(([alias]) => alias)
+					.sort(),
+			).toEqual(['db_token', 'env_token']);
+			expect(service.isEnvironmentRule('env_token')).toBe(true);
+			expect(service.isDatabaseRule('db_token')).toBe(true);
+			expect(service.getRuleForStub(runtimeStubId('db_token'))?.alias).toBe('db_token');
+			expect(
+				service.stubRuleAppliesToTrigger(runtimeStubId('db_token'), 'n8n-nodes-base.webhook'),
+			).toBe(true);
+		});
+
+		it('strips values for a database rule', async () => {
+			ruleRepository.findAll.mockResolvedValue([row]);
+			await service.loadDatabaseRules();
+
+			const { artifactsByAlias, triggerItems } = service.strip(
+				[item({ headers: { authorization: 'Bearer abc' } })],
+				'n8n-nodes-base.webhook',
+			);
+
+			expect(artifactsByAlias.db_token).toEqual(['Bearer abc']);
+			expect(JSON.stringify(triggerItems)).not.toContain('abc');
+		});
+
+		it('lets the environment win when the alias clashes', async () => {
+			ruleRepository.findAll.mockResolvedValue([{ ...row, alias: 'env_token', path: 'other' }]);
+			await service.loadDatabaseRules();
+
+			expect(service.getRuleForStub(runtimeStubId('env_token'))?.rule.path).toBe('headers.x-env');
+			expect(service.isDatabaseRule('env_token')).toBe(false);
+		});
+
+		it('drops a removed database rule on reload', async () => {
+			ruleRepository.findAll.mockResolvedValue([row]);
+			await service.loadDatabaseRules();
+			ruleRepository.findAll.mockResolvedValue([]);
+			await service.reloadDatabaseRules();
+
+			expect(service.getRuleForStub(runtimeStubId('db_token'))).toBeUndefined();
+		});
+
+		it('loads the allowed domains of a database rule', async () => {
+			ruleRepository.findAll.mockResolvedValue([
+				row,
+				{ ...row, alias: 'limited', allowedDomains: 'api.example.com, *.example.org' },
+			]);
+			await service.loadDatabaseRules();
+
+			expect(
+				service.getRuleForStub(runtimeStubId('db_token'))?.rule.allowedDomains,
+			).toBeUndefined();
+			expect(service.getRuleForStub(runtimeStubId('limited'))?.rule.allowedDomains).toBe(
+				'api.example.com, *.example.org',
+			);
+		});
+
+		it('skips a row with an invalid allowed domains list', async () => {
+			ruleRepository.findAll.mockResolvedValue([
+				{ ...row, alias: 'bad', allowedDomains: 'https://example.com' },
+				row,
+			]);
+			await service.loadDatabaseRules();
+
+			expect(service.getCredentialRules().map(([alias]) => alias)).not.toContain('bad');
+			expect(service.isDatabaseRule('db_token')).toBe(true);
+		});
+
+		it('skips an invalid row and keeps the others', async () => {
+			ruleRepository.findAll.mockResolvedValue([{ ...row, alias: 'bad', transform: 'nope' }, row]);
+			await service.loadDatabaseRules();
+
+			expect(service.getCredentialRules().map(([alias]) => alias)).not.toContain('bad');
+			expect(service.isDatabaseRule('db_token')).toBe(true);
+		});
+
+		it('keeps the old rules when a reload fails', async () => {
+			ruleRepository.findAll.mockResolvedValueOnce([row]);
+			await service.loadDatabaseRules();
+			ruleRepository.findAll.mockRejectedValue(new Error('db down'));
+
+			await expect(service.reloadDatabaseRules()).resolves.toBeUndefined();
+			expect(service.isDatabaseRule('db_token')).toBe(true);
+		});
 	});
 
 	describe('init', () => {
@@ -46,6 +159,106 @@ describe('RuntimeCredentialsService', () => {
 			['empty nodeType string', '{"api_key":{"nodeType":"","path":"headers.authorization"}}'],
 		])('throws on %s', (_name, raw) => {
 			config.sensitiveFieldRules = raw;
+			expect(() => service.init()).toThrow(/N8N_SECURITY_SENSITIVE_FIELD_RULES/);
+		});
+	});
+
+	describe('credential rules', () => {
+		const rules = {
+			gmail: {
+				nodeType: 'n8n-nodes-base.webhook',
+				path: 'headers.authorization',
+				credentialType: 'gmailOAuth2',
+			},
+			plain: { nodeType: '*', path: 'body.password' },
+		};
+
+		beforeEach(() => {
+			config.sensitiveFieldRules = JSON.stringify(rules);
+			service.init();
+		});
+
+		it('replaces a matched value with a marker when the rule has a credentialType', () => {
+			const items = [item({ headers: { authorization: 'Bearer abc' }, body: { password: 'pw' } })];
+			const { triggerItems, artifactsByAlias } = service.strip(items, 'n8n-nodes-base.webhook');
+
+			expect(triggerItems[0].json).toEqual({
+				headers: { authorization: '[moved to credential: gmailOAuth2]' },
+				body: { password: undefined },
+			});
+			expect(artifactsByAlias).toEqual({ gmail: ['Bearer abc'], plain: ['pw'] });
+		});
+
+		it('returns only the rules that name a credential type', () => {
+			expect(service.getCredentialRules()).toEqual([['gmail', rules.gmail]]);
+		});
+
+		it('finds the rule that a stub credential belongs to', () => {
+			expect(service.getRuleForStub(runtimeStubId('gmail'))).toEqual({
+				alias: 'gmail',
+				rule: rules.gmail,
+			});
+			expect(service.getRuleForStub(runtimeStubId('plain'))).toBeUndefined();
+			expect(service.getRuleForStub('unknown-id')).toBeUndefined();
+		});
+
+		it('derives a stable stub id that fits the id column', () => {
+			expect(runtimeStubId('gmail')).toBe(runtimeStubId('gmail'));
+			expect(runtimeStubId('gmail')).not.toBe(runtimeStubId('other'));
+			expect(runtimeStubId('gmail').length).toBeLessThanOrEqual(36);
+		});
+
+		it('reports whether the rule behind a stub applies to a trigger', () => {
+			const id = runtimeStubId('gmail');
+			expect(service.stubRuleAppliesToTrigger(id, 'n8n-nodes-base.webhook')).toBe(true);
+			expect(service.stubRuleAppliesToTrigger(id, 'n8n-nodes-base.formTrigger')).toBe(false);
+			expect(service.stubRuleAppliesToTrigger('unknown-id', 'n8n-nodes-base.webhook')).toBe(false);
+		});
+
+		it('rejects a transform without a credentialType', () => {
+			config.sensitiveFieldRules = '{"a":{"nodeType":"*","path":"x","transform":"bearer"}}';
+			expect(() => service.init()).toThrow(/N8N_SECURITY_SENSITIVE_FIELD_RULES/);
+		});
+
+		describe('allowed domains', () => {
+			const withDomains = (allowedDomains: string) =>
+				JSON.stringify({
+					a: { nodeType: '*', path: 'x', credentialType: 't', allowedDomains },
+				});
+
+			it('accepts a list with a wildcard', () => {
+				config.sensitiveFieldRules = withDomains('api.example.com, *.example.org');
+				service.init();
+				expect(service.getRuleForStub(runtimeStubId('a'))?.rule.allowedDomains).toBe(
+					'api.example.com, *.example.org',
+				);
+			});
+
+			it.each([
+				['an empty string', ''],
+				['an empty entry', 'a.com,,b.com'],
+				['a trailing comma', 'a.com,'],
+				['a space inside an entry', 'a b.com'],
+				['a scheme', 'https://a.com'],
+				['a path', 'a.com/path'],
+				['a port', 'a.com:8080'],
+				['user info', 'user@a.com'],
+				['a backslash', 'a.com\\evil.com'],
+				['a wildcard in the middle', 'a.*.com'],
+			])('rejects %s', (_name, value) => {
+				config.sensitiveFieldRules = withDomains(value);
+				expect(() => service.init()).toThrow(/N8N_SECURITY_SENSITIVE_FIELD_RULES/);
+			});
+
+			it('rejects a list without a credentialType', () => {
+				config.sensitiveFieldRules = '{"a":{"nodeType":"*","path":"x","allowedDomains":"a.com"}}';
+				expect(() => service.init()).toThrow(/N8N_SECURITY_SENSITIVE_FIELD_RULES/);
+			});
+		});
+
+		it('rejects an unknown transform', () => {
+			config.sensitiveFieldRules =
+				'{"a":{"nodeType":"*","path":"x","credentialType":"t","transform":"upper"}}';
 			expect(() => service.init()).toThrow(/N8N_SECURITY_SENSITIVE_FIELD_RULES/);
 		});
 	});

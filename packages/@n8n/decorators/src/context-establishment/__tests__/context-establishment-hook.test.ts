@@ -145,4 +145,52 @@ describe('@ContextEstablishmentHook decorator', () => {
 		expect(bearerTokenHook.hookDescription.name).toBe('credentials.bearerToken');
 		expect(apiKeyHook.hookDescription.name).toBe('credentials.apiKey');
 	});
+
+	describe('hook phases', () => {
+		const hookBody = (name: string) => ({
+			hookDescription: { name },
+			async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+				return {};
+			},
+			isApplicableToTriggerNode(_nodeType: string): boolean {
+				return true;
+			},
+		});
+
+		it('returns runAfterNodeHooks hooks from getPostNodeClasses()', () => {
+			@ContextEstablishmentHook({ alwaysExecute: false, runAfterNodeHooks: true })
+			class PostHook implements IContextEstablishmentHook {
+				hookDescription = hookBody('post').hookDescription;
+				execute = hookBody('post').execute;
+				isApplicableToTriggerNode = hookBody('post').isApplicableToTriggerNode;
+			}
+
+			expect(hookMetadata.getPostNodeClasses()).toEqual([PostHook]);
+			expect(hookMetadata.getGlobalClasses()).toEqual([]);
+		});
+
+		it('excludes a hook with both options from the global phase', () => {
+			@ContextEstablishmentHook({ alwaysExecute: true, runAfterNodeHooks: true })
+			class BothHook implements IContextEstablishmentHook {
+				hookDescription = hookBody('both').hookDescription;
+				execute = hookBody('both').execute;
+				isApplicableToTriggerNode = hookBody('both').isApplicableToTriggerNode;
+			}
+
+			expect(hookMetadata.getGlobalClasses()).toEqual([]);
+			expect(hookMetadata.getPostNodeClasses()).toEqual([BothHook]);
+		});
+
+		it('keeps alwaysExecute hooks out of the post phase', () => {
+			@ContextEstablishmentHook({ alwaysExecute: true })
+			class GlobalHook implements IContextEstablishmentHook {
+				hookDescription = hookBody('global').hookDescription;
+				execute = hookBody('global').execute;
+				isApplicableToTriggerNode = hookBody('global').isApplicableToTriggerNode;
+			}
+
+			expect(hookMetadata.getGlobalClasses()).toEqual([GlobalHook]);
+			expect(hookMetadata.getPostNodeClasses()).toEqual([]);
+		});
+	});
 });
