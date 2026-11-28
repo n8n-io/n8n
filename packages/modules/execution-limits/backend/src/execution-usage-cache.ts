@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { OnShutdown } from '@n8n/decorators';
@@ -54,6 +54,7 @@ export class ExecutionUsageCache {
 		private readonly snapshot: ExecutionLimitsSnapshot,
 		private readonly repository: ExecutionLimitUsageRepository,
 		private readonly eventService: EventService,
+		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('policy');
@@ -117,8 +118,13 @@ export class ExecutionUsageCache {
 		}
 	});
 
-	/** Returns `false` when no scope has a limit, so nothing was read. */
+	/** Returns `false` when the feature is not licensed or no scope has a limit, so nothing was read. */
 	private async load(now: Date): Promise<boolean> {
+		if (!this.licenseState.isExecutionLimitsLicensed()) {
+			this.loaded = null;
+			return false;
+		}
+
 		const limits = this.snapshot.readLimitedScopes();
 		if (!limits || (!limits.hasInstanceLimit && limits.limitedProjectIds.size === 0)) {
 			this.loaded = null;

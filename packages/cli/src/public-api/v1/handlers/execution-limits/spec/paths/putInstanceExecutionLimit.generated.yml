@@ -1,0 +1,64 @@
+operationId: putInstanceExecutionLimit
+tags:
+  - ExecutionLimits
+summary: 'Preview: Replace the instance execution limit'
+description: |-
+  **Preview** — breaking changes may still occur without major version bump.
+
+  Replaces the instance execution limit settings. All three fields are required, and a `GET` response is a valid `PUT` body. `defaultProjectMaxExecutions` cannot be above `maxExecutions`. Each new team project gets `defaultProjectMaxExecutions` as its own limit when it is created. Existing projects keep their limits.
+
+  Requires the `executionLimit:update` API key scope.
+x-required-scope: executionLimit:update
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          periodUnit:
+            type: string
+            enum:
+              - day
+              - week
+              - month
+            description: The period over which executions are counted.
+            example: month
+          maxExecutions:
+            type: integer
+            nullable: true
+            minimum: 1
+            maximum: 2147483647
+            description: Maximum executions allowed across the instance per period, or null for no limit.
+            example: 100000
+          defaultProjectMaxExecutions:
+            type: integer
+            nullable: true
+            minimum: 1
+            maximum: 2147483647
+            description: Default execution limit for new team projects, or null for no default. Cannot be above maxExecutions. Each new team project gets this limit when it is created. Existing projects keep their limits.
+            example: 10000
+        required:
+          - periodUnit
+          - maxExecutions
+          - defaultProjectMaxExecutions
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/instanceExecutionLimitDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

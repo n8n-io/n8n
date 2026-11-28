@@ -36,7 +36,7 @@ succeeds or the period ends, so it can be older.
 ## Limit check
 
 `ExecutionLimitPolicyCheck` runs at the `executionAdmission` policy point. `init` registers
-it only when the licence feature is on.
+it at boot, and it checks the licence on each call.
 
 - A run that does not count toward the limit is allowed before any read. The counting
   rule is `countsTowardExecutionLimit` in `@n8n/backend-services`.

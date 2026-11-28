@@ -613,6 +613,12 @@
 		},
 		"PUT /credential-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
+		},
+		"GET /execution-limits/instance": {
+			"status": "gap"
+		},
+		"PUT /execution-limits/instance": {
+			"status": "gap"
 		}
 	}
 }

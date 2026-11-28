@@ -1,4 +1,11 @@
 import { API_KEY_RESOURCES } from '@/constants.ee';
+import {
+	ADMIN_API_KEY_SCOPES,
+	MEMBER_API_KEY_SCOPES,
+	OWNER_API_KEY_SCOPES,
+	getApiKeyScopesForRole,
+	getOwnerOnlyApiKeyScopes,
+} from '@/public-api-permissions.ee';
 import { scopeInformation } from '@/scope-information';
 import {
 	GLOBAL_ADMIN_SCOPES,
@@ -13,7 +20,7 @@ import {
 	PROJECT_VIEWER_SCOPES,
 	REGULAR_PROJECT_ADMIN_SCOPES,
 } from '@/roles/scopes/project-scopes.ee';
-import type { AuthPrincipal, Scope } from '@/types.ee';
+import { isApiKeyScope, type AuthPrincipal, type Scope } from '@/types.ee';
 import { hasGlobalScope } from '@/utilities/has-global-scope.ee';
 
 const EXECUTION_LIMIT_SCOPES: Scope[] = [
@@ -79,9 +86,26 @@ describe('execution limit scope independence', () => {
 });
 
 describe('execution limit scope metadata', () => {
-	it('is not an API key scope', () => {
-		expect(API_KEY_RESOURCES).not.toHaveProperty('executionLimit');
+	it('declares executionLimit as an owner and admin API key scope, and not for members', () => {
+		expect(API_KEY_RESOURCES.executionLimit).toEqual(['read', 'update']);
 		expect(API_KEY_RESOURCES).not.toHaveProperty('projectExecutionLimit');
+
+		for (const scope of ['executionLimit:read', 'executionLimit:update'] as const) {
+			expect(isApiKeyScope(scope)).toBe(true);
+			expect(OWNER_API_KEY_SCOPES).toContain(scope);
+			expect(ADMIN_API_KEY_SCOPES).toContain(scope);
+			expect(MEMBER_API_KEY_SCOPES).not.toContain(scope);
+			expect(getOwnerOnlyApiKeyScopes()).toContain(scope);
+			expect(getApiKeyScopesForRole(principal('global:owner', [...GLOBAL_OWNER_SCOPES]))).toContain(
+				scope,
+			);
+			expect(getApiKeyScopesForRole(principal('global:admin', [...GLOBAL_ADMIN_SCOPES]))).toContain(
+				scope,
+			);
+			expect(
+				getApiKeyScopesForRole(principal('global:member', [...GLOBAL_MEMBER_SCOPES])),
+			).not.toContain(scope);
+		}
 	});
 
 	it('has a display name and description for every scope', () => {

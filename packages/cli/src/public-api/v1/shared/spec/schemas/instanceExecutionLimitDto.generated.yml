@@ -1,0 +1,28 @@
+type: object
+properties:
+  periodUnit:
+    type: string
+    enum:
+      - day
+      - week
+      - month
+    description: The period over which executions are counted.
+    example: month
+  maxExecutions:
+    type: integer
+    nullable: true
+    minimum: 1
+    maximum: 2147483647
+    description: Maximum executions allowed across the instance per period, or null for no limit.
+    example: 100000
+  defaultProjectMaxExecutions:
+    type: integer
+    nullable: true
+    minimum: 1
+    maximum: 2147483647
+    description: Default execution limit for new team projects, or null for no default. Cannot be above maxExecutions. Each new team project gets this limit when it is created. Existing projects keep their limits.
+    example: 10000
+required:
+  - periodUnit
+  - maxExecutions
+  - defaultProjectMaxExecutions

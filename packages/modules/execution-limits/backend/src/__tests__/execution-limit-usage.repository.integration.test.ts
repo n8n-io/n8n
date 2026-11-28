@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { type ExecutionLedgerRow, TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -20,6 +21,7 @@ describe('ExecutionLimitUsageRepository reads', () => {
 	let usage: Repository<ExecutionLimitUsage>;
 	let instanceUsage: Repository<ExecutionLimitInstanceUsage>;
 	let repository: ExecutionLimitUsageRepository;
+	let isLicensedSpy: ReturnType<typeof vi.spyOn>;
 
 	const projectRow = (overrides: Partial<ExecutionLimitUsage> = {}) => ({
 		projectId: 'project-1',
@@ -60,10 +62,17 @@ describe('ExecutionLimitUsageRepository reads', () => {
 	});
 
 	beforeEach(async () => {
+		isLicensedSpy = vi
+			.spyOn(Container.get(LicenseState), 'isExecutionLimitsLicensed')
+			.mockReturnValue(true);
 		await usage.clear();
 		await instanceUsage.clear();
 		// The delete of a project also deletes its limit.
 		await testDb.truncate(['Project', 'Settings']);
+	});
+
+	afterEach(() => {
+		isLicensedSpy.mockRestore();
 	});
 
 	afterAll(async () => {

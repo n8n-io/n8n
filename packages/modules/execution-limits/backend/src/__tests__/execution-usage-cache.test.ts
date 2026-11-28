@@ -1,3 +1,4 @@
+import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { EventService } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
@@ -28,6 +29,7 @@ describe('ExecutionUsageCache', () => {
 	const snapshot = mock<ExecutionLimitsSnapshot>();
 	const repository = mock<ExecutionLimitUsageRepository>();
 	const eventService = mock<EventService>();
+	const licenseState = mock<LicenseState>();
 	let logger: ReturnType<typeof mockLogger>;
 	let cache: ExecutionUsageCache;
 
@@ -40,6 +42,7 @@ describe('ExecutionUsageCache', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
 
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
 		snapshot.readLimitedScopes.mockReturnValue(LIMITS);
 		// Closed days end yesterday. Today is a range of one day that ends today.
 		repository.sumInstanceUsage.mockImplementation(async (_first, last) =>
@@ -55,7 +58,7 @@ describe('ExecutionUsageCache', () => {
 				]),
 		);
 
-		cache = new ExecutionUsageCache(snapshot, repository, eventService, logger);
+		cache = new ExecutionUsageCache(snapshot, repository, eventService, licenseState, logger);
 	});
 
 	afterEach(() => {
@@ -313,6 +316,36 @@ describe('ExecutionUsageCache', () => {
 			cache.stop();
 			await vi.advanceTimersByTimeAsync(USAGE_REFRESH_INTERVAL_MS * 2);
 			expect(todayCalls()).toHaveLength(3);
+		});
+
+		it('skips querying and drops loaded usage when unlicensed even if limit rows remain', async () => {
+			await cache.refresh();
+			expect(cache.read(INSTANCE, NOW)?.executions).toBe(92);
+			vi.clearAllMocks();
+
+			licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
+			await cache.refresh();
+
+			expect(repository.sumInstanceUsage).not.toHaveBeenCalled();
+			expect(repository.sumUsageOfLimitedProjects).not.toHaveBeenCalled();
+			expect(cache.read(INSTANCE, NOW)).toBeNull();
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('execution-limit-usage-refreshed', {
+				durationMs: expect.any(Number),
+				queried: false,
+			});
+		});
+
+		it('loads usage on the next tick once the license turns on after an unlicensed start', async () => {
+			licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
+
+			await cache.start();
+			expect(repository.sumInstanceUsage).not.toHaveBeenCalled();
+			expect(cache.read(INSTANCE, NOW)).toBeNull();
+
+			licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
+			await vi.advanceTimersByTimeAsync(USAGE_REFRESH_INTERVAL_MS);
+
+			expect(cache.read(INSTANCE, NOW)?.executions).toBe(92);
 		});
 	});
 });

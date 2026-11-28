@@ -1,0 +1,26 @@
+operationId: getInstanceExecutionLimit
+tags:
+  - ExecutionLimits
+summary: 'Preview: Retrieve the instance execution limit'
+description: |-
+  **Preview** — breaking changes may still occur without major version bump.
+
+  Returns the instance execution limit, the period unit, and the default limit for new team projects. A fresh instance returns `periodUnit: month`, `maxExecutions: null`, and `defaultProjectMaxExecutions: null`. Each new team project gets `defaultProjectMaxExecutions` as its own limit when it is created. Existing projects keep their limits.
+
+  Requires the `executionLimit:read` API key scope.
+x-required-scope: executionLimit:read
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/instanceExecutionLimitDto.generated.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

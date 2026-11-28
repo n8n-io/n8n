@@ -12,6 +12,7 @@ import './credentials.public.controller';
 import './data-tables.public.controller';
 import './discover.public.controller';
 import './evaluations.public.controller';
+import './execution-limits.public.controller';
 import './executions.public.controller';
 import './folders.public.controller';
 import './insights.public.controller';

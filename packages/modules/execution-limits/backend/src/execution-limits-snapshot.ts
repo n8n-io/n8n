@@ -1,5 +1,5 @@
 import type { ExecutionLimitPeriodUnit, ExecutionLimitSettings } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { Publisher } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
@@ -41,6 +41,7 @@ export class ExecutionLimitsSnapshot {
 		private readonly settingsStore: ExecutionLimitSettingsStore,
 		private readonly projectLimitRepository: ProjectExecutionLimitRepository,
 		private readonly publisher: Publisher,
+		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('policy');
@@ -101,6 +102,11 @@ export class ExecutionLimitsSnapshot {
 	}
 
 	private readonly loadLatest = latestWins(async () => {
+		if (!this.licenseState.isExecutionLimitsLicensed()) {
+			this.loaded = null;
+			return;
+		}
+
 		const [settings, projectLimits] = await Promise.all([
 			this.settingsStore.read({}),
 			this.projectLimitRepository.findAll({}),

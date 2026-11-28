@@ -167,6 +167,7 @@ export const API_KEY_RESOURCES = {
 	project: ['create', 'update', 'delete', 'list', 'export', 'manageMembers'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,
+	executionLimit: ['read', 'update'] as const,
 	testRun: ['read', 'list', 'create', 'cancel'] as const,
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	eventBusDestination: ['test', 'create', 'read', 'update', 'delete', 'list'] as const,

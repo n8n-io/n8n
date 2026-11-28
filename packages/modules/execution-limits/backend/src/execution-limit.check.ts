@@ -20,7 +20,7 @@ const UNKNOWN_USAGE_ALLOWS_BETWEEN_LOGS = 100;
  * Refuses a run that counts toward an execution limit when its project or the instance has
  * reached the limit. Reads memory only. When it cannot decide, it allows the run and logs.
  *
- * Registered by `ExecutionLimitsModule` only when the licence feature is on.
+ * Registered by `ExecutionLimitsModule` at boot; checks the licence on each call.
  */
 @PolicyCheck()
 export class ExecutionLimitPolicyCheck implements RegisteredPolicyCheck {
@@ -52,7 +52,7 @@ export class ExecutionLimitPolicyCheck implements RegisteredPolicyCheck {
 	}
 
 	private violationsFor(context: ExecutionAdmissionContext): PolicyViolation[] {
-		// Registered only when licensed at boot. This covers a licence lost while running.
+		// The licence can change while n8n runs, so check it on each call.
 		if (!this.licenseState.isExecutionLimitsLicensed()) return [];
 
 		// Execution limits apply to workflow runs only.

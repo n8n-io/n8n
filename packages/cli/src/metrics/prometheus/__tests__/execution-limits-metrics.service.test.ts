@@ -1,4 +1,4 @@
-import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import type { ModuleRegistry } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
@@ -17,7 +17,6 @@ describe('PrometheusExecutionLimitsMetricsService', () => {
 	});
 	const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 	const moduleRegistry = mock<ModuleRegistry>();
-	const licenseState = mock<LicenseState>();
 	const eventService = mock<EventService>();
 	const metrics = new Map<
 		string,
@@ -54,23 +53,24 @@ describe('PrometheusExecutionLimitsMetricsService', () => {
 		Object.assign(config, { prefix: 'n8n_', includeExecutionLimitsMetrics: true });
 		Object.assign(instanceSettings, { instanceType: 'main' });
 		moduleRegistry.isActive.mockReturnValue(true);
-		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
 		Object.assign(promClient, { Counter: fake(), Gauge: fake(), Histogram: fake() });
 		service = new PrometheusExecutionLimitsMetricsService(
 			config,
 			instanceSettings,
 			moduleRegistry,
-			licenseState,
 			eventService,
 		);
 	});
 
 	describe('enabled', () => {
-		it.each(['main', 'webhook'])('is true when opted in and licensed on %s', (instanceType) => {
-			Object.assign(instanceSettings, { instanceType });
-			expect(service.enabled).toBe(true);
-			expect(moduleRegistry.isActive).toHaveBeenCalledWith('execution-limits');
-		});
+		it.each(['main', 'webhook'])(
+			'is true when opted in and the module is active on %s',
+			(instanceType) => {
+				Object.assign(instanceSettings, { instanceType });
+				expect(service.enabled).toBe(true);
+				expect(moduleRegistry.isActive).toHaveBeenCalledWith('execution-limits');
+			},
+		);
 
 		it('is false when not opted in', () => {
 			config.includeExecutionLimitsMetrics = false;
@@ -84,11 +84,6 @@ describe('PrometheusExecutionLimitsMetricsService', () => {
 
 		it('is false when the module is not active', () => {
 			moduleRegistry.isActive.mockReturnValue(false);
-			expect(service.enabled).toBe(false);
-		});
-
-		it('is false when execution limits are not licensed', () => {
-			licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
 			expect(service.enabled).toBe(false);
 		});
 	});

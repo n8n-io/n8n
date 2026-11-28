@@ -67,6 +67,7 @@ type EndpointGroup =
 	| 'workflow-reviews'
 	| 'test-webhooks'
 	| 'type-availability-policies'
+	| 'execution-limits'
 	| 'mcp-servers';
 
 type ModuleName =
@@ -92,7 +93,8 @@ type ModuleName =
 	| 'type-availability-policies'
 	| 'inbound-auth-core'
 	| 'mcp-servers'
-	| 'scim';
+	| 'scim'
+	| 'execution-limits';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

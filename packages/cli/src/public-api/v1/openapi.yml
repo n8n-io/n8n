@@ -60,6 +60,10 @@ tags:
     x-displayName: Evaluations
     x-parent: BuildAndRun
     description: Operations about evaluation test runs
+  - name: ExecutionLimits
+    x-displayName: Execution Limits
+    x-parent: InstanceSettings
+    description: Preview — breaking changes may still occur without major version bump.
   - name: Executions
     x-displayName: Executions
     x-parent: BuildAndRun

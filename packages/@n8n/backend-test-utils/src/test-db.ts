@@ -241,6 +241,7 @@ type EntityName =
 	| 'ExecutionLedgerEntity'
 	| 'ExecutionLedgerParkedEntity'
 	| 'ExecutionLimitAudit'
+	| 'ProjectExecutionLimit'
 	| 'McpServer'
 	| 'McpServerTool'
 	| 'McpServerConnection'

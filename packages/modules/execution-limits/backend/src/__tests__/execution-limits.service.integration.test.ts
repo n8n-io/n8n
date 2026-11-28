@@ -1,4 +1,5 @@
 import { DEFAULT_EXECUTION_LIMIT_SETTINGS } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { ProjectRepository, TransactionRunner } from '@n8n/db';
@@ -15,6 +16,7 @@ const USER_ID = '0b0f6f3e-6a53-4f0c-9d3b-2f2a8f1c5e11';
 
 describe('ExecutionLimitsService', () => {
 	let service: ExecutionLimitsService;
+	let isLicensedSpy: ReturnType<typeof vi.spyOn>;
 	const events: Array<ExecutionLimitsEventMap['execution-limit-updated']> = [];
 
 	beforeAll(async () => {
@@ -27,9 +29,16 @@ describe('ExecutionLimitsService', () => {
 	});
 
 	beforeEach(async () => {
+		isLicensedSpy = vi
+			.spyOn(Container.get(LicenseState), 'isExecutionLimitsLicensed')
+			.mockReturnValue(true);
 		// The delete of a project also deletes its limit.
 		await testDb.truncate(['Project', 'Settings', 'ExecutionLimitAudit']);
 		events.length = 0;
+	});
+
+	afterEach(() => {
+		isLicensedSpy.mockRestore();
 	});
 
 	async function readAuditRows() {
