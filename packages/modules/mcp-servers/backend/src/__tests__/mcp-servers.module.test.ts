@@ -11,6 +11,7 @@ import { RefreshTokenPort } from '../ports/refresh-token.port';
 import { TextDraftPort } from '../ports/text-draft.port';
 import { WorkflowToolPort } from '../ports/workflow-tool.port';
 import { McpServerProtectedResource } from '../services/mcp-server-protected-resource.service';
+import { mockMcpServerPorts } from './test-utils/ports';
 
 // The REST routes have their integration tests in the CLI. Their imports only slow this test.
 vi.mock('../controllers/mcp-servers.controller', () => ({}));
@@ -24,23 +25,18 @@ describe('McpServersModule', () => {
 	});
 
 	it('takes the adapters from the CLI at init', async () => {
-		const workflows = mock<WorkflowToolPort>();
-		const textDrafts = mock<TextDraftPort>();
-		const clients = mock<OAuthClientNamePort>();
-		const refreshTokens = mock<RefreshTokenPort>();
-		Container.set(McpServerAdapters, {
-			resolve: () => ({ workflows, textDrafts, clients, refreshTokens }),
-		});
+		const ports = mockMcpServerPorts();
+		Container.set(McpServerAdapters, { resolve: () => ports });
 		Container.set(McpServerProtectedResource, mock<McpServerProtectedResource>());
 		const registry = mock<ProtectedResourceRegistry>();
 		Container.set(ProtectedResourceRegistry, registry);
 
 		await new McpServersModule().init();
 
-		expect(Container.get(WorkflowToolPort)).toBe(workflows);
-		expect(Container.get(TextDraftPort)).toBe(textDrafts);
-		expect(Container.get(OAuthClientNamePort)).toBe(clients);
-		expect(Container.get(RefreshTokenPort)).toBe(refreshTokens);
+		expect(Container.get(WorkflowToolPort)).toBe(ports.workflows);
+		expect(Container.get(TextDraftPort)).toBe(ports.textDrafts);
+		expect(Container.get(OAuthClientNamePort)).toBe(ports.clients);
+		expect(Container.get(RefreshTokenPort)).toBe(ports.refreshTokens);
 		expect(registry.registerResolver).toHaveBeenCalledWith(
 			Container.get(McpServerProtectedResource),
 		);

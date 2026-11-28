@@ -7,8 +7,8 @@ import type { McpServerToolRepository } from '../database/repositories/mcp-serve
 import { McpServerToolsService } from '../services/mcp-server-tools.service';
 import type { McpServer } from '../database/entities/mcp-server.entity';
 import type { McpServerRepository } from '../database/repositories/mcp-server.repository';
-import type { TextDraftPort } from '../ports/text-draft.port';
-import type { WorkflowToolListItem, WorkflowToolPort } from '../ports/workflow-tool.port';
+import type { WorkflowToolListItem } from '../ports/workflow-tool.port';
+import { mockMcpServerPorts } from './test-utils/ports';
 
 const PROJECT_ID = 'project-1';
 const SERVER_ID = '7b0c2a52-3c1f-4f53-9a51-0c0d8c3a0a01';
@@ -20,7 +20,7 @@ function workflow(workflowId: string, name: string, description: string | null =
 function setup(workflows: WorkflowToolListItem[], unusable: string[] = [], added: string[] = []) {
 	const servers = mock<McpServerRepository>();
 	const tools = mock<McpServerToolRepository>();
-	const ports = mock<WorkflowToolPort>();
+	const { workflows: ports, textDrafts } = mockMcpServerPorts();
 	servers.findInProject.mockResolvedValue(mock<McpServer>({ id: SERVER_ID }));
 	tools.listByServer.mockResolvedValue(
 		added.map((targetId) => mock<McpServerTool>({ targetId, kind: 'workflow' })),
@@ -35,7 +35,7 @@ function setup(workflows: WorkflowToolListItem[], unusable: string[] = [], added
 		servers,
 		tools,
 		ports,
-		mock<TextDraftPort>(),
+		textDrafts,
 		mock<EventService>(),
 		mock<Logger>(),
 	);
@@ -167,11 +167,12 @@ describe('McpServerToolsService.updateTool', () => {
 		servers.findInProject.mockResolvedValue(mock<McpServer>({ id: SERVER_ID }));
 		tools.findInServer.mockResolvedValue(tool);
 		tools.updateInServer.mockResolvedValue(tool);
+		const { workflows, textDrafts } = mockMcpServerPorts();
 		const service = new McpServerToolsService(
 			servers,
 			tools,
-			mock<WorkflowToolPort>(),
-			mock<TextDraftPort>(),
+			workflows,
+			textDrafts,
 			mock<EventService>(),
 			mock<Logger>(),
 		);

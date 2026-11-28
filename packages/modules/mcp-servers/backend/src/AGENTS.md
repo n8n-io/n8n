@@ -142,7 +142,7 @@ repositories follow standard n8n layering.
 4. Bind the port with `Container.set(<Name>Port, adapters.<field>)` in `McpServersModule.init()`.
 5. Implement `<Name>Adapter extends <Name>Port` in `packages/cli/src/modules/mcp-servers/<name>.adapter.ts`.
 6. Wire the adapter into `Container.set(McpServerAdapters, ...)` in `packages/cli/src/modules/modules.manifest.ts`.
-7. Add a fake or mock factory in `__tests__/test-utils/` for service unit tests.
+7. Add a mock of the port to `mockMcpServerPorts()` in `__tests__/test-utils/ports.ts`. Service unit tests take their port mocks from it.
 
 ### Add a tool kind
 
