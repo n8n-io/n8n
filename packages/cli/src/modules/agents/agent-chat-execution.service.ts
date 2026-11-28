@@ -20,6 +20,7 @@ import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import {
 	userIdFromDraftChatMemoryResourceId,
 	userIdFromProductionChatMemoryResourceId,
+	userIdFromPublicApiMemoryResourceId,
 	userIdFromSystemChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 import {
@@ -375,6 +376,7 @@ export class AgentChatExecutionService {
 		const productionUserId = userIdFromProductionChatMemoryResourceId(params.resourceId);
 		const userId =
 			userIdFromDraftChatMemoryResourceId(params.resourceId) ??
+			userIdFromPublicApiMemoryResourceId(params.resourceId) ??
 			userIdFromSystemChatMemoryResourceId(params.resourceId) ??
 			productionUserId;
 		if (

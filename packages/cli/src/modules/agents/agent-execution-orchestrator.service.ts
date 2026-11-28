@@ -45,6 +45,7 @@ import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-ac
 import {
 	isTaskRunMemoryResourceId,
 	taskRunMemoryResourceId,
+	publicApiMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 	userIdFromProductionChatMemoryResourceId,
 } from './utils/agent-memory-scope';
@@ -52,6 +53,7 @@ import { episodicScopeHostMetadata } from './utils/episodic-scope-metadata';
 import {
 	chatSurfaceMemoryResourceId,
 	N8N_CHAT_PRODUCTION_SOURCE,
+	PUBLIC_API_SOURCE,
 } from './utils/agent-thread-access';
 import { AgentRunTracingService, modelIdFromSnapshot } from './agent-run-tracing.service';
 import {
@@ -204,6 +206,14 @@ export interface ExecuteForN8nChatPublishedConfig
 	abortSignal?: AbortSignal;
 	pauseReport?: boolean;
 	hideUserMessageFromTranscript?: boolean;
+}
+
+/** A Public API run of the published version, owned by the API key's user. */
+export interface ExecuteForPublicApiPublishedConfig
+	extends ChatExecutionInput,
+		ChatExecutionCallbacks {
+	user: User;
+	abortSignal?: AbortSignal;
 }
 
 export interface ResumeForChatConfig extends ChatExecutionCallbacks {
@@ -1155,6 +1165,92 @@ export class AgentExecutionOrchestratorService {
 	}
 
 	/**
+	 * Execute a published agent for the Public API run endpoint. Like n8n Chat,
+	 * the run belongs to an n8n user, but no chat surface shows it, so the
+	 * execution never registers as a chat execution — the stop endpoint aborts
+	 * it through the execution controller.
+	 */
+	async *executeForPublicApiPublished(
+		config: ExecuteForPublicApiPublishedConfig,
+	): AsyncGenerator<AgentExecutionStreamChunk> {
+		const {
+			agentId,
+			projectId,
+			message,
+			memory,
+			attachments,
+			user,
+			abortSignal,
+			sessionMode = 'new',
+		} = config;
+		const setup = await this.preparePublicApiChat({
+			agentId,
+			projectId,
+			threadId: memory.threadId,
+			resourceId: memory.resourceId,
+			userId: user.id,
+			sessionMode,
+		});
+		await this.beforeProductionExecution(agentId);
+		yield* this.withRuntimeLease(
+			async () =>
+				await this.getRuntimeOrRecordFailure(
+					{
+						agentId,
+						projectId,
+						integrationType: setup.runtime.integrationType,
+						usePublishedVersion: setup.runtime.usePublishedVersion,
+						sandboxPrincipalHash: setup.sandboxPrincipalHash,
+						attributionUserId: setup.runtime.attributionUserId,
+						// The Public API is a synchronous channel: nothing can receive a
+						// background job wake, so the run schedules no background tasks.
+						allowBackgroundTasks: false,
+					},
+					{
+						threadId: memory.threadId,
+						resourceId: memory.resourceId,
+						userMessage: message,
+						attachments,
+						source: setup.source,
+						access: setup.access,
+						sessionMode,
+						abortSignal,
+						admittedExecution: config.admittedExecution,
+						onExecutionRecorded: config.onExecutionRecorded,
+					},
+				),
+			async (runtime) => {
+				return this.streamChatResponse({
+					admittedExecution: config.admittedExecution,
+					access: setup.access,
+					agentInstance: runtime.agent,
+					toolRegistry: runtime.toolRegistry,
+					mcpServerAttributions: runtime.mcpServerAttributions,
+					budget: runtime.budget,
+					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+					toolGuardrails: runtime.toolGuardrails,
+					guardrailModel: runtime.guardrailModel,
+					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
+					agentId,
+					projectId,
+					message,
+					memory,
+					attachments,
+					userId: user.id,
+					requester: reviewRequesterForUser(user, PUBLIC_API_SOURCE),
+					source: setup.source,
+					telemetry: { runType: 'production', configuration: runtime.telemetryConfiguration },
+					sandboxPrincipalHash: setup.sandboxPrincipalHash,
+					sessionMode,
+					abortSignal,
+					onExecutionStarted: config.onExecutionStarted,
+					onExecutionRecorded: config.onExecutionRecorded,
+				});
+			},
+		);
+	}
+
+	/**
 	 * Execute a published agent for a scheduled task, stamping `source='task'`
 	 * and the originating `taskId` on the recorded session for traceability.
 	 */
@@ -1962,6 +2058,48 @@ export class AgentExecutionOrchestratorService {
 			runtime: {
 				usePublishedVersion: true,
 				integrationType: N8N_CHAT_INTEGRATION_TYPE,
+				attributionUserId: userId,
+			},
+		};
+	}
+
+	/**
+	 * The Public API run setup: the caller's own session, the published
+	 * version, and no chat surface. Runs on the same user sandbox principal
+	 * as n8n Chat.
+	 */
+	private async preparePublicApiChat(params: {
+		agentId: string;
+		projectId: string;
+		threadId: string;
+		/** The memory scope the caller expects this run to use. Must match the user's Public API scope. */
+		resourceId: string;
+		userId: string;
+		sessionMode: AgentSessionMode;
+	}): Promise<ChatChannelSetup> {
+		const { agentId, projectId, threadId, resourceId, userId, sessionMode } = params;
+		const fail = () => new UserError('Session not found');
+		if (resourceId !== publicApiMemoryResourceId(userId)) throw fail();
+		if (
+			!(await this.agentExecutionService.canUsePublicApiThread(
+				threadId,
+				projectId,
+				agentId,
+				userId,
+				sessionMode,
+			))
+		) {
+			throw fail();
+		}
+		return {
+			access: { accessScope: 'user', ownerId: userId },
+			sandboxPrincipalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId }),
+			alwaysSandboxed: true,
+			source: PUBLIC_API_SOURCE,
+			runtime: {
+				usePublishedVersion: true,
+				// No integration channel delivers this run's messages.
+				integrationType: PUBLIC_API_SOURCE,
 				attributionUserId: userId,
 			},
 		};
