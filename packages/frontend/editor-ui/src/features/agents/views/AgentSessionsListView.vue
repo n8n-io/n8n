@@ -1,12 +1,15 @@
 <script lang="ts" setup>
+import { AGENT_SESSION_ASSISTANT_KEY } from '../components/agentBuilderInjectionKeys';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useToast } from '@n8n/composables/useToast';
+import { AGENT_PREVIEW_HANDOFF_MAX_SESSIONS } from '@n8n/api-types';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import { useAgentSessionStop } from '@/features/agents/composables/useAgentSessionStop';
+import { useAgentAttentionFlags } from '@/features/agents/composables/useAgentAttentionFlags';
 import {
 	useAgentTelemetry,
 	type AgentSessionFilterName,
@@ -17,8 +20,9 @@ import type {
 	AgentSessionStatus,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionsFilter from '@/features/agents/components/AgentSessionsFilter.vue';
+import AgentSessionFlagCard from '../components/AgentSessionFlagCard.vue';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import {
@@ -29,7 +33,7 @@ import {
 	N8nTableBase,
 	N8nText,
 } from '@n8n/design-system';
-import type { ActionDropdownItem, IconName } from '@n8n/design-system';
+import type { ActionDropdownItem, DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 type TraceTarget = { agentId: string; threadId: string };
@@ -65,16 +69,124 @@ const toast = useToast();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const sessionsStore = useAgentSessionsStore();
 const agentTelemetry = useAgentTelemetry();
+const sessionAssistant = inject(AGENT_SESSION_ASSISTANT_KEY, undefined);
 let disposed = false;
 let managesStoreLifecycle = false;
 
 const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
 const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
 const { canStop, stoppingSessionIds, stop: stopSession } = useAgentSessionStop(projectId, agentId);
+const {
+	flags: attentionFlags,
+	flaggedSessionIds,
+	count: flaggedSessionCount,
+	dismiss: dismissFlags,
+} = useAgentAttentionFlags(projectId, agentId);
 const hasActiveFilters = computed(() => {
-	const { status, origin, startDate, endDate } = sessionsStore.filters;
-	return status !== 'all' || origin !== 'all' || Boolean(startDate) || Boolean(endDate);
+	const { status, origin, startDate, endDate, sessionIds } = sessionsStore.filters;
+	return (
+		status !== 'all' ||
+		origin !== 'all' ||
+		Boolean(startDate) ||
+		Boolean(endDate) ||
+		sessionIds !== undefined
+	);
 });
+
+/** AgentBuilderView provides the Assistant. It is available when Instance AI is ready. */
+const hasAssistantEnabled = computed(() => sessionAssistant?.isAvailable.value ?? false);
+const hasSentToAssistant = ref(false);
+
+/** Show the Fix errors button again when the set of flags changes. */
+watch(
+	() => attentionFlags.value.map(({ id }) => id).join(','),
+	() => {
+		hasSentToAssistant.value = false;
+	},
+);
+
+const FLAG_CARD_ACTION = {
+	viewSessions: 'viewSessions',
+	dismiss: 'dismiss',
+} as const;
+
+const flagCardActions = computed<Array<DropdownMenuItemProps<string>>>(() => [
+	{
+		id: FLAG_CARD_ACTION.viewSessions,
+		label: i18n.baseText('agentSessions.flagCard.viewSessions'),
+		icon: { type: 'icon', value: 'eye' },
+		iconSize: 'medium',
+	},
+	{
+		id: FLAG_CARD_ACTION.dismiss,
+		label: i18n.baseText('agentSessions.flagCard.dismiss'),
+		icon: { type: 'icon', value: 'circle-x' },
+		iconSize: 'medium',
+	},
+]);
+
+async function onFlagCardAction(actionId: string) {
+	if (actionId === FLAG_CARD_ACTION.viewSessions) {
+		await onFiltersChange({
+			...sessionsStore.filters,
+			sessionIds: [...flaggedSessionIds.value],
+		});
+		return;
+	}
+
+	if (actionId !== FLAG_CARD_ACTION.dismiss) return;
+	try {
+		await dismissFlags([...attentionFlags.value]);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.flagCard.showError.dismiss'));
+	}
+}
+
+/**
+ * Hand all flagged sessions to the Assistant in one turn. The first session fills the
+ * context chip. The Assistant reads each session in `threadIds` with `agent-context`,
+ * finds the shared root cause, and fixes the agent.
+ * One hand-off carries at most AGENT_PREVIEW_HANDOFF_MAX_SESSIONS sessions.
+ * After a successful hand-off, dismiss only the flags that were sent. The other flags
+ * stay visible, so the user can send them next.
+ */
+async function sendFlaggedSessionsToAssistant() {
+	if (!sessionAssistant || !hasAssistantEnabled.value || hasSentToAssistant.value) return;
+
+	const sentFlags = attentionFlags.value.slice(0, AGENT_PREVIEW_HANDOFF_MAX_SESSIONS);
+	const threadIds = [...new Set(sentFlags.map(({ sessionId }) => sessionId))];
+	const [firstThreadId] = threadIds;
+	if (!firstThreadId) return;
+
+	const firstThread = sessionsStore.threads.find(({ id }) => id === firstThreadId);
+	try {
+		const handed = await sessionAssistant.handoff({
+			projectId: projectId.value,
+			agentId: agentId.value,
+			threadId: firstThreadId,
+			threadIds,
+			agentName: firstThread?.agentName,
+			initialDraft: {
+				text: i18n.baseText('agentSessions.flagCard.fixPrompt', {
+					adjustToNumber: threadIds.length,
+					interpolate: { count: String(threadIds.length) },
+				}),
+				prefillType: 'handoff_agent_change_request',
+			},
+		});
+		if (!handed) return;
+		hasSentToAssistant.value = true;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('instanceAi.handoff.openFailed.title'));
+		return;
+	}
+
+	try {
+		await dismissFlags(sentFlags);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.flagCard.showError.dismiss'));
+	}
+}
 
 function onVisibilityChange() {
 	// Refresh as soon as the user returns to the tab — auto-refresh is
@@ -324,6 +436,14 @@ async function onFiltersChange(value: AgentSessionFilters) {
 			/>
 			<AgentSessionsFilter :model-value="sessionsStore.filters" @filter-changed="onFiltersChange" />
 		</div>
+		<AgentSessionFlagCard
+			:count="flaggedSessionCount"
+			:actions="flagCardActions"
+			:has-assistant-enabled="hasAssistantEnabled"
+			:has-sent-to-assistant="hasSentToAssistant"
+			@fix-error="sendFlaggedSessionsToAssistant"
+			@action="onFlagCardAction"
+		/>
 		<div :class="$style.tableContainer">
 			<N8nTableBase :class="$style.sessionsTable">
 				<tbody>

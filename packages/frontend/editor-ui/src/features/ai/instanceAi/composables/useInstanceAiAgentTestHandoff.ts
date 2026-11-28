@@ -9,6 +9,8 @@ export interface AgentTestHandoffParams {
 	agentIcon?: string;
 	sessionTitle?: string;
 	executionId?: string;
+	/** More sessions of the same agent for the Assistant to read. */
+	threadIds?: string[];
 	initialDraft?: PendingComposerDraft;
 	/** Runs only after the assistant composer accepts the hand-off. */
 	onAccepted?: () => void;

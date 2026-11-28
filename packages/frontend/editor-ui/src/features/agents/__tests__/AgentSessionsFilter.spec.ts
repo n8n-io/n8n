@@ -11,18 +11,16 @@ vi.mock('@n8n/design-system', () => ({
 	N8nButton: {
 		template: '<button v-bind="$attrs"><slot /></button>',
 	},
-	N8nBadge: {
-		template: '<span v-bind="$attrs"><slot /></span>',
-	},
-	N8nSelect: {
+	N8nTagsInput2: {
 		props: ['modelValue'],
 		emits: ['update:modelValue'],
-		template:
-			'<select v-bind="$attrs" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
+		template: '<div v-bind="$attrs" />',
 	},
-	N8nOption: {
-		props: ['label', 'value'],
-		template: '<option :value="value">{{ label }}</option>',
+	N8nSelect2: {
+		props: ['modelValue', 'items'],
+		emits: ['update:modelValue'],
+		template:
+			'<select v-bind="$attrs" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
 	},
 }));
 
@@ -35,10 +33,11 @@ vi.mock('element-plus', () => ({
 }));
 
 describe('AgentSessionsFilter', () => {
-	it('emits composed status and origin filters and updates the active count', async () => {
+	it('emits composed status and origin filters and shows the active filter dot', async () => {
 		const wrapper = mount(AgentSessionsFilter, {
 			props: { modelValue: defaultAgentSessionFilters() },
 		});
+		expect(wrapper.find('[data-test-id="agent-sessions-filter-dot"]').exists()).toBe(false);
 
 		await wrapper.get('[data-test-id="agent-sessions-filter-status"]').setValue('error');
 		await wrapper.setProps({
@@ -49,7 +48,7 @@ describe('AgentSessionsFilter', () => {
 		const filters = { status: 'error', origin: 'slack', startDate: '', endDate: '' } as const;
 		expect(wrapper.emitted('filterChanged')?.at(-1)).toEqual([filters]);
 		await wrapper.setProps({ modelValue: filters });
-		expect(wrapper.get('[data-test-id="agent-sessions-filter-badge"]').text()).toBe('2');
+		expect(wrapper.find('[data-test-id="agent-sessions-filter-dot"]').exists()).toBe(true);
 	});
 
 	it('resets every active filter', async () => {
@@ -64,7 +63,7 @@ describe('AgentSessionsFilter', () => {
 			},
 		});
 
-		expect(wrapper.get('[data-test-id="agent-sessions-filter-badge"]').text()).toBe('4');
+		expect(wrapper.find('[data-test-id="agent-sessions-filter-dot"]').exists()).toBe(true);
 		await wrapper.get('[data-test-id="agent-sessions-filter-reset"]').trigger('click');
 
 		expect(wrapper.emitted('filterChanged')?.at(-1)).toEqual([defaultAgentSessionFilters()]);
