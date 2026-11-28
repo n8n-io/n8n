@@ -670,6 +670,7 @@ out: `npm deprecate n8n@X.Y.Z "Failed release, use X.Y.(Z+1)"`.
 | `release-publish-new-package.yml`         | Manual dispatch or workflow call | Publish an initial version if needed and configure npm trusted publishing for one package |
 | `release-create-patch-pr.yml`              | Manual dispatch | Open a patch release PR for one track          |
 | `release-recreate-failed-release.yml`      | Manual dispatch | Re-release a version whose publish failed after it reached npm |
+| `release-publish-env-vars-manifest.yml`    | Release published / manual | Attach `env-vars.json` (all `@Env` vars via `scripts/env-vars-manifest.mjs`) to the GitHub release for the docs site |
 
 ---
 
