@@ -478,6 +478,7 @@ Run-workflow dropdown, which only a user with write access can pick.
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 | `sec-sync-bundle-branches.yml` | Sync both bundle branches on demand, including before a bundle cut |
 | `util-publish-api-schema.yml` | Re-publish the Public API spec of a release version (default `stable`) to Cloudflare Pages. Also runs after each release that moves the `stable` tag |
+| `release-close-outdated-backport-prs.yml` | Close open backport PRs into `release-candidate/*` branches older than the stable line. Also runs after each release that moves the `stable` tag. A manual run is a dry run by default |
 
 ---
 
@@ -511,6 +512,7 @@ release-publish.yml
     └──────────────────────────▶  sbom-generation-callable.yml
 
 release-publish-post-release.yml
+    ├──────────────────────────▶  release-close-outdated-backport-prs.yml  (when the stable tag moves)
     └──────────────────────────▶  util-publish-api-schema.yml  (when the stable tag moves)
 
 test-sbom-nightly.yml
