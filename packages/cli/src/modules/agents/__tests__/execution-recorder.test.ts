@@ -1,6 +1,6 @@
 import type { BuiltTool, StreamChunk } from '@n8n/agents';
 
-import { ExecutionRecorder, type TimelineEvent } from '../execution-recorder';
+import { buildApprovalArgs, ExecutionRecorder, type TimelineEvent } from '../execution-recorder';
 import { buildToolRegistry } from '../tool-registry';
 import { executionToMessagesDto } from '../utils/execution-to-message-mapper';
 
@@ -916,6 +916,31 @@ describe('ExecutionRecorder — node-tool $fromAI resolution', () => {
 
 		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
 		expect((tc.nodeParameters as Record<string, unknown>).channel).toBe('general');
+	});
+
+	it('keeps omitted blank numeric defaults unresolved in approvals and the timeline', () => {
+		const limit = "={{ $fromAI('limit', 'Maximum results', 'number', '') }}";
+		const summary = "=Limit: {{ $fromAI('summaryLimit', 'Maximum results', 'number', '   ') }}";
+		const registry = buildToolRegistry([
+			nodeTool('get_rows', 'n8n-nodes-base.googleSheets', {
+				limit,
+				summary,
+				offset: "={{ $fromAI('offset', 'Start at', 'number', '') }}",
+				label: "={{ $fromAI('label', 'Label', 'string', '') }}",
+			}),
+		]);
+		const input = { offset: 0 };
+		const parameters = { limit, summary, offset: 0, label: '' };
+
+		expect(buildApprovalArgs(input, registry.get('get_rows'))).toEqual({ parameters, input });
+
+		const recorder = new ExecutionRecorder(registry);
+		recorder.record(makeToolCallChunk('get_rows', input));
+		recorder.record(makeToolResultChunk('get_rows', { ok: true }));
+		expect(recorder.getMessageRecord().timeline[0]).toMatchObject({
+			type: 'tool-call',
+			nodeParameters: parameters,
+		});
 	});
 
 	it('substitutes $fromAI inside an auto-generated-marker template', () => {

@@ -10,6 +10,7 @@ import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED }
 import { UnexpectedError, UserError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { isExpression, toParameterAdditionalKeys } from './expressions/expression-helpers';
+import { isBlankFromAINumberDefault } from './from-ai-parse-utils';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
 import type {
@@ -29,6 +30,7 @@ import type {
 	INodeType,
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
+import { isRecord } from '@n8n/utils/is-record';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { IS_FRONTEND } from './runtime-environment';
@@ -95,6 +97,31 @@ let codeGenerationAllowed: boolean | undefined;
 const readOwnKey = (source: unknown, key: string): unknown => {
 	if (source === null || typeof source !== 'object') return undefined;
 	return Object.hasOwn(source, key) ? (source as Record<string, unknown>)[key] : undefined;
+};
+
+const isNumberFromAIType = (type: unknown): boolean =>
+	typeof type === 'string' && type.toLowerCase() === 'number';
+
+const resolveFromAIPlaceholder = (
+	inputData: unknown,
+	name: string,
+	type: unknown,
+	defaultValue: unknown,
+): unknown => {
+	// Resolve only own placeholder keys, including the `query` container itself.
+	// Ignore the `{ query: toolArgs }` wrapper when a numeric `query` placeholder is omitted.
+	const queryContainer = readOwnKey(inputData, 'query');
+	const fromQuery = readOwnKey(queryContainer, name);
+	const topLevel =
+		name === 'query' && isNumberFromAIType(type) && isRecord(queryContainer)
+			? undefined
+			: readOwnKey(inputData, name);
+
+	return (
+		fromQuery ??
+		topLevel ??
+		(isBlankFromAINumberDefault(type, defaultValue) ? undefined : defaultValue)
+	);
 };
 
 // `$parameter` resolves a nested expression through a new proxy, so the
@@ -1249,7 +1276,7 @@ export class WorkflowDataProxy {
 		const handleFromAi = (
 			name: string,
 			_description?: string,
-			_type: string = 'string',
+			type: string = 'string',
 			defaultValue?: unknown,
 		) => {
 			const { itemIndex, runIndex } = that;
@@ -1300,14 +1327,7 @@ export class WorkflowDataProxy {
 					type: 'no_execution_data',
 				});
 			}
-			// Resolve only own placeholder keys, never values reached through the
-			// prototype chain of the input data — including the `query` container
-			// itself, which is read as an own key for the same reason.
-			return (
-				readOwnKey(readOwnKey(placeholdersDataInputData, 'query'), name) ??
-				readOwnKey(placeholdersDataInputData, name) ??
-				defaultValue
-			);
+			return resolveFromAIPlaceholder(placeholdersDataInputData, name, type, defaultValue);
 		};
 		const handleTool = (throwOnError = true) => {
 			const fallbackValue = that.additionalKeys?.['$tool'];

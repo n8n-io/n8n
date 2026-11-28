@@ -142,27 +142,32 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 
 	cloneWith(replacements: {
 		runIndex: number;
-		inputData: INodeExecutionData[][];
+		inputData?: INodeExecutionData[][];
 	}): SupplyDataContext {
+		const { runIndex, inputData } = replacements;
+		const recordedInput =
+			this.runExecutionData.resultData.runData[this.node.name]?.[runIndex]?.inputOverride;
 		const context = new SupplyDataContext(
 			this.workflow,
 			this.node,
 			this.additionalData,
 			this.mode,
 			this.runExecutionData,
-			replacements.runIndex,
+			runIndex,
 			this.connectionInputData,
-			{},
+			inputData ? {} : { ...this.inputData, ...recordedInput },
 			this.connectionType,
 			this.executeData,
 			this.closeFunctions,
 			this.abortSignal,
 			this.parentNode,
 		);
+		if (!inputData) return context;
+
 		void context
 			.addExecutionDataFunctions(
 				'input',
-				replacements.inputData,
+				inputData,
 				NodeConnectionTypes.AiTool,
 				context.node.name,
 				context.getNextRunIndex(),

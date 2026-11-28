@@ -276,11 +276,8 @@ function dispatchHostMessage(rawMsg: unknown, resolver: HostDataResolver): unkno
 		// logic, so empty / invalid names surface as the host's structured
 		// `ExpressionError` rather than a generic zod parse error.
 		//
-		// Note: `msg.valueType` maps to the host's third positional parameter
-		// (`_type` in `WorkflowDataProxy.handleFromAi`). The bridge protocol
-		// renames it to avoid collision with the `type` discriminator on the
-		// envelope — the host parameter currently goes unused, but if it ever
-		// gains a name (`type`), this mapping should stay explicit.
+		// The bridge uses `valueType` to distinguish the third argument from the
+		// message's `type` discriminator.
 		case 'fromAi':
 			return data.$fromAI?.(msg.name, msg.description, msg.valueType, msg.defaultValue);
 		// The `$('Foo').pairedItem(itemIndex?)` / `.itemMatching(...)` /

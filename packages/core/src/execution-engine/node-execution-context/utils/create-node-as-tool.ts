@@ -100,7 +100,7 @@ export function getSchema(node: INode) {
 		return acc;
 	}, {});
 
-	return z.object(schemaObj).required();
+	return z.object(schemaObj);
 }
 
 /**

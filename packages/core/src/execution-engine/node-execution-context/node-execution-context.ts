@@ -30,6 +30,8 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
+	isFromAIOnlyExpressionWithBlankNumberDefault,
+	isINodeProperties,
 	NodeHelpers,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -588,6 +590,19 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				});
 				throw e;
 			}
+		}
+
+		// Use the node default if the omitted tool argument is the whole parameter.
+		if (returnData === undefined && isFromAIOnlyExpressionWithBlankNumberDefault(value)) {
+			const property = NodeHelpers.findDisplayedProperty(
+				parameterName,
+				nodeType.description.properties,
+				node.parameters,
+				node,
+				nodeType.description,
+			);
+			const nodeDefault = property && isINodeProperties(property) ? property.default : undefined;
+			if (typeof nodeDefault === 'number') returnData = nodeDefault;
 		}
 
 		// This is outside the try/catch because it throws errors with proper messages

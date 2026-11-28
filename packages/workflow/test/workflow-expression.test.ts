@@ -59,6 +59,24 @@ describe('WorkflowExpression', () => {
 			nodeName = 'node',
 		) => expression.getParameterValue(value, null, 0, 0, nodeName, inputData, 'manual', {});
 
+		it.each(['', '   '])(
+			'uses the expression fallback for a blank numeric $fromAI default %j',
+			(defaultValue) => {
+				const value = `={{ $fromAI('limit', '', 'Number', '${defaultValue}') ?? 25 }}`;
+
+				expect(evaluate(value, [{ json: {} }])).toBe(25);
+				expect(evaluate(value, [{ json: { limit: 0 } }])).toBe(0);
+
+				const queryKeyValue = `={{ $fromAI('query', '', 'Number', '${defaultValue}') ?? 25 }}`;
+
+				expect(evaluate(queryKeyValue, [{ json: { query: { input: 'Search' } } }])).toBe(25);
+				expect(evaluate(queryKeyValue, [{ json: { query: { input: 'Search', query: 0 } } }])).toBe(
+					0,
+				);
+				expect(evaluate(queryKeyValue, [{ json: { query: 0 } }])).toBe(0);
+			},
+		);
+
 		it.each(
 			[
 				'$parameter["value1"]',

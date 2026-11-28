@@ -106,14 +106,11 @@ export const getItemsMessage = z
  *    Requiring it here would replace that error with a generic zod
  *    message. The host also validates the regex `[a-zA-Z0-9_-]{0,64}`;
  *    we don't pre-empt that either.
- * 2. `defaultValue` is `z.unknown()` because the host accepts any value
- *    as the fallback return (`handleFromAi` returns it directly via
- *    `??`). Structured-clone at the bridge boundary still prevents
- *    functions and other non-cloneable values from crossing.
+ * 2. `defaultValue` is `z.unknown()` because the host decides how to
+ *    interpret the fallback. Structured clone at the bridge boundary
+ *    prevents functions and other non-cloneable values from crossing.
  *
- * `description` and `type` are forwarded even though the host currently
- * ignores them (`_description`, `_type`), so the protocol matches the
- * documented call signature.
+ * Forward `description` and `valueType` to match the documented call signature.
  */
 export const fromAiMessage = z
 	.object({
