@@ -1,4 +1,5 @@
 import userEvent from '@testing-library/user-event';
+import { fireEvent } from '@testing-library/vue';
 
 import N8nInlineTextEdit from './InlineTextEdit.vue';
 import { createComponentRenderer } from '../../__tests__/render';
@@ -201,8 +202,11 @@ describe('N8nInlineTextEdit', () => {
 		expect(editableArea).toHaveAttribute('data-readonly');
 		expect(input).toHaveAttribute('readonly');
 
-		await userEvent.click(wrapper.getByTestId('inline-edit-preview'));
-		await userEvent.type(input, 'Changed{Enter}');
+		await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
+		expect(editableArea).not.toHaveAttribute('data-focused');
+
+		input.focus();
+		await userEvent.keyboard('Changed{Enter}');
 		expect(input).toHaveValue('Managed Credential');
 		expect(wrapper.emitted('update:model-value')).toBeUndefined();
 	});
