@@ -51,12 +51,17 @@
 	background: var(--color--background--light-2);
 
 	.minimap-node-default {
-		fill: var(--color--foreground--shade-1);
+		fill: var(--color--foreground--shade-2);
+	}
+
+	.vue-flow__minimap-mask {
+		// Keep the viewport outline the same width at any zoom level.
+		vector-effect: non-scaling-stroke;
 	}
 
 	.minimap-node-n8n-nodes-base-stickyNote {
-		fill: var(--color--foreground--shade-1);
-		opacity: 0.2;
+		fill: var(--sticky--border-color);
+		opacity: 0.5;
 	}
 
 	@include breakpoints.breakpoint('xs-only') {
