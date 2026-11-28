@@ -12,3 +12,6 @@ export const MCP_SERVER_SHARE_PATH = '/mcp-share';
  * repeats the route name of `@n8n/frontend-module-mcp`.
  */
 export const MCP_SETTINGS_ROUTE = 'McpSettings';
+
+/** Per-user callout key for the dismissible built-in n8n MCP banner on the MCP list. */
+export const BUILT_IN_MCP_BANNER_CALLOUT = 'mcpServersBuiltInBanner';

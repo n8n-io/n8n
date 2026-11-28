@@ -224,6 +224,28 @@ describe('GET /projects/:projectId/mcp-servers/:serverId/connections', () => {
 		});
 	});
 
+	it('counts active connections per server on the list endpoints and excludes blocked people', async () => {
+		const other = await createServer('other-desk');
+		await addConnection(maya, CLAUDE_CODE, 'Claude Code', new Date(), new Date());
+		await addConnection(maya, CURSOR, 'Cursor', new Date(), new Date());
+		await addConnection(tom, CURSOR, 'Cursor', new Date(), new Date());
+		await ownerAgent.post(`${serverPath()}/blocks`).send({ userId: tom.id }).expect(200);
+
+		const projectList = await ownerAgent.get(`/projects/${project.id}/mcp-servers`).expect(200);
+		const overviewList = await ownerAgent.get('/mcp-servers').expect(200);
+
+		for (const response of [projectList, overviewList]) {
+			const counts = new Map<string, number>(
+				response.body.data.map((row: { id: string; connectionCount: number }) => [
+					row.id,
+					row.connectionCount,
+				]),
+			);
+			expect(counts.get(server.id)).toBe(2);
+			expect(counts.get(other.id)).toBe(0);
+		}
+	});
+
 	it('lists only the connections of this server', async () => {
 		const other = await createServer('other-desk');
 		await addConnection(maya, CLAUDE_CODE, 'Claude Code', new Date(), new Date(), other.id);

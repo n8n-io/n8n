@@ -1,21 +1,21 @@
 <script setup lang="ts">
-import type { McpServerResponse } from '@n8n/api-types';
+import type { McpServerListItem } from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nButton, N8nEmptyState, N8nIcon, N8nInput, N8nLink, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nEmptyState, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import BuiltInMcpCard from '../components/BuiltInMcpCard.vue';
+import BuiltInMcpBanner from '../components/BuiltInMcpBanner.vue';
 import CreateMcpServerDialog from '../components/CreateMcpServerDialog.vue';
 import McpServerCard from '../components/McpServerCard.vue';
 import { useCreateMcpServerDialog } from '../composables/useCreateMcpServerDialog';
 import { useMcpServerUrl } from '../composables/useMcpServerUrl';
 import { listMcpServers } from '../mcp-servers.api';
-import { MCP_SERVER_VIEW, MCP_SETTINGS_ROUTE } from '../mcp-servers.constants';
+import { MCP_SERVER_VIEW } from '../mcp-servers.constants';
 import { getMcpServerPermissions } from '../mcp-servers.permissions';
 
 const i18n = useI18n();
@@ -31,7 +31,7 @@ const projectPermissions = capabilityRegistry.use(capabilities.projectPermission
 const ResourcesListLayout = computed(() => componentRegistry.get('resources-list-layout'));
 const ProjectHeader = computed(() => componentRegistry.get('project-header'));
 
-const servers = ref<McpServerResponse[]>([]);
+const servers = ref<McpServerListItem[]>([]);
 const loading = ref(true);
 const search = ref('');
 const searchTerm = computed(() => search.value.trim().toLowerCase());
@@ -83,11 +83,11 @@ async function initialize() {
 	loading.value = false;
 }
 
-function serverRoute(server: McpServerResponse) {
+function serverRoute(server: McpServerListItem) {
 	return { name: MCP_SERVER_VIEW, params: { projectId: server.projectId, serverId: server.id } };
 }
 
-function openServer(server: McpServerResponse) {
+function openServer(server: McpServerListItem) {
 	void router.push(serverRoute(server));
 }
 </script>
@@ -109,6 +109,7 @@ function openServer(server: McpServerResponse) {
 	>
 		<template #header>
 			<component :is="ProjectHeader" v-if="ProjectHeader" main-button="mcpServer" />
+			<BuiltInMcpBanner :class="$style.banner" />
 			<!-- In a portal. The header slot shows in every state, so the dialog lives here. -->
 			<CreateMcpServerDialog />
 		</template>
@@ -129,18 +130,6 @@ function openServer(server: McpServerResponse) {
 					/>
 				</template>
 			</N8nEmptyState>
-			<N8nText size="small" color="text-light" align="center" tag="p" :class="$style.builtInHint">
-				{{ i18n.baseText('mcpServers.empty.builtInHint') }}
-				<N8nLink
-					:to="{ name: MCP_SETTINGS_ROUTE }"
-					size="small"
-					theme="text"
-					bold
-					data-test-id="mcp-servers-builtin-link"
-				>
-					{{ i18n.baseText('mcpServers.empty.builtInLink') }}
-				</N8nLink>
-			</N8nText>
 		</template>
 		<template #preamble>
 			<div :class="$style.page">
@@ -157,7 +146,6 @@ function openServer(server: McpServerResponse) {
 					</template>
 				</N8nInput>
 				<div :class="$style.grid" data-test-id="mcp-servers-grid">
-					<BuiltInMcpCard v-if="!searchTerm" />
 					<McpServerCard
 						v-for="server in filteredServers"
 						:key="server.id"
@@ -183,6 +171,10 @@ function openServer(server: McpServerResponse) {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/breakpoints';
 
+.banner {
+	margin-bottom: var(--spacing--sm);
+}
+
 .page {
 	display: flex;
 	flex-direction: column;
@@ -204,9 +196,5 @@ function openServer(server: McpServerResponse) {
 		minmax(calc(var(--spacing--5xl) + var(--spacing--2xl)), 1fr)
 	);
 	gap: var(--spacing--sm);
-}
-
-.builtInHint {
-	margin: var(--spacing--sm) 0 0;
 }
 </style>

@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import type { McpServerResponse } from '@n8n/api-types';
-import { N8nActionToggle, N8nCard, N8nText, N8nTimeAgo } from '@n8n/design-system';
+import type { McpServerListItem } from '@n8n/api-types';
+import { N8nActionToggle, N8nCard, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
 import { RouterLink, type RouteLocationRaw } from 'vue-router';
 
+import McpServerItemsPill from './McpServerItemsPill.vue';
+
 // The card shows no project label and no icon. Builders cannot choose an icon yet.
-defineProps<{
-	server: McpServerResponse;
+const props = defineProps<{
+	server: McpServerListItem;
 	to: RouteLocationRaw;
 }>();
 
@@ -19,7 +20,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const rootStore = useRootStore();
 
 type CardAction = 'open' | 'copy-share-link' | 'copy-url';
 
@@ -28,6 +28,14 @@ const actions = computed<Array<{ value: CardAction; label: string }>>(() => [
 	{ value: 'copy-share-link', label: i18n.baseText('mcpServers.actions.copyShareLink') },
 	{ value: 'copy-url', label: i18n.baseText('mcpServers.actions.copyUrl') },
 ]);
+
+const connectionsLabel = computed(() =>
+	props.server.connectionCount === 0
+		? i18n.baseText('mcpServers.card.notShared')
+		: i18n.baseText('mcpServers.card.connected', {
+				interpolate: { count: String(props.server.connectionCount) },
+			}),
+);
 
 function onAction(action: CardAction) {
 	if (action === 'open') emit('open');
@@ -57,10 +65,17 @@ function onAction(action: CardAction) {
 				{{ server.description || i18n.baseText('mcpServers.card.noDescription') }}
 			</N8nText>
 			<template #footer>
-				<N8nText size="xsmall" color="text-light" :class="$style.updated">
-					{{ i18n.baseText('mcpServers.card.updated') }}
-					<N8nTimeAgo :date="server.updatedAt" :locale="rootStore.defaultLocale" />
-				</N8nText>
+				<div :class="$style.footer">
+					<div v-if="server.tools.length > 0" :class="$style.pill" @click.stop.prevent>
+						<McpServerItemsPill :server="server" data-test-id="mcp-server-card-items-pill" />
+					</div>
+					<N8nText v-else size="xsmall" color="text-light" data-test-id="mcp-server-card-empty">
+						{{ i18n.baseText('mcpServers.card.empty') }}
+					</N8nText>
+					<N8nText size="xsmall" color="text-light" data-test-id="mcp-server-card-connections">
+						{{ connectionsLabel }}
+					</N8nText>
+				</div>
 			</template>
 		</N8nCard>
 	</RouterLink>
@@ -89,7 +104,8 @@ function onAction(action: CardAction) {
 	white-space: nowrap;
 }
 
-.actions {
+.actions,
+.pill {
 	cursor: default;
 }
 
@@ -101,7 +117,14 @@ function onAction(action: CardAction) {
 	margin-top: var(--spacing--2xs);
 }
 
-.updated {
+.footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
+	width: 100%;
 	margin-top: var(--spacing--2xs);
+	padding-top: var(--spacing--xs);
+	border-top: var(--border);
 }
 </style>

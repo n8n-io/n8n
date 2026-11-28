@@ -3,6 +3,7 @@ import type {
 	McpServerBlockResponse,
 	McpServerConnectionsResponse,
 	McpServerDetailResponse,
+	McpServerListItem,
 	McpServerResponse,
 	McpServerShare,
 	McpServerSharePublic,
@@ -23,7 +24,7 @@ const serverPath = (projectId: string, serverId: string) =>
 export async function listMcpServers(
 	context: IRestApiContext,
 	projectId?: string,
-): Promise<McpServerResponse[]> {
+): Promise<McpServerListItem[]> {
 	const endpoint = projectId ? `/projects/${projectId}/mcp-servers` : '/mcp-servers';
 	return await makeRestApiRequest(context, 'GET', endpoint);
 }

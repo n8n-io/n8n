@@ -72,10 +72,13 @@ const canGenerate = computed(() => canUpdate.value && !!server.value?.toolDrafts
 const workflowTools = computed(
 	() => server.value?.tools.filter((tool) => tool.kind === 'workflow') ?? [],
 );
-/** `?expand=<tool name>` opens that tool row, for a deep link. */
-const expandName = computed(() =>
-	typeof route?.query.expand === 'string' ? route.query.expand : '',
-);
+/** `?tool=<name>`, `?skill=<name>`, or `?expand=<name>` opens that item, for a deep link. */
+const expandName = computed(() => {
+	for (const param of [route?.query.tool, route?.query.skill, route?.query.expand]) {
+		if (typeof param === 'string' && param) return param;
+	}
+	return '';
+});
 
 function workflowHref(workflowId: string) {
 	return router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId } }).href;

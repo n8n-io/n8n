@@ -1,12 +1,14 @@
-import type { McpServerResponse } from '@n8n/api-types';
+import type { McpServerListItem } from '@n8n/api-types';
 import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import type { Scope } from '@n8n/permissions';
+import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
-import { screen, waitFor } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
 import { defineComponent, h, onMounted, type PropType } from 'vue';
 
 import { useCreateMcpServerDialog } from '../composables/useCreateMcpServerDialog';
+import { BUILT_IN_MCP_BANNER_CALLOUT, MCP_SETTINGS_ROUTE } from '../mcp-servers.constants';
 import McpServersListView from './McpServersListView.vue';
 
 const api = vi.hoisted(() => ({ listMcpServers: vi.fn() }));
@@ -49,7 +51,7 @@ const ProjectHeaderStub = defineComponent({
 	setup: (props) => () => h('div', { 'data-test-id': 'project-header' }, props.mainButton),
 });
 
-function server(overrides: Partial<McpServerResponse>): McpServerResponse {
+function server(overrides: Partial<McpServerListItem>): McpServerListItem {
 	return {
 		id: '0190a8d6-4a2e-7000-8000-000000000001',
 		projectId: 'project-1',
@@ -59,6 +61,8 @@ function server(overrides: Partial<McpServerResponse>): McpServerResponse {
 		description: 'Pipeline numbers for the sales team',
 		createdAt: '2026-11-24T10:00:00.000Z',
 		updatedAt: '2026-11-24T10:00:00.000Z',
+		tools: [],
+		connectionCount: 0,
 		...overrides,
 	};
 }
@@ -102,27 +106,75 @@ describe('McpServersListView', () => {
 		vi.clearAllMocks();
 	});
 
-	it('lists the servers of all projects on Overview, after the pinned built-in card', async () => {
+	it('lists the servers of all projects on Overview with the built-in banner and no pinned card', async () => {
 		api.listMcpServers.mockResolvedValue([
-			server({}),
+			server({
+				tools: [
+					{
+						id: '0190a8d6-4a2e-7000-8000-0000000000a1',
+						kind: 'workflow',
+						targetId: 'wf-1',
+						toolName: 'get_numbers',
+					},
+					{
+						id: '0190a8d6-4a2e-7000-8000-0000000000a2',
+						kind: 'node',
+						targetId: null,
+						toolName: 'search_slack',
+					},
+				],
+				connectionCount: 3,
+			}),
 			server({ id: '0190a8d6-4a2e-7000-8000-000000000002', name: 'Support desk', description: '' }),
 		]);
 		setUp();
 		renderComponent();
 
-		const cards = await screen.findAllByTestId(/^(builtin-mcp-card|mcp-server-card)$/);
+		const cards = await screen.findAllByTestId('mcp-server-card');
 
 		expect(api.listMcpServers).toHaveBeenCalledWith(expect.anything(), undefined);
-		expect(cards.map((card) => card.dataset.testId)).toEqual([
-			'builtin-mcp-card',
-			'mcp-server-card',
-			'mcp-server-card',
-		]);
-		expect(cards[0]).toHaveTextContent('n8n MCP');
-		expect(cards[0]).toHaveTextContent('Built in');
-		expect(cards[1]).toHaveTextContent('Sales tools');
-		expect(cards[1]).toHaveTextContent('Pipeline numbers for the sales team');
-		expect(cards[2]).toHaveTextContent('No description');
+		expect(screen.queryByTestId('builtin-mcp-card')).not.toBeInTheDocument();
+		expect(screen.getByTestId('builtin-mcp-banner')).toHaveTextContent(
+			'Looking to build and run workflows on this instance from your AI client? That is the built-in n8n MCP.',
+		);
+		expect(cards).toHaveLength(2);
+		expect(cards[0]).toHaveTextContent('Sales tools');
+		expect(cards[0]).toHaveTextContent('Pipeline numbers for the sales team');
+		expect(within(cards[0]).getByTestId('mcp-server-card-items-pill')).toHaveTextContent('2');
+		expect(within(cards[0]).getByTestId('mcp-server-card-connections')).toHaveTextContent(
+			'3 connected',
+		);
+		expect(cards[1]).toHaveTextContent('No description');
+		expect(within(cards[1]).queryByTestId('mcp-server-card-items-pill')).not.toBeInTheDocument();
+		expect(within(cards[1]).getByTestId('mcp-server-card-empty')).toHaveTextContent(
+			'Nothing added yet',
+		);
+		expect(within(cards[1]).getByTestId('mcp-server-card-connections')).toHaveTextContent(
+			'Not shared',
+		);
+	});
+
+	it('opens MCP settings from the banner and hides it permanently on dismiss', async () => {
+		route.params = { projectId: 'project-1' };
+		api.listMcpServers.mockResolvedValue([server({})]);
+		setUp();
+		renderComponent();
+		const usersStore = useUsersStore();
+		usersStore.addUsers([{ id: 'user-1', isPending: false, settings: {} }]);
+		usersStore.currentUserId = 'user-1';
+		const updateSettingsSpy = vi
+			.spyOn(usersStore, 'updateUserSettings')
+			.mockResolvedValue(undefined);
+
+		await screen.findByTestId('mcp-server-card');
+		await userEvent.click(screen.getByTestId('builtin-mcp-banner-action'));
+		expect(push).toHaveBeenCalledWith({ name: MCP_SETTINGS_ROUTE });
+
+		await userEvent.click(screen.getByTestId('builtin-mcp-banner-dismiss'));
+		expect(screen.queryByTestId('builtin-mcp-banner')).not.toBeInTheDocument();
+		expect(updateSettingsSpy).toHaveBeenCalledWith({
+			dismissedCallouts: { [BUILT_IN_MCP_BANNER_CALLOUT]: true },
+		});
 	});
 
 	it('shows no project label on the cards', async () => {
@@ -189,7 +241,6 @@ describe('McpServersListView', () => {
 
 		await waitFor(() => expect(screen.queryByText('Sales tools')).not.toBeInTheDocument());
 		expect(screen.getByText('Support desk')).toBeInTheDocument();
-		expect(screen.queryByTestId('builtin-mcp-card')).not.toBeInTheDocument();
 	});
 
 	it('shows the empty state, and its button opens the create dialog for the project', async () => {

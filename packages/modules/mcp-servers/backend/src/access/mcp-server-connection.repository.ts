@@ -7,6 +7,7 @@ import {
 import { Service } from '@n8n/di';
 import { DataSource, LessThan } from '@n8n/typeorm';
 
+import { McpServerBlock } from '../database/entities/mcp-server-block.entity';
 import { McpServerConnection } from '../database/entities/mcp-server-connection.entity';
 
 class McpServerConnectionTable extends BaseRepository<McpServerConnection> {
@@ -82,6 +83,29 @@ export class McpServerConnectionRepository {
 			where: { serverId },
 			order: { lastUsedAt: 'DESC', userId: 'ASC', oauthClientId: 'ASC' },
 		});
+	}
+
+	/** Count of active (non-blocked) connections for each server. */
+	async countActiveByServers(
+		serverIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, number>> {
+		if (serverIds.length === 0) return new Map();
+		const rows = await this.table
+			.managerFor(ctx)
+			.createQueryBuilder(McpServerConnection, 'connection')
+			.leftJoin(
+				McpServerBlock,
+				'block',
+				'block.serverId = connection.serverId AND block.userId = connection.userId',
+			)
+			.select('connection.serverId', 'serverId')
+			.addSelect('COUNT(*)', 'count')
+			.where('connection.serverId IN (:...serverIds)', { serverIds })
+			.andWhere('block.userId IS NULL')
+			.groupBy('connection.serverId')
+			.getRawMany<{ serverId: string; count: string | number }>();
+		return new Map(rows.map((row) => [row.serverId, Number(row.count)]));
 	}
 
 	/** Deletes every client of the person on the server. */

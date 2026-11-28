@@ -125,6 +125,22 @@ export const mcpServerSchema = z.object({
 });
 export type McpServerResponse = z.infer<typeof mcpServerSchema>;
 
+/** Summary of one item in a server, for the list card pill and dropdown. */
+export const mcpServerListToolSchema = z.object({
+	id: z.string().uuid(),
+	kind: mcpServerToolKindSchema,
+	targetId: z.string().nullable(),
+	toolName: mcpServerToolNameSchema,
+});
+export type McpServerListTool = z.infer<typeof mcpServerListToolSchema>;
+
+/** One server in the list, with its items and active connection count. */
+export const mcpServerListItemSchema = mcpServerSchema.extend({
+	tools: z.array(mcpServerListToolSchema),
+	connectionCount: z.number().int().nonnegative(),
+});
+export type McpServerListItem = z.infer<typeof mcpServerListItemSchema>;
+
 /**
  * The share page of a server, for anyone with the link. `projectName` names who can connect: the
  * team project, or the owner of a personal project. It is `null` for an owner with no name.
