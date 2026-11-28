@@ -103,10 +103,6 @@ let searchWorkflowsSpy: MockInstance<(typeof workflowsListStore)['searchWorkflow
 let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
 const workflowSettingsStubs = {
-	Modal: {
-		template:
-			'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
-	},
 	// Stub N8nSwitch to prevent spurious update:model-value emissions in jsdom.
 	// userEvent.click simulates pointer movement that can trigger the switch
 	// during mouse path traversal, toggling executionTimeout and breaking save.
@@ -2365,10 +2361,11 @@ describe('WorkflowSettingsVue', () => {
 				// Production is floor-locked to "Redact"; manual stays editable. Turning manual on
 				// implies production (IAM-697), so the genuine, intended save is "all".
 				const manualSelect = getByTestId('workflow-settings-redact-manual-select');
-				await userEvent.click(within(manualSelect).getByRole('combobox'));
-				const redactOption = await within(document.body as HTMLElement).findByRole('option', {
-					name: 'Redact',
-				});
+				const manualItems = await getDropdownItems(manualSelect);
+				const redactOption = Array.from(manualItems).find((item) =>
+					item.textContent?.includes('Redact'),
+				);
+				if (!redactOption) throw new Error('Redact option is not in the list');
 				await userEvent.click(redactOption);
 				await flushPromises();
 

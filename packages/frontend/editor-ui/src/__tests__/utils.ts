@@ -56,6 +56,10 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 };
 
 export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
+	// The Element Plus menu is portaled onto the page. A Reka dialog sets pointer-events: none
+	// on that page, so user-event cannot click the menu. Remove both assignments when these
+	// controls use Reka.
+	document.body.style.pointerEvents = 'auto';
 	await userEvent.click(within(dropdownTriggerParent).getByRole('combobox'));
 	const selectTrigger = dropdownTriggerParent.querySelector(
 		'.select-trigger[aria-describedby]',
@@ -65,6 +69,7 @@ export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
 	const selectDropdownId = selectTrigger.getAttribute('aria-describedby');
 	const selectDropdown = document.getElementById(selectDropdownId as string) as HTMLElement;
 	await waitFor(() => expect(selectDropdown).toBeInTheDocument());
+	selectDropdown.style.pointerEvents = 'auto';
 
 	return selectDropdown.querySelectorAll('.el-select-dropdown__item');
 };
