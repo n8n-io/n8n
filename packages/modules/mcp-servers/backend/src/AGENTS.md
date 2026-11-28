@@ -39,14 +39,14 @@ Put a file in the folder of its role. Keep the n8n file infixes: `.controller.ts
 
 ## Layers
 
-| Layer                    | Can import                                                                                            | Cannot import             |
-| ------------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------- |
-| `controllers/`           | services, errors, DTOs from `@n8n/api-types`                                                          | repositories              |
-| `services/`              | services, ports, repositories, utils, errors                                                          | controllers               |
-| `ports/`                 | only types from `@n8n/api-types`, `@n8n/db`, `utils/`, and sibling `ports/` files (no implementation) | services, repositories    |
-| `database/repositories/` | entities, errors, `@n8n/db`, `@n8n/typeorm`                                                           | services                  |
-| `database/entities/`     | `@n8n/db`, `@n8n/typeorm`, types from `@n8n/api-types`                                                | other files of the module |
-| `utils/`, `errors/`      | `@n8n/api-types`, shared packages, type-only imports from `ports/`, each other                        | DI, I/O, repositories     |
+| Layer                    | Can import                                                                                            | Cannot import                |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `controllers/`           | services, errors, DTOs from `@n8n/api-types`                                                          | repositories                 |
+| `services/`              | services, ports, repositories, utils, errors                                                          | controllers                  |
+| `ports/`                 | only types from `@n8n/api-types`, `@n8n/db`, `utils/`, and sibling `ports/` files (no implementation) | services, repositories       |
+| `database/repositories/` | entities, errors, `@n8n/db`, `@n8n/typeorm`                                                           | services                     |
+| `database/entities/`     | `@n8n/db`, `@n8n/typeorm`, types from `@n8n/api-types`                                                | other files of the module    |
+| `utils/`, `errors/`      | `@n8n/api-types`, shared packages, each other                                                         | DI, I/O, ports, repositories |
 
 Follow these package boundary rules:
 

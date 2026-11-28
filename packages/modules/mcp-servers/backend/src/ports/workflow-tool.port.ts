@@ -1,3 +1,7 @@
+import type { WorkflowToolInputSchema } from '../utils/workflow-tool-input-schema';
+
+export type { WorkflowToolInputSchema };
+
 /**
  * The CLI implements this port and registers it when it loads the module.
  * Ports keep this package free of imports from `packages/cli`.
@@ -20,14 +24,6 @@ export type WorkflowToolRefusal =
 	| 'no_supported_trigger'
 	| 'incompatible_nodes'
 	| 'not_callable';
-
-/** A JSON schema of the tool input. It always describes an object. */
-export interface WorkflowToolInputSchema {
-	type: 'object';
-	properties?: Record<string, unknown>;
-	required?: string[];
-	additionalProperties: boolean | Record<string, unknown>;
-}
 
 export type WorkflowToolCheck =
 	| { callable: true }
