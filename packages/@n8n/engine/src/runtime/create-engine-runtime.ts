@@ -11,6 +11,7 @@ import type { ExternalDependencies } from '../dependencies';
 import {
 	assertValidStalenessThresholds,
 	CancelExecutionService,
+	ErrorWorkflowStarter,
 	ExecutionFileCleanup,
 	ExecutionQueryService,
 	ExecutionStartHandler,
@@ -34,6 +35,8 @@ import type { EngineWorkQueues } from '../queue';
 import {
 	DEFAULT_RECONCILIATION_BATCH_SIZE,
 	DEFAULT_RECONCILIATION_INTERVAL_MS,
+	PendingErrorWorkflowDetector,
+	PendingErrorWorkflowRepair,
 	QueuedExecutionDetector,
 	QueuedExecutionRepair,
 	QueuedStepDetector,
@@ -190,6 +193,23 @@ export function createEngineRuntime({
 		lifecycleEventPublisher,
 	);
 
+	// One start path for every execution: the API, a step's sub-execution and an
+	// error execution all admit and validate here, and only the engine's own
+	// callers can set a parent link or an error source.
+	const startExecution = new StartExecutionService(
+		admittance,
+		executionStore,
+		stepStore,
+		orchestrationQueue,
+	);
+	// One error start for a failed execution and for the repair.
+	const errorWorkflowStarter = new ErrorWorkflowStarter(
+		executionStore,
+		stepStore,
+		startExecution,
+		logger,
+		dependencies.resolveErrorWorkflow,
+	);
 	// One cancel path for the API and for an execution that ends with sub-executions.
 	const cancelExecution = new CancelExecutionService(
 		executionStore,
@@ -215,6 +235,7 @@ export function createEngineRuntime({
 			responseSender,
 			cancelExecution,
 			logger,
+			errorWorkflowStarter,
 		),
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
@@ -240,6 +261,11 @@ export function createEngineRuntime({
 				reconciliationIntervalMs,
 				DEFAULT_RECONCILIATION_BATCH_SIZE,
 			),
+			new PendingErrorWorkflowDetector(
+				executionStore,
+				reconciliationIntervalMs,
+				DEFAULT_RECONCILIATION_BATCH_SIZE,
+			),
 		],
 		{
 			'execution-queued-no-message': new QueuedExecutionRepair(executionStore, orchestrationQueue),
@@ -251,6 +277,10 @@ export function createEngineRuntime({
 				lifecycleEventPublisherFactory,
 			),
 			'step-settled-no-message': new SettledStepRepair(stepStore, orchestrationQueue),
+			'execution-error-workflow-pending': new PendingErrorWorkflowRepair(
+				executionStore,
+				errorWorkflowStarter,
+			),
 		},
 		logger,
 	);
@@ -267,14 +297,6 @@ export function createEngineRuntime({
 			logger,
 		);
 	}
-	// One start path for every execution: the API and a step's sub-execution both admit
-	// and validate here, and only this path can set a parent link.
-	const startExecution = new StartExecutionService(
-		admittance,
-		executionStore,
-		stepStore,
-		orchestrationQueue,
-	);
 	const stepWorker = new StepWorker(
 		stepQueue,
 		new StepReadyHandler(

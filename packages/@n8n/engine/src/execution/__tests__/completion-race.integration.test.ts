@@ -14,6 +14,7 @@ import {
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import type { CancelExecutionService } from '../cancel-execution.service';
+import type { ErrorWorkflowStarter } from '../error-workflow-starter';
 import { stepKeyId, type StepSlots } from '../execution.types';
 import { StepSettledHandler } from '../step-settled-handler';
 
@@ -83,6 +84,7 @@ async function setup(dataSource: DataSource, graph: WorkflowGraph, queued: strin
 		noopExecutionResponseSender,
 		{ cancelSubExecutions: vi.fn() } as unknown as CancelExecutionService,
 		{ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
+		{ startAfterFailure: vi.fn() } as unknown as ErrorWorkflowStarter,
 	);
 	const executionId = generateId();
 

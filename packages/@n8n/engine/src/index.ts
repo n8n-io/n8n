@@ -106,6 +106,11 @@ export type {
 } from './graph';
 
 export type {
+	ErrorWorkflowNone,
+	ErrorWorkflowResolution,
+	ErrorWorkflowResolver,
+	ErrorWorkflowSource,
+	ErrorWorkflowStart,
 	ExecutionFilesDeleter,
 	ExecutionLocation,
 	ExternalDependencies,

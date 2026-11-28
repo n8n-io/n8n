@@ -107,6 +107,16 @@ describe('execution retention (integration)', () => {
 			},
 		);
 
+		it('does not select a failed execution whose error execution has not started', async () => {
+			const id = await addExecution({ status: 'failed' });
+			await dataSource.query(
+				'UPDATE workflow_execution SET error_workflow_due_at = $2 WHERE id = $1',
+				[id, LONG_AGO],
+			);
+
+			expect(await prunableIds()).not.toContain(id);
+		});
+
 		it('does not select an ended execution that finished inside the window', async () => {
 			await addExecution({ finishedAt: new Date() });
 

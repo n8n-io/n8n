@@ -3,6 +3,7 @@ import type {
 	ItemSource,
 	SubExecutionResumeCause,
 	ExecutionMode,
+	StepError,
 	StepSlots,
 	TriggerOutputs,
 	ExecutorWaitDeclaration,
@@ -88,6 +89,8 @@ export type SubExecutionDeclaration = {
 	graph: WorkflowGraph;
 	workflow: WorkflowDocument;
 	triggerOutputs?: TriggerOutputs | null;
+	/** Whether a failure of the sub-execution resolves an error workflow. See `StartExecutionRequest`. */
+	resolveErrorWorkflowOnFailure?: boolean;
 } & SubExecutionMode;
 
 /** Whether the step waits for the sub-execution, and what it completes with if not. */
@@ -169,6 +172,53 @@ export type ExecutionFilesDeleter = (execution: ExecutionLocation) => Promise<vo
 /** File deleter for a host that writes no binary files. */
 export const noopExecutionFilesDeleter: ExecutionFilesDeleter = async () => {};
 
+/** The execution that failed and is due an error execution, as the engine stored it. */
+export interface ErrorWorkflowSource {
+	executionId: string;
+	workflowId: string;
+	/** The workflow captured at start. The host reads the error workflow settings from it. */
+	workflow: WorkflowDocument;
+	/** The host mode of the caller context. */
+	hostMode: string;
+	/** Whether it is a sub-execution. A sub-execution is never an error execution, even when hostMode === "error". */
+	hasParent: boolean;
+	/** The first failed step by settle time. Absent when the execution failed without a failed step. */
+	failedStep?: {
+		nodeName: string;
+		/** Without `stack`, because the host does not read it. */
+		error: Omit<StepError, 'stack'>;
+	};
+}
+
+/** What the host returns for an error workflow to start. The host minted the execution id. */
+export interface ErrorWorkflowStart {
+	kind: 'start';
+	executionId: string;
+	workflowId: string;
+	graph: WorkflowGraph;
+	workflow: WorkflowDocument;
+	triggerOutputs: TriggerOutputs | null;
+	callerContext: CallerContext;
+	/** Whether a failure of the error execution resolves an error workflow of its own. */
+	resolveErrorWorkflowOnFailure: boolean;
+}
+
+/** No error workflow runs. The decision is final, so the engine does not ask again. */
+export interface ErrorWorkflowNone {
+	kind: 'none';
+	reason: string;
+}
+
+export type ErrorWorkflowResolution = ErrorWorkflowStart | ErrorWorkflowNone;
+
+/**
+ * Resolves the error workflow of an ended execution. Throws on a transient
+ * failure, and the engine asks again later.
+ */
+export type ErrorWorkflowResolver = (
+	source: ErrorWorkflowSource,
+) => Promise<ErrorWorkflowResolution>;
+
 export interface ExternalDependencies {
 	/** Executes `v1-node` steps — supplied by the host in integrated mode. */
 	v1StepExecutor?: IStepExecutor;
@@ -180,4 +230,9 @@ export interface ExternalDependencies {
 	 * retention is on. A host that writes no files passes `noopExecutionFilesDeleter`.
 	 */
 	deleteExecutionFiles?: ExecutionFilesDeleter;
+	/**
+	 * Resolves the error workflow of an ended execution. Without it, the engine
+	 * starts no error execution and clears every pending one.
+	 */
+	resolveErrorWorkflow?: ErrorWorkflowResolver;
 }

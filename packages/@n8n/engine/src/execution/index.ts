@@ -1,6 +1,8 @@
 export { InvalidParentLinkError, StartExecutionService } from './start-execution.service';
 export { CancelExecutionService } from './cancel-execution.service';
 export type { CancelExecutionResult } from './cancel-execution.service';
+export { ErrorWorkflowStarter } from './error-workflow-starter';
+export type { ErrorWorkflowStartOutcome } from './error-workflow-starter';
 export type {
 	InvalidParentLinkReason,
 	StartExecutionRequest,
@@ -34,6 +36,8 @@ export type {
 export { ExecutionNotFoundError } from './execution-store';
 export type {
 	CreateExecutionResult,
+	DueErrorWorkflow,
+	ErrorWorkflowState,
 	ExecutionRecord,
 	ExecutionStore,
 	NewExecutionRecord,

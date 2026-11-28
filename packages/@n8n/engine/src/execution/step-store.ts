@@ -363,7 +363,8 @@ export interface StepStore {
 
 	/**
 	 * The execution's failed steps by settle time, the first to settle first.
-	 * The read path reports the first one as the failure of the execution.
+	 * The read path and the error workflow report the first one as the failure
+	 * of the execution.
 	 */
 	loadFailedSteps(executionId: string): Promise<StepRecord[]>;
 }

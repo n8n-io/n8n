@@ -125,6 +125,12 @@ function makeExecutionStore(
 		findPrunableExecutions: vi.fn(),
 		findRetentionCountCutoff: vi.fn(),
 		deleteEndedExecutions: vi.fn(),
+		loadErrorWorkflowState: vi
+			.fn()
+			.mockResolvedValue({ dueAt: null, hasErrorExecution: false, workflow: {} }),
+		findDueErrorWorkflows: vi.fn().mockResolvedValue([]),
+		deferErrorWorkflow: vi.fn().mockResolvedValue(true),
+		clearErrorWorkflowDue: vi.fn(),
 	};
 }
 
@@ -1632,6 +1638,32 @@ describe('StepReadyHandler sub-executions', () => {
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
+	});
+
+	it('passes resolveErrorWorkflowOnFailure of the declaration to the sub-execution start', async () => {
+		const subExecutionStarter: SubExecutionStarter = {
+			start: vi.fn().mockResolvedValue({ executionId: 'exec-sub' }),
+		};
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore(),
+			makeQueue(),
+			{
+				v1StepExecutor: makeExecutor({
+					subExecution: { ...detached, resolveErrorWorkflowOnFailure: true, outputs: [[]] },
+				}),
+			},
+			undefined,
+			undefined,
+			undefined,
+			subExecutionStarter,
+		);
+
+		await handler.handle(event);
+
+		expect(subExecutionStarter.start).toHaveBeenCalledWith(
+			expect.objectContaining({ executionId: 'exec-sub', resolveErrorWorkflowOnFailure: true }),
+		);
 	});
 
 	it('records the outputs when the execution ended before a detached sub-execution started', async () => {
