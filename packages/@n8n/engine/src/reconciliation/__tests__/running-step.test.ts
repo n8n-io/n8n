@@ -6,6 +6,7 @@ import type { LifecycleEventPublisher } from '../../lifecycle-events';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import { RunningStepDetector } from '../running-step-detector';
 import { RunningStepRepair } from '../running-step-repair';
+import { fakeWorkQueue } from '../../queue/__tests__/fake-work-queue';
 
 const at = new Date('2026-01-01T00:10:00.000Z');
 const staleAfter = new Date('2026-01-01T00:00:00.000Z');
@@ -43,12 +44,7 @@ function makeRepair(stepStore = makeStepStore()) {
 	const executionStore = {
 		loadExecution: vi.fn<ExecutionStore['loadExecution']>().mockResolvedValue(execution),
 	};
-	const orchestrationQueue: WorkQueue<OrchestrationMessage> = {
-		publish: vi.fn(),
-		start: vi.fn(),
-		stop: vi.fn(),
-		size: vi.fn(),
-	};
+	const orchestrationQueue: WorkQueue<OrchestrationMessage> = fakeWorkQueue();
 	const publisher: LifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
 	const repair = new RunningStepRepair(
 		executionStore as unknown as ExecutionStore,

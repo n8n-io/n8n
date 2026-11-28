@@ -4,11 +4,12 @@ import type { EngineLogger } from '../../logging';
 import type { StepMessage, WorkQueue } from '../../queue';
 import type { DueStep, StepStore } from '../step-store';
 import { WaitSweeper } from '../wait-sweeper';
+import { fakeWorkQueue } from '../../queue/__tests__/fake-work-queue';
 
 const SWEEP_MS = 1_000;
 
 function makeStepQueue(): WorkQueue<StepMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
+	return fakeWorkQueue();
 }
 
 function makeLogger(): EngineLogger {

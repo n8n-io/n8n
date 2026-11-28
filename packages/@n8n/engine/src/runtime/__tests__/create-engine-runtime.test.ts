@@ -23,13 +23,7 @@ import {
 	type EngineRole,
 	type EngineRuntimeOptions,
 } from '../create-engine-runtime';
-
-const fakeQueue = <T>() => ({
-	publish: vi.fn(async (_message: T) => {}),
-	start: vi.fn(),
-	stop: vi.fn(async () => {}),
-	size: vi.fn(async () => 0),
-});
+import { fakeWorkQueue } from '../../queue/__tests__/fake-work-queue';
 
 vi.mock('../../retention', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../../retention')>();
@@ -148,8 +142,8 @@ describe('createEngineRuntime', () => {
 	])('starts and stops only the queues its roles consume ($name)', async ({ roles, consumed }) => {
 		vi.spyOn(TypeOrmStepStore.prototype, 'nextWaitDeadline').mockResolvedValue(null);
 		const queues = {
-			orchestration: fakeQueue<OrchestrationMessage>(),
-			step: fakeQueue<StepMessage>(),
+			orchestration: fakeWorkQueue<OrchestrationMessage>(),
+			step: fakeWorkQueue<StepMessage>(),
 		};
 		const engine = runtime({ roles, queues });
 
@@ -180,8 +174,8 @@ describe('createEngineRuntime', () => {
 		const engine = runtime({
 			roles,
 			queues: {
-				orchestration: fakeQueue<OrchestrationMessage>(),
-				step: fakeQueue<StepMessage>(),
+				orchestration: fakeWorkQueue<OrchestrationMessage>(),
+				step: fakeWorkQueue<StepMessage>(),
 			},
 			waitSweepIntervalMs: 1,
 			reconciliationIntervalMs: 1,
@@ -318,8 +312,8 @@ describe('createEngineRuntime', () => {
 		vi.spyOn(TypeOrmStepStore.prototype, 'resumeDueSteps')
 			.mockResolvedValueOnce([{ id: 'step-1', executionId }])
 			.mockResolvedValue([]);
-		const orchestration = fakeQueue<OrchestrationMessage>();
-		const step = fakeQueue<StepMessage>();
+		const orchestration = fakeWorkQueue<OrchestrationMessage>();
+		const step = fakeWorkQueue<StepMessage>();
 		const engine = createEngineRuntime({
 			dataSource: fakeDataSource(),
 			admittance: new AllowAllAdmittance(),
@@ -368,14 +362,14 @@ describe('createEngineRuntime', () => {
 			.mockResolvedValueOnce([{ id: 'exec-1', staleAfter: new Date() }])
 			.mockResolvedValue([]);
 		vi.spyOn(TypeOrmExecutionStore.prototype, 'renewQueuedExecution').mockResolvedValue(true);
-		const orchestration = fakeQueue<OrchestrationMessage>();
+		const orchestration = fakeWorkQueue<OrchestrationMessage>();
 		const engine = createEngineRuntime({
 			dataSource: fakeDataSource(),
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
 			responseSender,
 			reconciliationIntervalMs: 1,
-			queues: { orchestration, step: fakeQueue<StepMessage>() },
+			queues: { orchestration, step: fakeWorkQueue<StepMessage>() },
 		});
 		engine.start();
 

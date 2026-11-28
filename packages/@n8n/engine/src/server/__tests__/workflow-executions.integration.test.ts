@@ -37,6 +37,7 @@ import { noopExecutionResponseSender, type ExecutionResponseSender } from '../..
 import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
 import type { SearchExecutionsResponse } from '../api.types';
+import { fakeWorkQueue } from '../../queue/__tests__/fake-work-queue';
 
 const sampleGraph: WorkflowGraph = {
 	nodes: [{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} }],
@@ -312,8 +313,8 @@ beforeAll(async () => {
 }, 120_000);
 
 beforeEach(async () => {
-	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
-	stepQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
+	workQueue = fakeWorkQueue();
+	stepQueue = fakeWorkQueue();
 	lifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
 	responseSender = { send: vi.fn(), stop: vi.fn() };
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);

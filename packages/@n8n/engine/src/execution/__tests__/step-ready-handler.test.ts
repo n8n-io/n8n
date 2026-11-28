@@ -24,6 +24,7 @@ import { InvalidParentLinkError, type StartExecutionService } from '../start-exe
 import { attachStepErrorDetails } from '../step-error-details';
 import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
+import { fakeWorkQueue } from '../../queue/__tests__/fake-work-queue';
 
 /** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
 const at = (nodeId: string) => stepKeyId({ nodeId, iteration: 0 });
@@ -177,7 +178,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 }
 
 function makeQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
+	return fakeWorkQueue();
 }
 
 function makeExecutor(result: unknown = { outputs: [[{ json: { ok: true } }]] }): IStepExecutor {
@@ -1792,15 +1793,11 @@ describe('StepReadyHandler lifecycle events', () => {
 			}),
 			stop: vi.fn(),
 		};
-		const queue: WorkQueue<OrchestrationMessage> = {
-			publish: vi.fn(async (message: OrchestrationMessage) => {
-				order.push(`queue:${message.type}`);
-				await Promise.resolve();
-			}),
-			start: vi.fn(),
-			stop: vi.fn(),
-			size: vi.fn(),
-		};
+		const queue = fakeWorkQueue<OrchestrationMessage>();
+		queue.publish.mockImplementation(async (message) => {
+			order.push(`queue:${message.type}`);
+			await Promise.resolve();
+		});
 		const handler = makeHandler(
 			makeExecutionStore(),
 			makeStepStore(),

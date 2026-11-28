@@ -4,6 +4,7 @@ import type { ExecutionStore } from '../../execution';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import { QueuedExecutionDetector } from '../queued-execution-detector';
 import { QueuedExecutionRepair } from '../queued-execution-repair';
+import { fakeWorkQueue } from '../../queue/__tests__/fake-work-queue';
 
 const at = new Date('2026-01-01T00:10:00.000Z');
 const staleAfter = new Date('2026-01-01T00:00:00.000Z');
@@ -29,7 +30,7 @@ function makeExecutionStore(): ExecutionStore {
 }
 
 function makeOrchestrationQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
+	return fakeWorkQueue();
 }
 
 describe('QueuedExecutionDetector', () => {

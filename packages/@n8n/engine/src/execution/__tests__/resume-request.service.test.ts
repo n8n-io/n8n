@@ -5,11 +5,12 @@ import {
 	mintResumeToken,
 	mintStepBoundResumeToken,
 } from '../../auth/resume-token';
-import type { StepMessage, WorkQueue } from '../../queue';
+import type { StepMessage } from '../../queue';
 import { ExecutionNotFoundError, type ExecutionStore } from '../execution-store';
 import type { ExecutionStatus } from '../execution.types';
 import { ResumeRequestService, type ResumeHold } from '../resume-request.service';
 import { StepNotFoundError, type StepRecord, type StepStore } from '../step-store';
+import { fakeWorkQueue } from '../../queue/__tests__/fake-work-queue';
 
 const secret = 'a'.repeat(32);
 const executionId = '0199a1b2-0000-7000-8000-000000000001';
@@ -80,7 +81,7 @@ function setup({
 			return { status };
 		}),
 	} as unknown as ExecutionStore;
-	const stepQueue = { publish: vi.fn() } as unknown as WorkQueue<StepMessage>;
+	const stepQueue = fakeWorkQueue<StepMessage>();
 
 	const service = new ResumeRequestService(
 		executionStore,
@@ -369,6 +370,15 @@ describe('ResumeRequestService.resolve', () => {
 		expect(vi.mocked(stepStore.resumeStep).mock.invocationCallOrder[0]).toBeLessThan(
 			vi.mocked(stepQueue.publish).mock.invocationCallOrder[0],
 		);
+	});
+
+	it('leaves the step queue running', async () => {
+		const { service, stepQueue } = setup();
+
+		await service.resolve('s1', token, outputs);
+
+		expect(stepQueue.start).not.toHaveBeenCalled();
+		expect(stepQueue.stop).not.toHaveBeenCalled();
 	});
 
 	it('checks the token against the execution of the step', async () => {

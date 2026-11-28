@@ -9,6 +9,7 @@ import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import type { StepStore } from '../step-store';
+import { fakeWorkQueue } from '../../queue/__tests__/fake-work-queue';
 
 /** A publisher fake; tests that care assert on `publish`. */
 function makeLifecycleEventPublisher(): LifecycleEventPublisher {
@@ -51,7 +52,7 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 }
 
 function makeOrchestrationQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
+	return fakeWorkQueue();
 }
 
 /** Only `createSteps` is exercised here; the rest belong to other handlers. */
