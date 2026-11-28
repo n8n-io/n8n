@@ -28,8 +28,11 @@ export async function intercomApiRequest(
 		json: true,
 	};
 
+	const authentication = this.getNodeParameter('authentication', 'apiKey') as string;
+	const credentialType = authentication === 'oAuth2' ? 'intercomOAuth2Api' : 'intercomApi';
+
 	try {
-		return await this.helpers.httpRequestWithAuthentication.call(this, 'intercomApi', options);
+		return await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
