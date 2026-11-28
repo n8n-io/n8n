@@ -1,10 +1,36 @@
+import { MAX_DECODED_SIZE_BYTES, MAX_RESULT_CHARS } from '../../../parsers/structured-file-parser';
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext, InstanceAiStoredFile } from '../../../types';
 import {
 	createParseFileTool,
 	createParseStoredFileTool,
+	parseFileInputSchema,
+	parseFileOutputSchema,
 	parseStoredFileInputSchema,
 } from '../parse-file.tool';
+
+const { mockPdfGetText, mockPdfDestroy, mockDocxExtractRawText } = vi.hoisted(() => ({
+	mockPdfGetText: vi.fn<() => Promise<{ text: string; total: number }>>(),
+	mockPdfDestroy: vi.fn<() => Promise<void>>(),
+	mockDocxExtractRawText:
+		vi.fn<(arg: unknown) => Promise<{ value: string; messages: unknown[] }>>(),
+}));
+
+vi.mock('pdf-parse', () => {
+	class PDFParse {
+		getText = mockPdfGetText;
+		destroy = mockPdfDestroy;
+	}
+	return { PDFParse };
+});
+
+vi.mock('mammoth', () => ({
+	__esModule: true,
+	default: {
+		extractRawText: async (input: { buffer: Buffer }) => await mockDocxExtractRawText(input),
+	},
+	extractRawText: async (input: { buffer: Buffer }) => await mockDocxExtractRawText(input),
+}));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -178,6 +204,167 @@ describe('createParseFileTool', () => {
 			expect(result.format).toBe('json');
 			expect(result.totalRows).toBe(1);
 		});
+
+		it('parses non-array JSON objects and paginates full content losslessly', async () => {
+			const payload = `${JSON.stringify(
+				{
+					version: 1,
+					files: [
+						{ path: 'a.ts', content: 'A'.repeat(25_000) },
+						{ path: 'b.ts', content: 'B'.repeat(25_000) },
+					],
+				},
+				null,
+				2,
+			)}\n`;
+			const context = createMockContext({
+				currentUserAttachments: [
+					{
+						type: 'file',
+						data: toBase64(payload),
+						mimeType: 'application/json',
+						fileName: 'handover.json',
+					},
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const first = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			);
+
+			expect(first.error).toBeUndefined();
+			expect(first.format).toBe('json');
+			expect(first.totalRows).toBe(0);
+			expect(first.totalChars).toBe(payload.length);
+			expect(first.truncated).toBe(true);
+			expect(first.nextStartChar).toBe(MAX_RESULT_CHARS);
+
+			const second = await executeTool(
+				tool,
+				{
+					attachmentIndex: 0,
+					hasHeader: true,
+					startRow: 0,
+					maxRows: 20,
+					startChar: first.nextStartChar,
+				},
+				{} as never,
+			);
+
+			expect(second.error).toBeUndefined();
+			expect(second.truncated).toBe(false);
+			expect(second.nextStartChar).toBeUndefined();
+			expect(`${String(first.content)}${String(second.content)}`).toBe(payload);
+		});
+	});
+
+	describe('with text and markdown pagination', () => {
+		it('paginates plain text with startChar and maxChars without trimming', async () => {
+			const text = '  first line\nsecond line\n';
+			const context = createMockContext({
+				currentUserAttachments: [
+					{ type: 'file', data: toBase64(text), mimeType: 'text/plain', fileName: 'notes.txt' },
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const first = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20, maxChars: 12 },
+				{} as never,
+			);
+			expect(first.content).toBe('  first line');
+			expect(first.totalChars).toBe(text.length);
+			expect(first.truncated).toBe(true);
+			expect(first.nextStartChar).toBe(12);
+
+			const second = await executeTool(
+				tool,
+				{
+					attachmentIndex: 0,
+					hasHeader: true,
+					startRow: 0,
+					maxRows: 20,
+					startChar: first.nextStartChar,
+					maxChars: 20,
+				},
+				{} as never,
+			);
+			expect(second.content).toBe('\nsecond line\n');
+			expect(second.truncated).toBe(false);
+			expect(second.nextStartChar).toBeUndefined();
+			expect(`${String(first.content)}${String(second.content)}`).toBe(text);
+		});
+
+		it('validates startChar and maxChars in the input schema', () => {
+			expect(parseFileInputSchema.safeParse({ startChar: 0, maxChars: 1000 }).success).toBe(true);
+			expect(parseFileInputSchema.safeParse({ startChar: -1 }).success).toBe(false);
+			expect(parseFileInputSchema.safeParse({ maxChars: 0 }).success).toBe(false);
+			expect(parseFileInputSchema.safeParse({ maxChars: MAX_RESULT_CHARS + 1 }).success).toBe(
+				false,
+			);
+		});
+
+		it('returns empty content without error when startChar is past totalChars', async () => {
+			const text = 'short note';
+			const context = createMockContext({
+				currentUserAttachments: [
+					{ type: 'file', data: toBase64(text), mimeType: 'text/plain', fileName: 'notes.txt' },
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20, startChar: 100 },
+				{} as never,
+			);
+
+			expect(parseFileOutputSchema.safeParse(result).success).toBe(true);
+			expect(result.error).toBeUndefined();
+			expect(result.content).toBe('');
+			expect(result.totalChars).toBe(text.length);
+			expect(result.truncated).toBe(false);
+			expect(result.nextStartChar).toBeUndefined();
+		});
+
+		it('supports format overrides between text and json', async () => {
+			const brokenJson = '{not valid json but readable as text';
+			const context = createMockContext({
+				currentUserAttachments: [
+					{
+						type: 'file',
+						data: toBase64(brokenJson),
+						mimeType: 'application/json',
+						fileName: 'broken.json',
+					},
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = await executeTool(
+				tool,
+				{
+					attachmentIndex: 0,
+					format: 'text',
+					hasHeader: true,
+					startRow: 0,
+					maxRows: 20,
+					maxChars: 15,
+				},
+				{} as never,
+			);
+
+			expect(parseFileOutputSchema.safeParse(result).success).toBe(true);
+			expect(result.error).toBeUndefined();
+			expect(result.format).toBe('text');
+			expect(result.content).toBe(brokenJson.slice(0, 15));
+			expect(result.truncated).toBe(true);
+			expect(result.nextStartChar).toBe(15);
+		});
 	});
 
 	describe('with a valid HTML attachment', () => {
@@ -201,6 +388,154 @@ describe('createParseFileTool', () => {
 			expect(result.format).toBe('html');
 			expect(result.title).toBe('Release');
 			expect(result.content).toContain('amber-otter');
+		});
+
+		it('paginates HTML content with startChar, maxChars, totalChars, and nextStartChar', async () => {
+			const html =
+				'<html><head><title>Notes</title></head><body><p>First section. Second section.</p></body></html>';
+			const context = createMockContext({
+				currentUserAttachments: [
+					{ type: 'file', data: toBase64(html), mimeType: 'text/html', fileName: 'notes.html' },
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const first = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20, maxChars: 14 },
+				{} as never,
+			);
+
+			expect(first.error).toBeUndefined();
+			expect(first.format).toBe('html');
+			expect(first.title).toBe('Notes');
+			expect(first.content).toBe('First section.');
+			expect(first.totalChars).toBe('First section. Second section.'.length);
+			expect(first.truncated).toBe(true);
+			expect(first.nextStartChar).toBe(14);
+
+			const second = await executeTool(
+				tool,
+				{
+					attachmentIndex: 0,
+					hasHeader: true,
+					startRow: 0,
+					maxRows: 20,
+					startChar: first.nextStartChar,
+					maxChars: 50,
+				},
+				{} as never,
+			);
+
+			expect(second.error).toBeUndefined();
+			expect(second.content).toBe(' Second section.');
+			expect(second.totalChars).toBe(first.totalChars);
+			expect(second.truncated).toBe(false);
+			expect(second.nextStartChar).toBeUndefined();
+		});
+	});
+
+	describe('with PDF and DOCX attachments', () => {
+		beforeEach(() => {
+			mockPdfGetText.mockReset();
+			mockPdfDestroy.mockReset().mockResolvedValue(undefined);
+			mockDocxExtractRawText.mockReset();
+		});
+
+		it('paginates PDF content and forwards pages, totalChars, and nextStartChar', async () => {
+			mockPdfGetText.mockResolvedValue({ text: 'Alpha Beta Gamma', total: 3 });
+			const context = createMockContext({
+				currentUserAttachments: [
+					{
+						type: 'file',
+						data: toBase64('pdf-bytes'),
+						mimeType: 'application/pdf',
+						fileName: 'report.pdf',
+					},
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const first = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20, maxChars: 6 },
+				{} as never,
+			);
+
+			expect(first.error).toBeUndefined();
+			expect(first.format).toBe('pdf');
+			expect(first.pages).toBe(3);
+			expect(first.content).toBe('Alpha ');
+			expect(first.totalChars).toBe('Alpha Beta Gamma'.length);
+			expect(first.truncated).toBe(true);
+			expect(first.nextStartChar).toBe(6);
+
+			const second = await executeTool(
+				tool,
+				{
+					attachmentIndex: 0,
+					hasHeader: true,
+					startRow: 0,
+					maxRows: 20,
+					startChar: first.nextStartChar,
+					maxChars: 50,
+				},
+				{} as never,
+			);
+
+			expect(second.error).toBeUndefined();
+			expect(second.pages).toBe(3);
+			expect(second.content).toBe('Beta Gamma');
+			expect(second.totalChars).toBe(first.totalChars);
+			expect(second.truncated).toBe(false);
+			expect(second.nextStartChar).toBeUndefined();
+		});
+
+		it('paginates DOCX content and forwards totalChars and nextStartChar', async () => {
+			mockDocxExtractRawText.mockResolvedValue({ value: 'Paragraph 1\nParagraph 2', messages: [] });
+			const context = createMockContext({
+				currentUserAttachments: [
+					{
+						type: 'file',
+						data: toBase64('docx-bytes'),
+						mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+						fileName: 'memo.docx',
+					},
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const first = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20, maxChars: 12 },
+				{} as never,
+			);
+
+			expect(first.error).toBeUndefined();
+			expect(first.format).toBe('docx');
+			expect(first.content).toBe('Paragraph 1\n');
+			expect(first.totalChars).toBe('Paragraph 1\nParagraph 2'.length);
+			expect(first.truncated).toBe(true);
+			expect(first.nextStartChar).toBe(12);
+
+			const second = await executeTool(
+				tool,
+				{
+					attachmentIndex: 0,
+					hasHeader: true,
+					startRow: 0,
+					maxRows: 20,
+					startChar: first.nextStartChar,
+					maxChars: 50,
+				},
+				{} as never,
+			);
+
+			expect(second.error).toBeUndefined();
+			expect(second.content).toBe('Paragraph 2');
+			expect(second.totalChars).toBe(first.totalChars);
+			expect(second.truncated).toBe(false);
+			expect(second.nextStartChar).toBeUndefined();
 		});
 	});
 
@@ -325,6 +660,39 @@ describe('createParseStoredFileTool', () => {
 
 		expect(result.format).toBe('markdown');
 		expect(result.content).toBe('# Title\n\nBody');
+		expect(result.totalChars).toBe('# Title\n\nBody'.length);
+	});
+
+	it('paginates a stored non-array JSON object by fileId', async () => {
+		const json = JSON.stringify({ repo: 'demo', files: [{ path: 'a.ts', body: 'hello' }] });
+		const tool = createParseStoredFileTool(
+			readerFor({
+				'file-1': storedFile('handover.json', 'application/json', Buffer.from(json)),
+			}),
+		);
+
+		const first = await executeTool(
+			tool,
+			{ fileId: 'file-1', ...defaults, maxChars: 20 },
+			{} as never,
+		);
+		expect(first.error).toBeUndefined();
+		expect(first.fileId).toBe('file-1');
+		expect(first.format).toBe('json');
+		expect(first.content).toBe(json.slice(0, 20));
+		expect(first.totalChars).toBe(json.length);
+		expect(first.truncated).toBe(true);
+		expect(first.nextStartChar).toBe(20);
+
+		const second = await executeTool(
+			tool,
+			{ fileId: 'file-1', ...defaults, startChar: first.nextStartChar, maxChars: 100 },
+			{} as never,
+		);
+		expect(second.content).toBe(json.slice(20));
+		expect(second.truncated).toBe(false);
+		expect(second.nextStartChar).toBeUndefined();
+		expect(`${String(first.content)}${String(second.content)}`).toBe(json);
 	});
 
 	it('returns an error that names the file when the thread has no such file', async () => {
@@ -347,13 +715,120 @@ describe('createParseStoredFileTool', () => {
 	});
 
 	it('rejects a file over the size limit without loading its bytes', async () => {
-		const big = storedFile('big.csv', 'text/csv', Buffer.from('a,b'), 10 * 1024 * 1024 + 1);
+		const big = storedFile('big.csv', 'text/csv', Buffer.from('a,b'), MAX_DECODED_SIZE_BYTES + 1);
 		const tool = createParseStoredFileTool(readerFor({ 'file-1': big }));
 
 		const result = await executeTool(tool, { fileId: 'file-1', ...defaults }, {} as never);
 
+		expect(parseFileOutputSchema.safeParse(result).success).toBe(true);
 		expect(result.error).toBeDefined();
 		expect(result.rows).toEqual([]);
 		expect(big.readContent).not.toHaveBeenCalled();
+	});
+
+	it('rejects a stored file whose actual bytes exceed MAX_DECODED_SIZE_BYTES despite smaller metadata size', async () => {
+		const oversizedBuffer = Buffer.alloc(MAX_DECODED_SIZE_BYTES + 1, 0x61);
+		const lying = storedFile('lied.json', 'application/json', oversizedBuffer, 128);
+		const tool = createParseStoredFileTool(readerFor({ 'file-1': lying }));
+
+		const result = await executeTool(tool, { fileId: 'file-1', ...defaults }, {} as never);
+
+		expect(parseFileOutputSchema.safeParse(result).success).toBe(true);
+		expect(result.fileId).toBe('file-1');
+		expect(result.error).toMatch(/exceeds maximum size/);
+		expect(lying.readContent).toHaveBeenCalledTimes(1);
+	});
+
+	it('preserves fileId when startChar is at or past totalChars', async () => {
+		const json = JSON.stringify({ key: 'value' });
+		const tool = createParseStoredFileTool(
+			readerFor({
+				'file-1': storedFile('obj.json', 'application/json', Buffer.from(json)),
+			}),
+		);
+
+		const result = await executeTool(
+			tool,
+			{ fileId: 'file-1', ...defaults, startChar: json.length + 50 },
+			{} as never,
+		);
+
+		expect(parseFileOutputSchema.safeParse(result).success).toBe(true);
+		expect(result.error).toBeUndefined();
+		expect(result.fileId).toBe('file-1');
+		expect(result.content).toBe('');
+		expect(result.totalChars).toBe(json.length);
+		expect(result.truncated).toBe(false);
+		expect(result.nextStartChar).toBeUndefined();
+	});
+
+	it('paginates stored HTML, PDF, and DOCX files while preserving fileId and format metadata', async () => {
+		mockPdfGetText.mockReset().mockResolvedValue({ text: 'Stored PDF body text', total: 4 });
+		mockPdfDestroy.mockReset().mockResolvedValue(undefined);
+		mockDocxExtractRawText
+			.mockReset()
+			.mockResolvedValue({ value: 'Stored DOCX body text', messages: [] });
+
+		const tool = createParseStoredFileTool(
+			readerFor({
+				'f-html': storedFile(
+					'doc.html',
+					'text/html',
+					Buffer.from(
+						'<html><head><title>Doc</title></head><body><p>Stored HTML body text</p></body></html>',
+					),
+				),
+				'f-pdf': storedFile('doc.pdf', 'application/pdf', Buffer.from('pdf-bytes')),
+				'f-docx': storedFile(
+					'doc.docx',
+					'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+					Buffer.from('docx-bytes'),
+				),
+			}),
+		);
+
+		const htmlPage = await executeTool(
+			tool,
+			{ fileId: 'f-html', ...defaults, maxChars: 11 },
+			{} as never,
+		);
+		expect(parseFileOutputSchema.safeParse(htmlPage).success).toBe(true);
+		expect(htmlPage).toMatchObject({
+			fileId: 'f-html',
+			format: 'html',
+			title: 'Doc',
+			content: 'Stored HTML',
+			truncated: true,
+			nextStartChar: 11,
+		});
+
+		const pdfPage = await executeTool(
+			tool,
+			{ fileId: 'f-pdf', ...defaults, startChar: 7, maxChars: 8 },
+			{} as never,
+		);
+		expect(parseFileOutputSchema.safeParse(pdfPage).success).toBe(true);
+		expect(pdfPage).toMatchObject({
+			fileId: 'f-pdf',
+			format: 'pdf',
+			pages: 4,
+			content: 'PDF body',
+			truncated: true,
+			nextStartChar: 15,
+		});
+
+		const docxPage = await executeTool(
+			tool,
+			{ fileId: 'f-docx', ...defaults, startChar: 7, maxChars: 100 },
+			{} as never,
+		);
+		expect(parseFileOutputSchema.safeParse(docxPage).success).toBe(true);
+		expect(docxPage).toMatchObject({
+			fileId: 'f-docx',
+			format: 'docx',
+			content: 'DOCX body text',
+			truncated: false,
+		});
+		expect(docxPage.nextStartChar).toBeUndefined();
 	});
 });

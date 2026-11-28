@@ -44,13 +44,25 @@ describe('extractHtmlContent', () => {
 		);
 	});
 
-	it('truncates extracted text beyond MAX_RESULT_CHARS and flags truncated', async () => {
-		const longParagraph = 'word '.repeat(20_000);
-		const html = `<html><body><p>${longParagraph}</p></body></html>`;
+	it('truncates extracted text beyond MAX_RESULT_CHARS and paginates with startChar', async () => {
+		const firstHalf = 'word '.repeat(8_000);
+		const secondHalf = 'tail '.repeat(2_000);
+		const html = `<html><body><p>${firstHalf}${secondHalf}</p></body></html>`;
 		const result = await extractHtmlContent(makeHtmlAttachment(html));
 
-		expect(result.text.length).toBeLessThanOrEqual(40_000);
+		expect(result.text).toBe(firstHalf);
 		expect(result.truncated).toBe(true);
+		expect(result.totalChars).toBe(firstHalf.length + secondHalf.trimEnd().length);
+		expect(result.nextStartChar).toBe(40_000);
+
+		const nextPage = await extractHtmlContent(makeHtmlAttachment(html), {
+			startChar: result.nextStartChar,
+		});
+		expect(nextPage.text).toBe(secondHalf.trimEnd());
+		expect(nextPage.truncated).toBe(false);
+		expect(nextPage.nextStartChar).toBeUndefined();
+		expect(nextPage.totalChars).toBe(result.totalChars);
+		expect(result.text + nextPage.text).toBe(`${firstHalf}${secondHalf.trimEnd()}`);
 	});
 
 	it('handles XHTML correctly', async () => {

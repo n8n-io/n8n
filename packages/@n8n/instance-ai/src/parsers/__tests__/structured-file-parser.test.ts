@@ -1,5 +1,10 @@
+import { createHash } from 'node:crypto';
+
 import {
 	parseStructuredFile,
+	parseJsonAttachment,
+	paginateTextContent,
+	extractPlainTextContent,
 	classifyAttachments,
 	buildAttachmentManifest,
 	detectFormat,
@@ -625,5 +630,391 @@ describe('isParseableAttachment', () => {
 		['video/mp4', 'a.mp4'],
 	])('returns false for %s', (mimeType, fileName) => {
 		expect(isParseableAttachment({ data: '', mimeType, fileName })).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Text pagination & plain-text extraction
+// ---------------------------------------------------------------------------
+
+describe('paginateTextContent', () => {
+	it('returns full text without nextStartChar when within maxChars', () => {
+		const page = paginateTextContent('hello world');
+
+		expect(page).toEqual({
+			content: 'hello world',
+			totalChars: 11,
+			truncated: false,
+		});
+		expect(page.nextStartChar).toBeUndefined();
+	});
+
+	it('paginates across multiple chunks and reconstructs the exact original string', () => {
+		const original = '  line 1\nline 2\nline 3\n';
+		let startChar: number | undefined = 0;
+		const chunks: string[] = [];
+
+		while (startChar !== undefined) {
+			const page = paginateTextContent(original, { startChar, maxChars: 7 });
+			expect(page.totalChars).toBe(original.length);
+			chunks.push(page.content);
+			if (page.truncated) {
+				expect(page.nextStartChar).toBeDefined();
+				expect(page.nextStartChar).toBeGreaterThan(startChar);
+				startChar = page.nextStartChar;
+			} else {
+				expect(page.nextStartChar).toBeUndefined();
+				startChar = undefined;
+			}
+		}
+
+		expect(chunks.join('')).toBe(original);
+	});
+
+	it('returns empty content when startChar is at or past the end', () => {
+		expect(paginateTextContent('abc', { startChar: 3 })).toEqual({
+			content: '',
+			totalChars: 3,
+			truncated: false,
+		});
+		expect(paginateTextContent('abc', { startChar: 99 })).toEqual({
+			content: '',
+			totalChars: 3,
+			truncated: false,
+		});
+	});
+
+	it('clamps maxChars to MAX_RESULT_CHARS', () => {
+		const text = 'x'.repeat(MAX_RESULT_CHARS + 500);
+		const page = paginateTextContent(text, { maxChars: MAX_RESULT_CHARS * 2 });
+
+		expect(page.content.length).toBe(MAX_RESULT_CHARS);
+		expect(page.totalChars).toBe(text.length);
+		expect(page.truncated).toBe(true);
+		expect(page.nextStartChar).toBe(MAX_RESULT_CHARS);
+	});
+
+	it('keeps UTF-16 surrogate pairs together across page boundaries', () => {
+		const text = 'ab😀cd';
+		const first = paginateTextContent(text, { startChar: 0, maxChars: 3 });
+
+		expect(first.content).toBe('ab');
+		expect(first.truncated).toBe(true);
+		expect(first.nextStartChar).toBe(2);
+
+		const second = paginateTextContent(text, { startChar: first.nextStartChar, maxChars: 3 });
+		expect(second.content).toBe('😀c');
+		expect(second.truncated).toBe(true);
+		expect(second.nextStartChar).toBe(5);
+
+		const third = paginateTextContent(text, { startChar: second.nextStartChar, maxChars: 3 });
+		expect(third.content).toBe('d');
+		expect(third.truncated).toBe(false);
+		expect(third.nextStartChar).toBeUndefined();
+
+		expect(first.content + second.content + third.content).toBe(text);
+	});
+
+	it('keeps UTF-16 surrogate pairs whole when maxChars is 1', () => {
+		const text = '😀a😀';
+		let startChar: number | undefined = 0;
+		const chunks: string[] = [];
+
+		while (startChar !== undefined) {
+			const page = paginateTextContent(text, { startChar, maxChars: 1 });
+			chunks.push(page.content);
+			startChar = page.nextStartChar;
+		}
+
+		expect(chunks).toEqual(['😀', 'a', '😀']);
+		expect(chunks.join('')).toBe(text);
+	});
+
+	it('snaps startChar back to the high surrogate when it lands mid-pair', () => {
+		const text = 'ab😀cd';
+		const page = paginateTextContent(text, { startChar: 3, maxChars: 2 });
+
+		expect(page.content).toBe('😀');
+		expect(page.truncated).toBe(true);
+		expect(page.nextStartChar).toBe(4);
+
+		const singleCharPage = paginateTextContent(text, { startChar: 3, maxChars: 1 });
+		expect(singleCharPage.content).toBe('😀');
+		expect(singleCharPage.nextStartChar).toBe(4);
+	});
+
+	it('handles empty text and exact MAX_RESULT_CHARS boundaries', () => {
+		expect(paginateTextContent('')).toEqual({
+			content: '',
+			totalChars: 0,
+			truncated: false,
+		});
+
+		const exact = 'a'.repeat(MAX_RESULT_CHARS);
+		const exactPage = paginateTextContent(exact);
+		expect(exactPage.content.length).toBe(MAX_RESULT_CHARS);
+		expect(exactPage.truncated).toBe(false);
+		expect(exactPage.nextStartChar).toBeUndefined();
+
+		const overByOne = `${exact}z`;
+		const first = paginateTextContent(overByOne);
+		expect(first.content.length).toBe(MAX_RESULT_CHARS);
+		expect(first.truncated).toBe(true);
+		expect(first.nextStartChar).toBe(MAX_RESULT_CHARS);
+
+		const second = paginateTextContent(overByOne, { startChar: first.nextStartChar });
+		expect(second.content).toBe('z');
+		expect(second.truncated).toBe(false);
+		expect(second.nextStartChar).toBeUndefined();
+	});
+
+	it('clamps negative startChar to 0 and non-positive maxChars to 1', () => {
+		expect(paginateTextContent('abcdef', { startChar: -10, maxChars: 0 })).toEqual({
+			content: 'a',
+			totalChars: 6,
+			truncated: true,
+			nextStartChar: 1,
+		});
+	});
+
+	it('handles lone surrogates and CRLF line endings without stalling or loss', () => {
+		const text = 'a\uD800b\r\nc\uDC00d';
+		let startChar: number | undefined = 0;
+		const chunks: string[] = [];
+
+		while (startChar !== undefined) {
+			const page = paginateTextContent(text, { startChar, maxChars: 2 });
+			chunks.push(page.content);
+			if (page.nextStartChar !== undefined) {
+				expect(page.nextStartChar).toBeGreaterThan(startChar);
+			}
+			startChar = page.nextStartChar;
+		}
+
+		expect(chunks.join('')).toBe(text);
+	});
+});
+
+describe('extractPlainTextContent', () => {
+	it('preserves leading and trailing whitespace for byte-exact reconstruction', () => {
+		const raw = '  hello\nworld\n';
+		const result = extractPlainTextContent({
+			data: toBase64(raw),
+			mimeType: 'text/plain',
+			fileName: 'exact.txt',
+		});
+
+		expect(result.content).toBe(raw);
+		expect(result.totalChars).toBe(raw.length);
+		expect(result.truncated).toBe(false);
+	});
+
+	it('throws on whitespace-only files', () => {
+		expect(() =>
+			extractPlainTextContent({
+				data: toBase64('   \n\t  '),
+				mimeType: 'text/plain',
+				fileName: 'blank.txt',
+			}),
+		).toThrow(/contains no extractable text/);
+	});
+
+	it('rejects files over MAX_DECODED_SIZE_BYTES', () => {
+		const bigData = Buffer.alloc(MAX_DECODED_SIZE_BYTES + 1, 'a').toString('base64');
+		expect(() =>
+			extractPlainTextContent({ data: bigData, mimeType: 'text/plain', fileName: 'big.txt' }),
+		).toThrow(/exceeds maximum size/);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// JSON attachment parsing (tabular + non-tabular with pagination)
+// ---------------------------------------------------------------------------
+
+describe('parseJsonAttachment', () => {
+	it('returns tabular columns and rows for flat arrays of flat objects', () => {
+		const json = JSON.stringify([
+			{ name: 'Alice', age: 30 },
+			{ name: 'Bob', age: 25 },
+		]);
+		const result = parseJsonAttachment(makeJsonAttachment(json), 0, {});
+
+		expect(result.format).toBe('json');
+		expect(result.totalRows).toBe(2);
+		expect(result.returnedRows).toBe(2);
+		expect(result.columns.map((c) => c.name)).toEqual(['name', 'age']);
+		expect(result.content).toBeUndefined();
+	});
+
+	it('keeps flat arrays tabular when startChar is 0 and maxChars is omitted', () => {
+		const json = JSON.stringify([{ name: 'Alice' }]);
+		const result = parseJsonAttachment(makeJsonAttachment(json), 0, { startChar: 0 });
+
+		expect(result.totalRows).toBe(1);
+		expect(result.rows).toEqual([{ name: 'Alice' }]);
+		expect(result.content).toBeUndefined();
+	});
+
+	it('returns raw JSON content when character pagination is explicitly requested', () => {
+		const json = JSON.stringify([{ name: 'Alice' }]);
+		const result = parseJsonAttachment(makeJsonAttachment(json), 0, { maxChars: 10 });
+
+		expect(result.totalRows).toBe(0);
+		expect(result.content).toBe(json.slice(0, 10));
+		expect(result.totalChars).toBe(json.length);
+		expect(result.truncated).toBe(true);
+		expect(result.nextStartChar).toBe(10);
+	});
+
+	it('parses non-array JSON objects as exact paginated content', () => {
+		const handover = {
+			version: 1,
+			files: Array.from({ length: 14 }, (_, i) => ({
+				path: `src/file-${i}.ts`,
+				content: `// file ${i}\n${'export const x = 1;\n'.repeat(1_000)}`,
+			})),
+		};
+		const rawJson = `${JSON.stringify(handover, null, 2)}\n`;
+		expect(rawJson.length).toBeGreaterThan(250_000);
+
+		const attachment = makeJsonAttachment(rawJson, 'handover.json');
+		const chunks: string[] = [];
+		let startChar: number | undefined = 0;
+
+		while (startChar !== undefined) {
+			const page = parseJsonAttachment(attachment, 0, { startChar });
+			expect(page.format).toBe('json');
+			expect(page.totalRows).toBe(0);
+			expect(page.totalChars).toBe(rawJson.length);
+			expect(page.content).toBeDefined();
+			chunks.push(page.content ?? '');
+			startChar = page.nextStartChar;
+		}
+
+		expect(chunks.length).toBeGreaterThan(1);
+		const restored = chunks.join('');
+		expect(restored).toBe(rawJson);
+
+		const expectedHash = createHash('sha256').update(rawJson, 'utf-8').digest('hex');
+		const actualHash = createHash('sha256').update(restored, 'utf-8').digest('hex');
+		expect(actualHash).toBe(expectedHash);
+	});
+
+	it('handles empty JSON arrays in tabular mode', () => {
+		const result = parseJsonAttachment(makeJsonAttachment('[]'), 0, {});
+
+		expect(result.format).toBe('json');
+		expect(result.columns).toEqual([]);
+		expect(result.rows).toEqual([]);
+		expect(result.totalRows).toBe(0);
+		expect(result.content).toBeUndefined();
+		expect(result.warnings).toBeUndefined();
+	});
+
+	it('falls back to raw JSON content for nested arrays/objects and primitive arrays without warnings', () => {
+		for (const payload of [
+			JSON.stringify([{ name: 'Alice', meta: { role: 'admin' } }]),
+			JSON.stringify([{ name: 'Alice', tags: ['a', 'b'] }]),
+			JSON.stringify(['a', 'b', 'c']),
+			JSON.stringify('scalar'),
+			JSON.stringify(42),
+		]) {
+			const result = parseJsonAttachment(makeJsonAttachment(payload), 0, {});
+			expect(result.format).toBe('json');
+			expect(result.content).toBe(payload);
+			expect(result.totalChars).toBe(payload.length);
+			expect(result.truncated).toBe(false);
+			expect(result.warnings).toBeUndefined();
+		}
+	});
+
+	it('falls back to raw JSON content with a warning when a flat array exceeds tabular cell or column limits', () => {
+		const longCellJson = JSON.stringify([
+			{ path: 'a.ts', content: 'x'.repeat(MAX_CELL_STRING_LENGTH + 100) },
+		]);
+		const longCellResult = parseJsonAttachment(makeJsonAttachment(longCellJson), 0, {});
+		expect(longCellResult.content).toBe(longCellJson);
+		expect(longCellResult.totalChars).toBe(longCellJson.length);
+		expect(longCellResult.warnings).toEqual([
+			`Returned as raw JSON text: cell string length exceeds the ${MAX_CELL_STRING_LENGTH}-character tabular limit.`,
+		]);
+
+		const wideRow: Record<string, number> = {};
+		for (let i = 0; i <= MAX_COLUMNS; i++) {
+			wideRow[`col_${i}`] = i;
+		}
+		const wideJson = JSON.stringify([wideRow]);
+		const wideResult = parseJsonAttachment(makeJsonAttachment(wideJson), 0, {});
+		expect(wideResult.content).toBe(wideJson);
+		expect(wideResult.totalChars).toBe(wideJson.length);
+		expect(wideResult.warnings).toEqual([
+			`Returned as raw JSON text: key count exceeds the ${MAX_COLUMNS}-column tabular limit.`,
+		]);
+	});
+
+	it('still rejects invalid JSON and dangerous keys in tabular JSON arrays', () => {
+		expect(() => parseJsonAttachment(makeJsonAttachment('{not json'), 0, {})).toThrow(
+			'Invalid JSON',
+		);
+		expect(() =>
+			parseJsonAttachment(makeJsonAttachment('[{"__proto__": "bad", "name": "Alice"}]'), 0, {}),
+		).toThrow('Dangerous key "__proto__"');
+		expect(() =>
+			parseJsonAttachment(makeJsonAttachment('[{"constructor": "bad", "name": "Alice"}]'), 0, {}),
+		).toThrow('Dangerous key "constructor"');
+	});
+
+	it('paginates flat tabular JSON arrays with startRow/maxRows and enforces budgets', () => {
+		const rows = Array.from({ length: 30 }, (_, i) => ({ name: `user-${i}`, index: i }));
+		const att = makeJsonAttachment(JSON.stringify(rows));
+
+		const first = parseJsonAttachment(att, 0, { maxRows: 10 });
+		expect(first.totalRows).toBe(30);
+		expect(first.returnedRows).toBe(10);
+		expect(first.truncated).toBe(true);
+		expect(first.nextStartRow).toBe(10);
+		expect(first.content).toBeUndefined();
+
+		const last = parseJsonAttachment(att, 0, { startRow: 25, maxRows: 10 });
+		expect(last.returnedRows).toBe(5);
+		expect(last.truncated).toBe(false);
+		expect(last.nextStartRow).toBeUndefined();
+
+		// Cell budget enforcement still applies on tabular JSON arrays.
+		const wideRows = Array.from({ length: 60 }, () => {
+			const row: Record<string, string> = {};
+			for (let c = 0; c < MAX_COLUMNS; c++) {
+				row[`c${c}`] = 'v';
+			}
+			return row;
+		});
+		const budgeted = parseJsonAttachment(makeJsonAttachment(JSON.stringify(wideRows)), 0, {
+			maxRows: 60,
+		});
+		expect(budgeted.returnedRows * MAX_COLUMNS).toBeLessThanOrEqual(MAX_CELLS_PER_CALL);
+		expect(budgeted.truncated).toBe(true);
+		expect(budgeted.warnings?.some((w) => w.includes('cell budget'))).toBe(true);
+	});
+
+	it('returns empty content when startChar is past totalChars on non-tabular JSON', () => {
+		const raw = JSON.stringify({ ok: true });
+		const page = parseJsonAttachment(makeJsonAttachment(raw), 0, { startChar: raw.length + 10 });
+
+		expect(page.content).toBe('');
+		expect(page.totalChars).toBe(raw.length);
+		expect(page.truncated).toBe(false);
+		expect(page.nextStartChar).toBeUndefined();
+	});
+
+	it('returns non-tabular JSON objects containing constructor/prototype keys safely as raw text', () => {
+		const raw = JSON.stringify({
+			files: [{ path: 'ast.ts', symbols: { constructor: 'ClassCtor', prototype: 'Proto' } }],
+		});
+		const page = parseJsonAttachment(makeJsonAttachment(raw), 0, {});
+
+		expect(page.format).toBe('json');
+		expect(page.totalRows).toBe(0);
+		expect(page.content).toBe(raw);
+		expect(page.truncated).toBe(false);
 	});
 });

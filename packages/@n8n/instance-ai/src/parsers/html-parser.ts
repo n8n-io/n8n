@@ -1,14 +1,17 @@
 import {
 	MAX_DECODED_SIZE_BYTES,
-	MAX_RESULT_CHARS,
 	formatSizeLimitMessage,
+	paginateTextContent,
 	type AttachmentInfo,
+	type TextPaginationOptions,
 } from './structured-file-parser';
 
 export interface HtmlExtractionResult {
 	text: string;
 	title?: string;
 	truncated: boolean;
+	totalChars: number;
+	nextStartChar?: number;
 }
 
 const STRIPPABLE_TAGS = ['script', 'style', 'noscript', 'iframe', 'object', 'embed'];
@@ -34,6 +37,7 @@ interface StrippableDocument {
  */
 export async function extractHtmlContent(
 	attachment: AttachmentInfo,
+	options?: TextPaginationOptions,
 ): Promise<HtmlExtractionResult> {
 	const decoded = Buffer.from(attachment.data, 'base64');
 	if (decoded.length > MAX_DECODED_SIZE_BYTES) {
@@ -65,9 +69,12 @@ export async function extractHtmlContent(
 		throw new Error(`HTML "${attachment.fileName}" contains no extractable text.`);
 	}
 
-	if (markdown.length > MAX_RESULT_CHARS) {
-		return { text: markdown.slice(0, MAX_RESULT_CHARS), title, truncated: true };
-	}
-
-	return { text: markdown, title, truncated: false };
+	const page = paginateTextContent(markdown, options);
+	return {
+		text: page.content,
+		title,
+		truncated: page.truncated,
+		totalChars: page.totalChars,
+		...(page.nextStartChar !== undefined ? { nextStartChar: page.nextStartChar } : {}),
+	};
 }

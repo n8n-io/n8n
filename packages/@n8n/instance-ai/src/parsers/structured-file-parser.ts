@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { parse as csvParse } from 'csv-parse/sync';
 
 /**
@@ -8,7 +9,8 @@ import type { parse as csvParse } from 'csv-parse/sync';
  * - Max columns capped at MAX_COLUMNS
  * - Max returned rows capped at MAX_ROWS_PER_CALL
  * - Output cells capped at MAX_CELLS_PER_CALL
- * - Serialized result chars capped at MAX_RESULT_CHARS
+ * - Tabular output serialized chars capped at MAX_RESULT_CHARS
+ * - Paginated text and non-tabular JSON pages capped at MAX_RESULT_CHARS raw chars
  * - Individual cell strings capped at MAX_CELL_STRING_LENGTH
  * - Dangerous keys (__proto__, constructor, prototype) are rejected
  */
@@ -76,6 +78,18 @@ export interface ColumnMeta {
 
 export type CellValue = string | number | boolean | null;
 
+export interface TextPaginationOptions {
+	startChar?: number;
+	maxChars?: number;
+}
+
+export interface TextPaginationResult {
+	content: string;
+	totalChars: number;
+	truncated: boolean;
+	nextStartChar?: number;
+}
+
 export interface ParseFileInput {
 	attachmentIndex?: number;
 	format?: SupportedFormat;
@@ -83,6 +97,8 @@ export interface ParseFileInput {
 	delimiter?: string;
 	startRow?: number;
 	maxRows?: number;
+	startChar?: number;
+	maxChars?: number;
 }
 
 export interface ParseFileOutput {
@@ -98,6 +114,8 @@ export interface ParseFileOutput {
 	nextStartRow?: number;
 	warnings?: string[];
 	content?: string;
+	totalChars?: number;
+	nextStartChar?: number;
 	title?: string;
 	pages?: number;
 }
@@ -361,14 +379,14 @@ function parseJson(content: string): {
 	return { rawHeaders, allRows: parsed as Array<Record<string, unknown>> };
 }
 
-// ── Main parse function ─────────────────────────────────────────────────────
+function toCellValueOrNull(value: unknown): CellValue {
+	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+		return value;
+	}
+	return null;
+}
 
-export function parseStructuredFile(
-	attachment: AttachmentInfo,
-	attachmentIndex: number,
-	input: ParseFileInput,
-): ParseFileOutput {
-	// Decode base64
+function decodeAttachmentText(attachment: AttachmentInfo): string {
 	let decoded: Buffer;
 	try {
 		decoded = Buffer.from(attachment.data, 'base64');
@@ -380,91 +398,20 @@ export function parseStructuredFile(
 		throw new Error(formatSizeLimitMessage(decoded.length));
 	}
 
-	const content = decoded.toString('utf-8');
-	const format = detectFormat(attachment.fileName, attachment.mimeType, input.format);
-	if (!format || !isLegacyTabularFormat(format)) {
-		throw new Error(
-			`Unsupported format for "${attachment.fileName}" (${attachment.mimeType}). Supported: csv, tsv, json`,
-		);
-	}
+	return decoded.toString('utf-8');
+}
 
-	const hasHeader = input.hasHeader ?? true;
-	const startRow = input.startRow ?? 0;
-	const maxRows = Math.min(input.maxRows ?? DEFAULT_MAX_ROWS, MAX_ROWS_PER_CALL);
+function finalizeTabularOutput(
+	attachment: AttachmentInfo,
+	attachmentIndex: number,
+	format: ParseableFormat,
+	columns: ColumnMeta[],
+	initialRows: Array<Record<string, CellValue>>,
+	totalRows: number,
+	startRow: number,
+): ParseFileOutput {
+	let paginatedRows = initialRows;
 	const warnings: string[] = [];
-
-	let columns: ColumnMeta[];
-	let paginatedRows: Array<Record<string, CellValue>>;
-	let totalRows: number;
-
-	if (format === 'json') {
-		const { rawHeaders, allRows } = parseJson(content);
-
-		if (rawHeaders.length > MAX_COLUMNS) {
-			throw new Error(`Too many columns: ${rawHeaders.length} (max ${MAX_COLUMNS})`);
-		}
-
-		const normalizedNames = normalizeColumnNames(rawHeaders);
-		totalRows = allRows.length;
-		const sliced = allRows.slice(startRow, startRow + maxRows);
-
-		// Build columns with type inference from sliced sample
-		columns = rawHeaders.map((raw, i) => ({
-			originalName: raw,
-			name: normalizedNames[i],
-			inferredType: inferColumnType(
-				sliced.map((row) => {
-					const val = row[raw];
-					return val === undefined ? null : (val as CellValue);
-				}),
-			),
-			index: i,
-		}));
-
-		// Build output rows using normalized names
-		paginatedRows = sliced.map((row, rowIdx) => {
-			const out: Record<string, CellValue> = {};
-			for (let i = 0; i < rawHeaders.length; i++) {
-				const val = row[rawHeaders[i]];
-				out[normalizedNames[i]] = validateCellValue(
-					val === undefined ? null : val,
-					i,
-					startRow + rowIdx,
-				);
-			}
-			return out;
-		});
-	} else {
-		const { rawHeaders, allRows } = parseCsvTsv(content, format, {
-			hasHeader,
-			delimiter: input.delimiter,
-		});
-
-		if (rawHeaders.length > MAX_COLUMNS) {
-			throw new Error(`Too many columns: ${rawHeaders.length} (max ${MAX_COLUMNS})`);
-		}
-
-		const normalizedNames = normalizeColumnNames(rawHeaders);
-		totalRows = allRows.length;
-		const sliced = allRows.slice(startRow, startRow + maxRows);
-
-		// Build columns with type inference from sliced sample
-		columns = rawHeaders.map((raw, i) => ({
-			originalName: raw,
-			name: normalizedNames[i],
-			inferredType: inferColumnType(sliced.map((row) => row[i] ?? null)),
-			index: i,
-		}));
-
-		// Build output rows using normalized names
-		paginatedRows = sliced.map((row, rowIdx) => {
-			const out: Record<string, CellValue> = {};
-			for (let i = 0; i < rawHeaders.length; i++) {
-				out[normalizedNames[i]] = validateCellValue(row[i] ?? null, i, startRow + rowIdx);
-			}
-			return out;
-		});
-	}
 
 	// Enforce output budgets
 	let truncated = false;
@@ -520,6 +467,311 @@ export function parseStructuredFile(
 		...(hasMore || truncated ? { nextStartRow: startRow + returnedRows } : {}),
 		...(warnings.length > 0 ? { warnings } : {}),
 	};
+}
+
+function buildJsonTabularRows(
+	rawHeaders: string[],
+	allRows: Array<Record<string, unknown>>,
+	startRow: number,
+	maxRows: number,
+): { columns: ColumnMeta[]; paginatedRows: Array<Record<string, CellValue>>; totalRows: number } {
+	const normalizedNames = normalizeColumnNames(rawHeaders);
+	const totalRows = allRows.length;
+	const sliced = allRows.slice(startRow, startRow + maxRows);
+
+	const columns = rawHeaders.map((raw, i) => ({
+		originalName: raw,
+		name: normalizedNames[i],
+		inferredType: inferColumnType(sliced.map((row) => toCellValueOrNull(row[raw]))),
+		index: i,
+	}));
+
+	const paginatedRows = sliced.map((row, rowIdx) => {
+		const out: Record<string, CellValue> = {};
+		for (let i = 0; i < rawHeaders.length; i++) {
+			const val = row[rawHeaders[i]];
+			out[normalizedNames[i]] = validateCellValue(
+				val === undefined ? null : val,
+				i,
+				startRow + rowIdx,
+			);
+		}
+		return out;
+	});
+
+	return { columns, paginatedRows, totalRows };
+}
+
+function isHighSurrogate(code: number): boolean {
+	return code >= 0xd800 && code <= 0xdbff;
+}
+
+function isLowSurrogate(code: number): boolean {
+	return code >= 0xdc00 && code <= 0xdfff;
+}
+
+/**
+ * Paginates text content by character offset.
+ *
+ * Keeps UTF-16 surrogate pairs together across page boundaries so each page
+ * stays valid UTF-8 and concatenating pages reproduces the original string.
+ */
+export function paginateTextContent(
+	text: string,
+	options: TextPaginationOptions = {},
+): TextPaginationResult {
+	const totalChars = text.length;
+	let startChar = Math.max(0, options.startChar ?? 0);
+	const maxChars = Math.min(Math.max(1, options.maxChars ?? MAX_RESULT_CHARS), MAX_RESULT_CHARS);
+
+	if (startChar >= totalChars) {
+		return {
+			content: '',
+			totalChars,
+			truncated: false,
+		};
+	}
+
+	if (
+		startChar > 0 &&
+		isHighSurrogate(text.charCodeAt(startChar - 1)) &&
+		isLowSurrogate(text.charCodeAt(startChar))
+	) {
+		startChar -= 1;
+	}
+
+	let end = Math.min(startChar + maxChars, totalChars);
+	if (end < totalChars && end > startChar) {
+		const lastCode = text.charCodeAt(end - 1);
+		const nextCode = text.charCodeAt(end);
+		if (isHighSurrogate(lastCode) && isLowSurrogate(nextCode)) {
+			end += end - startChar === 1 ? 1 : -1;
+		}
+	}
+
+	const content = text.slice(startChar, end);
+	const hasMore = end < totalChars;
+
+	return {
+		content,
+		totalChars,
+		truncated: hasMore,
+		...(hasMore ? { nextStartChar: end } : {}),
+	};
+}
+
+/**
+ * Extracts raw UTF-8 text from a plain-text or Markdown attachment with
+ * character pagination. Keeps leading and trailing whitespace intact so
+ * paginated reads can reconstruct the exact original text.
+ */
+export function extractPlainTextContent(
+	attachment: AttachmentInfo,
+	options: TextPaginationOptions = {},
+): TextPaginationResult {
+	const raw = decodeAttachmentText(attachment);
+	if (!raw.trim()) {
+		throw new Error(`"${attachment.fileName}" contains no extractable text.`);
+	}
+	return paginateTextContent(raw, options);
+}
+
+type TabularJsonResult =
+	| { kind: 'tabular'; rawHeaders: string[]; allRows: Array<Record<string, unknown>> }
+	| { kind: 'non-tabular'; warning?: string };
+
+/**
+ * Checks whether a parsed JSON array can be represented as flat tabular rows
+ * within the tabular limits. Returns a non-tabular result (with a warning when
+ * a tabular limit triggered the fallback), and throws on dangerous keys.
+ */
+function extractTabularJsonRows(parsed: unknown[]): TabularJsonResult {
+	if (parsed.length === 0) {
+		return { kind: 'tabular', rawHeaders: [], allRows: [] };
+	}
+
+	const keySet = new Set<string>();
+	const allRows: Array<Record<string, unknown>> = [];
+
+	for (const item of parsed) {
+		if (!isRecord(item)) return { kind: 'non-tabular' };
+		for (const [key, value] of Object.entries(item)) {
+			if (value !== null && typeof value === 'object') return { kind: 'non-tabular' };
+			if (typeof value === 'string' && value.length > MAX_CELL_STRING_LENGTH) {
+				return {
+					kind: 'non-tabular',
+					warning: `Returned as raw JSON text: cell string length exceeds the ${MAX_CELL_STRING_LENGTH}-character tabular limit.`,
+				};
+			}
+			keySet.add(key);
+			if (keySet.size > MAX_COLUMNS) {
+				return {
+					kind: 'non-tabular',
+					warning: `Returned as raw JSON text: key count exceeds the ${MAX_COLUMNS}-column tabular limit.`,
+				};
+			}
+		}
+		allRows.push(item);
+	}
+
+	// Reject prototype-pollution keys before materializing tabular row objects.
+	for (const row of allRows) {
+		const dangerousKey = hasDangerousKey(row);
+		if (dangerousKey) {
+			throw new Error(`Dangerous key "${dangerousKey}" found in JSON data`);
+		}
+	}
+
+	return { kind: 'tabular', rawHeaders: [...keySet], allRows };
+}
+
+/**
+ * Parses a JSON attachment for `parse-file`.
+ *
+ * Returns tabular rows and columns for flat arrays of flat objects within
+ * tabular limits (unless character pagination is requested). Returns exact,
+ * character-paginated UTF-8 JSON content for objects, nested structures,
+ * primitive arrays, or arrays that exceed tabular limits.
+ */
+export function parseJsonAttachment(
+	attachment: AttachmentInfo,
+	attachmentIndex: number,
+	input: ParseFileInput,
+): ParseFileOutput {
+	const raw = decodeAttachmentText(attachment);
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		throw new Error('Invalid JSON: failed to parse');
+	}
+
+	const requestsCharPagination =
+		(input.startChar !== undefined && input.startChar > 0) || input.maxChars !== undefined;
+
+	let warnings: string[] | undefined;
+
+	if (!requestsCharPagination && Array.isArray(parsed)) {
+		const tabular = extractTabularJsonRows(parsed);
+		if (tabular.kind === 'tabular') {
+			const startRow = input.startRow ?? 0;
+			const maxRows = Math.min(input.maxRows ?? DEFAULT_MAX_ROWS, MAX_ROWS_PER_CALL);
+			const { columns, paginatedRows, totalRows } = buildJsonTabularRows(
+				tabular.rawHeaders,
+				tabular.allRows,
+				startRow,
+				maxRows,
+			);
+			return finalizeTabularOutput(
+				attachment,
+				attachmentIndex,
+				'json',
+				columns,
+				paginatedRows,
+				totalRows,
+				startRow,
+			);
+		}
+		if (tabular.warning) {
+			warnings = [tabular.warning];
+		}
+	}
+
+	return {
+		attachmentIndex,
+		fileName: attachment.fileName,
+		mimeType: attachment.mimeType,
+		format: 'json',
+		columns: [],
+		rows: [],
+		totalRows: 0,
+		returnedRows: 0,
+		...paginateTextContent(raw, {
+			startChar: input.startChar,
+			maxChars: input.maxChars,
+		}),
+		...(warnings ? { warnings } : {}),
+	};
+}
+
+// ── Main parse function ─────────────────────────────────────────────────────
+
+export function parseStructuredFile(
+	attachment: AttachmentInfo,
+	attachmentIndex: number,
+	input: ParseFileInput,
+): ParseFileOutput {
+	const content = decodeAttachmentText(attachment);
+	const format = detectFormat(attachment.fileName, attachment.mimeType, input.format);
+	if (!format || !isLegacyTabularFormat(format)) {
+		throw new Error(
+			`Unsupported format for "${attachment.fileName}" (${attachment.mimeType}). Supported: csv, tsv, json`,
+		);
+	}
+
+	const hasHeader = input.hasHeader ?? true;
+	const startRow = input.startRow ?? 0;
+	const maxRows = Math.min(input.maxRows ?? DEFAULT_MAX_ROWS, MAX_ROWS_PER_CALL);
+
+	let columns: ColumnMeta[];
+	let paginatedRows: Array<Record<string, CellValue>>;
+	let totalRows: number;
+
+	if (format === 'json') {
+		const { rawHeaders, allRows } = parseJson(content);
+
+		if (rawHeaders.length > MAX_COLUMNS) {
+			throw new Error(`Too many columns: ${rawHeaders.length} (max ${MAX_COLUMNS})`);
+		}
+
+		({ columns, paginatedRows, totalRows } = buildJsonTabularRows(
+			rawHeaders,
+			allRows,
+			startRow,
+			maxRows,
+		));
+	} else {
+		const { rawHeaders, allRows } = parseCsvTsv(content, format, {
+			hasHeader,
+			delimiter: input.delimiter,
+		});
+
+		if (rawHeaders.length > MAX_COLUMNS) {
+			throw new Error(`Too many columns: ${rawHeaders.length} (max ${MAX_COLUMNS})`);
+		}
+
+		const normalizedNames = normalizeColumnNames(rawHeaders);
+		totalRows = allRows.length;
+		const sliced = allRows.slice(startRow, startRow + maxRows);
+
+		// Build columns with type inference from sliced sample
+		columns = rawHeaders.map((raw, i) => ({
+			originalName: raw,
+			name: normalizedNames[i],
+			inferredType: inferColumnType(sliced.map((row) => row[i] ?? null)),
+			index: i,
+		}));
+
+		// Build output rows using normalized names
+		paginatedRows = sliced.map((row, rowIdx) => {
+			const out: Record<string, CellValue> = {};
+			for (let i = 0; i < rawHeaders.length; i++) {
+				out[normalizedNames[i]] = validateCellValue(row[i] ?? null, i, startRow + rowIdx);
+			}
+			return out;
+		});
+	}
+
+	return finalizeTabularOutput(
+		attachment,
+		attachmentIndex,
+		format,
+		columns,
+		paginatedRows,
+		totalRows,
+		startRow,
+	);
 }
 
 // ── Attachment classification ───────────────────────────────────────────────
