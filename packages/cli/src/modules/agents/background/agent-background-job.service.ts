@@ -5,8 +5,17 @@ import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import type { ExecutionStatus, IRunData, TerminalExecutionStatus } from 'n8n-workflow';
-import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	IRunData,
+	IWorkflowSettings,
+	TerminalExecutionStatus,
+} from 'n8n-workflow';
+import {
+	isExecutionOutputRedacted,
+	isTerminalExecutionStatus,
+	WorkflowOperationError,
+} from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -217,6 +226,8 @@ export class AgentBackgroundJobService {
 		runData?: IRunData,
 		connections?: import('n8n-workflow').IConnections,
 		binaryDataAccess?: string[],
+		/** True when the run redacts its execution data: the result then holds the last node's output only. */
+		outputRedacted = false,
 	): Promise<boolean> {
 		const job = await this.jobRepository.findRunningWorkflowJobByExecutionId(executionId);
 		if (!job) return false;
@@ -238,7 +249,8 @@ export class AgentBackgroundJobService {
 			}
 		}
 
-		if (job.pauseRequestId && runData) {
+		const allOutputs = Boolean(job.pauseRequestId) && !outputRedacted;
+		if (allOutputs && runData) {
 			settlement = {
 				...settlement,
 				result: serializeWorkflowJobResult(collectResultData(runData, true)),
@@ -246,7 +258,7 @@ export class AgentBackgroundJobService {
 		}
 		let storedFiles: JobOutputFiles['files'] = null;
 		if (settlement.status === 'completed' && runData && settlement.files === undefined) {
-			const output = await this.storeOutputFiles(job, runData, binaryDataAccess);
+			const output = await this.storeOutputFiles(job, runData, binaryDataAccess, allOutputs);
 			storedFiles = output.files;
 			settlement = { ...settlement, ...output };
 		}
@@ -275,8 +287,9 @@ export class AgentBackgroundJobService {
 		>,
 		runData: IRunData,
 		binaryDataAccess?: string[],
+		allOutputs = Boolean(job.pauseRequestId),
 	): Promise<JobOutputFiles> {
-		const items = Object.values(collectResultItems(runData, Boolean(job.pauseRequestId))).flat();
+		const items = Object.values(collectResultItems(runData, allOutputs)).flat();
 		if (!items.some((item) => item.binary) || !job.parentResourceId) return NO_OUTPUT_FILES;
 		try {
 			const projectId = await this.threadRepository.findProjectId(job.parentThreadId);
@@ -1411,10 +1424,13 @@ export class AgentBackgroundJobService {
 				};
 			}
 
+			const allowed =
+				allOutputs &&
+				!isExecutionOutputRedacted(execution.data, workflowSettingsOf(execution), execution.mode);
 			return {
-				result: serializeWorkflowJobResult(collectResultData(runData, allOutputs)),
+				result: serializeWorkflowJobResult(collectResultData(runData, allowed)),
 				...(status === 'completed'
-					? await this.storeOutputFiles(job, runData, execution.data?.binaryDataAccess)
+					? await this.storeOutputFiles(job, runData, execution.data?.binaryDataAccess, allowed)
 					: NO_OUTPUT_FILES),
 			};
 		} catch (error) {
@@ -1602,4 +1618,10 @@ export class AgentBackgroundJobService {
 			return false;
 		}
 	}
+}
+
+function workflowSettingsOf(execution: {
+	workflowData?: { settings?: IWorkflowSettings };
+}): IWorkflowSettings | undefined {
+	return execution.workflowData?.settings;
 }

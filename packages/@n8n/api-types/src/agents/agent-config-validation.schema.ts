@@ -84,17 +84,30 @@ export const agentConfigValidationIssueSchema = z.object({
 export type AgentConfigValidationIssue = z.infer<typeof agentConfigValidationIssueSchema>;
 
 /** Stable, i18n-free code for a validation warning. A warning does not make a config invalid. */
-export const agentConfigValidationWarningCodeSchema = z.enum(['similar_skill_names']);
+export const agentConfigValidationWarningCodeSchema = z.enum([
+	'similar_skill_names',
+	'workflow_outputs_redacted',
+]);
 export type AgentConfigValidationWarningCode = z.infer<
 	typeof agentConfigValidationWarningCodeSchema
 >;
 
-export const agentConfigValidationWarningSchema = z.object({
-	code: agentConfigValidationWarningCodeSchema,
-	capability: agentConfigValidationCapabilityRefSchema,
-	/** For `similar_skill_names`: the skill names that are hard to tell apart, at least two. */
-	names: z.array(z.string().min(1)).min(2),
-});
+export const agentConfigValidationWarningSchema = z.discriminatedUnion('code', [
+	z.object({
+		code: z.literal(agentConfigValidationWarningCodeSchema.enum.similar_skill_names),
+		capability: agentConfigValidationCapabilityRefSchema,
+		/** The skill names that are hard to tell apart, at least two. */
+		names: z.array(z.string().min(1)).min(2),
+	}),
+	z.object({
+		/**
+		 * A workflow tool sets `allOutputs`, but the workflow redacts its
+		 * execution data. The tool then returns only the last node's output.
+		 */
+		code: z.literal(agentConfigValidationWarningCodeSchema.enum.workflow_outputs_redacted),
+		capability: agentConfigValidationCapabilityRefSchema,
+	}),
+]);
 export type AgentConfigValidationWarning = z.infer<typeof agentConfigValidationWarningSchema>;
 
 export const agentConfigValidationResponseSchema = z.object({

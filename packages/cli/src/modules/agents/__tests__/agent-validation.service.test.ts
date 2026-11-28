@@ -5,7 +5,7 @@ import type { TransactionRunner, User, WorkflowRepository, WorkflowEntity } from
 import type { PolicyViolation } from '@n8n/decorators';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import type { NodeTypesProxy } from '@n8n/backend-services';
+import type { ExecutionRedactionServiceProxy, NodeTypesProxy } from '@n8n/backend-services';
 import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -90,6 +90,7 @@ function makeService() {
 	agentPolicyService.evaluatePublish.mockResolvedValue({ violations: [] });
 	const workflowsInSkillsFlagGate = mock<WorkflowsInSkillsFlagGate>();
 	const workflowFinderService = mock<WorkflowFinderService>();
+	const executionRedaction = mock<ExecutionRedactionServiceProxy>();
 	return {
 		service: new AgentValidationService(
 			agentRepository,
@@ -109,6 +110,7 @@ function makeService() {
 			agentPolicyService,
 			workflowsInSkillsFlagGate,
 			workflowFinderService,
+			executionRedaction,
 		),
 		skillRefs,
 		agentRepository,
@@ -122,6 +124,7 @@ function makeService() {
 		agentPolicyService,
 		workflowsInSkillsFlagGate,
 		workflowFinderService,
+		executionRedaction,
 	};
 }
 
@@ -1316,6 +1319,106 @@ describe('AgentValidationService — structured issues', () => {
 			);
 		},
 	);
+
+	describe('allOutputs on a workflow tool that redacts its execution data', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const warning = {
+			code: 'workflow_outputs_redacted',
+			capability: { kind: 'tool', id: 'My Workflow', index: 0, toolType: 'workflow' },
+		};
+
+		function setup(isRedacted: boolean) {
+			const deps = makeService();
+			const agent = makeAgent({
+				...runnableConfig,
+				tools: [
+					{ type: 'workflow', workflow: 'My Workflow', workflowId: 'wf-1', allOutputs: true },
+				],
+			});
+			deps.workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					activeVersionId: 'v1',
+					nodes: [executeWorkflowTriggerNode],
+				},
+			] as never);
+			deps.executionRedaction.processExecutions.mockImplementation(async (executions) => {
+				for (const execution of executions) {
+					if (isRedacted) {
+						execution.data.redactionInfo = {
+							isRedacted: true,
+							reason: 'workflow_redaction_policy',
+							canReveal: true,
+						};
+					}
+				}
+			});
+			return { ...deps, agent };
+		}
+
+		it.each([
+			[true, [warning]],
+			[false, undefined],
+		])('warns when a published run redacts: %s', async (isRedacted, warnings) => {
+			const { service, agent, executionRedaction } = setup(isRedacted);
+
+			const result = await service.validateLoadedAgentConfiguration(
+				agent,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+				'publish',
+				undefined,
+				user,
+			);
+
+			expect(result.warnings).toEqual(warnings);
+			expect(result.issues.filter((i) => i.path.startsWith('tools.0'))).toEqual([]);
+			// The check uses the run mode of a published agent, without a reveal.
+			expect(executionRedaction.processExecutions).toHaveBeenCalledWith(
+				[expect.objectContaining({ mode: 'integrated', workflowId: 'wf-1' })],
+				{ user },
+			);
+		});
+
+		it('checks a legacy manual-only policy as all', async () => {
+			const { service, agent, workflowRepository, executionRedaction } = setup(true);
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					activeVersionId: 'v1',
+					nodes: [executeWorkflowTriggerNode],
+					settings: { redactionPolicy: 'manual-only' },
+				},
+			] as never);
+
+			await service.validateLoadedAgentConfiguration(
+				agent,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+				'publish',
+				undefined,
+				user,
+			);
+
+			const [[standIns]] = executionRedaction.processExecutions.mock.calls;
+			expect(standIns[0].workflowData.settings).toEqual({ redactionPolicy: 'all' });
+		});
+
+		it('skips the check for a validation without a user', async () => {
+			const { service, agent, executionRedaction } = setup(true);
+
+			const result = await service.validateLoadedAgentConfiguration(
+				agent,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+			);
+
+			expect(result.warnings).toBeUndefined();
+			expect(executionRedaction.processExecutions).not.toHaveBeenCalled();
+		});
+	});
 
 	it('reports no guardrail issue when every guardrail ref resolves', async () => {
 		const { service, agentRepository } = makeService();

@@ -6,7 +6,7 @@ import { OnLifecycleEvent, OnPubSubEvent, type WorkflowExecuteAfterContext } fro
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { RelatedAgentRun } from 'n8n-workflow';
-import { isTerminalExecutionStatus } from 'n8n-workflow';
+import { isExecutionOutputRedacted, isTerminalExecutionStatus } from 'n8n-workflow';
 
 import { Publisher } from '@n8n/backend-services';
 import { collectResultData } from '@/workflows/callable/callable-workflow-result';
@@ -128,7 +128,8 @@ export class AgentWorkflowToolResumeService {
 				},
 				runData,
 				ctx.workflow.connections,
-				...(data.binaryDataAccess?.length ? [data.binaryDataAccess] : []),
+				data.binaryDataAccess?.length ? data.binaryDataAccess : undefined,
+				isExecutionOutputRedacted(data, ctx.workflow.settings, ctx.runData.mode),
 			);
 		} catch (error) {
 			this.logger.error('Failed to settle workflow background job', {
