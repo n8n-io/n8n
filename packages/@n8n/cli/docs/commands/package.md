@@ -201,6 +201,8 @@ are stubbed instead of blocking the import.
 The import plans the skills of each imported Agent together with that Agent.
 It does not change the skills of skipped Agents.
 
+Protected instances reject Skill changes during package planning and apply.
+
 - `--conflict-policy` applies to skills too. `new-version` saves a changed skill
   as a new skill version. `skip` keeps the existing skill. `fail` blocks the
   import when a matched skill has other content. A matched skill with the same

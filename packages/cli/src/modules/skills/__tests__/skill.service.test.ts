@@ -5,7 +5,7 @@ import {
 	type ListSkillsQueryDto,
 } from '@n8n/api-types';
 import { Person, type User } from '@n8n/db';
-import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -52,6 +52,38 @@ describe('SkillService', () => {
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner, links, skillSyncGate }));
+
+	it('checks instance write settings before trusted Skill writes', async () => {
+		const {
+			service: protectedService,
+			instanceWriteAccess,
+			txRunner: protectedTxRunner,
+		} = createSkillServices();
+		instanceWriteAccess.setReadOnly(true);
+		const target = { projectId: PROJECT };
+
+		await expect(
+			protectedService.createTrusted({
+				target,
+				skill: { name: 'Guide', description: 'A guide', instructions: 'Follow the guide.' },
+				source: 'ui',
+				createdById: user.id,
+			}),
+		).rejects.toThrow(ForbiddenError);
+		await expect(
+			protectedService.saveTrusted('skill_a', { baseSkillHash: 'hash' }, user.id),
+		).rejects.toThrow(ForbiddenError);
+		await expect(protectedService.moveTrusted('skill_a', target, undefined)).rejects.toThrow(
+			ForbiddenError,
+		);
+		await expect(
+			protectedService.setAssistantAvailability('skill_a', true, target),
+		).rejects.toThrow(ForbiddenError);
+		await expect(protectedService.setMcpAvailability('skill_a', true, target)).rejects.toThrow(
+			ForbiddenError,
+		);
+		expect(protectedTxRunner.run).not.toHaveBeenCalled();
+	});
 
 	describe('createTrusted', () => {
 		it('creates the skill with an id in the agent skill format', async () => {
