@@ -609,6 +609,7 @@ describe('HttpRequestV3', () => {
 				const result = await node.execute.call(executeFunctions);
 
 				expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+				expect(executeFunctions.getCredentials).toHaveBeenCalledWith(genericCredentialType, 0);
 				if (genericCredentialType === 'oAuth1Api') {
 					expect(executeFunctions.helpers.requestOAuth1).toHaveBeenCalled();
 				} else if (genericCredentialType === 'oAuth2Api') {

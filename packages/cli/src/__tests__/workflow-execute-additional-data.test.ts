@@ -2251,43 +2251,10 @@ describe('WorkflowExecuteAdditionalData', () => {
 			await expect(promise).rejects.toThrow('Workflow is not active and cannot be executed.');
 		});
 
-<<<<<<< HEAD
-		it('should throw error when workflow does not exist', async () => {
-			workflowRepository.get.mockResolvedValue(null);
-=======
-		it('should load activeVersion relation when tags are disabled', async () => {
-			const globalConfig = Container.get(GlobalConfig);
-			globalConfig.tags.disabled = true;
-
-			workflowRepository.get.mockResolvedValue(
-				mock<WorkflowEntity>({
-					id: 'workflow-123',
-					active: true,
-					activeVersionId: 'active-version-id',
-					nodes: [],
-					connections: {},
-					activeVersion: {
-						nodes: [],
-						connections: {},
-					},
-				}),
-			);
-
-			await getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
-
-			expect(workflowRepository.get).toHaveBeenCalledWith(
-				{ id: 'workflow-123' },
-				{ relations: ['activeVersion'] },
-			);
-
-			globalConfig.tags.disabled = false;
-		});
-
 		// Regression test for CET-178: a missing sub-workflow is a user error, so it
 		// must throw a non-reportable UserError that names the workflow ID.
 		it('should throw a UserError naming the workflow ID when workflow does not exist', async () => {
 			workflowRepository.get.mockResolvedValueOnce(null);
->>>>>>> 9592bef711332bebb20d40287d86d14485a5e8b3
 
 			const promise = getPublishedWorkflowData({ id: 'non-existent' }, 'parent-workflow-id');
 

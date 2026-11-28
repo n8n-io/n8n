@@ -196,22 +196,11 @@ async function fetchWorkflowData(
 	}
 
 	if (workflowInfo.id !== undefined) {
-<<<<<<< HEAD
-		const workflowFromDb = await Container.get(WorkflowRepository).get(
-			{ id: workflowInfo.id },
-			{ relations: ['activeVersion', 'tags'] },
-=======
 		const workflowId = normalizeWorkflowId(workflowInfo.id, parentWorkflowId);
-
-		const baseRelations = ['activeVersion'];
-		const relations = Container.get(GlobalConfig).tags.disabled
-			? [...baseRelations]
-			: [...baseRelations, 'tags'];
 
 		const workflowFromDb = await Container.get(WorkflowRepository).get(
 			{ id: workflowId },
-			{ relations },
->>>>>>> 9592bef711332bebb20d40287d86d14485a5e8b3
+			{ relations: ['activeVersion', 'tags'] },
 		);
 
 		if (workflowFromDb === undefined || workflowFromDb === null) {
