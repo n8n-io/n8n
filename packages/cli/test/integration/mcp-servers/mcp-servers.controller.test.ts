@@ -321,17 +321,15 @@ describe('PATCH /projects/:projectId/mcp-servers/:serverId', () => {
 	it('changes the slug, keeps the old slug reserved, deletes active connections, keeps blocks, and emits the URL changed event', async () => {
 		const server = await createServer({ name: 'Sales tools', slug: 'sales-tools' });
 		const ds = Container.get(DataSource);
-		await ds
-			.getRepository(OAuthClient)
-			.upsert(
-				{
-					id: 'client-1',
-					name: 'Claude Code',
-					redirectUris: ['http://127.0.0.1/cb'],
-					grantTypes: ['authorization_code'],
-				},
-				['id'],
-			);
+		await ds.getRepository(OAuthClient).upsert(
+			{
+				id: 'client-1',
+				name: 'Claude Code',
+				redirectUris: ['http://127.0.0.1/cb'],
+				grantTypes: ['authorization_code'],
+			},
+			['id'],
+		);
 		await ds.getRepository(McpServerConnection).insert([
 			{
 				serverId: server.id,
