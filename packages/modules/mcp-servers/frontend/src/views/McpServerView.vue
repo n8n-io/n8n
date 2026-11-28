@@ -440,6 +440,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 							:connections="connections.data.value"
 							:loading="connections.loading.value"
 							:load-failed="connections.loadFailed.value"
+							:can-share="canShare"
 							@changed="connections.load"
 						/>
 					</div>

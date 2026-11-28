@@ -15,6 +15,7 @@ import {
 	N8nLoading,
 	N8nText,
 	N8nTimeAgo,
+	N8nTooltip,
 	type TableHeader,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -33,6 +34,8 @@ const props = defineProps<{
 	loading: boolean;
 	/** The connections did not load. The tab offers a retry. */
 	loadFailed?: boolean;
+	/** The server has a tool, so the share page has something to list. */
+	canShare?: boolean;
 }>();
 
 const emit = defineEmits<{ changed: [] }>();
@@ -40,7 +43,7 @@ const emit = defineEmits<{ changed: [] }>();
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
-const { copyServerUrl } = useMcpServerUrl();
+const { copyShareLink } = useMcpServerUrl();
 
 const permissions = computed(() => getMcpServerPermissions(props.server.projectId));
 
@@ -248,13 +251,20 @@ const removeDescription = computed(() => {
 			data-test-id="mcp-server-connections-empty"
 		>
 			<template #additionalContent>
-				<N8nButton
-					variant="solid"
-					icon="copy"
-					:label="i18n.baseText('mcpServers.actions.copyUrl')"
-					data-test-id="mcp-server-connections-copy-url"
-					@click="copyServerUrl(server)"
-				/>
+				<N8nTooltip
+					:disabled="canShare"
+					:content="i18n.baseText('mcpServers.actions.share.noTools')"
+				>
+					<N8nButton
+						variant="solid"
+						icon="share"
+						:label="i18n.baseText('mcpServers.actions.share')"
+						:disabled="!canShare"
+						data-test-id="mcp-server-connections-share"
+						data-attr="mcp-server-connections-share"
+						@click="copyShareLink(server)"
+					/>
+				</N8nTooltip>
 			</template>
 		</N8nEmptyState>
 		<N8nDataTableServer
