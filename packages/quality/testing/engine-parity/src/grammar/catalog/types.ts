@@ -7,9 +7,10 @@ import type { ParityRules } from '../rules';
  * - `plain`: one input, and output 0 continues.
  * - `if`, `switch`: route items to more than one output.
  * - `merge`: two inputs.
+ * - `loop`: Split In Batches.
  * - `trigger`: only the generator places triggers. No combinator uses them.
  */
-export type NodeRole = 'plain' | 'if' | 'switch' | 'merge' | 'trigger';
+export type NodeRole = 'plain' | 'if' | 'switch' | 'merge' | 'loop' | 'trigger';
 
 /**
  * Node parameters with holes. A hole becomes a string when the node is placed,

@@ -39,4 +39,11 @@ describe('V1Runner', () => {
 		expect(outcome?.status).toBe('error');
 		expect(outcome?.error).toEqual({ node: 'A', class: 'NodeOperationError' });
 	});
+
+	it('runs a loop once for each batch', async () => {
+		const outcome = await run('loop over items');
+
+		expect(outcome?.nodes.Body).toHaveLength(3);
+		expect(outcome?.terminal).toEqual([{ ran: 'yes' }, { ran: 'yes' }, { ran: 'yes' }]);
+	});
 });
