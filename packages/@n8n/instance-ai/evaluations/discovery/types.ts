@@ -89,6 +89,8 @@ export interface DiscoveryTestCase {
 	 * question card after the calls that the scenario requires: the turn ends there.
 	 */
 	confirmations?: DiscoveryConfirmations;
+	/** Workflows and data tables the stub instance holds before the turn. */
+	seed?: Extract<CaseSeed, { mode: 'inline' }>;
 	/** Pass condition. At least one expectation key is required. */
 	expectedToolInvocations: ExpectedToolInvocations;
 	/** Free-form note explaining what regression this scenario protects against. */
