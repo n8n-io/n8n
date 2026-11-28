@@ -573,18 +573,24 @@ describe('AppRuntimeController', () => {
 		it.each([
 			['updated', 'updateRows', { filter, data: { done: true } }],
 			['deleted', 'deleteRows', { filter }],
-		] as const)(
-			'returns only the IDs of %s rows without the read permission',
-			async (_, route, body) => {
-				const { controller, dataTables } = setup();
-				dataTables[route].mockResolvedValue([{ id: 1, title: 'Private', done: true }]);
-				const res = response();
+		] as const)('returns no %s rows without the read permission', async (_, route, body) => {
+			const { controller, dataTables } = setup();
+			dataTables[route].mockResolvedValue([
+				{ id: 1, title: 'Private', done: true },
+				{ id: 2, title: 'Other', done: true },
+			]);
+			const res = response();
 
-				await controller[route](request({ method: 'POST', params: { key: 'inbox' }, body }), res);
+			await controller[route](request({ method: 'POST', params: { key: 'inbox' }, body }), res);
 
-				expect(res.json).toHaveBeenCalledWith({ data: [{ id: 1 }] });
-			},
-		);
+			expect(dataTables[route]).toHaveBeenCalledWith(
+				expect.objectContaining({ bindingKey: 'inbox' }),
+				'table-3',
+				...(route === 'updateRows' ? [expect.anything(), { done: true }] : [expect.anything()]),
+			);
+			expect(res.status).toHaveBeenCalledWith(200);
+			expect(res.json).toHaveBeenCalledWith({ data: [] });
+		});
 
 		it('requires the update permission to update rows', async () => {
 			const { controller, dataTables } = setup();
