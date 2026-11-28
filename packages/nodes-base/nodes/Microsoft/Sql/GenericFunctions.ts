@@ -135,6 +135,21 @@ export function configurePool(credentials: IDataObject) {
 	return new mssql.ConnectionPool(config);
 }
 
+/** The driver code and the network errors behind a failed connect. A refused connection hides them in `originalError.cause`. */
+export function describeConnectionError(error: Error) {
+	const code = 'code' in error && typeof error.code === 'string' ? `Error code: ${error.code}` : '';
+	const original =
+		'originalError' in error && error.originalError instanceof Error ? error.originalError : error;
+	const causes =
+		original.cause instanceof AggregateError ? original.cause.errors : [original.cause];
+	const messages = causes
+		.filter((cause): cause is Error => cause instanceof Error)
+		.map((cause) => cause.message);
+	const cause = messages.length > 0 ? `Cause: ${messages.join('; ')}` : '';
+
+	return [code, cause].filter(Boolean).join('. ') || undefined;
+}
+
 export function escapeIdentifier(identifier: string) {
 	if (identifier.startsWith('[') && identifier.endsWith(']')) {
 		identifier = identifier.slice(1, -1);

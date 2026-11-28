@@ -11,6 +11,7 @@ import {
 	copyInputItem,
 	createTableStruct,
 	deleteOperation,
+	describeConnectionError,
 	escapeIdentifier,
 	escapeTableName,
 	executeSqlQueryAndPrepareResults,
@@ -639,6 +640,38 @@ describe('MSSQL tests', () => {
 		it('should set missing properties to null', () => {
 			const item = makeItem({ id: 1 });
 			expect(copyInputItem(item, ['id', 'name'])).toEqual({ id: 1, name: null });
+		});
+	});
+
+	describe('describeConnectionError', () => {
+		// The shape of the mssql ConnectionError that pool.connect() rejects with.
+		const driverError = (code: string, cause?: unknown) =>
+			Object.assign(new Error('Failed to connect to db.example:1433'), {
+				code,
+				originalError: new Error('Failed to connect to db.example:1433', { cause }),
+			});
+
+		it.each([
+			[
+				'a refused connection',
+				driverError(
+					'ESOCKET',
+					new AggregateError([
+						new Error('connect ECONNREFUSED ::1:1433'),
+						new Error('connect ECONNREFUSED 127.0.0.1:1433'),
+					]),
+				),
+				'Error code: ESOCKET. Cause: connect ECONNREFUSED ::1:1433; connect ECONNREFUSED 127.0.0.1:1433',
+			],
+			[
+				'an unknown host',
+				driverError('ESOCKET', new Error('getaddrinfo ENOTFOUND db.example')),
+				'Error code: ESOCKET. Cause: getaddrinfo ENOTFOUND db.example',
+			],
+			['a timeout', driverError('ETIMEOUT'), 'Error code: ETIMEOUT'],
+			['an error without driver details', new Error('Connection failed'), undefined],
+		])('should describe %s', (_, error, expected) => {
+			expect(describeConnectionError(error)).toBe(expected);
 		});
 	});
 });

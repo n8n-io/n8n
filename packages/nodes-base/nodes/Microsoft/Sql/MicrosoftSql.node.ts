@@ -10,6 +10,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { flatten, generatePairedItemData } from '@utils/utilities';
@@ -20,6 +21,7 @@ import {
 	configurePool,
 	createTableStruct,
 	deleteOperation,
+	describeConnectionError,
 	executeSqlQueryAndPrepareResults,
 	insertOperation,
 	resolveQuery,
@@ -288,9 +290,10 @@ export class MicrosoftSql implements INodeType {
 
 			if (this.continueOnFail()) {
 				return [[{ json: { error: error.message }, pairedItem }]];
-			} else {
-				throw error;
 			}
+			throw new NodeOperationError(this.getNode(), error, {
+				description: describeConnectionError(error),
+			});
 		}
 
 		const operation = this.getNodeParameter('operation', 0);
