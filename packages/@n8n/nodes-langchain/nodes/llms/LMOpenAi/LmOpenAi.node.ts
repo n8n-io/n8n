@@ -1,7 +1,7 @@
 import { OpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	getProxyAgent,
-	aiClientFetch,
+	createAiClientFetch,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 } from '@n8n/ai-utilities';
@@ -269,7 +269,7 @@ export class LmOpenAi implements INodeType {
 		const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
-			fetch: aiClientFetch,
+			fetch: createAiClientFetch(this),
 			fetchOptions: {
 				dispatcher: getProxyAgent(
 					options.baseURL ?? 'https://api.openai.com/v1',
