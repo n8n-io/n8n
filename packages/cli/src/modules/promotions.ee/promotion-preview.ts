@@ -1,8 +1,11 @@
 import type {
 	PromotionBlocker,
+	PromotionDependencyWarning,
 	PromotionDirection,
+	PromotionMissingDependency,
 	PromotionPreview,
 	PromotionPreviewCheck,
+	PromotionPromoteCheck,
 	PromotionResource,
 	PromotionResourceDependency,
 	PromotionResourceType,
@@ -540,7 +543,7 @@ export function buildPreview({
 }
 
 /** Raise when the preview changes shape, so that a revision from an older version never matches. */
-const PREVIEW_SCHEMA_VERSION = 1;
+const PREVIEW_SCHEMA_VERSION = 2;
 
 /** JSON with object keys in a fixed order, so equal values give equal text. */
 export function canonicalJson(value: unknown): string {
@@ -564,7 +567,20 @@ export function previewRevision(shown: {
 	source?: PromotionPreview['source'];
 	createBranchOnPromotion?: boolean;
 	blocker?: PromotionBlocker;
+	missingDependencies?: PromotionMissingDependency[];
+	warnings?: PromotionDependencyWarning[];
 }): string {
+	return revisionOf(shown);
+}
+
+/** A hash of the two lists of an instance Promote check. The check has no resources. */
+export function promoteCheckRevision(
+	shown: Pick<PromotionPromoteCheck, 'missingDependencies' | 'warnings'>,
+): string {
+	return revisionOf(shown);
+}
+
+function revisionOf(shown: object): string {
 	return createHash('sha256')
 		.update(canonicalJson({ schemaVersion: PREVIEW_SCHEMA_VERSION, ...shown }))
 		.digest('hex');

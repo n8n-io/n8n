@@ -355,6 +355,9 @@
 		"POST /promotions/environments/{promotionEnvironmentId}/promote": {
 			"status": "gap"
 		},
+		"GET /promotions/environments/{promotionEnvironmentId}/promote/check": {
+			"status": "gap"
+		},
 		"GET /promotions/projects/{projectId}/changes/{direction}": {
 			"status": "gap"
 		},

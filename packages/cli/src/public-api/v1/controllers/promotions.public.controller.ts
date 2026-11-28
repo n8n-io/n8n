@@ -25,6 +25,7 @@ import {
 	PromotionMissingProjectListPublicDto,
 	PromotionInstanceApplyPreviewDto,
 	PromotionPreviewDto,
+	PromotionPromoteCheckDto,
 	PromotionProviderCreatedPublicDto,
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
@@ -628,6 +629,29 @@ export class PromotionsPublicController {
 		return await (await this.promotionsService()).promote(promotionEnvironmentId, req.user, input);
 	}
 
+	@Get('/environments/:promotionEnvironmentId/promote/check')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:promote')
+	@GlobalScope('promotions:promote')
+	@ApiSummary('Beta: Check the dependencies of a Promote of all team projects')
+	@ApiDescription(
+		BETA_NOTE +
+			'Lists what the workflows of the team projects use and the branch does not hold after a Promote of all team projects. It changes nothing. `missingDependencies` lists the credentials, sub-workflows and error workflows of personal projects, which a promotion does not carry. `warnings` lists the references to a credential, workflow or variable that does not exist on this instance. Each entry gives its name, its type and the workflows that use it in `consumers`. It never gives the project or the owner of the dependency. `accessible` tells whether you can read it. The Promote stops on an entry or a warning where `blocking` is true. References in expressions are not checked. `revision` changes when one of the two lists changes. Requires a Promote environment with instance scope.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionPromoteCheckDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromoteCheck(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
+	): Promise<PromotionPromoteCheckDto> {
+		return await (await this.promotionsService()).checkPromote(promotionEnvironmentId, req.user);
+	}
+
 	@Post('/environments/:promotionEnvironmentId/apply')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('promotions:apply')
@@ -758,7 +782,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Preview the changes of a project in one direction')
 	@ApiDescription(
 		BETA_NOTE +
-			'Compares a team project on this instance with the branch of its promotion environment for that direction. For `promote` the preview is what a promotion sends to the branch, and the key needs the promotions:promote scope. Instance owners and admins can always promote. Project admins and editors can promote their project when the whoCanPromote setting allows their role. For `apply` the preview is what applying the branch changes on this instance, the key needs the promotions:apply scope, and the user must be an instance owner or admin. `resources` lists the changed projects, folders, workflows, credentials, data tables, variables and tags, each with its `key`, `type`, `id`, `change` and the `parentKey` of the project or folder that holds it. It also lists unchanged resources that give context, such as parent folders. Select the workflows and folders where `selectable` is true by `workflowIds` and `folderIds`; the project itself is always included. `dependencies` links each workflow to the resources it uses; selecting the workflow sends a dependency when `included` is true. A deleted promote workflow with `movedToProject`, or an added one with `movedFromProject`, moved between projects; promoting it is refused until it moves back. `blocker` is set when an open review holds the changes of a Promote. For `apply`, `check` lists what blocks the Apply. `revision` identifies this preview: send it as expectedPreviewRevision with Promote or Apply. `commitSha` is the commit the preview was read from.',
+			'Compares a team project on this instance with the branch of its promotion environment for that direction. For `promote` the preview is what a promotion sends to the branch, and the key needs the promotions:promote scope. Instance owners and admins can always promote. Project admins and editors can promote their project when the whoCanPromote setting allows their role. For `apply` the preview is what applying the branch changes on this instance, the key needs the promotions:apply scope, and the user must be an instance owner or admin. `resources` lists the changed projects, folders, workflows, credentials, data tables, variables and tags, each with its `key`, `type`, `id`, `change` and the `parentKey` of the project or folder that holds it. It also lists unchanged resources that give context, such as parent folders. Select the workflows and folders where `selectable` is true by `workflowIds` and `folderIds`; the project itself is always included. `dependencies` links each workflow to the resources it uses; selecting the workflow sends a dependency when `included` is true. A deleted promote workflow with `movedToProject`, or an added one with `movedFromProject`, moved between projects; promoting it is refused until it moves back. `blocker` is set when an open review holds the changes of a Promote. For `promote`, `missingDependencies` lists the credentials, sub-workflows and error workflows of other projects that the workflows of this project use, and that the branch does not hold after the Promote. `warnings` lists the references to a credential, workflow or variable that does not exist on this instance. The two lists cover the whole project, so use `consumers` to find the entries of a selection. An entry never gives the owner of the dependency. It gives the project in `project` only when you can access that project. An entry does not stop the Promote. For `apply`, `check` lists what blocks the Apply. `revision` identifies this preview: send it as expectedPreviewRevision with Promote or Apply. `commitSha` is the commit the preview was read from.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionPreviewDto)

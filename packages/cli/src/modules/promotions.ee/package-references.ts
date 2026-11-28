@@ -29,6 +29,9 @@ export interface VariableReference {
 
 export type ProjectLookup = (id: string) => PromotionBindingProject;
 
+/** What a consumer list shows of a workflow. A workflow of an export manifest fits too. */
+export type ConsumerWorkflow = Pick<InventoryWorkflow, 'id' | 'name' | 'projectId'>;
+
 /** Inspect references before target lookups. File paths define ownership. */
 export function collectCredentialReferences(
 	inventory: PackageDirectoryInventory,
@@ -96,10 +99,10 @@ export function collectVariableReferences(
 }
 
 export function consumersOf(
-	workflows: InventoryWorkflow[],
+	workflows: ConsumerWorkflow[],
 	projectOf: ProjectLookup,
 ): PromotionBindingConsumer[] {
-	const byProject = new Map<string, InventoryWorkflow[]>();
+	const byProject = new Map<string, ConsumerWorkflow[]>();
 	for (const workflow of workflows) {
 		const group = byProject.get(workflow.projectId) ?? [];
 		group.push(workflow);
@@ -110,7 +113,7 @@ export function consumersOf(
 		.map(([projectId, uses]) => ({ project: projectOf(projectId), workflows: workflowRefs(uses) }));
 }
 
-export function workflowRefs(workflows: InventoryWorkflow[]): Array<{ id: string; name: string }> {
+export function workflowRefs(workflows: ConsumerWorkflow[]): Array<{ id: string; name: string }> {
 	return [...new Map(workflows.map((workflow) => [workflow.id, workflow])).values()]
 		.sort((a, b) => compare(a.id, b.id))
 		.map(({ id, name }) => ({ id, name }));
@@ -120,7 +123,7 @@ export function referenceFiles(workflows: InventoryWorkflow[]): string[] {
 	return unique(workflows.map(({ path }) => path)).sort(compare);
 }
 
-function variableKey(name: string, projectId: string | null): string {
+export function variableKey(name: string, projectId: string | null): string {
 	return JSON.stringify([projectId, name]);
 }
 
