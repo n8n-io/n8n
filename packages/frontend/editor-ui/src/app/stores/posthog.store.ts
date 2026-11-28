@@ -23,6 +23,10 @@ import {
 	isAgentBuilderExperiment,
 } from '@/experiments/agentBuilder/enrollment';
 // EOF Experiment cleanup
+// Experiment cleanup (158_build_manually_by_default)
+import { BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT } from '@/app/constants/experiments';
+import { isOnBuildManuallyTrack } from '@/experiments/buildManuallyByDefault/enrollment';
+// EOF Experiment cleanup
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -212,6 +216,14 @@ export const usePostHog = defineStore('posthog', () => {
 			isAgentBuilderExperiment(name) &&
 			getAgentBuilderExperimentEnrollment((key) => overrides.value[key]?.value ?? featFlags[key])
 				?.name !== name
+		)
+			return;
+		// EOF Experiment cleanup
+
+		// Experiment cleanup (158_build_manually_by_default)
+		if (
+			name === BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.name &&
+			!isOnBuildManuallyTrack((key) => overrides.value[key]?.value ?? featFlags[key])
 		)
 			return;
 		// EOF Experiment cleanup

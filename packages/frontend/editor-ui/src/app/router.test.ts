@@ -6,7 +6,11 @@ import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { PROMOTIONS_SETTINGS_VIEW } from '@n8n/frontend-module-promotions';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT,
+	NEW_CLOUD_ONBOARDING_TRACKS,
+	RESOURCE_CENTER_EXPERIMENT,
+} from '@/app/constants/experiments';
 
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -334,7 +338,7 @@ describe('router', () => {
 			assistantAgentEnabled: false,
 		};
 
-		const runRootRedirect = () => {
+		const runRootRedirect = async () => {
 			const rootRoute = routes.find((r) => r.path === '/');
 			const beforeEnter = rootRoute?.beforeEnter;
 			if (typeof beforeEnter !== 'function') {
@@ -344,7 +348,7 @@ describe('router', () => {
 			const next = ((arg?: unknown) => {
 				nextArg = arg;
 			}) as Parameters<typeof beforeEnter>[2];
-			beforeEnter.call(
+			await beforeEnter.call(
 				undefined,
 				{} as Parameters<typeof beforeEnter>[0],
 				{} as Parameters<typeof beforeEnter>[1],
@@ -359,37 +363,88 @@ describe('router', () => {
 			useRBACStore().setGlobalScopes([]);
 		});
 
-		test('redirects to /instance-ai when module is active, enabled, and user has instanceAi:message', () => {
+		test('redirects to /instance-ai when module is active, enabled, and user has instanceAi:message', async () => {
 			settingsStore.settings.activeModules = ['instance-ai'];
 			settingsStore.moduleSettings = { 'instance-ai': { ...instanceAiModuleSettings } };
 			useRBACStore().setGlobalScopes(['instanceAi:message']);
 
-			expect(runRootRedirect()).toEqual({ name: INSTANCE_AI_VIEW });
+			expect(await runRootRedirect()).toEqual({ name: INSTANCE_AI_VIEW });
 		});
 
-		test('falls back to /home/workflows when admin has disabled the module', () => {
+		test('falls back to /home/workflows when admin has disabled the module', async () => {
 			settingsStore.settings.activeModules = ['instance-ai'];
 			settingsStore.moduleSettings = {
 				'instance-ai': { ...instanceAiModuleSettings, enabled: false },
 			};
 			useRBACStore().setGlobalScopes(['instanceAi:message']);
 
-			expect(runRootRedirect()).toBe('/home/workflows');
+			expect(await runRootRedirect()).toBe('/home/workflows');
 		});
 
-		test('falls back to /home/workflows when user lacks instanceAi:message scope', () => {
+		test('falls back to /home/workflows when user lacks instanceAi:message scope', async () => {
 			settingsStore.settings.activeModules = ['instance-ai'];
 			settingsStore.moduleSettings = { 'instance-ai': { ...instanceAiModuleSettings } };
 			useRBACStore().setGlobalScopes([]);
 
-			expect(runRootRedirect()).toBe('/home/workflows');
+			expect(await runRootRedirect()).toBe('/home/workflows');
 		});
 
-		test('falls back to /home/workflows when the module is not active', () => {
+		test('falls back to /home/workflows when the module is not active', async () => {
 			useRBACStore().setGlobalScopes(['instanceAi:message']);
 
-			expect(runRootRedirect()).toBe('/home/workflows');
+			expect(await runRootRedirect()).toBe('/home/workflows');
 		});
+		// Experiment cleanup (158_build_manually_by_default)
+		describe('build manually by default experiment', () => {
+			beforeEach(() => {
+				// A fresh Pinia drops the landing flag that the experiment store keeps in memory.
+				localStorage.clear();
+				setActivePinia(createPinia());
+				const freshSettingsStore = useSettingsStore();
+				freshSettingsStore.settings.activeModules = ['instance-ai'];
+				freshSettingsStore.moduleSettings = { 'instance-ai': { ...instanceAiModuleSettings } };
+				useRBACStore().setGlobalScopes(['instanceAi:message']);
+				useUsersStore().currentUserId = 'user-1';
+				usePostHog().overrides[NEW_CLOUD_ONBOARDING_TRACKS.name] = {
+					value: NEW_CLOUD_ONBOARDING_TRACKS.buildManually,
+				};
+			});
+
+			afterEach(() => {
+				delete usePostHog().overrides[BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.name];
+				delete usePostHog().overrides[NEW_CLOUD_ONBOARDING_TRACKS.name];
+			});
+
+			test.each([
+				BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.canvas,
+				BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.canvasComposer,
+			])('sends the first landing of the %s arm to a new workflow', async (variant) => {
+				usePostHog().overrides[BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.name] = { value: variant };
+
+				expect(await runRootRedirect()).toEqual({ name: VIEWS.NEW_WORKFLOW });
+				expect(await runRootRedirect()).toEqual({ name: INSTANCE_AI_VIEW });
+			});
+
+			test('keeps the Assistant landing on the other onboarding track', async () => {
+				usePostHog().overrides[NEW_CLOUD_ONBOARDING_TRACKS.name] = {
+					value: NEW_CLOUD_ONBOARDING_TRACKS.assistantPrompt,
+				};
+				usePostHog().overrides[BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.name] = {
+					value: BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.canvas,
+				};
+
+				expect(await runRootRedirect()).toEqual({ name: INSTANCE_AI_VIEW });
+			});
+
+			test('keeps the Assistant landing for control', async () => {
+				usePostHog().overrides[BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.name] = {
+					value: BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.control,
+				};
+
+				expect(await runRootRedirect()).toEqual({ name: INSTANCE_AI_VIEW });
+			});
+		});
+		// EOF Experiment cleanup
 	});
 
 	describe('roles settings', () => {

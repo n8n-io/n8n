@@ -16,6 +16,8 @@ import {
 } from '@/app/constants';
 import {
 	AGENT_BUILDER_EXPERIMENT_COHORT as COHORT,
+	BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT,
+	NEW_CLOUD_ONBOARDING_TRACKS,
 	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT as WIDTH,
 	AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT as TOGGLE,
 } from '@/app/constants/experiments';
@@ -538,6 +540,42 @@ describe('Posthog store', () => {
 				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
 			});
 		});
+
+		// Experiment cleanup (158_build_manually_by_default)
+		describe('build manually by default track', () => {
+			const key = BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.name;
+			const participationEvent = TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT;
+
+			beforeEach(() => vi.useFakeTimers());
+			afterEach(() => vi.useRealTimers());
+
+			it('tracks participation on its own track', () => {
+				usePostHog().init({
+					[NEW_CLOUD_ONBOARDING_TRACKS.name]: NEW_CLOUD_ONBOARDING_TRACKS.buildManually,
+					[key]: BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.canvas,
+				});
+				vi.advanceTimersByTime(2000);
+
+				expect(useTelemetry().track).toHaveBeenCalledWith(participationEvent, {
+					name: key,
+					variant: BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.canvas,
+				});
+			});
+
+			it('does not track participation on the other track', () => {
+				usePostHog().init({
+					[NEW_CLOUD_ONBOARDING_TRACKS.name]: NEW_CLOUD_ONBOARDING_TRACKS.assistantPrompt,
+					[key]: BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.canvas,
+				});
+				vi.advanceTimersByTime(2000);
+
+				expect(useTelemetry().track).not.toHaveBeenCalledWith(
+					participationEvent,
+					expect.objectContaining({ name: key }),
+				);
+			});
+		});
+		// EOF Experiment cleanup
 
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		describe('MCP discovery eligibility', () => {

@@ -20,6 +20,7 @@ import { useWorkflowExecutionStateStore } from '../stores/workflowExecutionState
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { renderComponent } from '@/__tests__/render';
 import NodeView from './NodeView.vue';
 import {
@@ -101,6 +102,13 @@ const routeMock = vi.hoisted(() => ({
 	// mock has to carry it — a missing `meta` throws while Vue renders.
 	meta: {} as Record<string, unknown>,
 }));
+
+// Experiment cleanup (158_build_manually_by_default)
+const buildManuallyStore = vi.hoisted(() => ({ isComposerVariant: false }));
+vi.mock('@/experiments/buildManuallyByDefault/stores/buildManuallyByDefault.store', () => ({
+	useBuildManuallyByDefaultStore: () => buildManuallyStore,
+}));
+// EOF Experiment cleanup
 
 vi.mock('vue-router', () => ({
 	useRouter: () => routerMock,
@@ -228,6 +236,9 @@ describe('NodeView', () => {
 						</>`,
 					}),
 					LazySetupWorkflowCredentialsButton: { render: () => null },
+					LazyEmptyCanvasComposer: {
+						template: '<div data-test-id="empty-canvas-composer-stub" />',
+					},
 					WorkflowCanvas: defineComponent({
 						emits: [
 							'copy:nodes',
@@ -1021,6 +1032,81 @@ describe('NodeView', () => {
 			expect(useNodeCreatorStore().openingContext).toBeNull();
 		});
 	});
+
+	// Experiment cleanup (158_build_manually_by_default)
+	describe('Empty canvas composer', () => {
+		function setInstanceAi({ setupCompleted }: { setupCompleted: boolean }) {
+			const settingsStore = useSettingsStore();
+			settingsStore.settings.activeModules = ['instance-ai'];
+			settingsStore.moduleSettings = {
+				'instance-ai': {
+					enabled: true,
+					setupCompleted,
+					mcpConnectionsAvailable: true,
+					browserUseEnabled: true,
+					proxyEnabled: false,
+					cloudManaged: false,
+					sandboxEnabled: true,
+					workflowBuilderAvailable: true,
+					sandboxUnavailableReason: null,
+					runDebugEnabled: false,
+					workflowSuggestionsEnabled: false,
+					assistantAgentEnabled: false,
+				},
+			};
+			useRBACStore().setGlobalScopes(['instanceAi:message']);
+		}
+
+		beforeEach(() => {
+			buildManuallyStore.isComposerVariant = true;
+			setInstanceAi({ setupCompleted: true });
+			// An editable workflow, so only the case under test makes the canvas read-only.
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+		});
+
+		afterEach(() => {
+			buildManuallyStore.isComposerVariant = false;
+		});
+
+		it('shows the composer in the canvas-composer arm', async () => {
+			const { findByTestId } = renderNodeView();
+
+			expect(await findByTestId('empty-canvas-composer-stub')).toBeInTheDocument();
+		});
+
+		it('does not show the composer in the other arms', async () => {
+			buildManuallyStore.isComposerVariant = false;
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId('empty-canvas-composer-stub')).not.toBeInTheDocument();
+		});
+
+		it('does not show the composer before the Assistant setup is finished', async () => {
+			setInstanceAi({ setupCompleted: false });
+			// An admin can open the Assistant before setup, but a prompt cannot start a thread yet.
+			useRBACStore().setGlobalScopes(['instanceAi:message', 'instanceAi:manage']);
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId('empty-canvas-composer-stub')).not.toBeInTheDocument();
+		});
+
+		it('does not show the composer on a read-only canvas', async () => {
+			routeMock.name = VIEWS.DEMO;
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId('empty-canvas-composer-stub')).not.toBeInTheDocument();
+		});
+	});
+	// EOF Experiment cleanup
 
 	describe('Canvas-only mode', () => {
 		it('shows the n8n logo on the canvas when canvas-only mode is enabled', async () => {

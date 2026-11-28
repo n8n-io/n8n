@@ -42,6 +42,20 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
+// Experiment cleanup (158_build_manually_by_default)
+const { landOnCanvasOnce, ensurePersonalProjectId, provisionOnboardingThread } = vi.hoisted(() => ({
+	landOnCanvasOnce: vi.fn(),
+	ensurePersonalProjectId: vi.fn(),
+	provisionOnboardingThread: vi.fn(),
+}));
+vi.mock('@/experiments/buildManuallyByDefault/landing', () => ({ landOnCanvasOnce }));
+vi.mock('../composables/useInstanceAiHandoff', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../composables/useInstanceAiHandoff')>()),
+	ensurePersonalProjectId,
+	provisionOnboardingThread,
+}));
+// EOF Experiment cleanup
+
 const stub = { render: () => null };
 
 // Swap real lazy components for a stub so navigation doesn't pull the view tree.
@@ -62,6 +76,7 @@ function createTestRouter() {
 		history: createMemoryHistory(),
 		routes: [
 			{ path: '/home', name: VIEWS.HOMEPAGE, component: stub },
+			{ path: '/workflow/new', name: VIEWS.NEW_WORKFLOW, component: stub },
 			...moduleRoutes.filter((route) => route.path.startsWith('/')),
 			{
 				path: '/settings',
@@ -115,6 +130,48 @@ beforeEach(() => {
 	setGlobalScopes(GLOBAL_OWNER_SCOPES);
 	setAssistantEnabled(true);
 });
+
+// Experiment cleanup (158_build_manually_by_default)
+describe('InstanceAiModule onboarding landing', () => {
+	const onboardingPath = '/assistant?source=onboarding&team=Sales';
+
+	beforeEach(() => {
+		ensurePersonalProjectId.mockResolvedValue('project-1');
+		provisionOnboardingThread.mockResolvedValue('thread-1');
+	});
+
+	it('sends a user in a canvas arm to a new workflow without an onboarding thread', async () => {
+		landOnCanvasOnce.mockResolvedValue(true);
+		const router = createTestRouter();
+
+		await router.push(onboardingPath);
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
+		expect(router.currentRoute.value.query).toEqual({});
+		expect(provisionOnboardingThread).not.toHaveBeenCalled();
+	});
+
+	it('opens the onboarding thread for everybody else', async () => {
+		landOnCanvasOnce.mockResolvedValue(false);
+		const router = createTestRouter();
+
+		await router.push(onboardingPath);
+
+		expect(router.currentRoute.value.name).toBe(INSTANCE_AI_THREAD_VIEW);
+		expect(router.currentRoute.value.params).toEqual({ threadId: 'thread-1' });
+		expect(provisionOnboardingThread).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not check the experiment on a plain Assistant visit', async () => {
+		const router = createTestRouter();
+
+		await router.push('/assistant');
+
+		expect(router.currentRoute.value.name).toBe(INSTANCE_AI_VIEW);
+		expect(landOnCanvasOnce).not.toHaveBeenCalled();
+	});
+});
+// EOF Experiment cleanup
 
 describe('InstanceAiModule legacy route redirects', () => {
 	it('redirects /instance-ai to the /assistant view', async () => {

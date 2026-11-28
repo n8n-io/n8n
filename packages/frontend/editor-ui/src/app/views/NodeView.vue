@@ -136,6 +136,10 @@ import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { usePostMessageControls } from '@/app/composables/usePostMessageHandler';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useMcpJsonNudgeTrigger } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
+// Experiment cleanup (158_build_manually_by_default)
+import { useBuildManuallyByDefaultStore } from '@/experiments/buildManuallyByDefault/stores/buildManuallyByDefault.store';
+import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+// EOF Experiment cleanup
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -177,6 +181,13 @@ defineOptions({
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/features/shared/nodeCreator/views/NodeCreation.vue'),
 );
+
+// Experiment cleanup (158_build_manually_by_default)
+const LazyEmptyCanvasComposer = defineAsyncComponent(
+	async () =>
+		await import('@/experiments/buildManuallyByDefault/components/EmptyCanvasComposer.vue'),
+);
+// EOF Experiment cleanup
 
 const LazyNodeDetailsView = defineAsyncComponent(
 	async () => await import('@/features/ndv/shared/views/NodeDetailsView.vue'),
@@ -236,6 +247,10 @@ const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
 const builderStore = useBuilderStore();
 const mcpJsonNudgeTrigger = useMcpJsonNudgeTrigger();
+// Experiment cleanup (158_build_manually_by_default)
+const buildManuallyByDefaultStore = useBuildManuallyByDefaultStore();
+const isInstanceAiReady = useInstanceAiReady();
+// EOF Experiment cleanup
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
@@ -342,7 +357,21 @@ const {
 	readOnly: externalReadOnly,
 	expandGroups: externalExpandGroups,
 	executionButtonType,
+	instanceAi: isInstanceAiEditorEnabled,
 } = useEditorContext();
+
+// Experiment cleanup (158_build_manually_by_default)
+// The composer starts an Assistant thread, so it needs the Instance AI entry point
+// and a finished Assistant setup.
+const showEmptyCanvasComposer = computed(
+	() =>
+		!isCanvasReadOnly.value &&
+		isInstanceAiEditorEnabled.value &&
+		isInstanceAiReady.value &&
+		buildManuallyByDefaultStore.isComposerVariant,
+);
+const isCanvasEmpty = computed(() => (workflowDocumentStore?.value?.allNodes ?? []).length === 0);
+// EOF Experiment cleanup
 
 const runWorkflowButtonType = computed(() =>
 	isDemoRoute.value ? 'secondary' : executionButtonType.value,
@@ -2321,6 +2350,11 @@ onBeforeUnmount(() => {
 				@stop="builderStore.abortStreaming"
 			/>
 
+			<!-- Experiment cleanup (158_build_manually_by_default) -->
+			<Suspense v-if="showEmptyCanvasComposer">
+				<LazyEmptyCanvasComposer :is-canvas-empty="isCanvasEmpty" />
+			</Suspense>
+			<!-- EOF Experiment cleanup -->
 			<Suspense>
 				<LazyNodeCreation
 					v-if="!isCanvasReadOnly"

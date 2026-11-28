@@ -28,6 +28,9 @@ import {
 import { launchWorkflowThread } from '@/experiments/openWorkflowInAssistant/launchWorkflowThread';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+// Experiment cleanup (158_build_manually_by_default)
+import { landOnCanvasOnce } from '@/experiments/buildManuallyByDefault/landing';
+// EOF Experiment cleanup
 import {
 	useInstanceAiAvailable,
 	useInstanceAiReady,
@@ -205,6 +208,11 @@ export const InstanceAiModule = defineFrontendModule({
 					// answers the team question from the URL, so one account can run it again.
 					beforeEnter: async (to) => {
 						if (to.query[INSTANCE_AI_SOURCE_QUERY] !== 'onboarding') return true;
+						// Experiment cleanup (158_build_manually_by_default)
+						// The canvas arms replace this landing, so they get no onboarding thread.
+						// The redirect drops the query, so the back button creates none later.
+						if (await landOnCanvasOnce()) return { name: VIEWS.NEW_WORKFLOW };
+						// EOF Experiment cleanup
 						// Whoever cannot use the assistant yet lands on the empty view and its setup.
 						const projectId = useInstanceAiReady().value ? await ensurePersonalProjectId() : null;
 						const threadId = projectId

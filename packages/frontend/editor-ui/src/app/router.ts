@@ -27,6 +27,9 @@ import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+// Experiment cleanup (158_build_manually_by_default)
+import { landOnCanvasOnce } from '@/experiments/buildManuallyByDefault/landing';
+// EOF Experiment cleanup
 import { PROMOTIONS_SETTINGS_VIEW } from '@n8n/frontend-module-promotions';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
@@ -167,7 +170,7 @@ export const routes: RouteRecordRaw[] = [
 		// Required because vue-router resolves `redirect` before guards run, and we need
 		// stores populated by `initializeCore` to decide where to send the user.
 		component: { render: () => null },
-		beforeEnter: (_to, _from, next) => {
+		beforeEnter: async (_to, _from, next) => {
 			const settingsStore = useSettingsStore();
 			const instanceAiSettings = settingsStore.moduleSettings['instance-ai'];
 			if (
@@ -176,6 +179,9 @@ export const routes: RouteRecordRaw[] = [
 				(instanceAiSettings?.setupCompleted === true || canManageInstanceAi()) &&
 				canMessageInstanceAi()
 			) {
+				// Experiment cleanup (158_build_manually_by_default): restore the sync guard without this check.
+				if (await landOnCanvasOnce()) return next({ name: VIEWS.NEW_WORKFLOW });
+				// EOF Experiment cleanup
 				return next({ name: INSTANCE_AI_VIEW });
 			}
 			next('/home/workflows');
