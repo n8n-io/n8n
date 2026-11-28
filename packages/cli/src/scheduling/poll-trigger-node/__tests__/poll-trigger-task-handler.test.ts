@@ -593,6 +593,22 @@ describe('PollTriggerTaskHandler', () => {
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 
+		test('abandons the poll when the occurrence times out during synchronous setup', async () => {
+			const run = new AbortController();
+			const task = buildTask();
+			triggersAndPollers.runPollFunction.mockImplementation(async () => {
+				run.abort(new TaskTimeoutError(task.timeoutSeconds));
+				return await new Promise(() => {});
+			});
+
+			await expect(handler.execute(task, report, runOf(run.signal))).resolves.toBe(
+				report.notDispatched(),
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('poll-tick-timed-out', {
+				nodeType: triggerNode.type,
+			});
+		});
+
 		test('discards the data of an abandoned poll that resolves after the timeout', async () => {
 			const run = new AbortController();
 			let resolvePoll: (data: INodeExecutionData[][]) => void = () => {};
