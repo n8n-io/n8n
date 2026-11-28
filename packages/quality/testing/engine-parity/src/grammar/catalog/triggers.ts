@@ -13,3 +13,15 @@ export const manualTrigger: CatalogEntry = {
 	deterministic: true,
 	params: () => fc.constant({}),
 };
+
+/** The trigger of a sub-workflow. Version 1 passes the items of the caller through. */
+export const executeWorkflowTrigger: CatalogEntry = {
+	id: 'trigger.executeWorkflow',
+	type: 'n8n-nodes-base.executeWorkflowTrigger',
+	version: 1,
+	role: 'trigger',
+	inputs: 0,
+	outputs: 1,
+	deterministic: true,
+	params: () => fc.constant({}),
+};

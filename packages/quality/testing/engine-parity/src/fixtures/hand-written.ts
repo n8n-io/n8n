@@ -173,4 +173,31 @@ export const handWrittenCases: Record<string, ParityCase> = {
 		chain('Trigger', 'Code'),
 		[{ json: { n: 1 } }, { json: { n: 2 } }],
 	),
+
+	'sub-workflow': toParityCase({
+		triggers: [trigger],
+		nodes: [
+			{
+				key: 'Call',
+				catalogId: 'executeWorkflow',
+				via: 'subWorkflow',
+				params: { source: 'database', workflowId: 'sub-1', mode: 'once', options: {} },
+			},
+			set('After', { after: 'ran' }),
+		],
+		edges: chain('Trigger', 'Call', 'After'),
+		triggerItems: [{ json: { name: 'ada' } }],
+		firedTrigger: 'Trigger',
+		subWorkflows: {
+			'sub-1': {
+				triggers: [
+					{ key: 'Sub Trigger', catalogId: 'trigger.executeWorkflow', params: {}, via: 'trigger' },
+				],
+				nodes: [set('Mark', { fromSubWorkflow: '={{ $json.name }}' })],
+				edges: chain('Sub Trigger', 'Mark'),
+				triggerItems: [],
+				firedTrigger: 'Sub Trigger',
+			},
+		},
+	}),
 };

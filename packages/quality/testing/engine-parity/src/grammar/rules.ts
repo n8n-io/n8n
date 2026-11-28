@@ -86,6 +86,12 @@ export const ruleSets: Record<string, ParityRules> = {
 		name: 'code',
 		nodes: [...base.nodes, 'code.allItems', 'code.eachItem'],
 	},
+	subWorkflows: {
+		...base,
+		name: 'subWorkflows',
+		nodes: [...base.nodes, 'executeWorkflow'],
+		combinators: ['chain', 'branch', 'merge', 'subWorkflow'],
+	},
 };
 
 /** The rule sets that `PARITY_RULES` names. The default is `smoke`. */

@@ -4,7 +4,7 @@ import { compile } from '../compile/to-sdk';
 import { allowedEntries } from './catalog';
 import type { CatalogEntry, GenContext } from './catalog';
 import { blockSize, lowerBlock, newLowerState } from './combinators';
-import type { Block, NodeDraft, PlacedNode } from './combinators';
+import type { Block, LowerState, NodeDraft, PlacedNode } from './combinators';
 import { triggerItemsArb } from './data';
 import type { IrEdge, IrItem, IrNode, IrWorkflow, ParityCase } from './ir';
 import { resolveDraft } from './resolve';
@@ -17,6 +17,7 @@ export interface GeneratedCase {
 }
 
 const MAIN_TRIGGER = 'Trigger';
+const SUB_TRIGGER = 'Sub Trigger';
 
 function draftArb(entries: CatalogEntry[], ctx: GenContext): fc.Arbitrary<NodeDraft> {
 	return fc.oneof(
@@ -35,6 +36,7 @@ export function blockArb(rules: ParityRules): fc.Arbitrary<Block> {
 	const switches = allowedEntries(rules.nodes, 'switch');
 	const merges = allowedEntries(rules.nodes, 'merge');
 	const loops = allowedEntries(rules.nodes, 'loop');
+	const calls = allowedEntries(rules.nodes, 'subWorkflow');
 
 	const plainDraft = draftArb(plain, ctx);
 	const nodeBlock: fc.Arbitrary<Block> = plainDraft.map((node) => ({ kind: 'node', node }));
@@ -110,6 +112,15 @@ export function blockArb(rules: ParityRules): fc.Arbitrary<Block> {
 				}),
 			);
 		}
+		if (has('subWorkflow') && calls.length > 0) {
+			options.push(
+				fc.record({
+					kind: fc.constant('subWorkflow' as const),
+					node: draftArb(calls, ctx),
+					body: sub,
+				}),
+			);
+		}
 
 		return {
 			// The first option is the leaf: past the maximum depth, only leaves remain.
@@ -159,6 +170,7 @@ function toIrNodes(placed: PlacedNode[], edges: IrEdge[]): IrNode[] {
 		);
 		const params = resolveDraft(node.draft, {
 			scope: { upstream: node.upstream, elsewhere: [...downstream, 'Ghost'] },
+			subWorkflowId: node.subWorkflowId,
 		});
 		return {
 			key: node.key,
@@ -168,6 +180,28 @@ function toIrNodes(placed: PlacedNode[], edges: IrEdge[]): IrNode[] {
 			...(node.onError ? { flags: { onError: node.onError } } : {}),
 		};
 	});
+}
+
+function lowerSubWorkflows(state: LowerState): Record<string, IrWorkflow> {
+	const result: Record<string, IrWorkflow> = {};
+	const queue = [...state.subWorkflows.entries()];
+	while (queue.length > 0) {
+		const [id, body] = queue.shift()!;
+		const sub = newLowerState(state.counter);
+		lowerBlock(body, { ends: [{ from: SUB_TRIGGER, out: 0 }], upstream: [SUB_TRIGGER] }, sub);
+		queue.push(...sub.subWorkflows.entries());
+		result[id] = {
+			triggers: [
+				{ key: SUB_TRIGGER, catalogId: 'trigger.executeWorkflow', params: {}, via: 'trigger' },
+			],
+			nodes: toIrNodes(sub.nodes, sub.edges),
+			edges: sub.edges,
+			// The caller gives the items.
+			triggerItems: [],
+			firedTrigger: SUB_TRIGGER,
+		};
+	}
+	return result;
 }
 
 export function toIr(generated: GeneratedCase): IrWorkflow {
@@ -180,6 +214,7 @@ export function toIr(generated: GeneratedCase): IrWorkflow {
 	const triggers: IrNode[] = [
 		{ key: MAIN_TRIGGER, catalogId: 'trigger.manual', params: {}, via: 'trigger' },
 	];
+	const subWorkflows = lowerSubWorkflows(state);
 	const { edges } = state;
 	const nodes = toIrNodes(state.nodes, edges);
 
@@ -189,11 +224,15 @@ export function toIr(generated: GeneratedCase): IrWorkflow {
 		edges,
 		triggerItems: generated.items,
 		firedTrigger: MAIN_TRIGGER,
+		...(Object.keys(subWorkflows).length > 0 ? { subWorkflows } : {}),
 	};
 }
 
 export function toParityCase(ir: IrWorkflow): ParityCase {
-	return { ir, workflow: compile(ir) };
+	const subWorkflows = Object.fromEntries(
+		Object.entries(ir.subWorkflows ?? {}).map(([id, sub]) => [id, compile(sub, id)]),
+	);
+	return { ir, workflow: compile(ir), subWorkflows };
 }
 
 /** The arbitrary of whole cases: generate, lower to the IR, and compile with the SDK. */

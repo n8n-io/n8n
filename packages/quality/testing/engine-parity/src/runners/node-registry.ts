@@ -1,6 +1,8 @@
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 // The node sources predate strict mode or use path aliases, so all nodes come from dist.
 import { Code } from 'n8n-nodes-base/dist/nodes/Code/Code.node';
+import { ExecuteWorkflow } from 'n8n-nodes-base/dist/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node';
+import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/dist/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node';
 import { Filter } from 'n8n-nodes-base/dist/nodes/Filter/Filter.node';
 import { If } from 'n8n-nodes-base/dist/nodes/If/If.node';
 import { ManualTrigger } from 'n8n-nodes-base/dist/nodes/ManualTrigger/ManualTrigger.node';
@@ -20,6 +22,7 @@ import { catalogNodeTypes } from '../grammar/catalog';
 
 const registry = new Map<string, INodeType | IVersionedNodeType>([
 	['n8n-nodes-base.manualTrigger', new ManualTrigger()],
+	['n8n-nodes-base.executeWorkflowTrigger', new ExecuteWorkflowTrigger()],
 	['n8n-nodes-base.set', new SetNode()],
 	['n8n-nodes-base.if', new If()],
 	['n8n-nodes-base.switch', new Switch()],
@@ -32,6 +35,7 @@ const registry = new Map<string, INodeType | IVersionedNodeType>([
 	['n8n-nodes-base.noOp', new NoOp()],
 	['n8n-nodes-base.splitInBatches', new SplitInBatches()],
 	['n8n-nodes-base.code', new Code()],
+	['n8n-nodes-base.executeWorkflow', new ExecuteWorkflow()],
 ]);
 
 for (const { type } of catalogNodeTypes()) {

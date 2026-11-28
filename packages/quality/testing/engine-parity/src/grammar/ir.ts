@@ -28,6 +28,7 @@ export type CombinatorId =
 	| 'merge'
 	| 'loop'
 	| 'errorOutput'
+	| 'subWorkflow'
 	| 'trigger';
 
 export type IrItem = { json: Record<string, unknown> };
@@ -52,10 +53,14 @@ export type IrWorkflow = {
 	triggerItems: IrItem[];
 	/** The trigger that fires. It is required when there are many triggers. */
 	firedTrigger: string;
+	/** Workflows that Execute Workflow nodes of this workflow call, by workflow ID. */
+	subWorkflows?: Record<string, IrWorkflow>;
 };
 
 export type ParityCase = {
 	seed?: number;
 	ir: IrWorkflow;
 	workflow: IWorkflowBase;
+	/** The compiled sub-workflows, by workflow ID. */
+	subWorkflows: Record<string, IWorkflowBase>;
 };
