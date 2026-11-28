@@ -52,6 +52,10 @@ import {
 	readAssistantConfirmationPayload,
 	trackBuilderAskedForInput,
 } from '../builder-input-telemetry';
+import {
+	AssistantUsageService,
+	type AssistantUsageScope,
+} from '../assistant-usage/assistant-usage.service';
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
@@ -182,6 +186,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly turnOverrides: AssistantTurnOverrides,
 		private readonly telemetry: TelemetryProxy,
 		private readonly runDebug: AssistantRunDebugService,
+		private readonly usageService: AssistantUsageService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -321,6 +326,11 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	): Promise<SystemAgentTurnHandle> {
 		const { user, thread } = turn;
 		const { runId, request } = options;
+		const usageScope = toUsageScope(turn);
+		// A resume continues the message of its start turn, so only a start counts. Recorded when
+		// the turn starts, so a long turn or a restart does not move or lose the message.
+		// Not awaited: the record must not delay the turn.
+		if (turn.type === 'start') void this.usageService.recordMessage(usageScope);
 		const { trace, errorReporting, experimentGates, contextAttachments, proxyRunConfig } = setup;
 		const setupRoute = new AssistantWorkflowSetupRoute(turn.memory, thread.id, this.logger, {
 			setupPanelEnabled: experimentGates.setupPanelEnabled,
@@ -512,6 +522,13 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					await inputAccepted;
 					await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
 					await this.settleContextTurn(turn, runId, outcome, contextTurn, usage?.usage);
+					// Not awaited: the record must not delay the next queued turn.
+					if (usage) {
+						void this.usageService.recordTokens(
+							usageScope,
+							tokenUsageToBuilderUsageItems(usage.model, usage.usage),
+						);
+					}
 					// Before the card resumes, so that the resumed turn does not route setup again.
 					await setupRoute.markSuspendedSetupsRouted();
 					// A suspended turn can still be building the workflows it marked.
@@ -540,8 +557,13 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					this.errorReporter.endRun(runId, errorReporting);
 				}
 			},
-			onSideCallUsage: async (report) =>
-				await this.claimSideCallUsage(user, thread.id, runId, report),
+			onSideCallUsage: async (report) => {
+				void this.usageService.recordTokens(
+					usageScope,
+					tokenUsageToBuilderUsageItems(report.model, report.usage),
+				);
+				await this.claimSideCallUsage(user, thread.id, runId, report);
+			},
 			formatError: async (error) => toFormattedTurnError(await shownErrorOf(error)),
 		};
 	}
@@ -637,6 +659,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		setupRoute: AssistantWorkflowSetupRoute,
 	): AssistantTurnRuntime {
 		const lease = turn.workspace;
+		const usageScope = toUsageScope(turn);
 		return {
 			memory: turn.memory,
 			resourceId: turn.resourceId,
@@ -666,6 +689,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 						error: getErrorMessage(error),
 					});
 				}
+				void this.usageService.recordArtifact({ ...usageScope, artifact });
+			},
+			recordModelUsage: (usage) => {
+				void this.usageService.recordTokens(usageScope, usage);
 			},
 			recordWorkflowCodeSnapshot: this.runDebug.workflowCodeRecorderForTurn({
 				runId: options.runId,
@@ -913,6 +940,11 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			report,
 		);
 	}
+}
+
+/** The user, thread and working project that the usage records of a turn name. */
+function toUsageScope(turn: SystemAgentTurn<AssistantSandboxLease>): AssistantUsageScope {
+	return { userId: turn.user.id, threadId: turn.thread.id, projectId: turn.thread.projectId };
 }
 
 /** Side calls that the memory options of the agent factory already claim. */

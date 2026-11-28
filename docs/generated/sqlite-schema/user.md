@@ -19,7 +19,7 @@ CREATE TABLE "user" ("id" varchar PRIMARY KEY, "email" varchar(255), "firstName"
 | disabled | boolean | FALSE | false |  |  |  |
 | email | varchar(255) |  | true |  |  |  |
 | firstName | varchar(32) |  | true |  |  |  |
-| id | varchar |  | true | [activity_event](activity_event.md) [agent_eval_dataset](agent_eval_dataset.md) [agent_eval_rating](agent_eval_rating.md) [agent_eval_run](agent_eval_run.md) [agent_execution_threads](agent_execution_threads.md) [agent_history](agent_history.md) [agent_publish_history](agent_publish_history.md) [agents](agents.md) [ai_preference](ai_preference.md) [auth_identity](auth_identity.md) [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [chat_hub_tools](chat_hub_tools.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [evaluation_collection](evaluation_collection.md) [idempotency_key](idempotency_key.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) [instance_ai_thread_grants](instance_ai_thread_grants.md) [instance_ai_thread_tabs](instance_ai_thread_tabs.md) [knowledge_collection](knowledge_collection.md) [knowledge_file](knowledge_file.md) [knowledge_vector_store](knowledge_vector_store.md) [mcp_server](mcp_server.md) [mcp_server_block](mcp_server_block.md) [mcp_server_connection](mcp_server_connection.md) [migration_workflow_owner](migration_workflow_owner.md) [oauth_access_tokens](oauth_access_tokens.md) [oauth_authorization_codes](oauth_authorization_codes.md) [oauth_refresh_tokens](oauth_refresh_tokens.md) [oauth_user_consents](oauth_user_consents.md) [project](project.md) [project_relation](project_relation.md) [promotion_review](promotion_review.md) [promotion_run](promotion_run.md) [self_healing_configuration](self_healing_configuration.md) [self_healing_configuration_reviewer](self_healing_configuration_reviewer.md) [self_healing_investigation](self_healing_investigation.md) [self_healing_result](self_healing_result.md) [service_account_details](service_account_details.md) [skill](skill.md) [skill_source](skill_source.md) [skill_version](skill_version.md) [trusted_source_identity](trusted_source_identity.md) [user_api_keys](user_api_keys.md) [user_favorites](user_favorites.md) [workflow_builder_session](workflow_builder_session.md) [workflow_publish_history](workflow_publish_history.md) [workflow_review_activity](workflow_review_activity.md) [workflow_review_activity_comment](workflow_review_activity_comment.md) [workflow_review_request](workflow_review_request.md) [workflow_review_request_authors](workflow_review_request_authors.md) [workflow_review_request_reviewers](workflow_review_request_reviewers.md) [workflow_suggestion](workflow_suggestion.md) [workflow_suggestion_activity](workflow_suggestion_activity.md) |  |  |
+| id | varchar |  | true | [activity_event](activity_event.md) [agent_eval_dataset](agent_eval_dataset.md) [agent_eval_rating](agent_eval_rating.md) [agent_eval_run](agent_eval_run.md) [agent_execution_threads](agent_execution_threads.md) [agent_history](agent_history.md) [agent_publish_history](agent_publish_history.md) [agents](agents.md) [ai_preference](ai_preference.md) [assistant_usage_event](assistant_usage_event.md) [auth_identity](auth_identity.md) [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [chat_hub_tools](chat_hub_tools.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [evaluation_collection](evaluation_collection.md) [idempotency_key](idempotency_key.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) [instance_ai_thread_grants](instance_ai_thread_grants.md) [instance_ai_thread_tabs](instance_ai_thread_tabs.md) [knowledge_collection](knowledge_collection.md) [knowledge_file](knowledge_file.md) [knowledge_vector_store](knowledge_vector_store.md) [mcp_server](mcp_server.md) [mcp_server_block](mcp_server_block.md) [mcp_server_connection](mcp_server_connection.md) [migration_workflow_owner](migration_workflow_owner.md) [oauth_access_tokens](oauth_access_tokens.md) [oauth_authorization_codes](oauth_authorization_codes.md) [oauth_refresh_tokens](oauth_refresh_tokens.md) [oauth_user_consents](oauth_user_consents.md) [project](project.md) [project_relation](project_relation.md) [promotion_review](promotion_review.md) [promotion_run](promotion_run.md) [self_healing_configuration](self_healing_configuration.md) [self_healing_configuration_reviewer](self_healing_configuration_reviewer.md) [self_healing_investigation](self_healing_investigation.md) [self_healing_result](self_healing_result.md) [service_account_details](service_account_details.md) [skill](skill.md) [skill_source](skill_source.md) [skill_version](skill_version.md) [trusted_source_identity](trusted_source_identity.md) [user_api_keys](user_api_keys.md) [user_favorites](user_favorites.md) [workflow_builder_session](workflow_builder_session.md) [workflow_publish_history](workflow_publish_history.md) [workflow_review_activity](workflow_review_activity.md) [workflow_review_activity_comment](workflow_review_activity_comment.md) [workflow_review_request](workflow_review_request.md) [workflow_review_request_authors](workflow_review_request_authors.md) [workflow_review_request_reviewers](workflow_review_request_reviewers.md) [workflow_suggestion](workflow_suggestion.md) [workflow_suggestion_activity](workflow_suggestion_activity.md) |  |  |
 | kind | VARCHAR(16) | 'person' | false |  |  |  |
 | lastActiveAt | date |  | true |  |  |  |
 | lastName | varchar(32) |  | true |  |  |  |
@@ -64,6 +64,7 @@ erDiagram
 "agents" }o--|| "user" : "FOREIGN KEY (identityId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"assistant_usage_event" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "auth_identity" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "chat_hub_agents" }o--|| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_sessions" }o--|| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -262,6 +263,20 @@ erDiagram
   varchar_36_ projectId FK
   varchar_16_ source
   datetime_3_ updatedAt
+  varchar userId FK
+}
+"assistant_usage_event" {
+  INTEGER cacheReadTokens
+  INTEGER cacheWriteTokens
+  datetime_3_ createdAt
+  INTEGER id
+  INTEGER inputTokens
+  varchar_128_ model
+  INTEGER outputTokens
+  varchar_36_ projectId FK
+  varchar_64_ resourceId
+  varchar_128_ threadId
+  varchar_32_ type
   varchar userId FK
 }
 "auth_identity" {

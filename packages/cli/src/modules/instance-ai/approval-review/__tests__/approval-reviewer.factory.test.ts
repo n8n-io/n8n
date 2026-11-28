@@ -14,7 +14,10 @@ vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
-import { InstanceAiApprovalReviewerFactory } from '../approval-reviewer.factory';
+import {
+	InstanceAiApprovalReviewerFactory,
+	type ApprovalReviewerParams,
+} from '../approval-reviewer.factory';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -42,6 +45,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 			reviewTimeoutMs?: number;
 			abortSignal?: AbortSignal;
 			getTracing?: () => InstanceAiTraceContext | undefined;
+			recordModelUsage?: ApprovalReviewerParams['recordModelUsage'];
 		} = {},
 	) {
 		return factory.create({
@@ -55,6 +59,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 			resolveJudgeModel,
 			reviewTimeoutMs: overrides.reviewTimeoutMs,
 			getTracing: overrides.getTracing,
+			recordModelUsage: overrides.recordModelUsage,
 		});
 	}
 
@@ -171,6 +176,23 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 				expect.any(Array),
 				'completed',
 			);
+		});
+
+		it("gives the judge's tokens to the usage page", async () => {
+			judgeApproval.mockResolvedValue({
+				ok: true,
+				verdict: { decision: 'ask', reason: 'Not requested.' },
+				usage: { promptTokens: 800, completionTokens: 20, totalTokens: 820 },
+				model: 'claude-haiku',
+				durationMs: 420,
+			});
+			const recordModelUsage = vi.fn();
+
+			await createReviewer({ recordModelUsage }).judge(approval);
+
+			expect(recordModelUsage).toHaveBeenCalledWith([
+				expect.objectContaining({ uncachedInput: 800, output: 20 }),
+			]);
 		});
 
 		it('tells the judge when it read only the newest messages of the thread', async () => {

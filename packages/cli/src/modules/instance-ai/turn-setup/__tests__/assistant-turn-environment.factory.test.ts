@@ -212,22 +212,36 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(runtime.onDomainAccessTracker).toHaveBeenCalledWith(context.domainAccessTracker);
 		});
 
-		it('wires helper usage billing into the context', async () => {
+		it('bills helper usage and gives its tokens to the runtime', async () => {
 			const { factory, fields } = createSetupFactory();
 			const claimer = vi.fn();
 			fields.creditService.helperUsageClaimer.mockReturnValue(claimer);
+			const recordModelUsage = vi.fn();
 
-			await factory.create(params, createRuntime());
+			await factory.create(params, createRuntime({ recordModelUsage }));
+			const [, options] = fields.adapterService.createContext.mock
+				.calls[0] as unknown as Parameters<InstanceAiAdapterService['createContext']>;
+			const report = {
+				helper: 'verification-simulation-fixtures',
+				model: 'anthropic/claude-haiku-4-5',
+				usage: { promptTokens: 30, completionTokens: 3, totalTokens: 33 },
+				reportId: 'report-1',
+			};
+			await options?.onHelperUsage?.(report);
 
 			expect(fields.creditService.helperUsageClaimer).toHaveBeenCalledWith(
 				params.user,
 				params.threadId,
 				params.runId,
 			);
-			expect(fields.adapterService.createContext).toHaveBeenCalledWith(
-				params.user,
-				expect.objectContaining({ onHelperUsage: claimer }),
-			);
+			expect(claimer).toHaveBeenCalledWith(report);
+			expect(recordModelUsage).toHaveBeenCalledWith([
+				expect.objectContaining({
+					model: 'anthropic/claude-haiku-4-5',
+					uncachedInput: 30,
+					output: 3,
+				}),
+			]);
 		});
 
 		it('gives the trace of the turn to the error reports of the setup', async () => {

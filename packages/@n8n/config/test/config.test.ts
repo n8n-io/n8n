@@ -403,6 +403,7 @@ describe('GlobalConfig', () => {
 			braveSearchApiKey: '',
 			searxngUrl: '',
 			threadTtlDays: 30,
+			usageMaxAgeDays: 365,
 			pruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
 			checkpointGcRetention: 604_800_000,

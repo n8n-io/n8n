@@ -1,6 +1,7 @@
 import type { ObservationLogObserverMemory, Workspace } from '@n8n/agents';
 import type { InstanceAiPromptConfiguration, InstanceAiSetupItem } from '@n8n/api-types';
 import type {
+	BuilderUsageItem,
 	CreateInstanceAgentOptions,
 	DomainAccessTracker,
 	InstanceAiContext,
@@ -80,6 +81,11 @@ export interface AssistantTurnRuntime
 	temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
 	/** Detached background tasks of the thread that still run. */
 	getRunningBackgroundTasks?(): ManagedBackgroundTask[];
+	/**
+	 * Records the tokens of the helper and approval judge calls of the run as
+	 * Assistant usage. The current runtime does not record usage, so it leaves this out.
+	 */
+	recordModelUsage?: (usage: BuilderUsageItem[]) => void;
 	/** Starts browser tasks on the cloud browser, when the instance has it. */
 	cloudBrowser?: {
 		isAvailable(): Promise<boolean>;

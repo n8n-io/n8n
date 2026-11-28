@@ -362,6 +362,7 @@ export function createSelectAgentTool(context: OrchestrationContext) {
 					id: target.agentId,
 					projectId: target.projectId,
 					...(target.name ? { name: target.name } : {}),
+					created: true,
 				});
 			} else {
 				// Repair-shaped eval cases seed from the state the build opened on.

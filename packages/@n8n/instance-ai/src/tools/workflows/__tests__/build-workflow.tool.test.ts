@@ -694,6 +694,7 @@ describe('createBuildWorkflowTool', () => {
 				type: 'workflow',
 				id: 'wf-1',
 				name: 'Reported workflow',
+				created: true,
 			});
 		});
 

@@ -22,6 +22,7 @@ import {
 	createWorkflowDraftPublisher,
 	isSetupPanelEnabled,
 	orchestratorAgentId,
+	tokenUsageToBuilderUsageItems,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
 	type ModelConfig,
@@ -327,6 +328,7 @@ export class AssistantTurnEnvironmentFactory {
 		// starts a build, so a thread that left gets the tool no more.
 		const onboardingThread =
 			thread?.metadata?.source === 'onboarding' && !thread.metadata.onboardingLeft;
+		const claimHelperUsage = this.creditService.helperUsageClaimer(user, threadId, runId);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -353,7 +355,10 @@ export class AssistantTurnEnvironmentFactory {
 			workflowsInSkillsEnabled,
 			modelId,
 			utilityModelId,
-			onHelperUsage: this.creditService.helperUsageClaimer(user, threadId, runId),
+			onHelperUsage: async (report) => {
+				runtime.recordModelUsage?.(tokenUsageToBuilderUsageItems(report.model, report.usage));
+				await claimHelperUsage(report);
+			},
 			modelFetch: labeledModelFetch,
 			catalogFetch: baseModelFetch,
 			allowSendingParameterValues,
@@ -399,6 +404,7 @@ export class AssistantTurnEnvironmentFactory {
 				modelFetch: labeledModelFetch,
 				requestLabels: this.instanceAiConfig.modelRequestLabels,
 				getTracing: () => orchestrationContext.tracing,
+				recordModelUsage: runtime.recordModelUsage,
 			});
 		}
 
