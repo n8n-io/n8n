@@ -1,5 +1,7 @@
+import { DynamicStructuredTool } from '@langchain/core/tools';
 import type { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { proxyFetch } from '@n8n/ai-utilities';
+import { jsonSchemaToZod } from '@n8n/json-schema-to-zod';
 import { createResultOk } from '@n8n/utils/result';
 import type {
 	IExecuteSingleFunctions,
@@ -11,8 +13,9 @@ import type {
 } from 'n8n-workflow';
 import { OperationalError, UserError } from '@n8n/errors';
 import { mockDeep } from 'vitest-mock-extended';
+import { z } from 'zod';
 
-import { LmChatGoogleGemini } from '../LmChatGoogleGemini.node';
+import { LmChatGoogleGemini, N8nChatGoogleGenerativeAI } from '../LmChatGoogleGemini.node';
 
 vi.mock('@n8n/ai-utilities', async () => {
 	const actual = await vi.importActual('@n8n/ai-utilities');
@@ -262,6 +265,117 @@ describe('LmChatGoogleGemini', () => {
 
 			expect(error).toBeInstanceOf(OperationalError);
 			expect(error).toHaveProperty('message', 'Gemini returned an empty response');
+		});
+	});
+
+	describe('tool binding schema sanitization', () => {
+		const createModel = () =>
+			new N8nChatGoogleGenerativeAI({
+				apiKey: 'test-key',
+				model: 'models/gemini-2.5-flash',
+			});
+
+		it('should convert nullable Zod fields to single type with nullable: true', () => {
+			const model = createModel();
+			const tool = new DynamicStructuredTool({
+				name: 'test_tool',
+				description: 'a tool with nullable param',
+				schema: z.object({
+					requiredField: z.string(),
+					nullableField: z.string().nullable(),
+				}),
+				func: async () => 'ok',
+			});
+
+			const bound = model.bindTools([tool]);
+			const tools = bound.config.tools as Array<{
+				functionDeclarations: Array<{
+					name: string;
+					parameters: {
+						type: string;
+						properties: Record<string, { type: unknown; nullable?: boolean }>;
+					};
+				}>;
+			}>;
+
+			expect(tools).toHaveLength(1);
+			const declaration = tools[0].functionDeclarations[0];
+			expect(declaration.name).toBe('test_tool');
+			expect(declaration.parameters.properties.requiredField).toEqual({
+				type: 'string',
+			});
+			expect(declaration.parameters.properties.nullableField).toEqual({
+				type: 'string',
+				nullable: true,
+			});
+		});
+
+		it('should convert MCP-style schema with array type to scalar type with nullable: true', () => {
+			const model = createModel();
+			const mcpJsonSchema = {
+				type: 'object',
+				properties: {
+					action: { type: 'string' },
+					optionalQuery: { type: ['string', 'null'] },
+					optionalLimit: { anyOf: [{ type: 'integer' }, { type: 'null' }] },
+				},
+				required: ['action'],
+			};
+
+			const zodSchema = jsonSchemaToZod(mcpJsonSchema);
+			const tool = new DynamicStructuredTool({
+				name: 'mcp_tool',
+				description: 'MCP client tool',
+				schema: zodSchema,
+				func: async () => 'ok',
+			});
+
+			const bound = model.bindTools([tool]);
+			const tools = bound.config.tools as Array<{
+				functionDeclarations: Array<{
+					name: string;
+					parameters: {
+						type: string;
+						properties: Record<string, { type: unknown; nullable?: boolean }>;
+					};
+				}>;
+			}>;
+
+			const declaration = tools[0].functionDeclarations[0];
+			expect(declaration.name).toBe('mcp_tool');
+			expect(declaration.parameters.properties.action).toEqual({
+				type: 'string',
+			});
+			expect(declaration.parameters.properties.optionalQuery).toEqual({
+				type: 'string',
+				nullable: true,
+			});
+			expect(declaration.parameters.properties.optionalLimit).toEqual({
+				type: 'integer',
+				nullable: true,
+			});
+		});
+
+		it('should sanitize tools in invocationParams when passed directly', () => {
+			const model = createModel();
+			const tool = new DynamicStructuredTool({
+				name: 'direct_tool',
+				description: 'tool passed via invocationParams',
+				schema: z.object({
+					nullableCount: z.number().nullable(),
+				}),
+				func: async () => 'ok',
+			});
+
+			const bound = model.bindTools([tool]);
+			const params = model.invocationParams({ tools: bound.config.tools });
+
+			const declaration = params.tools[0].functionDeclarations[0];
+			expect(declaration.name).toBe('direct_tool');
+			expect(declaration.parameters.properties.nullableCount).toEqual({
+				type: 'number',
+				nullable: true,
+			});
 		});
 	});
 });

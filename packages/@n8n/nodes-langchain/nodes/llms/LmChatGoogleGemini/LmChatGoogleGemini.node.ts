@@ -16,6 +16,7 @@ import type {
 
 import { getRequiredApiKey } from '@utils/helpers';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
+import { sanitizeGenerativeAITools } from '../gemini-common/sanitize-tools';
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
@@ -34,8 +35,29 @@ import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
  * Gemini returns no candidates when it blocks a prompt. The SDK then gives an empty
  * `generations` list, and LangChain fails with a TypeError on `generations[0][0]`.
  * This class throws an error that tells the user why Gemini did not answer.
+ * It also normalizes tool schemas so array types like `type: ['string', 'null']`
+ * and union types with `null` do not cause protobuf parsing failures in Gemini.
  */
 export class N8nChatGoogleGenerativeAI extends ChatGoogleGenerativeAI {
+	override bindTools(
+		tools: Parameters<ChatGoogleGenerativeAI['bindTools']>[0],
+		kwargs?: Parameters<ChatGoogleGenerativeAI['bindTools']>[1],
+	) {
+		const bound = super.bindTools(tools, kwargs);
+		if (Array.isArray(bound.config?.tools)) {
+			bound.config.tools = sanitizeGenerativeAITools(bound.config.tools);
+		}
+		return bound;
+	}
+
+	override invocationParams(options?: Parameters<ChatGoogleGenerativeAI['invocationParams']>[0]) {
+		const params = super.invocationParams(options);
+		if (Array.isArray(params.tools)) {
+			params.tools = sanitizeGenerativeAITools(params.tools);
+		}
+		return params;
+	}
+
 	async _generate(...args: Parameters<ChatGoogleGenerativeAI['_generate']>) {
 		const result = await super._generate(...args);
 		if (result.generations.length > 0) return result;
