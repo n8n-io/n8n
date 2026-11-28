@@ -907,8 +907,16 @@ const fetchWorkflows = async () => {
 	const homeProjectFilter = filters.value.homeProject || undefined;
 	const parentFolder = (route.params?.folderId as string) || undefined;
 
+	// Tag names come from the store, which is not loaded on a plain page visit.
+	// Load it before resolving the filter so a chip click does not send
+	// `tags: [null]` (serialized from an undefined name) to the API.
+	if (filters.value.tags.length && !filters.value.tags.every((tagId) => tagsStore.tagsById[tagId])) {
+		await tagsStore.fetchAll();
+	}
 	const tags = filters.value.tags.length
-		? filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name)
+		? filters.value.tags
+				.map((tagId) => tagsStore.tagsById[tagId]?.name)
+				.filter((name): name is string => Boolean(name))
 		: [];
 
 	const activeFilter =
