@@ -536,6 +536,20 @@ export interface PersistedChildTrace {
 }
 
 /**
+ * Why an agent turn is redacted for the reader. A turn is redacted when a
+ * workflow tool that it or an earlier turn of the thread ran redacts its
+ * execution data for the reader. A redacted turn keeps its structure and tool
+ * names, without model text or tool data.
+ */
+export interface AgentTurnRedactionDto {
+	isRedacted: true;
+	/** The reason of the source execution, e.g. `workflow_redaction_policy`. */
+	reason: string;
+	/** Whether the reader can reveal the turn. */
+	canReveal: boolean;
+}
+
+/**
  * A file that a workflow or node tool returned. The tool output lists these
  * in its `files` field. The model sees only this metadata, not the bytes.
  */

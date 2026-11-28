@@ -23,6 +23,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Response } from 'express';
 
+import { threadReaderFromRequest } from '../agent-thread-redaction.service';
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentChatRelayService } from '../agent-chat-relay.service';
@@ -167,7 +168,7 @@ export class SystemAgentChatController {
 			threadId,
 			projectId,
 			agentId,
-			req.user.id,
+			threadReaderFromRequest(req),
 		);
 		if (!detail) throw new NotFoundError('Session not found');
 		const memory = await this.memoryTrace.getThreadMemory({
@@ -297,7 +298,7 @@ export class SystemAgentChatController {
 			threadId: thread.id,
 			projectId: thread.projectId,
 			agentId,
-			userId: req.user.id,
+			reader: threadReaderFromRequest(req),
 			page,
 		});
 		if (isOlderChatHistoryPage(page)) return threadMessagesResponse(history, null);

@@ -19,6 +19,7 @@ import {
 	memoryTimelineName,
 	timelineItemStatus,
 } from '../session-timeline.utils';
+import { backgroundJobTitle } from '../utils/background-job-labels';
 import { chartBlockStyleForItem } from '../session-timeline.styles';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
@@ -132,7 +133,7 @@ function popoverName(item: TimelineItem): string {
 	}
 	switch (item.kind) {
 		case 'background-task':
-			return item.backgroundTask?.title ?? '';
+			return item.backgroundTask ? backgroundJobTitle(item.backgroundTask.title, i18n) : '';
 		case 'background-task-signal':
 			return backgroundJobSignalSummary(item, i18n);
 		case 'user':

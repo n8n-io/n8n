@@ -3,7 +3,10 @@ import { computed } from 'vue';
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { N8nAiActivityStep, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { BACKGROUND_JOB_STATUS_LABEL_KEYS } from '../utils/background-job-labels';
+import {
+	BACKGROUND_JOB_STATUS_LABEL_KEYS,
+	backgroundJobTitle,
+} from '../utils/background-job-labels';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 
 const props = defineProps<{
@@ -25,7 +28,9 @@ const files = computed(() => props.signal.tasks.flatMap((job) => job.files ?? []
 		>
 			<ul :class="$style.jobs">
 				<li v-for="job in props.signal.tasks" :key="job.id" :class="$style.job">
-					<N8nText size="small" color="text-dark" :class="$style.title">{{ job.title }}</N8nText>
+					<N8nText size="small" color="text-dark" :class="$style.title">{{
+						backgroundJobTitle(job.title, i18n)
+					}}</N8nText>
 					<span :class="$style.outcome">
 						<N8nIcon
 							:icon="job.status === 'completed' ? 'circle-check' : 'circle-x'"

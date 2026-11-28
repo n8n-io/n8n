@@ -436,6 +436,8 @@ interface RawToolCallEvent {
 	nodeTypeVersion?: number;
 	nodeDisplayName?: string;
 	nodeParameters?: Record<string, unknown>;
+	/** Set on the events of a turn that is redacted for the reader. */
+	redacted?: boolean;
 }
 
 interface RawTextEvent {
@@ -443,6 +445,7 @@ interface RawTextEvent {
 	content: string;
 	timestamp: number;
 	endTime?: number;
+	redacted?: boolean;
 }
 
 interface RawReasoningEvent {
@@ -829,6 +832,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				// Older records have no generation duration.
 				endTimestamp: event.endTime && event.endTime > startTs ? event.endTime : undefined,
 				resumed: showResumed,
+				...(event.redacted && { redacted: true }),
 				...(thinkingSegments.length > 0 && { thinkingSegments }),
 			});
 			thinkingSegments = [];
@@ -930,6 +934,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					nodeTypeVersion: isNode ? event.nodeTypeVersion : undefined,
 					nodeDisplayName: isNode ? event.nodeDisplayName : undefined,
 					nodeParameters: isNode ? event.nodeParameters : undefined,
+					...(event.redacted && { redacted: true }),
 				};
 				items.push(item);
 				if (event.toolCallId) initialToolItems.set(event.toolCallId, item);
@@ -1022,6 +1027,22 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 		item.id ??= `${key}:${occurrence}`;
 	}
 	return items;
+}
+
+/**
+ * Whether any turn is redacted for the reader, and whether the reader can
+ * reveal all of them. The server allows a reveal only when every redacted turn
+ * can be revealed.
+ */
+export function threadRedactionState(executions: AgentExecution[]): {
+	isRedacted: boolean;
+	canReveal: boolean;
+} {
+	const redacted = executions.filter((exec) => exec.redaction?.isRedacted === true);
+	return {
+		isRedacted: redacted.length > 0,
+		canReveal: redacted.length > 0 && redacted.every((exec) => exec.redaction?.canReveal === true),
+	};
 }
 
 /** Use the same identity for selection, row state, and size measurements. */

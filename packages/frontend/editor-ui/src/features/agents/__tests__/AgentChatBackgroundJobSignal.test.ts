@@ -17,6 +17,16 @@ const signal: AgentBackgroundJobSignal = {
 };
 
 describe('AgentChatBackgroundJobSignal', () => {
+	it('shows a hidden-data label for a job without a title', async () => {
+		const wrapper = mount(AgentChatBackgroundJobSignal, {
+			props: {
+				signal: { tasks: [{ id: 'job-1', title: '', kind: 'subagent', status: 'completed' }] },
+			},
+		});
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.get('li').text()).toContain('agentSessions.timeline.dataHidden');
+	});
+
 	it('renders the files of the jobs below the step', () => {
 		const file = { fileId: 'f-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 };
 		const wrapper = mount(AgentChatBackgroundJobSignal, {

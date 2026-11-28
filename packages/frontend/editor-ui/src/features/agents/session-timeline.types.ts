@@ -103,6 +103,11 @@ export interface TimelineItem {
 	 */
 	subAgentName?: string;
 	resumed?: boolean;
+	/**
+	 * The turn is redacted for the reader. Agent items then have no text, and
+	 * tool items have no input or output.
+	 */
+	redacted?: boolean;
 	guardrailCode?: string;
 	/** The usage of the turn. Only set on the last agent message of the turn. */
 	turnUsage?: TimelineTurnUsage;

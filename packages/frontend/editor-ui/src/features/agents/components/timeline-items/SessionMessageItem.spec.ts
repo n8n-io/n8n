@@ -105,4 +105,21 @@ describe('SessionMessageItem', () => {
 		expect(wrapper.find('[data-testid="agent-chat-message-attachments"]').exists()).toBe(false);
 		wrapper.unmount();
 	});
+
+	it('shows a placeholder instead of the text of a redacted reply', () => {
+		const wrapper = mountMessage({
+			kind: 'agent',
+			executionId: 'e1',
+			timestamp: 0,
+			content: '',
+			redacted: true,
+		});
+		expect(wrapper.find('[data-test-id="session-message-redacted"]').text()).toBe('Reply hidden');
+	});
+
+	it('renders the text of a reply that is not redacted', () => {
+		const wrapper = mountMessage({ kind: 'agent', executionId: 'e1', timestamp: 0, content: 'Hi' });
+		expect(wrapper.find('[data-test-id="session-message-redacted"]').exists()).toBe(false);
+		expect(wrapper.text()).toContain('Hi');
+	});
 });

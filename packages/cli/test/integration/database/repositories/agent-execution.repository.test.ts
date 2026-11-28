@@ -118,6 +118,10 @@ import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-
 
 import { createMember, createAdmin } from '../../shared/db/users';
 import type { AgentSandboxFilesService } from '@/modules/agents/agent-sandbox-files.service';
+import {
+	asReader,
+	passthroughThreadRedaction,
+} from '@/modules/agents/__tests__/test-utils/thread-reader';
 
 // Share the transaction class loaded by the built BaseRepository.
 const { TypeOrmTransaction, TypeOrmTransactionRunner } = createRequire(__filename)(
@@ -250,6 +254,7 @@ describe('AgentExecutionRepository', () => {
 				mockLogger(),
 			),
 			mock<AgentExecutionMetrics>(),
+			passthroughThreadRedaction(),
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
 		const settingsService = new AgentsSettingsService(
@@ -1480,7 +1485,7 @@ describe('AgentExecutionRepository', () => {
 			fixture.threadId,
 			projectId,
 			agentId,
-			viewerId,
+			asReader(viewerId),
 		);
 		expect(detail?.executions.map(({ inputMessageIds }) => inputMessageIds)).toEqual([
 			[inputs[0].messageId],
@@ -1520,7 +1525,7 @@ describe('AgentExecutionRepository', () => {
 			fixture.threadId,
 			projectId,
 			agentId,
-			viewerId,
+			asReader(viewerId),
 		);
 		expect(detail?.executions.map(({ inputMessageIds }) => inputMessageIds)).toEqual([
 			undefined,
@@ -1874,7 +1879,7 @@ describe('AgentExecutionRepository', () => {
 					threadId,
 					projectId,
 					agentId,
-					owner.id,
+					asReader(owner.id),
 				);
 
 				expect(detail).not.toBeNull();
@@ -2181,7 +2186,7 @@ describe('AgentExecutionRepository', () => {
 						threadId,
 						projectId,
 						agentId,
-						owner.id,
+						asReader(owner.id),
 					);
 					expect(
 						executionsToMessagesDto(detail!.executions)
@@ -3127,7 +3132,7 @@ describe('AgentExecutionRepository', () => {
 				threadId,
 				projectId,
 				agentId,
-				owner.id,
+				asReader(owner.id),
 			);
 			expect(
 				executionsToMessagesDto(detail!.executions)
@@ -3461,7 +3466,12 @@ describe('AgentExecutionRepository', () => {
 			await finish(local, next);
 			expect(
 				(
-					await local.executionService.getThreadDetail(threadId, projectId, agentId, owner.id)
+					await local.executionService.getThreadDetail(
+						threadId,
+						projectId,
+						agentId,
+						asReader(owner.id),
+					)
 				)?.executions.map(({ userMessage, status }) => ({
 					userMessage,
 					status,
@@ -3938,7 +3948,7 @@ describe('AgentExecutionRepository', () => {
 			threadId,
 			projectId,
 			agentId,
-			viewerId,
+			asReader(viewerId),
 		);
 		expect(detail?.executions[1]).toMatchObject({
 			userMessage: 'Original input',
@@ -3962,7 +3972,7 @@ describe('AgentExecutionRepository', () => {
 				threadId,
 				'another-project',
 				agentId,
-				viewerId,
+				asReader(viewerId),
 			),
 		).toBeNull();
 
@@ -4073,7 +4083,12 @@ describe('AgentExecutionRepository', () => {
 			{ messageId: later.id, direction: 'output', position: 1 },
 			{ messageId: latest.id, direction: 'output', position: 2 },
 		]);
-		const detail = await executionService.getThreadDetail(threadId, projectId, agentId, viewerId);
+		const detail = await executionService.getThreadDetail(
+			threadId,
+			projectId,
+			agentId,
+			asReader(viewerId),
+		);
 		expect(detail?.executions[0]).toMatchObject({
 			inputMessageIds: [inputId, additional.id],
 			inputMessages: [],
@@ -4171,8 +4186,14 @@ describe('AgentExecutionRepository', () => {
 			const [input] = inputs.get(execution.id)!;
 			expect(input.content).toEqual(buildInboundUserMessage(params.userMessage, attachments)[0]);
 			expect(
-				(await services.executionService.getThreadDetail(threadId, projectId, agentId, viewerId))
-					?.executions[0],
+				(
+					await services.executionService.getThreadDetail(
+						threadId,
+						projectId,
+						agentId,
+						asReader(viewerId),
+					)
+				)?.executions[0],
 			).toMatchObject({ userMessage: params.userMessage, attachments });
 			if (outcome === 'startup' || outcome === 'rejection') {
 				expect(input.modelContextAt).toBeNull();
@@ -4205,6 +4226,18 @@ describe('AgentExecutionRepository', () => {
 		} as Partial<AgentExecution>);
 		return await repository.save(execution);
 	};
+
+	it('finds the runs that executions delegated directly', async () => {
+		const thread = await createThread();
+		const childThread = await createThread({ sessionNumber: 2 });
+		const parent = await createExecution({ threadId: thread.id });
+		const child = await createExecution({ threadId: childThread.id, parentExecutionId: parent.id });
+		await createExecution({ threadId: childThread.id, parentExecutionId: child.id });
+
+		const children = await repository.findChildrenByParentIds([parent.id]);
+
+		expect(children.map(({ id }) => id)).toEqual([child.id]);
+	});
 
 	it('paginates sessions with whole-second and millisecond timestamps', async () => {
 		const newest = await createThread();
@@ -4309,10 +4342,11 @@ describe('AgentExecutionRepository', () => {
 		expect(second.threads[0].canContinueInPreview).toBe(false);
 		expect(second.nextCursor).toBeNull();
 		expect(
-			(await executionService.getThreadDetail(thread.id, projectId, agentId, owner.id))?.executions,
+			(await executionService.getThreadDetail(thread.id, projectId, agentId, asReader(owner.id)))
+				?.executions,
 		).toHaveLength(1);
 		await expect(
-			executionService.getThreadDetail(thread.id, projectId, agentId, other.id),
+			executionService.getThreadDetail(thread.id, projectId, agentId, asReader(other.id)),
 		).resolves.toBeNull();
 		expect(await executionService.deleteThread(projectId, agentId, thread.id, other.id)).toBe(
 			false,
@@ -4443,7 +4477,7 @@ describe('AgentExecutionRepository', () => {
 		);
 		for (const thread of [child, sourceOnlySubAgent]) {
 			expect(
-				await executionService.getThreadDetail(thread.id, projectId, agentId, owner.id),
+				await executionService.getThreadDetail(thread.id, projectId, agentId, asReader(owner.id)),
 			).not.toBeNull();
 		}
 		for (const thread of [sourceOnlySubAgent, mcpThread, instanceAiThread, taskThread]) {

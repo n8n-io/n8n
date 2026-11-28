@@ -196,6 +196,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		agentId: string,
 		threadId: string,
 		channel?: AgentChatChannel,
+		options?: { revealExecutionData?: boolean },
 	): Promise<ThreadDetail> {
 		const rootStore = useRootStore();
 		return await getThreadDetailApi(
@@ -204,6 +205,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 			agentId,
 			threadId,
 			channel,
+			options,
 		);
 	}
 

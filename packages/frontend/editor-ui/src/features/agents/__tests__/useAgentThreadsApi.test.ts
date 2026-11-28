@@ -75,6 +75,21 @@ describe('useAgentThreadsApi', () => {
 		expect(result).toBe(response);
 	});
 
+	it('asks for unredacted thread detail on a reveal', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ thread: { id: 'x' }, executions: [] });
+
+		await getThreadDetail(restApiContext, 'project-1', 'agent-1', 'thread-1', 'chat', {
+			revealExecutionData: true,
+		});
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'GET',
+			'/projects/project-1/agents/v2/agent-1/threads/thread-1',
+			{ redactExecutionData: 'false' },
+		);
+	});
+
 	it('gets the thread detail of a system agent from the system agent routes', async () => {
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ thread: { id: 'x' }, executions: [] });
 

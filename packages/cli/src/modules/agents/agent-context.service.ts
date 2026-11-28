@@ -134,12 +134,9 @@ export class AgentContextService {
 		threadId: string,
 	): Promise<AgentSessionDetail | null> {
 		await this.assertReadAccess(user, projectId);
-		const detail = await this.agentExecutionService.getThreadDetail(
-			threadId,
-			projectId,
-			agentId,
-			user.id,
-		);
+		const detail = await this.agentExecutionService.getThreadDetail(threadId, projectId, agentId, {
+			user,
+		});
 		if (!detail) return null;
 		return toAgentSessionDetail(detail);
 	}
@@ -325,7 +322,7 @@ export class AgentContextService {
 					input.threadId,
 					projectId,
 					agent.id,
-					user.id,
+					{ user },
 				);
 				if (!detail) return { notFound: true };
 				return {

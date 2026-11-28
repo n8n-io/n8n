@@ -87,7 +87,17 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 						:agent-id="agentId"
 						:thread-id="threadId"
 					/>
-					<N8nMarkdown :content="props.messageMarkdown" />
+					<div
+						v-if="props.item.redacted"
+						:class="$style.redacted"
+						data-test-id="session-message-redacted"
+					>
+						<N8nIcon icon="lock" size="small" />
+						<N8nText step="sm" color="text-light">
+							{{ i18n.baseText('agentSessions.timeline.replyRedacted') }}
+						</N8nText>
+					</div>
+					<N8nMarkdown v-else :content="props.messageMarkdown" />
 				</div>
 			</CollapsibleContent>
 			<div v-if="isCollapsible" :class="$style.expandButtonContainer">
@@ -167,6 +177,12 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 }
 .messageContent {
 	display: flow-root;
+}
+.redacted {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	color: var(--text-color--subtler);
 }
 .expandButtonContainer {
 	display: grid;

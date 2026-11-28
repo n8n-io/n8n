@@ -43,6 +43,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { threadReaderFromRequest } from './agent-thread-redaction.service';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
 import { AgentChatRelayService } from './agent-chat-relay.service';
@@ -469,7 +470,7 @@ export class AgentChatController {
 			threadId,
 			projectId,
 			agentId,
-			userId: req.user.id,
+			reader: threadReaderFromRequest(req),
 			page,
 		});
 		if (!history) throw new NotFoundError('Session not found');
@@ -1094,7 +1095,7 @@ export class AgentChatController {
 			threadId,
 			projectId,
 			agentId,
-			userId: req.user.id,
+			reader: threadReaderFromRequest(req),
 			page,
 		});
 		// Also for a page of older turns: the checkpoint can deny access to the thread.

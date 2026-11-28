@@ -224,8 +224,8 @@ export interface RecordedUsage {
 export type TimelineEvent =
 	| { type: 'input'; messageId: string; timestamp: number }
 	| { type: 'background-task-signal'; signal: AgentBackgroundJobSignal; timestamp: number }
-	| { type: 'text'; content: string; timestamp: number; endTime?: number }
-	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
+	| { type: 'text'; content: string; timestamp: number; endTime?: number; redacted?: true }
+	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number; redacted?: true }
 	| {
 			type: 'tool-call';
 			kind: ToolRegistryEntry['kind'];
@@ -254,6 +254,8 @@ export type TimelineEvent =
 			childTrace?: PersistedChildTrace;
 			/** Host-only data from the tool's `toTraceOutput`, e.g. recalled memory entry ids. */
 			traceOutput?: unknown;
+			/** Set when the read side removed the input and output for the reader. */
+			redacted?: true;
 	  }
 	| {
 			type: 'suspension';
@@ -262,12 +264,14 @@ export type TimelineEvent =
 			timestamp: number;
 			input?: unknown;
 			suspendPayload?: unknown;
+			redacted?: true;
 	  }
 	| {
 			type: 'hitl-response';
 			toolCallId: string;
 			response: unknown;
 			timestamp: number;
+			redacted?: true;
 	  }
 	| {
 			type: 'guardrail';
@@ -282,6 +286,7 @@ export type TimelineEvent =
 			key?: string;
 			payload: unknown;
 			timestamp: number;
+			redacted?: true;
 	  };
 
 /**

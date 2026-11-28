@@ -274,14 +274,14 @@ describe('AgentSessionLangSmithExportService', () => {
 			'parent-thread',
 			'project-1',
 			'parent-agent',
-			'user-1',
+			{ user: expect.objectContaining({ id: 'user-1' }) },
 		);
 		expect(agentExecutionService.getThreadDetail).toHaveBeenNthCalledWith(
 			2,
 			'child-thread',
 			'project-1',
 			'child-agent',
-			'user-1',
+			{ user: expect.objectContaining({ id: 'user-1' }) },
 		);
 		expect(batchIngestRunsMock).not.toHaveBeenCalled();
 	});

@@ -182,6 +182,23 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	}
 
 	/**
+	 * The runs that the given executions delegated directly, with their
+	 * timelines, oldest first. Call again with the returned ids for deeper runs.
+	 */
+	async findChildrenByParentIds(parentIds: string[]): Promise<AgentExecution[]> {
+		const rows: AgentExecution[] = [];
+		for (let i = 0; i < parentIds.length; i += PARENT_ID_BATCH_SIZE) {
+			rows.push(
+				...(await this.find({
+					where: { parentExecutionId: In(parentIds.slice(i, i + PARENT_ID_BATCH_SIZE)) },
+					order: { createdAt: 'ASC', id: 'ASC' },
+				})),
+			);
+		}
+		return rows;
+	}
+
+	/**
 	 * Link for a run that the given execution delegates. Returns null when the
 	 * parent execution does not exist, so the caller stores no dangling link.
 	 */

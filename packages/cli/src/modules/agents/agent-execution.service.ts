@@ -18,7 +18,7 @@ import chunk from 'lodash/chunk';
 import groupBy from 'lodash/groupBy';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 
-import { ConflictError, OperationalError, UnexpectedError } from '@n8n/errors';
+import { ConflictError, NotFoundError, OperationalError, UnexpectedError } from '@n8n/errors';
 
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentAttentionFlagRepository } from './repositories/agent-attention-flag.repository';
@@ -54,7 +54,11 @@ import {
 	AgentExecutionThread,
 	type AgentThreadAccess,
 } from './entities/agent-execution-thread.entity';
-import { AgentExecution, type AgentExecutionHitlStatus } from './entities/agent-execution.entity';
+import {
+	AgentExecution,
+	type AgentExecutionHitlStatus,
+	type AgentTurnRedactionInfo,
+} from './entities/agent-execution.entity';
 import { isProjectAgent } from './entities/agent.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import {
@@ -89,7 +93,28 @@ import {
 	type ThreadFailureSummary,
 } from './utils/execution-failure-summary';
 import { applyFatalSessionOutcome } from './utils/fatal-session-outcome';
+import {
+	AgentThreadRedactionService,
+	readerUserId,
+	type ThreadReader,
+} from './agent-thread-redaction.service';
 import type { ChatHistoryPageRequest } from './utils/chat-history-page';
+
+/**
+ * The list shows how a thread failed, without the error text. The text can
+ * hold tool data, and the list does not decide redaction per reader.
+ */
+function withoutFailureMessage(summary: ThreadFailureSummary | null): ThreadFailureSummary | null {
+	return summary && { ...summary, latest: { ...summary.latest, message: null } };
+}
+
+/** True when the timeline is stored outside the database and did not load. */
+function isUnreadable(execution: AgentExecution): boolean {
+	return execution.storedAt !== 'db' && !execution.timeline;
+}
+
+/** Stops a walk of delegated runs on a link cycle in stored data. */
+const MAX_DELEGATION_DEPTH = 5;
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -230,6 +255,7 @@ export class AgentExecutionService {
 		private readonly attentionFlags: AgentAttentionFlagRepository,
 		private readonly integrationMessageContext: IntegrationMessageContextService,
 		private readonly metrics: AgentExecutionMetrics,
+		private readonly threadRedaction: AgentThreadRedactionService,
 	) {}
 
 	async startExecutionRecording(
@@ -1062,7 +1088,7 @@ export class AgentExecutionService {
 				),
 				firstMessage: previews.get(t.id) ?? null,
 				source,
-				failureSummary: failureSummaryMap.get(t.id) ?? null,
+				failureSummary: withoutFailureMessage(failureSummaryMap.get(t.id) ?? null),
 				status: toSessionStatus(latestStatusMap.get(t.id)),
 			};
 		});
@@ -1076,16 +1102,16 @@ export class AgentExecutionService {
 		threadId: string,
 		projectId: string,
 		agentId: string,
-		userId: string,
+		reader: ThreadReader,
 	): Promise<ThreadDetail | null> {
 		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
 		if (!thread) return null;
-		if (!threadBelongsTo(thread, projectId, agentId, userId)) return null;
+		if (!threadBelongsTo(thread, projectId, agentId, readerUserId(reader))) return null;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
 		await this.hydrateExecutionInputs(executions, thread.agentName, agentId);
 		await this.hydrateTimelines(agentId, threadId, executions);
-		return { thread, executions };
+		return { thread, executions: await this.redactForReader(executions, reader) };
 	}
 
 	/**
@@ -1101,12 +1127,12 @@ export class AgentExecutionService {
 		threadId: string,
 		projectId: string,
 		agentId: string,
-		userId: string,
+		reader: ThreadReader,
 		{ limit, before }: ChatHistoryPageRequest,
 	): Promise<ThreadDetailPage | null> {
 		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
 		if (!thread) return null;
-		if (!threadBelongsTo(thread, projectId, agentId, userId)) return null;
+		if (!threadBelongsTo(thread, projectId, agentId, readerUserId(reader))) return null;
 
 		const rows = await this.agentExecutionRepository.findByThreadIdNewestFirst(
 			threadId,
@@ -1126,7 +1152,152 @@ export class AgentExecutionService {
 
 		await this.hydrateExecutionInputs(executions, thread.agentName, agentId);
 		await this.hydrateTimelines(agentId, threadId, executions);
-		return { thread, executions, hasOlder: older !== undefined };
+		const redacted = await this.redactPageForReader(agentId, threadId, executions, older, reader);
+		return { thread, executions: redacted, hasOlder: older !== undefined };
+	}
+
+	/**
+	 * Redact one page of turns. A redacted turn also redacts the turns after it,
+	 * so the turns before the page take part in the decision.
+	 */
+	private async redactPageForReader(
+		agentId: string,
+		threadId: string,
+		page: AgentExecution[],
+		older: AgentExecution | undefined,
+		reader: ThreadReader,
+	): Promise<AgentExecution[]> {
+		if (!older) return await this.redactForReader(page, reader);
+
+		const pageIds = new Set(page.map((execution) => execution.id));
+		const all = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
+		const firstOnPage = all.findIndex((execution) => pageIds.has(execution.id));
+		// Without the page in the list, take every other turn, so no earlier turn is missed.
+		const earlier =
+			firstOnPage >= 0
+				? all.slice(0, firstOnPage)
+				: all.filter((execution) => !pageIds.has(execution.id));
+		await this.hydrateTimelines(agentId, threadId, earlier);
+		const redacted = await this.redactForReader([...earlier, ...page], reader);
+		return redacted.slice(earlier.length);
+	}
+
+	/**
+	 * Redact turns of one thread for the reader, in thread order from the first
+	 * turn. A delegating turn takes part with the workflow tools of the runs it
+	 * delegated, because it receives their result.
+	 */
+	private async redactForReader(
+		executions: AgentExecution[],
+		reader: ThreadReader,
+	): Promise<AgentExecution[]> {
+		if (!('user' in reader)) return executions;
+		return await this.threadRedaction.redactForReader(
+			executions,
+			reader,
+			await this.loadRedactionInputs(executions),
+		);
+	}
+
+	/**
+	 * The first turn of a thread that is redacted for the reader, with its
+	 * redaction and the ids of all redacted turns. Undefined when no turn is
+	 * redacted, or for the end user of a session. The caller checks access to
+	 * the thread first; a thread outside the project or agent is not found.
+	 */
+	async findRedactionStart(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		reader: ThreadReader,
+	): Promise<
+		{ startedAt: Date; redaction: AgentTurnRedactionInfo; executionIds: Set<string> } | undefined
+	> {
+		if (!('user' in reader)) return undefined;
+		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
+		// A thread that does not exist yet has no turns.
+		if (!thread) return undefined;
+		if (thread.projectId !== projectId || thread.agentId !== agentId) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+
+		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
+		await this.hydrateTimelines(agentId, threadId, executions);
+		const decisions = await this.threadRedaction.resolveForReader(
+			executions,
+			reader,
+			await this.loadRedactionInputs(executions),
+		);
+		const first = executions.find((execution) => decisions.has(execution.id));
+		const redaction = first && decisions.get(first.id);
+		if (!first || !redaction) return undefined;
+		return { startedAt: first.createdAt, redaction, executionIds: new Set(decisions.keys()) };
+	}
+
+	/**
+	 * What the redaction decision needs beyond the turns: the timelines of the
+	 * runs they delegated, and the turns whose timeline (or a delegated
+	 * timeline) is stored outside the database and did not load.
+	 */
+	private async loadRedactionInputs(executions: AgentExecution[]): Promise<{
+		delegatedTimelines: Map<string, TimelineEvent[]>;
+		unreadableTurnIds: Set<string>;
+	}> {
+		const unreadableTurnIds = new Set(executions.filter(isUnreadable).map(({ id }) => id));
+		const delegatedTimelines = await this.loadDelegatedTimelines(executions, unreadableTurnIds);
+		return { delegatedTimelines, unreadableTurnIds };
+	}
+
+	/**
+	 * Timeline events of the runs that each turn delegated, by turn id. A
+	 * delegated run can delegate again, so the events of every descendant count
+	 * for the top-level turn. Adds a turn to `unreadableTurnIds` when the
+	 * timeline of a run it delegated did not load.
+	 */
+	private async loadDelegatedTimelines(
+		executions: AgentExecution[],
+		unreadableTurnIds: Set<string>,
+	): Promise<Map<string, TimelineEvent[]>> {
+		const result = new Map<string, TimelineEvent[]>();
+		const rootOf = new Map(executions.map(({ id }) => [id, id]));
+		let parents = executions.map(({ id }) => id);
+
+		for (let depth = 0; depth < MAX_DELEGATION_DEPTH && parents.length > 0; depth++) {
+			const children = (
+				await this.agentExecutionRepository.findChildrenByParentIds(parents)
+			).filter(({ id }) => !rootOf.has(id));
+			if (children.length === 0) break;
+			await this.hydrateDelegatedTimelines(children);
+
+			for (const child of children) {
+				const root = child.parentExecutionId ? rootOf.get(child.parentExecutionId) : undefined;
+				if (!root) continue;
+				rootOf.set(child.id, root);
+				if (isUnreadable(child)) unreadableTurnIds.add(root);
+				const events = result.get(root) ?? [];
+				events.push(...(child.timeline ?? []));
+				result.set(root, events);
+			}
+			parents = children.map(({ id }) => id);
+		}
+		return result;
+	}
+
+	private async hydrateDelegatedTimelines(children: AgentExecution[]): Promise<void> {
+		const childThreads = await this.agentExecutionThreadRepository.findManyByIds([
+			...new Set(children.map(({ threadId }) => threadId)),
+		]);
+		const agentIdByThread = new Map(childThreads.map((thread) => [thread.id, thread.agentId]));
+		const byThread = new Map<string, AgentExecution[]>();
+		for (const child of children) {
+			const group = byThread.get(child.threadId) ?? [];
+			group.push(child);
+			byThread.set(child.threadId, group);
+		}
+		for (const [childThreadId, group] of byThread) {
+			const childAgentId = agentIdByThread.get(childThreadId);
+			if (childAgentId) await this.hydrateTimelines(childAgentId, childThreadId, group);
+		}
 	}
 
 	/**
