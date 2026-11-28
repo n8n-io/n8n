@@ -311,7 +311,6 @@ const onRoleAction = async (project: ProjectSharingData, role: string) => {
 				:clearable
 				:teleported="props.teleported"
 				:popper-options="props.teleported ? undefined : inPlacePopperOptions"
-				:popper-class="$style.popper"
 				@update:model-value="onProjectSelected"
 				@clear="emit('clear')"
 			>
@@ -499,10 +498,6 @@ const onRoleAction = async (project: ProjectSharingData, role: string) => {
 
 .projectRoleSelect {
 	width: auto;
-}
-
-.popper :global(.el-scrollbar__wrap) {
-	scrollbar-width: none; // <-- hides scrollbar but maintains scrolling
 }
 
 .emoji {

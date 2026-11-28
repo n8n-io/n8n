@@ -111,6 +111,26 @@ describe('ProjectSharing', () => {
 		).toBeInTheDocument();
 	});
 
+	it('uses the shared Element Plus hidden-default scrollbar wrapper on its dropdown', async () => {
+		const { container, getByTestId } = renderComponent({
+			props: {
+				searchFn: createTestSearchFn(personalProjects),
+				modelValue: [],
+				teleported: false,
+			},
+		});
+
+		await userEvent.click(within(getByTestId('project-sharing-select')).getByRole('combobox'));
+
+		await waitFor(() => {
+			const popper = container.querySelector<HTMLElement>('.el-select__popper');
+			expect(popper).not.toBeNull();
+			expect(popper?.querySelector('.el-scrollbar__wrap')).toHaveClass(
+				'el-scrollbar__wrap--hidden-default',
+			);
+		});
+	});
+
 	it('should filter, add and remove projects', async () => {
 		const { getByTestId, getAllByTestId, queryAllByTestId, emitted } = renderComponent({
 			props: {
