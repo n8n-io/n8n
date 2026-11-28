@@ -8,7 +8,7 @@ import {
 	nextCloudApiRequest,
 	outputPath,
 	readMultistatus,
-	readProps,
+	toWebDavItem,
 	webDavPath,
 } from '../../GenericFunctions';
 
@@ -78,8 +78,8 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 const PROPFIND_BODY = `<?xml version="1.0"?>
-<d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
-  <d:prop><oc:fileid/><d:getetag/><d:getlastmodified/><d:getcontentlength/><d:getcontenttype/></d:prop>
+<d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
+  <d:prop><oc:fileid/><d:getetag/><d:getlastmodified/><d:getcontentlength/><d:getcontenttype/><d:resourcetype/><nc:upload_time/></d:prop>
 </d:propfind>`;
 
 export function nameWithTimestamp(fileName: string, date: Date) {
@@ -101,14 +101,6 @@ async function putIfNew(this: IExecuteFunctions, endpoint: RequestPath, content:
 		throw error;
 	}
 }
-
-const OUTPUT_PROPS = {
-	fileId: 'oc:fileid',
-	eTag: 'd:getetag',
-	lastModified: 'd:getlastmodified',
-	contentLength: 'd:getcontentlength',
-	contentType: 'd:getcontenttype',
-};
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<IDataObject> {
 	const content = this.getNodeParameter('content', i, '', { ensureType: 'string' }) as string;
@@ -190,7 +182,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 	const path = outputPath(`${parentFolder}/${writtenName}`);
 	const readError = `Created the file "${path}", but could not read its file ID`;
 
-	let metadata: Record<string, string>;
+	let item: IDataObject;
 	try {
 		// A PUT response has no body, so read the new file's metadata separately
 		const [response] = await readMultistatus(
@@ -202,12 +194,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 				{ 'Content-Type': 'application/xml', Depth: '0' },
 			),
 		);
-		const props = readProps(response);
-		metadata = Object.fromEntries(
-			Object.entries(OUTPUT_PROPS)
-				.filter(([, prop]) => typeof props[prop] === 'string')
-				.map(([key, prop]) => [key, String(props[prop])]),
-		);
+		item = response ? toWebDavItem(response) : {};
 	} catch (error) {
 		throw new NodeOperationError(this.getNode(), readError, {
 			itemIndex: i,
@@ -215,9 +202,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 		});
 	}
 
-	if (!metadata.fileId) {
+	if (!item.fileId) {
 		throw new NodeOperationError(this.getNode(), readError, { itemIndex: i });
 	}
 
-	return { path, ...metadata, eTag: metadata.eTag?.replace(/^"|"$/g, '') };
+	return { ...item, path };
 }
