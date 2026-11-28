@@ -355,7 +355,7 @@ onBeforeUnmount(() => {
 					<N8nInlineTextEdit
 						ref="renameInput"
 						:key="id"
-						placeholder="Workflow name"
+						:placeholder="i18n.baseText('workflowSettings.name')"
 						data-test-id="workflow-name-input"
 						class="name"
 						:model-value="name"
