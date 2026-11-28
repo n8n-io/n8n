@@ -128,9 +128,6 @@ function onSearch(term: string) {
 		<template #item-leading="{ item }">
 			<ProjectIcon v-if="item.icon" :icon="item.icon" size="small" border-less />
 		</template>
-		<template #item-trailing="{ item }">
-			<N8nIcon v-if="item.checked" icon="check" size="small" />
-		</template>
 	</N8nDropdownMenu>
 </template>
 

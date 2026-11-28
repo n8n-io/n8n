@@ -111,14 +111,13 @@ async function onSelect(value: unknown) {
 
 			<template #item-label="{ item }">
 				<span :class="$style.itemStack">
-					<N8nText tag="span" size="medium">{{ item.label }}</N8nText>
-					<N8nText tag="span" size="small" color="text-base">
+					<N8nText tag="span" step="sm" color="text-dark">
+						{{ item.label }}
+					</N8nText>
+					<N8nText tag="span" step="xs" color="text-base">
 						{{ item.data?.description }}
 					</N8nText>
 				</span>
-			</template>
-			<template #item-trailing="{ item }">
-				<N8nIcon v-if="item.checked" icon="check" size="small" />
 			</template>
 		</N8nDropdownMenu>
 	</div>
@@ -131,7 +130,7 @@ async function onSelect(value: unknown) {
 }
 
 .trigger {
-	padding-inline: var(--spacing--3xs);
+	padding-inline: var(--spacing--2xs);
 	height: var(--spacing--lg);
 	gap: var(--spacing--4xs);
 }
@@ -147,8 +146,10 @@ async function onSelect(value: unknown) {
 
 .itemStack {
 	display: flex;
+	flex: 1;
 	flex-direction: column;
-	gap: var(--spacing--5xs);
+	gap: var(--spacing--4xs);
+	min-width: 0;
 	white-space: normal;
 }
 </style>

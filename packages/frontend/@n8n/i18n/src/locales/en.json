@@ -8938,7 +8938,7 @@
 	"instanceAi.canvasActionPopover.body": "Building, questions, and debugging with AI now happen in the n8n Assistant.",
 	"instanceAi.canvasActionPopover.action": "Open n8n Assistant",
 	"instanceAi.approvalMode.tooltip": "Change permission mode",
-	"instanceAi.approvalMode.triggerLabel": "Approval mode: {mode}",
+	"instanceAi.approvalMode.triggerLabel": "{mode}, approval mode",
 	"instanceAi.approvalMode.manual": "Ask for approval",
 	"instanceAi.approvalMode.manual.description": "You approve each action before it runs",
 	"instanceAi.approvalMode.auto": "Approve for me",

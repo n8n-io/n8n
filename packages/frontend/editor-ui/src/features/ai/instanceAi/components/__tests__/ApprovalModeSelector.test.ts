@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
@@ -48,12 +48,12 @@ describe('ApprovalModeSelector', () => {
 		expect(store.ensurePreferences).toHaveBeenCalledTimes(1);
 	});
 
-	it('shows the current mode on a button that names the setting', () => {
+	it('shows the current mode on a button whose name starts with the visible text', () => {
 		const { pinia } = setup({ approvalMode: 'auto', approvalModesAvailable: true });
 
 		const { getByRole } = renderComponent({ pinia });
 
-		expect(getByRole('button', { name: 'Approval mode: Approve for me' })).toHaveTextContent(
+		expect(getByRole('button', { name: 'Approve for me, approval mode' })).toHaveTextContent(
 			'Approve for me',
 		);
 	});
@@ -62,7 +62,7 @@ describe('ApprovalModeSelector', () => {
 		const { pinia } = setup({ approvalMode: 'manual', approvalModesAvailable: true });
 		const { getByRole } = renderComponent({ pinia });
 
-		await userEvent.click(getByRole('button', { name: /Approval mode/ }));
+		await userEvent.click(getByRole('button', { name: /approval mode/ }));
 
 		expect(getByRole('menuitemcheckbox', { name: /Ask for approval/ })).toHaveAttribute(
 			'aria-checked',
@@ -74,11 +74,23 @@ describe('ApprovalModeSelector', () => {
 		);
 	});
 
+	it('shows the check only on the current mode', async () => {
+		const { pinia } = setup({ approvalMode: 'auto', approvalModesAvailable: true });
+		const { getByRole } = renderComponent({ pinia });
+
+		await userEvent.click(getByRole('button', { name: /approval mode/ }));
+
+		const current = getByRole('menuitemcheckbox', { name: /Approve for me/ });
+		const other = getByRole('menuitemcheckbox', { name: /Ask for approval/ });
+		expect(within(current).getByTestId('dropdown-menu-item-check')).toBeInTheDocument();
+		expect(within(other).queryByTestId('dropdown-menu-item-check')).not.toBeInTheDocument();
+	});
+
 	it('saves a new mode and tracks the change', async () => {
 		const { pinia, store } = setup({ approvalMode: 'manual', approvalModesAvailable: true });
 		const { getByRole } = renderComponent({ pinia, props: { threadId: 'thread-1' } });
 
-		await userEvent.click(getByRole('button', { name: /Approval mode/ }));
+		await userEvent.click(getByRole('button', { name: /approval mode/ }));
 		await userEvent.click(getByRole('menuitemcheckbox', { name: /Approve for me/ }));
 
 		await waitFor(() => expect(store.setApprovalMode).toHaveBeenCalledWith('auto'));
@@ -93,7 +105,7 @@ describe('ApprovalModeSelector', () => {
 		const { pinia, store } = setup({ approvalMode: 'manual', approvalModesAvailable: true });
 		const { getByRole } = renderComponent({ pinia });
 
-		getByRole('button', { name: /Approval mode/ }).focus();
+		getByRole('button', { name: /approval mode/ }).focus();
 		await userEvent.keyboard('{Enter}');
 		await waitFor(() =>
 			expect(getByRole('menuitemcheckbox', { name: /Ask for approval/ })).toBeVisible(),
@@ -109,7 +121,7 @@ describe('ApprovalModeSelector', () => {
 		store.setApprovalMode.mockResolvedValue(false);
 		const { getByRole } = renderComponent({ pinia });
 
-		await userEvent.click(getByRole('button', { name: /Approval mode/ }));
+		await userEvent.click(getByRole('button', { name: /approval mode/ }));
 		await userEvent.click(getByRole('menuitemcheckbox', { name: /Approve for me/ }));
 
 		await waitFor(() => expect(store.setApprovalMode).toHaveBeenCalledWith('auto'));
