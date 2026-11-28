@@ -8,7 +8,6 @@ import TableRow from '@tiptap/extension-table-row';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import Underline from '@tiptap/extension-underline';
-import { Markdown } from '@tiptap/markdown';
 import type { EditorState } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
@@ -23,6 +22,7 @@ import {
 	pasteMarkdown,
 	setEditorContent,
 } from '../markdownEditorUtils';
+import { MarkdownWithMinimalEscapes } from '../markdownWithMinimalEscapes';
 
 type EditorProps = NonNullable<N8nMarkdownEditorProps['editorProps']>;
 type EditorAttributes = EditorProps['attributes'];
@@ -65,7 +65,7 @@ export const useMarkdownEditor = (
 			nested: true,
 		}),
 		Underline,
-		Markdown.configure({
+		MarkdownWithMinimalEscapes.configure({
 			markedOptions: {
 				gfm: true,
 				breaks: false,
