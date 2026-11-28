@@ -11,36 +11,14 @@ const WORKFLOW_ID = 'workflow-1';
 
 function setup() {
 	const runner = mock<CallableWorkflowRunner>();
-	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
-	const workflowRepository = mock<WorkflowRepository>();
+	const sharedWorkflows = mock<SharedWorkflowRepository>();
+	const workflows = mock<WorkflowRepository>();
 	return {
 		runner,
-		sharedWorkflowRepository,
-		workflowRepository,
-		adapter: new WorkflowToolAdapter(runner, sharedWorkflowRepository, workflowRepository),
+		sharedWorkflows,
+		workflows,
+		adapter: new WorkflowToolAdapter(runner, sharedWorkflows, workflows),
 	};
-}
-
-function workflows(count: number, overrides: Partial<WorkflowEntity> = {}): WorkflowEntity[] {
-	return Array.from({ length: count }, (_, i) =>
-		Object.assign(new WorkflowEntity(), {
-			id: `workflow-${i}`,
-			name: `Workflow ${i}`,
-			description: null,
-			isArchived: false,
-			...overrides,
-		}),
-	);
-}
-
-function setupList(projectWorkflows: WorkflowEntity[]) {
-	const context = setup();
-	context.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects.mockResolvedValue(
-		projectWorkflows.map(({ id }) => id),
-	);
-	context.workflowRepository.findByIds.mockResolvedValue(projectWorkflows);
-	context.runner.check.mockResolvedValue({ callable: false, reason: 'not_published' });
-	return context;
 }
 
 describe('WorkflowToolAdapter', () => {
@@ -60,6 +38,30 @@ describe('WorkflowToolAdapter', () => {
 			callable: false,
 			reason: 'not_callable',
 		});
+	});
+
+	it('lists the workflows of the project without the check, and leaves out archived ones', async () => {
+		const { runner, sharedWorkflows, workflows, adapter } = setup();
+		sharedWorkflows.findOwnedWorkflowIdsByProjects.mockResolvedValue(['w-1', 'w-2']);
+		workflows.findByIds.mockResolvedValue([
+			Object.assign(new WorkflowEntity(), { id: 'w-1', name: 'Lead score', description: null }),
+			Object.assign(new WorkflowEntity(), { id: 'w-2', name: 'Old', isArchived: true }),
+		]);
+
+		await expect(adapter.list(PROJECT_ID)).resolves.toEqual([
+			{ workflowId: 'w-1', name: 'Lead score', description: null },
+		]);
+		expect(runner.check).not.toHaveBeenCalled();
+	});
+
+	it('lists only the given workflows that the project owns', async () => {
+		const { sharedWorkflows, workflows, adapter } = setup();
+		sharedWorkflows.findOwnedWorkflowIdsByProjects.mockResolvedValue(['w-1', 'w-2']);
+		workflows.findByIds.mockResolvedValue([]);
+
+		await adapter.list(PROJECT_ID, ['w-2', 'w-9']);
+
+		expect(workflows.findByIds).toHaveBeenCalledWith(['w-2'], expect.anything());
 	});
 
 	it('describes the workflow with the input schema of the runner', async () => {
@@ -90,65 +92,5 @@ describe('WorkflowToolAdapter', () => {
 			{ email: 'a@b.c' },
 			{ waitMs: 5_000 },
 		);
-	});
-
-	describe('list', () => {
-		it('gives no items and runs no check for a project without workflows', async () => {
-			const { runner, adapter } = setupList([]);
-
-			await expect(adapter.list(PROJECT_ID)).resolves.toEqual([]);
-			expect(runner.check).not.toHaveBeenCalled();
-		});
-
-		it.each([10, 11, 25])('gives one item for each of %i workflows, in order', async (count) => {
-			const projectWorkflows = workflows(count);
-			const { runner, adapter } = setupList(projectWorkflows);
-
-			const items = await adapter.list(PROJECT_ID);
-
-			expect(items.map(({ workflowId }) => workflowId)).toEqual(
-				projectWorkflows.map(({ id }) => id),
-			);
-			expect(items[0]).toEqual({
-				workflowId: 'workflow-0',
-				name: 'Workflow 0',
-				description: null,
-				check: { callable: false, reason: 'not_published' },
-			});
-			expect(runner.check).toHaveBeenCalledTimes(count);
-		});
-
-		it('leaves out an archived workflow and does not check it', async () => {
-			const [open] = workflows(1);
-			const archived = Object.assign(new WorkflowEntity(), {
-				id: 'archived',
-				name: 'Archived',
-				isArchived: true,
-			});
-			const { runner, adapter } = setupList([open, archived]);
-
-			const items = await adapter.list(PROJECT_ID);
-
-			expect(items.map(({ workflowId }) => workflowId)).toEqual([open.id]);
-			expect(runner.check).toHaveBeenCalledTimes(1);
-			expect(runner.check).not.toHaveBeenCalledWith(PROJECT_ID, 'archived');
-		});
-
-		it('runs at most 10 checks at the same time', async () => {
-			const { runner, adapter } = setupList(workflows(25));
-			let running = 0;
-			let mostRunning = 0;
-			runner.check.mockImplementation(async () => {
-				running++;
-				mostRunning = Math.max(mostRunning, running);
-				await new Promise((resolve) => setImmediate(resolve));
-				running--;
-				return { callable: false, reason: 'not_published' };
-			});
-
-			await adapter.list(PROJECT_ID);
-
-			expect(mostRunning).toBe(10);
-		});
 	});
 });

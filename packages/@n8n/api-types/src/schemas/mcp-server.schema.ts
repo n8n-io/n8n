@@ -1,3 +1,4 @@
+import type { Scope } from '@n8n/permissions';
 import { z } from 'zod';
 
 import { projectTypeSchema } from './project.schema';
@@ -205,3 +206,21 @@ export type McpServerConnectionsResponse = z.infer<typeof mcpServerConnectionsRe
 /** Where a builder action came from. Telemetry and the Assistant tool use it. */
 export const mcpServerActionSourceSchema = z.enum(['ui', 'assistant']);
 export type McpServerActionSource = z.infer<typeof mcpServerActionSourceSchema>;
+
+/**
+ * The project scope of each action on custom MCP servers. The REST routes and the n8n Assistant
+ * both read it here, so they always ask for the same scope.
+ */
+export const MCP_SERVER_ACTION_SCOPES = {
+	list: 'mcpServer:list',
+	create: 'mcpServer:create',
+	read: 'mcpServer:read',
+	update: 'mcpServer:update',
+	delete: 'mcpServer:delete',
+	// The workflow picker and every tool change are a change of the server.
+	toolCandidates: 'mcpServer:update',
+	addTools: 'mcpServer:update',
+	updateTool: 'mcpServer:update',
+	draftTool: 'mcpServer:update',
+	removeTool: 'mcpServer:update',
+} as const satisfies Record<string, Scope>;

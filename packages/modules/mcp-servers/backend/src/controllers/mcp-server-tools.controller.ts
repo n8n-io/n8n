@@ -1,6 +1,7 @@
 import {
 	AddMcpServerToolsDto,
 	DraftMcpServerToolDto,
+	MCP_SERVER_ACTION_SCOPES,
 	UpdateMcpServerToolDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -24,14 +25,14 @@ export class McpServerToolsController {
 	) {}
 
 	@Get('/tool-candidates')
-	@ProjectScope('mcpServer:update')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.toolCandidates)
 	async candidates(req: ToolsRequest) {
 		await this.flagGate.assertEnabled();
 		return await this.toolsService.listCandidates(req.params.projectId, req.params.serverId);
 	}
 
 	@Post('/tools')
-	@ProjectScope('mcpServer:update')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.addTools)
 	async add(req: ToolsRequest, _res: unknown, @Body dto: AddMcpServerToolsDto) {
 		await this.flagGate.assertEnabled();
 		return await this.toolsService.addWorkflowTools(
@@ -43,7 +44,7 @@ export class McpServerToolsController {
 	}
 
 	@Patch('/tools/:toolId')
-	@ProjectScope('mcpServer:update')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.updateTool)
 	async update(req: ToolRequest, _res: unknown, @Body dto: UpdateMcpServerToolDto) {
 		await this.flagGate.assertEnabled();
 		return await this.toolsService.updateTool(
@@ -56,7 +57,7 @@ export class McpServerToolsController {
 
 	/** One model call. Without `field`, the draft writes both fields, as after an add. */
 	@Post('/tools/:toolId/draft')
-	@ProjectScope('mcpServer:update')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.draftTool)
 	async draft(req: ToolRequest, _res: unknown, @Body dto: DraftMcpServerToolDto) {
 		await this.flagGate.assertEnabled();
 		return await this.toolsService.draftTool(
@@ -70,7 +71,7 @@ export class McpServerToolsController {
 	}
 
 	@Delete('/tools/:toolId')
-	@ProjectScope('mcpServer:update')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.removeTool)
 	async remove(req: ToolRequest) {
 		await this.flagGate.assertEnabled();
 		await this.toolsService.removeTool(

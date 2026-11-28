@@ -1,4 +1,9 @@
-import { CreateMcpServerDto, McpServerSlugQueryDto, UpdateMcpServerDto } from '@n8n/api-types';
+import {
+	CreateMcpServerDto,
+	MCP_SERVER_ACTION_SCOPES,
+	McpServerSlugQueryDto,
+	UpdateMcpServerDto,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -30,14 +35,14 @@ export class McpServersController {
 	) {}
 
 	@Get('/')
-	@ProjectScope('mcpServer:list')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.list)
 	async list(req: ServerRequest) {
 		await this.flagGate.assertEnabled();
 		return await this.service.list(req.params.projectId);
 	}
 
 	@Post('/')
-	@ProjectScope('mcpServer:create')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.create)
 	async create(req: ServerRequest, _res: unknown, @Body dto: CreateMcpServerDto) {
 		await this.flagGate.assertEnabled();
 		return await this.service.create(req.params.projectId, dto, {
@@ -48,7 +53,7 @@ export class McpServersController {
 
 	// Before `/:serverId`, which would match this path too.
 	@Get('/slug-available')
-	@ProjectScope('mcpServer:create')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.create)
 	async slugAvailable(_req: ServerRequest, _res: unknown, @Query query: McpServerSlugQueryDto) {
 		await this.flagGate.assertEnabled();
 		return await this.service.slugAvailability(query.slug);
@@ -56,7 +61,7 @@ export class McpServersController {
 
 	/** One server with its tools. Each tool says if it is broken, and why. */
 	@Get('/:serverId')
-	@ProjectScope('mcpServer:read')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.read)
 	async get(req: ServerRequest) {
 		await this.flagGate.assertEnabled();
 		const { projectId, serverId } = req.params;
@@ -69,14 +74,14 @@ export class McpServersController {
 	}
 
 	@Patch('/:serverId')
-	@ProjectScope('mcpServer:update')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.update)
 	async update(req: ServerRequest, _res: unknown, @Body dto: UpdateMcpServerDto) {
 		await this.flagGate.assertEnabled();
 		return await this.service.update(req.params.projectId, req.params.serverId, dto);
 	}
 
 	@Delete('/:serverId')
-	@ProjectScope('mcpServer:delete')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.delete)
 	async delete(req: ServerRequest) {
 		await this.flagGate.assertEnabled();
 		await this.service.delete(req.params.projectId, req.params.serverId, {

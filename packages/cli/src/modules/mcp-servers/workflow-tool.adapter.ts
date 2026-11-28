@@ -11,13 +11,6 @@ import { Service } from '@n8n/di';
 
 import { CallableWorkflowRunner } from '@/workflows/callable/callable-workflow-runner.service';
 
-/**
- * Each check loads the published version, so the picker checks a few workflows at a time.
- * Limit: each open of the picker checks every workflow of the project, so the cost grows with
- * the project size. A paged, searchable candidate list is a follow-up.
- */
-const LIST_CHECK_BATCH_SIZE = 10;
-
 /** Workflow tools of custom MCP servers. They run through the shared runner, as the server's project. */
 @Service()
 export class WorkflowToolAdapter extends WorkflowToolPort {
@@ -29,29 +22,21 @@ export class WorkflowToolAdapter extends WorkflowToolPort {
 		super();
 	}
 
-	async list(projectId: string): Promise<WorkflowToolListItem[]> {
-		const ids = await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([projectId]);
-		const workflows = (
-			await this.workflowRepository.findByIds(ids, {
-				fields: ['name', 'description', 'isArchived'],
-			})
-		).filter((workflow) => !workflow.isArchived);
-
-		const items: WorkflowToolListItem[] = [];
-		for (let i = 0; i < workflows.length; i += LIST_CHECK_BATCH_SIZE) {
-			const batch = workflows.slice(i, i + LIST_CHECK_BATCH_SIZE);
-			items.push(
-				...(await Promise.all(
-					batch.map(async (workflow) => ({
-						workflowId: workflow.id,
-						name: workflow.name,
-						description: workflow.description ?? null,
-						check: await this.check(projectId, workflow.id),
-					})),
-				)),
-			);
-		}
-		return items;
+	async list(projectId: string, workflowIds?: string[]): Promise<WorkflowToolListItem[]> {
+		const owned = await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([projectId]);
+		const wanted = workflowIds ? new Set(workflowIds) : undefined;
+		const ids = wanted ? owned.filter((id) => wanted.has(id)) : owned;
+		if (ids.length === 0) return [];
+		const workflows = await this.workflowRepository.findByIds(ids, {
+			fields: ['name', 'description', 'isArchived'],
+		});
+		return workflows
+			.filter((workflow) => !workflow.isArchived)
+			.map((workflow) => ({
+				workflowId: workflow.id,
+				name: workflow.name,
+				description: workflow.description ?? null,
+			}));
 	}
 
 	async check(projectId: string, workflowId: string): Promise<WorkflowToolCheck> {

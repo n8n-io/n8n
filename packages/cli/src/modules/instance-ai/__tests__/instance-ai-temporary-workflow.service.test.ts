@@ -52,6 +52,7 @@ function createService() {
 		approvalModesEnabled: false,
 		instanceContextEnabled: false,
 		assistantSkillsEnabled: false,
+		customMcpServersEnabled: false,
 	});
 
 	const service = new InstanceAiTemporaryWorkflowService(

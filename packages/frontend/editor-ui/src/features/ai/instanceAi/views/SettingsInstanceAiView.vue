@@ -39,6 +39,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiCloudBrowserExperiment } from '@/experiments/instanceAiCloudBrowser';
 import { isContextSkillsEnabled } from '@/features/settings/context/context.utils';
+import { customMcpServersEnabled } from '@/experiments/customMcpServers/customMcpServersEnabled';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -231,9 +232,18 @@ const SKILLS_PERMISSION_GROUP: PermissionGroup = {
 	keys: ['createSkill', 'updateSkill', 'deleteSkill'],
 };
 
+const CUSTOM_MCP_SERVERS_PERMISSION_GROUP: PermissionGroup = {
+	id: 'customMcpServers',
+	labelKey: 'settings.n8nAgent.permissions.group.customMcpServers',
+	keys: ['deleteMcpServer'],
+};
+
 const permissionGroups = computed(() => [
 	...PERMISSION_GROUPS,
 	...(isContextSkillsEnabled() ? [SKILLS_PERMISSION_GROUP] : []),
+	...(settingsStore.isModuleActive('mcp-servers') && customMcpServersEnabled()
+		? [CUSTOM_MCP_SERVERS_PERMISSION_GROUP]
+		: []),
 ]);
 
 const expandedGroups = reactive<Record<string, boolean>>({});

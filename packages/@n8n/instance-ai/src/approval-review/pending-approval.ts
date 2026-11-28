@@ -89,6 +89,18 @@ function isSkillActionRequiringReview(
 	);
 }
 
+/**
+ * A deleted custom MCP server cuts off every AI client that uses it, and a removed tool breaks
+ * the clients that call it. Both always ask the user.
+ */
+function isCustomMcpServerRemoval(approval: Pick<PendingApproval, 'toolName' | 'args'>): boolean {
+	return (
+		approval.toolName === DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS &&
+		isRecord(approval.args) &&
+		(approval.args.action === 'delete' || approval.args.action === 'remove-tool')
+	);
+}
+
 const DATA_TABLE_CHANGE_ROUTES: Readonly<Record<DataTableWriteToolAction, ApprovalRoute>> = {
 	// A deleted table takes all its rows.
 	delete: 'always-ask',
@@ -126,7 +138,11 @@ export function routeApproval(
 	if (resolveBuilderToolName(approval.toolName) === AGENT_BUILDER_TOOL_NAMES.PUBLISH_AGENT) {
 		return 'always-ask';
 	}
-	if (ALWAYS_ASK_TOOLS.has(approval.toolName) || isSkillActionRequiringReview(approval)) {
+	if (
+		ALWAYS_ASK_TOOLS.has(approval.toolName) ||
+		isSkillActionRequiringReview(approval) ||
+		isCustomMcpServerRemoval(approval)
+	) {
 		return 'always-ask';
 	}
 	if (LOW_RISK_TOOLS.has(approval.toolName)) return 'low-risk';

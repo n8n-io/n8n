@@ -1,6 +1,12 @@
 // Export the public API here. Do not export McpServersModule from this file.
 export { CustomMcpServersFlagGate } from './services/custom-mcp-servers-flag-gate';
 export { McpServersConfig } from './mcp-servers.config';
+export { McpServersService } from './services/mcp-servers.service';
+export {
+	McpServerToolsService,
+	type McpServerToolCandidatePage,
+	type McpServerToolCandidateQuery,
+} from './services/mcp-server-tools.service';
 export type { McpServerActor, McpServerEventMap } from './mcp-server-events';
 export { McpServer } from './database/entities/mcp-server.entity';
 export { McpServerTool } from './database/entities/mcp-server-tool.entity';

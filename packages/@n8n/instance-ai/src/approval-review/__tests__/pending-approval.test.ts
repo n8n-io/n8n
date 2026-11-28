@@ -137,6 +137,24 @@ describe('routeApproval', () => {
 		);
 	});
 
+	it('always asks before a custom MCP server or one of its tools is removed, and lets the judge decide other changes', () => {
+		expect(
+			routeApproval({ toolName: 'custom-mcp-servers', args: { action: 'delete', serverId: 's1' } }),
+		).toBe('always-ask');
+		expect(
+			routeApproval({
+				toolName: 'custom-mcp-servers',
+				args: { action: 'remove-tool', serverId: 's1', toolId: 't1' },
+			}),
+		).toBe('always-ask');
+		expect(
+			routeApproval({
+				toolName: 'custom-mcp-servers',
+				args: { action: 'add-tools', serverId: 's1', workflowIds: ['w1'] },
+			}),
+		).toBe('judge');
+	});
+
 	it.each([
 		{ actions: ['create', 'insert-rows', 'delete'], route: 'always-ask' },
 		{ actions: ['create', 'add-column'], route: 'low-risk' },

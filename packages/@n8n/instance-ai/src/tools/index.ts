@@ -49,6 +49,9 @@ const loadConversationHistoryTool = lazyMod(
 const loadAppsTool = lazyMod(
 	() => require('./apps/apps.tool') as typeof import('./apps/apps.tool'),
 );
+const loadCustomMcpServersTool = lazyMod(
+	() => require('./custom-mcp-servers.tool') as typeof import('./custom-mcp-servers.tool'),
+);
 const loadDataTablesTool = lazyMod(
 	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
 );
@@ -308,6 +311,15 @@ function getOrchestratorDomainToolFactories(
 				() => loadAppsTool().createAppTool(context, action),
 			]);
 		}
+	}
+
+	// The adapter wires the service only when the module is on and the flag gives the user the
+	// variant `test`, so presence is the gate.
+	if (context.customMcpServerService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS,
+			() => loadCustomMcpServersTool().createCustomMcpServersTool(context),
+		]);
 	}
 
 	// Registered on every turn, with or without files, so the tool list, which

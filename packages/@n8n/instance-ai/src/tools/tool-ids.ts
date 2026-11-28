@@ -69,6 +69,8 @@ export const DOMAIN_TOOL_IDS = {
 	AGENT_CONTEXT: 'agent-context',
 	ARCHIVE_AGENT: 'archive_agent',
 	MCP_SERVERS: 'mcp-servers',
+	// Builds the custom MCP servers of a project. `mcp-servers` connects third-party servers.
+	CUSTOM_MCP_SERVERS: 'custom-mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
 	ACTIVITY: 'activity',
 	SAVE_USER_PREFERENCE: 'save_user_preference',
@@ -201,6 +203,7 @@ const TOOL_GROUP_BY_NAME = new Map<string, string>([
 		'instance',
 	]),
 	...APP_TOOL_NAMES.map((name): [string, string] => [name, 'apps']),
+	[DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS, 'custom_mcp_servers'],
 ]);
 
 /** One line on what each n8n tool group holds, shown next to its tool names. */
@@ -214,6 +217,9 @@ const TOOL_GROUP_DESCRIPTIONS: Readonly<Record<string, string>> = {
 	instance:
 		'list projects and tags, manage folders, tag workflows and clean up test executions in this n8n instance',
 	apps: 'create, open, change, save and bind n8n Apps',
+	// Without this line the model reads "MCP server" as an MCP Server Trigger workflow.
+	custom_mcp_servers:
+		'build and change custom MCP servers: a project server that serves chosen workflows as tools to AI clients, with the n8n sign-in. Not an MCP Server Trigger workflow',
 };
 
 /** Returns the description of a tool group, or undefined when it has none. */

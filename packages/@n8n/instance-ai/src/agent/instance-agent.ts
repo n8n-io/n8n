@@ -222,6 +222,7 @@ export async function createInstanceAgent(
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
 			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
 			skillManagementEnabled: Boolean(context.skillService),
+			customMcpServersEnabled: Boolean(context.customMcpServerService),
 			agentArchiveEnabled:
 				orchestratorDomainTools.has(DOMAIN_TOOL_IDS.ARCHIVE_AGENT) &&
 				allOrchestratorTools.has(DOMAIN_TOOL_IDS.ARCHIVE_AGENT),

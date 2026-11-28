@@ -304,6 +304,7 @@ export class AssistantTurnEnvironmentFactory {
 			skillSourcesEnabled,
 			workflowsInSkillsEnabled,
 			preferencesNoteVariant,
+			customMcpServersEnabled,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
 		// Resumed segments use the gates bound to the original turn.
@@ -348,6 +349,7 @@ export class AssistantTurnEnvironmentFactory {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			skillSourcesEnabled,
+			customMcpServersEnabled,
 			workflowsInSkillsEnabled,
 			modelId,
 			utilityModelId,
