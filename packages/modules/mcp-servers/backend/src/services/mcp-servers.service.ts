@@ -6,10 +6,11 @@ import {
 	type UpdateMcpServerDto,
 } from '@n8n/api-types';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError, UnexpectedError } from '@n8n/errors';
 
+import { McpServerConnectionRepository } from '../access/mcp-server-connection.repository';
 import { RefreshTokenPort } from '../access/refresh-token-port';
 import { McpServerProtectedResource } from '../runtime/mcp-server-protected-resource';
 import type { McpServer } from '../database/entities/mcp-server.entity';
@@ -40,10 +41,12 @@ function toResponse(server: McpServer, project: McpServerProject): McpServerResp
 export class McpServersService {
 	constructor(
 		private readonly servers: McpServerRepository,
+		private readonly connections: McpServerConnectionRepository,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly events: EventService,
 		private readonly resources: McpServerProtectedResource,
 		private readonly refreshTokens: RefreshTokenPort,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	async create(
@@ -89,14 +92,57 @@ export class McpServersService {
 		projectId: string,
 		serverId: string,
 		dto: UpdateMcpServerDto,
+		actor: McpServerActor,
 	): Promise<McpServerResponse> {
-		if (dto.name === undefined && dto.description === undefined) {
-			throw new BadRequestError('Give a name or a description to change.');
+		if (dto.name === undefined && dto.description === undefined && dto.slug === undefined) {
+			throw new BadRequestError('Give a name, a description, or a URL to change.');
 		}
-		const server = this.isServerId(serverId)
-			? await this.servers.update(projectId, serverId, dto)
-			: null;
-		if (!server) throw new NotFoundError('MCP server not found');
+		if (!this.isServerId(serverId)) throw new NotFoundError('MCP server not found');
+
+		const { slug, ...rest } = dto;
+		if (slug === undefined) {
+			const server = await this.servers.update(projectId, serverId, rest);
+			if (!server) throw new NotFoundError('MCP server not found');
+			return await this.withProject(server);
+		}
+
+		const { server, oldSlug, connectionCount } = await this.txRunner.run({}, async (ctx) => {
+			const current = await this.servers.findInProject(projectId, serverId, ctx);
+			if (!current) throw new NotFoundError('MCP server not found');
+
+			if (slug === current.slug) {
+				if (rest.name === undefined && rest.description === undefined) {
+					return { server: current, oldSlug: null, connectionCount: 0 };
+				}
+				const updated = await this.servers.update(projectId, serverId, rest, ctx);
+				if (!updated) throw new NotFoundError('MCP server not found');
+				return { server: updated, oldSlug: null, connectionCount: 0 };
+			}
+
+			const updated = await this.servers.changeSlug(
+				projectId,
+				serverId,
+				current.slug,
+				slug,
+				rest,
+				ctx,
+			);
+			if (!updated) throw new NotFoundError('MCP server not found');
+			const deletedConnections = await this.connections.deleteForServer(serverId, ctx);
+			return { server: updated, oldSlug: current.slug, connectionCount: deletedConnections };
+		});
+
+		if (oldSlug !== null) {
+			// The change is committed. Send the event first, then revoke tokens for the old and new URLs.
+			this.events.emit('mcp-server-url-changed', {
+				...actor,
+				serverId: server.id,
+				connectionCount,
+			});
+			await this.refreshTokens.deleteForResource(this.resources.serverUrl({ slug: oldSlug }));
+			await this.refreshTokens.deleteForResource(this.resources.serverUrl(server));
+		}
+
 		return await this.withProject(server);
 	}
 

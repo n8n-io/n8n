@@ -128,7 +128,7 @@ describe('CreateMcpServerDialog', () => {
 
 	it.each([
 		['taken', 'This URL is already taken.'],
-		['reserved', 'A deleted server used this URL. It stays reserved, so pick another one.'],
+		['reserved', 'A server used this URL before. It stays reserved, so pick another one.'],
 	] as const)('marks a slug that is %s and blocks the create', async (reason, message) => {
 		api.checkMcpServerSlug.mockResolvedValue({ available: false, reason });
 		setUp();

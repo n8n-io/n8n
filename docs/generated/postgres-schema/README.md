@@ -126,6 +126,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.mcp_server](public.mcp_server.md) | 9 |  | BASE TABLE |
 | [public.mcp_server_block](public.mcp_server_block.md) | 4 |  | BASE TABLE |
 | [public.mcp_server_connection](public.mcp_server_connection.md) | 6 |  | BASE TABLE |
+| [public.mcp_server_reserved_slug](public.mcp_server_reserved_slug.md) | 3 |  | BASE TABLE |
 | [public.mcp_server_tool](public.mcp_server_tool.md) | 11 |  | BASE TABLE |
 | [public.migration_finding](public.migration_finding.md) | 10 |  | BASE TABLE |
 | [public.migration_finding_sync](public.migration_finding_sync.md) | 3 |  | BASE TABLE |
@@ -415,6 +416,7 @@ erDiagram
 "public.mcp_server_connection" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.mcp_server_connection" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;oauthClientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.mcp_server_connection" }o--|| "public.mcp_server" : "FOREIGN KEY (#quot;serverId#quot;) REFERENCES mcp_server(id) ON DELETE CASCADE"
+"public.mcp_server_reserved_slug" }o--|| "public.mcp_server" : "FOREIGN KEY (#quot;serverId#quot;) REFERENCES mcp_server(id) ON DELETE CASCADE"
 "public.mcp_server_tool" }o--|| "public.mcp_server" : "FOREIGN KEY (#quot;serverId#quot;) REFERENCES mcp_server(id) ON DELETE CASCADE"
 "public.migration_finding" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
@@ -1769,6 +1771,11 @@ erDiagram
   varchar oauthClientId FK
   uuid serverId FK
   uuid userId FK
+}
+"public.mcp_server_reserved_slug" {
+  timestamp_3__with_time_zone reservedAt
+  uuid serverId FK
+  varchar_128_ slug
 }
 "public.mcp_server_tool" {
   timestamp_3__with_time_zone createdAt

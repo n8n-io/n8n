@@ -125,6 +125,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [mcp_server](mcp_server.md) | 9 |  | table |
 | [mcp_server_block](mcp_server_block.md) | 4 |  | table |
 | [mcp_server_connection](mcp_server_connection.md) | 6 |  | table |
+| [mcp_server_reserved_slug](mcp_server_reserved_slug.md) | 3 |  | table |
 | [mcp_server_tool](mcp_server_tool.md) | 11 |  | table |
 | [migration_finding](migration_finding.md) | 10 |  | table |
 | [migration_finding_sync](migration_finding_sync.md) | 3 |  | table |
@@ -396,6 +397,7 @@ erDiagram
 "mcp_server_connection" |o--|| "oauth_clients" : "FOREIGN KEY (oauthClientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "mcp_server_connection" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "mcp_server_connection" |o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server_reserved_slug" }o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "mcp_server_tool" }o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "migration_finding" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "migration_workflow_owner" }o--o| "user" : "FOREIGN KEY (assignedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -1750,6 +1752,11 @@ erDiagram
   varchar oauthClientId PK
   varchar serverId PK
   varchar userId PK
+}
+"mcp_server_reserved_slug" {
+  datetime_3_ reservedAt
+  varchar serverId FK
+  varchar_128_ slug PK
 }
 "mcp_server_tool" {
   datetime_3_ createdAt

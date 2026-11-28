@@ -38,11 +38,14 @@ export class McpServersModule implements ModuleInterface {
 
 	async entities() {
 		const { McpServer } = await import('./database/entities/mcp-server.entity.js');
+		const { McpServerReservedSlug } = await import(
+			'./database/entities/mcp-server-reserved-slug.entity.js'
+		);
 		const { McpServerTool } = await import('./database/entities/mcp-server-tool.entity.js');
 		const { McpServerConnection } = await import(
 			'./database/entities/mcp-server-connection.entity.js'
 		);
 		const { McpServerBlock } = await import('./database/entities/mcp-server-block.entity.js');
-		return [McpServer, McpServerTool, McpServerConnection, McpServerBlock];
+		return [McpServer, McpServerReservedSlug, McpServerTool, McpServerConnection, McpServerBlock];
 	}
 }

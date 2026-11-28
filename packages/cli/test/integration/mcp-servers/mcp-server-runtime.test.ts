@@ -194,6 +194,7 @@ beforeEach(async () => {
 	await testDb.truncate([
 		'McpServerConnection',
 		'McpServerBlock',
+		'McpServerReservedSlug',
 		'McpServerTool',
 		'McpServer',
 		'WorkflowEntity',
@@ -634,5 +635,58 @@ describe('Custom MCP server block', () => {
 			projectName: 'Sales',
 		});
 		expect(await resource.authorize(member)).toBe(true);
+	});
+});
+
+describe('Custom MCP server URL change', () => {
+	it('answers 404 on the old URL, refuses the old token on the new URL, revokes refresh tokens, and keeps blocks', async () => {
+		const oldSlug = serverSlug;
+		const newSlug = `renamed-${uuidv7().slice(-8)}`;
+		const oldToken = await tokenFor(member, resourceUrl(oldSlug));
+		await post(oldSlug, oldToken).expect(200);
+		// Block the viewer before the URL change.
+		await testServer
+			.authAgentFor(member)
+			.post(`/projects/${project.id}/mcp-servers/${serverId}/blocks`)
+			.send({ userId: viewer.id })
+			.expect(200);
+
+		const ds = Container.get(DataSource);
+		expect(await ds.getRepository(RefreshToken).countBy({ resource: resourceUrl(oldSlug) })).toBe(
+			1,
+		);
+		expect(await ds.getRepository(McpServerConnection).countBy({ serverId })).toBe(1);
+
+		await testServer
+			.authAgentFor(member)
+			.patch(`/projects/${project.id}/mcp-servers/${serverId}`)
+			.send({ slug: newSlug })
+			.expect(200);
+
+		// Old URL answers 404 on runtime and discovery endpoints.
+		expect((await post(oldSlug, oldToken)).statusCode).toBe(404);
+		await testServer.restlessAgent.get(`/mcp-servers/${oldSlug}`).expect(404);
+		await testServer.restlessAgent
+			.get(`/.well-known/oauth-protected-resource/mcp-servers/${oldSlug}`)
+			.expect(404);
+
+		// Access token for the old URL is refused on the new URL.
+		expect((await post(newSlug, oldToken)).statusCode).toBe(401);
+
+		// Refresh tokens for the old URL and connection rows are gone.
+		expect(await ds.getRepository(RefreshToken).countBy({ resource: resourceUrl(oldSlug) })).toBe(
+			0,
+		);
+		expect(await ds.getRepository(McpServerConnection).countBy({ serverId })).toBe(0);
+
+		// A fresh token for the new URL works for an unblocked member.
+		const newToken = await tokenFor(member, resourceUrl(newSlug));
+		const client = await connect(newToken, newSlug);
+		await expect(client.listTools()).resolves.toBeDefined();
+		await client.close();
+
+		// A blocked person stays blocked on the new URL.
+		const viewerNewToken = await tokenFor(viewer, resourceUrl(newSlug));
+		expect((await post(newSlug, viewerNewToken)).statusCode).toBe(403);
 	});
 });

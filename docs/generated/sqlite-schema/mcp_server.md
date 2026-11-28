@@ -19,7 +19,7 @@ CREATE TABLE "mcp_server" ("id" varchar PRIMARY KEY NOT NULL, "projectId" varcha
 | createdById | varchar |  | true |  | [user](user.md) |  |
 | deletedAt | datetime(3) |  | true |  |  |  |
 | description | TEXT | '' | false |  |  |  |
-| id | varchar |  | false | [mcp_server_block](mcp_server_block.md) [mcp_server_connection](mcp_server_connection.md) [mcp_server_tool](mcp_server_tool.md) |  |  |
+| id | varchar |  | false | [mcp_server_block](mcp_server_block.md) [mcp_server_connection](mcp_server_connection.md) [mcp_server_reserved_slug](mcp_server_reserved_slug.md) [mcp_server_tool](mcp_server_tool.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | slug | varchar(128) |  | false |  |  |  |
@@ -51,6 +51,7 @@ erDiagram
 "mcp_server" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "mcp_server_block" |o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "mcp_server_connection" |o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server_reserved_slug" }o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "mcp_server_tool" }o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "mcp_server" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -96,6 +97,11 @@ erDiagram
   varchar oauthClientId PK
   varchar serverId PK
   varchar userId PK
+}
+"mcp_server_reserved_slug" {
+  datetime_3_ reservedAt
+  varchar serverId FK
+  varchar_128_ slug PK
 }
 "mcp_server_tool" {
   datetime_3_ createdAt

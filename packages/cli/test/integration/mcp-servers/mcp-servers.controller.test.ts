@@ -1,5 +1,6 @@
 import { CUSTOM_MCP_SERVERS_FLAG, CUSTOM_MCP_SERVERS_FLAG_VARIANT } from '@n8n/api-types';
 import { EventService, PostHogClient } from '@n8n/backend-services';
+import { McpServerBlock, McpServerConnection } from '@n8n/backend-module-mcp-servers';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -9,7 +10,10 @@ import {
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AssignableProjectRole } from '@n8n/permissions';
+import { DataSource } from '@n8n/typeorm';
 import type { MockInstance } from 'vitest';
+
+import { OAuthClient } from '@/modules/oauth-server/database/entities/oauth-client.entity';
 
 import { createAdmin, createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
@@ -17,7 +21,7 @@ import * as utils from '../shared/utils/';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['mcp-servers'],
-	modules: ['mcp-servers'],
+	modules: ['inbound-auth-core', 'oauth-jwe', 'oauth-server', 'mcp-servers'],
 });
 
 let owner: User;
@@ -68,7 +72,13 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['McpServerTool', 'McpServer']);
+	await testDb.truncate([
+		'McpServerConnection',
+		'McpServerBlock',
+		'McpServerReservedSlug',
+		'McpServerTool',
+		'McpServer',
+	]);
 	setFlag(true);
 	emit = vi.spyOn(Container.get(EventService), 'emit');
 });
@@ -300,12 +310,110 @@ describe('PATCH /projects/:projectId/mcp-servers/:serverId', () => {
 		});
 	});
 
-	it('refuses a slug and an empty change', async () => {
+	it('refuses an empty change and an invalid slug', async () => {
 		const server = await createServer({ name: 'Sales tools', slug: 'sales-tools' });
 		const path = `${serversPath()}/${server.id}`;
 
-		await ownerAgent.patch(path).send({ slug: 'new-slug' }).expect(400);
 		await ownerAgent.patch(path).send({}).expect(400);
+		await ownerAgent.patch(path).send({ slug: 'Not A Slug' }).expect(400);
+	});
+
+	it('changes the slug, keeps the old slug reserved, deletes active connections, keeps blocks, and emits the URL changed event', async () => {
+		const server = await createServer({ name: 'Sales tools', slug: 'sales-tools' });
+		const ds = Container.get(DataSource);
+		await ds
+			.getRepository(OAuthClient)
+			.upsert(
+				{
+					id: 'client-1',
+					name: 'Claude Code',
+					redirectUris: ['http://127.0.0.1/cb'],
+					grantTypes: ['authorization_code'],
+				},
+				['id'],
+			);
+		await ds.getRepository(McpServerConnection).insert([
+			{
+				serverId: server.id,
+				userId: roleUsers['project:viewer'].id,
+				oauthClientId: 'client-1',
+				clientName: 'Claude Code',
+			},
+			{
+				serverId: server.id,
+				userId: roleUsers['project:editor'].id,
+				oauthClientId: 'client-1',
+				clientName: 'Claude Code',
+			},
+		]);
+		await ds.getRepository(McpServerBlock).insert({
+			serverId: server.id,
+			userId: roleUsers['project:viewer'].id,
+			blockedById: owner.id,
+		});
+
+		const response = await agentFor('project:editor')
+			.patch(`${serversPath()}/${server.id}`)
+			.send({ name: 'Revenue tools', slug: 'revenue-tools' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			name: 'Revenue tools',
+			slug: 'revenue-tools',
+		});
+		// Old slug stays reserved so no server (including this one) can reuse it.
+		expect(
+			(await ownerAgent.get(`${serversPath()}/slug-available`).query({ slug: 'sales-tools' })).body
+				.data,
+		).toEqual({ available: false, reason: 'reserved' });
+		await ownerAgent.post(serversPath()).send({ name: 'Other', slug: 'sales-tools' }).expect(409);
+		await ownerAgent
+			.patch(`${serversPath()}/${server.id}`)
+			.send({ slug: 'sales-tools' })
+			.expect(409);
+		// Connections were cleared, while blocks stayed.
+		expect(await ds.getRepository(McpServerConnection).countBy({ serverId: server.id })).toBe(0);
+		expect(await ds.getRepository(McpServerBlock).countBy({ serverId: server.id })).toBe(1);
+		expect(emit).toHaveBeenCalledWith('mcp-server-url-changed', {
+			serverId: server.id,
+			userId: roleUsers['project:editor'].id,
+			source: 'ui',
+			connectionCount: 2,
+		});
+	});
+
+	it('refuses a slug taken by another server or reserved by a deleted server, without altering the server', async () => {
+		const server = await createServer({ name: 'Sales tools', slug: 'sales-tools' });
+		await createServer({ name: 'Support desk', slug: 'support-desk' });
+		const deleted = await createServer({ name: 'Old bot', slug: 'old-bot' });
+		await ownerAgent.delete(`${serversPath()}/${deleted.id}`).expect(200);
+
+		await ownerAgent
+			.patch(`${serversPath()}/${server.id}`)
+			.send({ slug: 'support-desk' })
+			.expect(409);
+		await ownerAgent.patch(`${serversPath()}/${server.id}`).send({ slug: 'old-bot' }).expect(409);
+
+		expect((await ownerAgent.get(`${serversPath()}/${server.id}`).expect(200)).body.data.slug).toBe(
+			'sales-tools',
+		);
+		expect(emit).not.toHaveBeenCalledWith('mcp-server-url-changed', expect.anything());
+	});
+
+	it('does not reserve the slug or emit an event when the sent slug matches the current slug', async () => {
+		const server = await createServer({ name: 'Sales tools', slug: 'sales-tools' });
+
+		const response = await ownerAgent
+			.patch(`${serversPath()}/${server.id}`)
+			.send({ name: 'Revenue tools', slug: 'sales-tools' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({ name: 'Revenue tools', slug: 'sales-tools' });
+		expect(emit).not.toHaveBeenCalledWith('mcp-server-url-changed', expect.anything());
+		expect(
+			(await ownerAgent.get(`${serversPath()}/slug-available`).query({ slug: 'sales-tools' })).body
+				.data,
+		).toEqual({ available: false, reason: 'taken' });
 	});
 
 	it.each([

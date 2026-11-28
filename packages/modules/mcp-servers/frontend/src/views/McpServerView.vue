@@ -35,7 +35,12 @@ import { useMcpServerConnections } from '../composables/useMcpServerConnections'
 import McpServerDescriptionEdit from '../components/McpServerDescriptionEdit.vue';
 import RenameMcpServerDialog from '../components/RenameMcpServerDialog.vue';
 import { useMcpServerUrl } from '../composables/useMcpServerUrl';
-import { deleteMcpServer, getMcpServer, updateMcpServer } from '../mcp-servers.api';
+import {
+	checkMcpServerSlug,
+	deleteMcpServer,
+	getMcpServer,
+	updateMcpServer,
+} from '../mcp-servers.api';
 import {
 	MCP_SERVER_CONNECTIONS_VIEW,
 	MCP_SERVER_VIEW,
@@ -64,8 +69,21 @@ const loading = ref(true);
 const notFound = ref(false);
 const renameOpen = ref(false);
 const renaming = ref(false);
+const renameSlugConflict = ref<'taken' | 'reserved' | null>(null);
 const deleteOpen = ref(false);
 const deleting = ref(false);
+
+/** Distinct non-blocked people who have at least one connection on this server. */
+const activePeopleCount = computed(() => {
+	const data = connections.data.value;
+	if (!data) return 0;
+	const blocked = new Set(data.blocks.map((block) => block.userId));
+	return new Set(
+		data.connections
+			.filter((connection) => !blocked.has(connection.userId))
+			.map((connection) => connection.userId),
+	).size;
+});
 
 const assistantOpen = ref(false);
 const assistantPrefill = ref<InstanceAiPrefillPayload>();
@@ -144,6 +162,7 @@ async function load({ silent = false } = {}) {
 	if (server.value?.id !== serverId.value) {
 		server.value = null;
 		renameOpen.value = false;
+		renameSlugConflict.value = null;
 		deleteOpen.value = false;
 	}
 	if (!silent) loading.value = true;
@@ -234,8 +253,14 @@ async function onSelectTab(tab: string) {
 	await router.push({ name: tab, params: route.params });
 }
 
+function openRename() {
+	renameSlugConflict.value = null;
+	renameOpen.value = true;
+	void connections.load();
+}
+
 function onMenu(action: MenuAction) {
-	if (action === 'rename') renameOpen.value = true;
+	if (action === 'rename') openRename();
 	if (action === 'copy-share-link' && server.value) void copyShareLink(server.value);
 	if (action === 'copy-url' && server.value) void copyServerUrl(server.value);
 	if (action === 'delete') deleteOpen.value = true;
@@ -246,21 +271,37 @@ function onTitleDoubleClick() {
 	if (!permissions.value.canUpdate) return;
 	// The double-click also selects a word of the title. The dialog replaces that selection.
 	window.getSelection()?.removeAllRanges();
-	renameOpen.value = true;
+	openRename();
 }
 
-async function onRename(name: string) {
+async function onRename(changes: { name?: string; slug?: string }) {
 	const current = server.value;
 	if (!current) return;
 	renaming.value = true;
+	renameSlugConflict.value = null;
 	try {
 		applyResponse(
-			await updateMcpServer(rootStore.restApiContext, current.projectId, current.id, { name }),
+			await updateMcpServer(rootStore.restApiContext, current.projectId, current.id, changes),
 		);
 		renameOpen.value = false;
-		toast.showMessage({ type: 'success', title: i18n.baseText('mcpServers.rename.success') });
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText(
+				changes.slug ? 'mcpServers.rename.urlSuccess' : 'mcpServers.rename.success',
+			),
+		});
+		if (changes.slug) await connections.load();
 	} catch (error) {
-		toast.showError(error, i18n.baseText('mcpServers.rename.error'));
+		if (changes.slug && error instanceof ResponseError && error.httpStatusCode === 409) {
+			const result = await checkMcpServerSlug(
+				rootStore.restApiContext,
+				current.projectId,
+				changes.slug,
+			).catch(() => null);
+			renameSlugConflict.value = result?.reason ?? 'taken';
+		} else {
+			toast.showError(error, i18n.baseText('mcpServers.rename.error'));
+		}
 	} finally {
 		renaming.value = false;
 	}
@@ -440,8 +481,11 @@ async function onBreadcrumbSelected(item: PathItem) {
 
 				<RenameMcpServerDialog
 					v-model:open="renameOpen"
+					v-model:slug-conflict="renameSlugConflict"
+					:project-id="server.projectId"
 					:name="server.name"
-					:url="serverUrl(server.slug)"
+					:slug="server.slug"
+					:active-people-count="activePeopleCount"
 					:saving="renaming"
 					@rename="onRename"
 				/>

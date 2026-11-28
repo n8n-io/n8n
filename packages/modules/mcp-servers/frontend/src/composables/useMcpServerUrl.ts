@@ -6,7 +6,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { MCP_SERVER_SHARE_PATH } from '../mcp-servers.constants';
 
-/** The server URL is `<instance>/mcp-servers/<slug>`. The slug never changes, so the URL never changes. */
+/** The server URL is `<instance>/mcp-servers/<slug>`. */
 export function useMcpServerUrl() {
 	const rootStore = useRootStore();
 	const i18n = useI18n();

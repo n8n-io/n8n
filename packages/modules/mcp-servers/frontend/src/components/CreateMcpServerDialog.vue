@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import {
 	mcpServerSlugFromName,
-	mcpServerSlugInput,
 	MCP_SERVER_DESCRIPTION_MAX_LENGTH,
 	MCP_SERVER_NAME_MAX_LENGTH,
 	MCP_SERVER_SLUG_MAX_LENGTH,
-	type McpServerSlugAvailability,
 } from '@n8n/api-types';
-import { useDebounce } from '@n8n/composables/useDebounce';
-import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -19,7 +15,6 @@ import {
 	N8nInputLabel,
 	N8nText,
 } from '@n8n/design-system';
-import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
 import {
 	capabilities,
 	capabilityRegistry,
@@ -29,12 +24,13 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useCreateMcpServerDialog } from '../composables/useCreateMcpServerDialog';
+import { useMcpServerSlugField } from '../composables/useMcpServerSlugField';
 import { useMcpServerUrl } from '../composables/useMcpServerUrl';
-import { checkMcpServerSlug, createMcpServer } from '../mcp-servers.api';
+import { createMcpServer } from '../mcp-servers.api';
 import { MCP_SERVER_VIEW } from '../mcp-servers.constants';
 import { getMcpServerPermissions } from '../mcp-servers.permissions';
 
@@ -43,8 +39,6 @@ const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
 const toast = useToast();
-const { debounce } = useDebounce();
-const latestCheck = useLatestFetch();
 const dialog = useCreateMcpServerDialog();
 const { serverUrl } = useMcpServerUrl();
 const projectPermissions = capabilityRegistry.use(capabilities.projectPermissions);
@@ -54,11 +48,7 @@ const nameInput = useTemplateRef<{ focus: () => void }>('nameInput');
 
 const pickedProject = ref<SlotProjectSelection>(null);
 const name = ref('');
-const slug = ref('');
-const slugEdited = ref(false);
 const description = ref('');
-const availability = ref<McpServerSlugAvailability | null>(null);
-const slugCheckFailed = ref(false);
 const saving = ref(false);
 
 /** On a project page the project is fixed. On Overview the builder picks it. */
@@ -66,17 +56,21 @@ const projectId = computed(() => dialog.state.projectId ?? pickedProject.value?.
 const canCreateInProject = computed(
 	() => projectId.value !== undefined && getMcpServerPermissions(projectId.value).canCreate,
 );
-const finalSlug = computed(() => mcpServerSlugFromName(slug.value));
-const slugError = computed(() => {
+const {
+	slug,
+	slugEdited,
+	finalSlug,
+	availability,
+	slugCheckFailed,
+	slugError,
+	onSlugInput,
+	setConflict,
+	reset: resetSlug,
+} = useMcpServerSlugField({
+	projectId,
+	enabled: canCreateInProject,
 	// A name with no Latin letter or digit, such as "日本語", makes no slug.
-	if (name.value.trim() !== '' && finalSlug.value === '') {
-		return i18n.baseText('mcpServers.create.url.empty');
-	}
-	if (availability.value?.reason === 'taken') return i18n.baseText('mcpServers.create.url.taken');
-	if (availability.value?.reason === 'reserved') {
-		return i18n.baseText('mcpServers.create.url.reserved');
-	}
-	return null;
+	showEmptyError: () => name.value.trim() !== '',
 });
 const canSubmit = computed(
 	() =>
@@ -94,11 +88,8 @@ watch(
 			? null
 			: { id: projectPermissions.defaultProjectId?.() ?? '' };
 		name.value = '';
-		slug.value = '';
-		slugEdited.value = false;
 		description.value = '';
-		availability.value = null;
-		slugCheckFailed.value = false;
+		resetSlug();
 	},
 	{ immediate: true },
 );
@@ -114,45 +105,6 @@ watch(
 
 watch(name, (value) => {
 	if (!slugEdited.value) slug.value = mcpServerSlugFromName(value);
-});
-
-async function onSlugInput(value: string) {
-	// The input also echoes a value that the name wrote. Only a different value is an edit.
-	if (value === slug.value) return;
-	slugEdited.value = true;
-	const cleaned = mcpServerSlugInput(value);
-	// An unchanged slug does not render again, so the input keeps the dropped characters.
-	if (cleaned === slug.value) {
-		slug.value = value;
-		await nextTick();
-	}
-	slug.value = cleaned;
-}
-
-async function checkSlug() {
-	const isLatest = latestCheck.next();
-	const value = finalSlug.value;
-	const id = projectId.value;
-	if (!value || !id || !canCreateInProject.value) return;
-	try {
-		const result = await checkMcpServerSlug(rootStore.restApiContext, id, value);
-		if (isLatest()) availability.value = result;
-	} catch {
-		// The create call checks the slug again, so Create stays available.
-		if (isLatest()) slugCheckFailed.value = true;
-	}
-}
-
-const checkSlugDebounced = debounce(checkSlug, {
-	debounceTime: DEBOUNCE_TIME.INPUT.VALIDATION,
-	trailing: true,
-});
-
-watch([finalSlug, projectId], async () => {
-	latestCheck.invalidate();
-	availability.value = null;
-	slugCheckFailed.value = false;
-	await checkSlugDebounced();
 });
 
 // The dialog focuses its first element when it opens, which can be the project picker.
@@ -182,7 +134,7 @@ async function onCreate() {
 		});
 	} catch (error) {
 		if (error instanceof ResponseError && error.httpStatusCode === 409) {
-			availability.value = { available: false, reason: 'taken' };
+			setConflict('taken');
 		} else {
 			toast.showError(error, i18n.baseText('mcpServers.create.error'));
 		}

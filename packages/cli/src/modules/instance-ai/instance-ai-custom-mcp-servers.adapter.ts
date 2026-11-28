@@ -124,6 +124,7 @@ export class InstanceAiCustomMcpServersAdapterService {
 					await writeProject(MCP_SERVER_ACTION_SCOPES.update, projectId),
 					serverId,
 					dto,
+					actor,
 				);
 			},
 			delete: async ({ serverId, projectId }) => {

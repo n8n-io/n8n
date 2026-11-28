@@ -9,6 +9,7 @@ export {
 } from './services/mcp-server-tools.service';
 export type { McpServerActor, McpServerEventMap } from './mcp-server-events';
 export { McpServer } from './database/entities/mcp-server.entity';
+export { McpServerReservedSlug } from './database/entities/mcp-server-reserved-slug.entity';
 export { McpServerTool } from './database/entities/mcp-server-tool.entity';
 export { McpServerConnection } from './database/entities/mcp-server-connection.entity';
 export { McpServerBlock } from './database/entities/mcp-server-block.entity';
