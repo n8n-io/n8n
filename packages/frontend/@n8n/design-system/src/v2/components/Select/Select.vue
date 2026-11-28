@@ -34,6 +34,7 @@ import type {
 } from './Select.types';
 import N8nSelectItem from './SelectItem.vue';
 import Icon from '../../../components/N8nIcon/Icon.vue';
+import { IconSize } from '@n8n/design-system/types';
 
 defineOptions({ inheritAttrs: false });
 
@@ -102,6 +103,15 @@ const sizes: Record<SelectSizes, string> = {
 	xlarge: $style.xlarge,
 };
 const size = computed(() => sizes[props.size]);
+
+const chevronSizes: Record<SelectSizes, IconSize | number> = {
+	mini: 'xsmall',
+	small: 'xsmall',
+	medium: 'xsmall',
+	large: 'small',
+	xlarge: 'small',
+};
+const chevronSize = computed(() => chevronSizes[props.size]);
 
 const variantClasses: Record<SelectVariants, string | undefined> = {
 	default: undefined,
@@ -403,12 +413,13 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				@pointerdown.stop.prevent
 				@click.stop="onClear"
 			>
-				<Icon icon="x" size="small" />
+				<Icon icon="x" :size="chevronSize" />
 			</button>
 			<Icon
 				icon="chevron-down"
 				:class="$style.trailingIcon"
 				color="text-light"
+				:size="chevronSize"
 				aria-hidden="true"
 			/>
 		</SelectTrigger>

@@ -16,6 +16,7 @@ import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nSpinner from '@n8n/design-system/components/N8nSpinner/Spinner.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
 import { useScrollEdges } from '@n8n/design-system/composables/useScrollEdges';
+import type { IconSize } from '@n8n/design-system/types/icon';
 
 import { N8nTagsInput2, TagsInputInput, type TagsInputValue } from '../TagsInput';
 import type {
@@ -263,6 +264,15 @@ const sizes: Record<ComboboxSizes, string> = {
 
 const sizeClass = computed(() => sizes[props.size]);
 
+const chevronSizes: Record<ComboboxSizes, IconSize | number> = {
+	mini: 'xsmall',
+	small: 'xsmall',
+	medium: 'xsmall',
+	large: 'small',
+	xlarge: 'small',
+};
+const chevronSize = computed(() => chevronSizes[props.size]);
+
 function getDisplayValue(value: unknown): string {
 	if (value === undefined || value === null) {
 		return '';
@@ -462,7 +472,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 					@mousedown.prevent
 					@click.stop="onClear"
 				>
-					<Icon icon="x" size="small" />
+					<Icon icon="x" :size="chevronSize" />
 				</button>
 				<ComboboxTrigger as-child>
 					<button
@@ -472,7 +482,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 						:aria-label="t('combobox.showPopup')"
 						@mousedown.prevent
 					>
-						<Icon icon="chevron-down" :class="$style.trailingIcon" />
+						<Icon icon="chevron-down" :class="$style.trailingIcon" :size="chevronSize" />
 					</button>
 				</ComboboxTrigger>
 			</template>
