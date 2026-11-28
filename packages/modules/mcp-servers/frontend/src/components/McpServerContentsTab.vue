@@ -55,6 +55,8 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'build-with-assistant': [];
 	'server-updated': [server: McpServerResponse];
+	/** The number of tools, after each load, add and remove. */
+	'tools-changed': [count: number];
 }>();
 
 const i18n = useI18n();
@@ -199,6 +201,13 @@ async function reload() {
 		if (isLatest()) loading.value = false;
 	}
 }
+
+watch(
+	() => server.value?.tools.length,
+	(count) => {
+		if (count !== undefined) emit('tools-changed', count);
+	},
+);
 
 watch(
 	() => props.refreshKey,

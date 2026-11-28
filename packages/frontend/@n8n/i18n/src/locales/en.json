@@ -2565,6 +2565,7 @@
 	"mcpServers.actions.copyUrl": "Copy server URL",
 	"mcpServers.actions.copyUrlShort": "Copy URL",
 	"mcpServers.actions.share": "Share",
+	"mcpServers.actions.share.noTools": "Add a tool first",
 	"mcpServers.actions.delete": "Delete",
 	"mcpServers.copyUrl.tooltip": "Copy URL. The URL cannot change.",
 	"mcpServers.copyUrl.toast.title": "URL copied",

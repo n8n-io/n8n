@@ -706,6 +706,17 @@ describe('McpServerContentsTab', () => {
 			await waitFor(() => expect(screen.queryByTestId('mcp-tool-dialog')).not.toBeInTheDocument());
 		});
 
+		it('tells the page the number of tools after the load and after a remove', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			api.removeTool.mockResolvedValue(undefined);
+			const { findByTestId, emitted } = await render();
+
+			await userEvent.click(await findByTestId('mcp-tool-chip'));
+			await userEvent.click(await screen.findByTestId('mcp-tool-dialog-remove'));
+
+			await waitFor(() => expect(emitted('tools-changed')).toEqual([[1], [0]]));
+		});
+
 		it('removes a tool from the modal and closes it', async () => {
 			api.getMcpServer.mockResolvedValue(server([tool()]));
 			api.removeTool.mockResolvedValue(undefined);

@@ -54,6 +54,9 @@ const connections = useMcpServerConnections(projectId, serverId);
 const canUseAssistant = computed(() => assistant.available.value && permissions.value.canUpdate);
 
 const server = ref<McpServerResponse | null>(null);
+/** The share page lists the tools, so Share waits for the first tool. */
+const toolCount = ref<number | null>(null);
+const canShare = computed(() => (toolCount.value ?? 0) > 0);
 const loading = ref(true);
 const notFound = ref(false);
 const renameOpen = ref(false);
@@ -105,6 +108,7 @@ const menuActions = computed(() => {
 	const actions: Array<{
 		value: MenuAction;
 		label: string;
+		disabled?: boolean;
 		divided?: boolean;
 		destructive?: boolean;
 	}> = [];
@@ -112,7 +116,11 @@ const menuActions = computed(() => {
 		actions.push({ value: 'rename', label: i18n.baseText('mcpServers.actions.rename') });
 	}
 	actions.push(
-		{ value: 'copy-share-link', label: i18n.baseText('mcpServers.actions.copyShareLink') },
+		{
+			value: 'copy-share-link',
+			label: i18n.baseText('mcpServers.actions.copyShareLink'),
+			disabled: !canShare.value,
+		},
 		{ value: 'copy-url', label: i18n.baseText('mcpServers.actions.copyUrl') },
 	);
 	if (permissions.value.canDelete) {
@@ -137,6 +145,7 @@ async function load({ silent = false } = {}) {
 	// Another server: drop the old one and its dialogs, so no action reaches the wrong server.
 	if (server.value?.id !== serverId.value) {
 		server.value = null;
+		toolCount.value = null;
 		renameOpen.value = false;
 		deleteOpen.value = false;
 	}
@@ -146,6 +155,7 @@ async function load({ silent = false } = {}) {
 		const response = await getMcpServer(rootStore.restApiContext, projectId.value, serverId.value);
 		if (!isLatest()) return;
 		server.value = response;
+		toolCount.value = response.tools.length;
 	} catch (error) {
 		if (!isLatest()) return;
 		const missing = error instanceof ResponseError && error.httpStatusCode === 404;
@@ -230,7 +240,9 @@ async function onSelectTab(tab: string) {
 
 function onMenu(action: MenuAction) {
 	if (action === 'rename') renameOpen.value = true;
-	if (action === 'copy-share-link' && server.value) void copyShareLink(server.value);
+	if (action === 'copy-share-link' && server.value && canShare.value) {
+		void copyShareLink(server.value);
+	}
 	if (action === 'copy-url' && server.value) void copyServerUrl(server.value);
 	if (action === 'delete') deleteOpen.value = true;
 }
@@ -369,15 +381,21 @@ async function onBreadcrumbSelected(item: PathItem) {
 										data-attr="mcp-server-assistant-button"
 										@click="openAssistant()"
 									/>
-									<N8nButton
-										variant="outline"
-										size="small"
-										icon="share"
-										:label="i18n.baseText('mcpServers.actions.share')"
-										data-test-id="mcp-server-share-button"
-										data-attr="mcp-server-share-button"
-										@click="copyShareLink(server)"
-									/>
+									<N8nTooltip
+										:disabled="canShare"
+										:content="i18n.baseText('mcpServers.actions.share.noTools')"
+									>
+										<N8nButton
+											variant="outline"
+											size="small"
+											icon="share"
+											:label="i18n.baseText('mcpServers.actions.share')"
+											:disabled="!canShare"
+											data-test-id="mcp-server-share-button"
+											data-attr="mcp-server-share-button"
+											@click="copyShareLink(server)"
+										/>
+									</N8nTooltip>
 									<N8nActionToggle
 										:actions="menuActions"
 										:aria-label="i18n.baseText('mcpServers.server.menu')"
@@ -414,6 +432,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 							:refresh-key="contentsRefreshKey"
 							@build-with-assistant="onBuildWithAssistant"
 							@server-updated="applyResponse"
+							@tools-changed="toolCount = $event"
 						/>
 						<McpServerConnectionsTab
 							v-else

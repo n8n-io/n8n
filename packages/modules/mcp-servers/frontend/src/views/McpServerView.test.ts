@@ -1,4 +1,4 @@
-import type { McpServerResponse } from '@n8n/api-types';
+import type { McpServerDetailResponse } from '@n8n/api-types';
 import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import type { Scope } from '@n8n/permissions';
@@ -45,7 +45,7 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-const server: McpServerResponse = {
+const server: McpServerDetailResponse = {
 	id: '0190a8d6-4a2e-7000-8000-000000000001',
 	projectId: 'project-1',
 	project: { name: 'Marketing', type: 'team' },
@@ -54,6 +54,22 @@ const server: McpServerResponse = {
 	description: 'Pipeline numbers',
 	createdAt: '2026-11-24T10:00:00.000Z',
 	updatedAt: '2026-11-24T10:00:00.000Z',
+	tools: [
+		{
+			id: '0190a8d6-4a2e-7000-8000-0000000000a1',
+			serverId: '0190a8d6-4a2e-7000-8000-000000000001',
+			kind: 'workflow',
+			targetId: 'wf-1',
+			toolName: 'get_pipeline',
+			description: 'Returns the pipeline numbers',
+			draftSource: 'ai',
+			position: 0,
+			brokenReason: null,
+			createdAt: '2026-11-24T10:00:00.000Z',
+			updatedAt: '2026-11-24T10:00:00.000Z',
+		},
+	],
+	toolDraftsAvailable: true,
 };
 
 const BUILDER: Scope[] = [
@@ -67,8 +83,9 @@ const VIEWER: Scope[] = ['mcpServer:read', 'mcpServer:list'];
 // The Contents tab loads the tools. Its own test covers it.
 const McpServerContentsTabStub = defineComponent({
 	props: ['assistantAvailable', 'assistantOpen', 'refreshKey'],
-	emits: ['build-with-assistant'],
+	emits: ['build-with-assistant', 'tools-changed'],
 	template: `<div data-test-id="mcp-server-contents" :data-refresh-key="refreshKey">
+		<button data-test-id="stub-add-tool" type="button" @click="$emit('tools-changed', 1)" />
 		<button
 			v-if="assistantAvailable"
 			data-test-id="stub-build"
@@ -345,6 +362,24 @@ describe('McpServerView', () => {
 				title: 'Share link copied',
 				message: 'Only members of the Marketing project can connect.',
 			});
+		});
+
+		it('turns off "Share" and "Copy share link" until the server has a tool', async () => {
+			api.getMcpServer.mockResolvedValue({ ...server, tools: [] });
+			await renderPage();
+
+			const share = screen.getByTestId('mcp-server-share-button');
+			expect(share).toBeDisabled();
+			await userEvent.click(screen.getByTestId('mcp-server-menu').querySelector('button')!);
+			expect(
+				(await screen.findByText('Copy share link')).closest('[data-disabled]'),
+			).not.toBeNull();
+			expect(copy).not.toHaveBeenCalled();
+
+			await userEvent.keyboard('{Escape}');
+			await userEvent.click(screen.getByTestId('stub-add-tool'));
+
+			expect(share).toBeEnabled();
 		});
 
 		it('renames the server from the dialog that a double-click on the title opens', async () => {
