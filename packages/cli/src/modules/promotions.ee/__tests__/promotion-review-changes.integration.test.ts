@@ -2,6 +2,7 @@ import type { PromotionResource } from '@n8n/api-types';
 import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { Person } from '@n8n/db';
 import {
+	CredentialsRepository,
 	GLOBAL_OWNER_ROLE,
 	ProjectRepository,
 	SharedWorkflowRepository,
@@ -528,7 +529,7 @@ describe('when the host dropped the commits of a finished review', () => {
 	}, 60_000);
 });
 
-it('lists what a full promotion removes: a credential that no workflow uses and a project', async () => {
+it('lists what a full promotion removes: a credential and a project that this instance no longer has', async () => {
 	const support = await createTeamProject('Support', owner);
 	const archive = await createTeamProject('Archive', owner);
 	const credential = await saveCredential(
@@ -544,6 +545,7 @@ it('lists what a full promotion removes: a credential that no workflow uses and 
 	await mergeOnHost(first.iid, first.commitSha);
 
 	await Container.get(WorkflowRepository).update(ticket.id, { nodes: [] });
+	await Container.get(CredentialsRepository).delete(credential.id);
 	await Container.get(ProjectRepository).delete({ id: archive.id });
 	const review = await promote('Cleanup');
 

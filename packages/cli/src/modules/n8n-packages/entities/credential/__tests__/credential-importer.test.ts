@@ -93,6 +93,7 @@ describe('CredentialImporter', () => {
 		candidates: [],
 		updates: [],
 		forbidden: [],
+		selected: { missing: [], updates: [], ownedElsewhere: [], unchanged: [] },
 	});
 
 	const packageCredential = (
@@ -754,6 +755,7 @@ describe('CredentialImporter', () => {
 			candidates: updates,
 			updates,
 			forbidden: [],
+			selected: { missing: [], updates: [], ownedElsewhere: [], unchanged: [] },
 		});
 
 		const stored = (overrides: Partial<CredentialsEntity> = {}) =>
@@ -1142,6 +1144,154 @@ describe('CredentialImporter', () => {
 			expect(result.stubbed).toEqual(['missing-cred']);
 			expect(result.seeded).toEqual([]);
 			expect(result.incomplete).toEqual([]);
+		});
+	});
+
+	describe('selected credentials', () => {
+		const EXPRESSION = '={{ $vars.stripeKey }}';
+		const selectedRequest = (
+			credential: Partial<SerializedCredential> = {},
+		): CredentialBindingRequest => ({
+			...bindingRequest([]),
+			selectedCredentials: [{ id: 'cred-sel', name: 'Stripe', type: 'stripeApi', ...credential }],
+		});
+		const owned = (projectId: string, name: string, overrides: Partial<CredentialsEntity> = {}) =>
+			mock<CredentialsEntity>({
+				id: 'cred-sel',
+				name,
+				type: 'stripeApi',
+				shared: [{ role: 'credential:owner', projectId }] as SharedCredentials[],
+				...overrides,
+			});
+
+		beforeEach(() => {
+			credentialsFinder.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set(['cred-sel']));
+			credentialDescriptions.isEnabled.mockResolvedValue(true);
+			credentialsService.decryptOrFail.mockResolvedValue({ apiKey: 'stored-secret' });
+		});
+
+		it('plans a missing credential as missing, for the bindings screen', async () => {
+			credentialsFinder.findById.mockResolvedValue(null);
+
+			const { selected } = await importer.plan(
+				context,
+				selectedRequest({ data: { apiKey: EXPRESSION }, description: 'Payments' }),
+			);
+
+			expect(selected).toEqual({
+				missing: ['cred-sel'],
+				updates: [],
+				ownedElsewhere: [],
+				unchanged: [],
+			});
+		});
+
+		it('never creates a missing credential', async () => {
+			credentialsFinder.findById.mockResolvedValue(null);
+			const request = selectedRequest({ data: { apiKey: EXPRESSION } });
+			const plan = await importer.plan(context, request);
+
+			await importer.assertCanCreate(context, request, plan, false);
+			const written = await importer.applySelected(context, plan);
+
+			expect(written).toEqual([]);
+			expect(credentialsService.assertCanCreateInProject).not.toHaveBeenCalled();
+			expect(credentialsService.createStubCredential).not.toHaveBeenCalled();
+		});
+
+		it('plans no write for a credential that the package does not change', async () => {
+			credentialsFinder.findById.mockResolvedValue(owned(targetProject.id, 'Stripe'));
+
+			const { selected } = await importer.plan(context, selectedRequest());
+
+			expect(selected.unchanged).toEqual([{ id: 'cred-sel', name: 'Stripe' }]);
+			expect(selected.missing).toEqual([]);
+			expect(selected.updates).toEqual([]);
+		});
+
+		it.each([
+			['name', { name: 'Stripe live' }],
+			['expression', { data: { apiKey: EXPRESSION } }],
+			['description', { description: 'Payments' }],
+		])('plans an update for a different %s', async (_field, changed) => {
+			credentialsFinder.findById.mockResolvedValue(owned(targetProject.id, 'Stripe'));
+
+			const { selected, forbidden } = await importer.plan(context, selectedRequest(changed));
+
+			expect(selected.updates).toMatchObject([
+				{ sourceId: 'cred-sel', targetId: 'cred-sel', targetName: 'Stripe', ...changed },
+			]);
+			expect(forbidden).toEqual([]);
+		});
+
+		it('sees a secret that the package does not carry as no change', async () => {
+			credentialsFinder.findById.mockResolvedValue(owned(targetProject.id, 'Stripe'));
+			credentialsService.decryptOrFail.mockResolvedValue({ apiKey: 'a', other: 'b' });
+
+			const { selected } = await importer.plan(context, selectedRequest({ data: { other: 'b' } }));
+
+			expect(selected.updates).toEqual([]);
+		});
+
+		it('does not apply a type that differs from the package', async () => {
+			credentialsFinder.findById.mockResolvedValue({
+				...owned(targetProject.id, 'Stripe'),
+				type: 'otherApi',
+			} as CredentialsEntity);
+
+			const { selected } = await importer.plan(context, selectedRequest());
+
+			expect(selected).toMatchObject({ updates: [], missing: [] });
+			expect(selected.unchanged).toEqual([{ id: 'cred-sel', name: 'Stripe' }]);
+		});
+
+		it('leaves an instance credential of the project as it is', async () => {
+			credentialsFinder.findById.mockResolvedValue({
+				...owned(targetProject.id, 'Old name'),
+				usageScope: 'instance',
+			} as CredentialsEntity);
+
+			const { selected } = await importer.plan(context, selectedRequest());
+
+			expect(selected.updates).toEqual([]);
+			expect(selected.ownedElsewhere).toEqual([{ id: 'cred-sel', name: 'Old name' }]);
+		});
+
+		it('prepares a planned update before any write', async () => {
+			credentialsFinder.findById.mockResolvedValue(owned(targetProject.id, 'Old name'));
+			const plan = await importer.plan(context, selectedRequest());
+			credentialsService.prepareUpdateData.mockRejectedValue(new ForbiddenError('Not allowed'));
+
+			await expect(importer.assertCanUpdate(context, selectedRequest(), plan)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(credentialsService.update).not.toHaveBeenCalled();
+		});
+
+		it('plans nothing for a credential that another project owns', async () => {
+			credentialsFinder.findById.mockResolvedValue(owned('project-other', 'Old name'));
+
+			const { selected } = await importer.plan(context, selectedRequest());
+
+			expect(selected).toEqual({
+				missing: [],
+				updates: [],
+				ownedElsewhere: [{ id: 'cred-sel', name: 'Old name' }],
+				unchanged: [],
+			});
+		});
+
+		it('blocks a rename that the user cannot update, and does not read the stored values', async () => {
+			credentialsFinder.findById.mockResolvedValue(owned(targetProject.id, 'Old name'));
+			credentialsFinder.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+
+			const { selected, forbidden } = await importer.plan(context, selectedRequest());
+
+			expect(selected.updates).toEqual([]);
+			expect(forbidden).toEqual([
+				{ sourceId: 'cred-sel', targetId: 'cred-sel', targetName: 'Old name', usedBy: [] },
+			]);
+			expect(credentialsService.decryptOrFail).not.toHaveBeenCalled();
 		});
 	});
 });

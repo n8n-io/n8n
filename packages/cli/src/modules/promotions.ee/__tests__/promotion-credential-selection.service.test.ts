@@ -26,6 +26,23 @@ function setup(owned: CredentialsEntity[], readable: string[] = owned.map(({ id 
 }
 
 describe('PromotionCredentialSelectionService', () => {
+	describe('findUnreadableOwnedIds', () => {
+		it('lists the owned credentials that the user cannot read, and no instance credential', async () => {
+			const { service } = setup(
+				[
+					credential({ id: 'open' }),
+					credential({ id: 'hidden' }),
+					credential({ id: 'shared', usageScope: 'instance' }),
+				],
+				['open'],
+			);
+
+			await expect(service.findUnreadableOwnedIds(user, 'project-1')).resolves.toEqual(
+				new Set(['hidden']),
+			);
+		});
+	});
+
 	describe('findSelectableIds', () => {
 		it('leaves out an instance credential', async () => {
 			const { service } = setup([credential({ id: 'shared', usageScope: 'instance' })]);

@@ -70,6 +70,23 @@ export function plannedChanges(plan: PackageImportPlan): Map<string, PlannedChan
 				...(targetName !== name ? { previousName: targetName } : {}),
 			});
 		}
+		const { selected } = scope.credentialPlan;
+		// The user creates it from the bindings screen, and the next Apply sees it as unchanged.
+		for (const sourceId of selected.missing) {
+			changes.set(resourceKey('credential', sourceId), { change: 'added' });
+		}
+		for (const { sourceId, name, targetName } of selected.updates) {
+			changes.set(resourceKey('credential', sourceId), {
+				change: 'modified',
+				...(targetName !== name ? { previousName: targetName } : {}),
+			});
+		}
+		for (const { id, name } of selected.unchanged) {
+			changes.set(resourceKey('credential', id), { change: 'unchanged', name });
+		}
+		for (const { id } of selected.ownedElsewhere) {
+			changes.set(resourceKey('credential', id), { change: 'unchanged' });
+		}
 		for (const { reason, sourceId } of scope.credentialPlan.failures) {
 			if (reason === 'access-required' || reason === 'incompatible-usage-scope') {
 				changes.set(resourceKey('credential', sourceId), { change: 'unchanged' });
@@ -507,6 +524,28 @@ function addCredentialRules(
 			credentialType: expectedTypes[0],
 			consumers,
 			ownerProject: projectOf(projectId),
+			...(file.credential.data !== undefined ? { expressionData: file.credential.data } : {}),
+		});
+	}
+
+	// A selected credential that no workflow uses has no consumer. The user creates it from the
+	// bindings screen in the project that owns its file, which the selection bounds to this project.
+	const selectedMissing = new Set(
+		plan.scopes.flatMap(({ plan: scope }) => scope.credentialPlan.selected.missing),
+	);
+	for (const [sourceId, issues] of issuesById) {
+		const file = files.get(sourceId);
+		if (!selectedMissing.has(sourceId) || missing.has(sourceId) || !file?.projectId) continue;
+		const own = issues.filter(({ usedBy }) => usedBy.length === 0);
+		if (own.length === 0) continue;
+		for (const issue of own) handled.add(issue);
+		result.missingBindings.push({
+			kind: 'credential',
+			sourceId,
+			name: file.credential.name,
+			credentialType: file.credential.type,
+			consumers: [],
+			ownerProject: projectOf(file.projectId),
 			...(file.credential.data !== undefined ? { expressionData: file.credential.data } : {}),
 		});
 	}

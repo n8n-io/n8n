@@ -185,6 +185,30 @@ describe('promotion operation', () => {
 		expect([...checkNotRun.blocked]).toEqual(listed);
 	});
 
+	it('should block the row of a selected credential that no workflow uses', () => {
+		const preview = billingPreview();
+		const owned = resource({
+			key: 'credential:c9',
+			name: 'CRM key',
+			parentKey: 'project:p1',
+			change: 'added',
+			selectable: true,
+		});
+		const graph = buildSelectionGraph(
+			{ ...preview, resources: [...preview.resources, owned] },
+			'apply',
+		);
+		const own = { ...credential, sourceId: 'c9', consumers: [] };
+		const unlisted = { ...credential, sourceId: 'c99', consumers: [] };
+
+		const scoped = scopeCheck(check({ missingBindings: [own, unlisted] }), graph);
+		const index = indexBlockers(listBlockers(scoped, []));
+
+		expect(scoped.missingBindings).toEqual([own]);
+		expect([...index.blocked]).toEqual(['credential:c9']);
+		expect(index.byResource.get('credential:c9')).toHaveLength(1);
+	});
+
 	it('should ignore the blockers of workflows that the preview does not list', () => {
 		const graph = buildSelectionGraph(billingPreview(), 'apply');
 		// "w99" is unchanged, so the preview does not list it. The check covers it anyway.

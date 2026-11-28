@@ -849,6 +849,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w4'],
 			folderIds: [],
+			credentialIds: [],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 		});
@@ -911,6 +912,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w3', 'w4'],
 			folderIds: [],
+			credentialIds: [],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 		});
@@ -926,6 +928,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.continueApplyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
 			folderIds: [],
+			credentialIds: [],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 			confirmDestructiveChanges: true,
@@ -1172,6 +1175,32 @@ describe('PromotionPreviewView', () => {
 		await userEvent.click(getByRole('tab', { name: /Changes/ }));
 		expect(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox')).toBeChecked();
 		expect(getByTestId('promotion-preview-submit')).toBeEnabled();
+	});
+
+	it('should say the Apply is done when the added binding was its last change', async () => {
+		const missing = { ...variable, name: 'API_URL', consumers: consumers('w3') };
+		vi.mocked(api.getPromotionPreview)
+			.mockResolvedValueOnce(previewWithCheck(check({ missingBindings: [missing] })))
+			.mockResolvedValue({ ...previewWithCheck(), resources: [], dependencies: [] });
+		createBinding.mockResolvedValue({
+			kind: 'variable',
+			id: 'v1',
+			name: 'API_URL',
+			scope: { kind: 'global' },
+		});
+
+		const { getByRole, getByTestId, queryByTestId } = await renderApply();
+		await userEvent.click(getByRole('tab', { name: /Blockers/ }));
+		const row = within(getByTestId('promotion-preview-blockers-table')).getByRole('row', {
+			name: /API_URL/,
+		});
+		await userEvent.click(within(row).getByRole('button', { name: 'Add variable' }));
+		await waitAllPromises();
+
+		expect(getByTestId('promotion-preview-applied')).toHaveTextContent(
+			'You added 1 missing item, and this project now matches the branch.',
+		);
+		expect(queryByTestId('promotion-preview-empty')).not.toBeInTheDocument();
 	});
 
 	describe('whole-instance Apply', () => {

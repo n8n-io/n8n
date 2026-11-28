@@ -105,3 +105,11 @@ it('ignores an editor result from a closed session', async () => {
 	await creating;
 	expect(statuses(session)[promotionBindingKey(credential)]).toBe('missing');
 });
+
+it('lists a missing credential that no workflow uses', () => {
+	const selected = { ...credential, consumers: [] };
+	const session = usePromotionBindings();
+	session.start(blocked({ missingBindings: [selected] }));
+
+	expect(statuses(session)).toEqual({ [promotionBindingKey(selected)]: 'missing' });
+});

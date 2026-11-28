@@ -9,7 +9,7 @@ import type { AgentImporter } from '../entities/agent/agent-importer';
 import {
 	credentialConflicts,
 	forbiddenCredentialUpdates,
-	plannedCredentialUpdates,
+	plannedCredentialSaves,
 } from '../entities/credential/credential-conflict-policy';
 import {
 	requiredAgentScopes,
@@ -343,7 +343,7 @@ export class ImportOrchestrator {
 			}
 			issues.push(
 				...(await this.credentialSavePolicyGate.refusedUpdates(
-					plannedCredentialUpdates(credentialRequest.conflictPolicy, credentialPlans),
+					plannedCredentialSaves(credentialRequest.conflictPolicy, credentialPlans),
 					contentImportTransport(importSource),
 					{ kind: 'user', user: context.user },
 					mode,
@@ -604,6 +604,8 @@ export class ImportOrchestrator {
 			credentialPlan,
 		);
 
+		const selectedUpdated = await this.credentialImporter.applySelected(context, credentialPlan);
+
 		// After the workflow writes: a failed write then leaves the existing folders as they were.
 		// Before the removals, which plan with the folders in their new places.
 		await this.folderImporter.applyUpdates(folderContext, folderPlan);
@@ -626,7 +628,16 @@ export class ImportOrchestrator {
 			removedFolders,
 			folderSummaries: toFolderSummaries(folderPlan),
 			bindings,
-			credentialResult: { ...credentialBindResult, updated: credentialsUpdated },
+			// A selected credential keeps its id, so it binds to itself. The counts and the telemetry
+			// read it as updated.
+			credentialResult: {
+				...credentialBindResult,
+				bindings: new Map([
+					...credentialBindResult.bindings,
+					...selectedUpdated.map((id): [string, string] => [id, id]),
+				]),
+				updated: [...credentialsUpdated, ...selectedUpdated],
+			},
 			dataTablePlan,
 			variablePlan,
 			variableResult,
@@ -711,6 +722,19 @@ export class ImportOrchestrator {
 			...this.credentialImporter
 				.blockingFailures(credentialRequest, credentialPlan)
 				.map((failure) => toCredentialBlockingIssue(failure, credentialRequest)),
+			// The user creates a missing selected credential from the bindings screen, never the import.
+			// A credential that a workflow requires already blocks as that requirement.
+			...credentialPlan.selected.missing
+				.filter((sourceId) => !credentialRequest.requirements?.some(({ id }) => id === sourceId))
+				.map(
+					(sourceId): BlockingIssue => ({
+						type: 'credential-unresolved',
+						kind: 'not_found',
+						reason: 'not-on-instance',
+						sourceId,
+						usedBy: [],
+					}),
+				),
 			...this.variableImporter.blockingFailures(variableRequest, variablePlan).map(
 				(failure): BlockingIssue => ({
 					type: 'variable-unresolved',

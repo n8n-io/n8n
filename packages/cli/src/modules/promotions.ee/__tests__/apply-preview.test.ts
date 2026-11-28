@@ -71,7 +71,11 @@ function checkPackage(
 		projectPlan: { items: [] },
 		scopes: [ALPHA, BETA].map(({ id }) => ({
 			project: { id },
-			plan: { blockingIssues: [], variablePlan: { matched: matched[id] ?? [] } },
+			plan: {
+				blockingIssues: [],
+				variablePlan: { matched: matched[id] ?? [] },
+				credentialPlan: { selected: { missing: [] } },
+			},
 		})),
 		issues: [],
 	} as unknown as PackageImportPlan;
@@ -91,7 +95,11 @@ describe('toPreviewCheck', () => {
 		const checkNotRun: BlockingIssue = { type: 'policy-check-failed', point: 'contentImport' };
 		const scope = (id: string, blockingIssues: BlockingIssue[]) => ({
 			project: { id },
-			plan: { blockingIssues, variablePlan: { matched: [] } },
+			plan: {
+				blockingIssues,
+				variablePlan: { matched: [] },
+				credentialPlan: { selected: { missing: [] } },
+			},
 		});
 		const plan = {
 			projectPlan: { items: [] },
@@ -126,6 +134,70 @@ describe('toPreviewCheck', () => {
 				reason: 'contentImport',
 			},
 		]);
+	});
+
+	it('lists a missing selected credential that no workflow uses as a binding to create', () => {
+		const missing: BlockingIssue = {
+			type: 'credential-unresolved',
+			kind: 'not_found',
+			reason: 'not-on-instance',
+			sourceId: 'cred-1',
+			usedBy: [],
+		};
+		const plan = {
+			projectPlan: { items: [] },
+			scopes: [
+				{
+					project: { id: ALPHA.id },
+					plan: {
+						blockingIssues: [missing],
+						variablePlan: { matched: [] },
+						credentialPlan: { selected: { missing: ['cred-1'] } },
+					},
+				},
+			],
+			issues: [missing],
+		} as unknown as PackageImportPlan;
+		const inventory = {
+			projects: [{ ...ALPHA, path: `projects/${ALPHA.id}` }],
+			workflows: [],
+			folders: [],
+			credentials: [
+				{
+					path: `projects/${ALPHA.id}/credentials/cred-1/credential.json`,
+					projectId: ALPHA.id,
+					credential: {
+						id: 'cred-1',
+						name: 'Stripe',
+						type: 'stripeApi',
+						data: { apiKey: '={{ $vars.stripeKey }}' },
+					},
+				},
+			],
+			variables: [],
+			dataTables: [],
+		} as unknown as PackageDirectoryInventory;
+
+		const check = toPreviewCheck({
+			plan,
+			inventory,
+			credentials: [],
+			variables: [],
+			moves: { workflows: [], folders: [] },
+		});
+
+		expect(check.missingBindings).toEqual([
+			{
+				kind: 'credential',
+				sourceId: 'cred-1',
+				name: 'Stripe',
+				credentialType: 'stripeApi',
+				consumers: [],
+				ownerProject: ALPHA,
+				expressionData: { apiKey: '={{ $vars.stripeKey }}' },
+			},
+		]);
+		expect(check.conflicts).toEqual([]);
 	});
 
 	it('blocks a credential reference without an id, and a credential id used with two types', () => {

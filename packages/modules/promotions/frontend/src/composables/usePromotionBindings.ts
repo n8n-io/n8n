@@ -73,7 +73,11 @@ export function usePromotionBindings() {
 		Array.from(knownBindings.value, ([key, binding]) => ({
 			key,
 			binding,
-			status: statusOf(key, binding.consumers[0].project.id),
+			status: statusOf(
+				key,
+				binding.consumers[0]?.project.id ??
+					(binding.kind === 'credential' ? binding.ownerProject.id : ''),
+			),
 		})),
 	);
 

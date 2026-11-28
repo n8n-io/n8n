@@ -11878,6 +11878,8 @@
 	"promotions.preview.state.empty.promote.title": "Nothing to promote",
 	"promotions.preview.state.empty.apply.title": "Nothing to apply",
 	"promotions.preview.state.empty.description": "Refresh if the project or the branch has changed.",
+	"promotions.preview.state.applied.title": "Applied",
+	"promotions.preview.state.applied.description": "You added {count} missing item, and this project now matches the branch. | You added {count} missing items, and this project now matches the branch.",
 	"promotions.preview.state.disconnected.promote.title": "Promote isn't set up",
 	"promotions.preview.state.disconnected.apply.title": "Apply isn't set up",
 	"promotions.preview.state.disconnected.admin": "Set it up in the promotion settings.",

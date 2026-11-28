@@ -8,6 +8,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import {
+	CredentialsRepository,
 	FolderRepository,
 	ProjectRepository,
 	WorkflowHistoryRepository,
@@ -15,6 +16,7 @@ import {
 } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { Credentials } from 'n8n-core';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -26,6 +28,7 @@ import {
 	ForbiddenError,
 	UnprocessableRequestError,
 } from '@n8n/errors';
+import { saveCredential } from '@test-integration/db/credentials';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
@@ -36,6 +39,8 @@ import { OverwriteDeletionPolicy } from '../n8n-packages.types';
 import type { ImportSelection, ImportSelectionRequest } from '../n8n-packages.types';
 import {
 	buildEntityPackageDirectory,
+	githubCredentialPayload,
+	serializedCredential,
 	serializedFolder,
 	serializedProject,
 	serializedWorkflow,
@@ -789,5 +794,168 @@ describe('importPackageSelectionFromDirectory', () => {
 			expect(await findWorkflow('WFA')).toBeNull();
 			expect((await findWorkflow(protectedWorkflow.id))?.isArchived).toBe(false);
 		});
+	});
+});
+
+describe('importPackageSelectionFromDirectory with selected credentials', () => {
+	let owner: User;
+	let createdDirs: string[];
+
+	beforeEach(async () => {
+		await testDb.truncate([
+			'Folder',
+			'Project',
+			'ProjectRelation',
+			'SharedCredentials',
+			'CredentialsEntity',
+			'SharedWorkflow',
+			'WorkflowEntity',
+			'WorkflowHistory',
+		]);
+		licenseMocker.reset();
+		owner = await createOwner();
+		createdDirs = [];
+	});
+
+	afterEach(async () => {
+		await Promise.all(
+			createdDirs.map(async (dir) => await rm(dir, { recursive: true, force: true })),
+		);
+	});
+
+	/** A package whose project folder holds the credential, as Promote writes it. */
+	async function importCredentials(
+		projectId: string,
+		credentials: Array<{
+			id: string;
+			name: string;
+			target?: string;
+			data?: Record<string, string>;
+			dataIsComplete?: boolean;
+			description?: string;
+		}>,
+		selectedCredentialIds: string[],
+	) {
+		const dir = await mkdtemp(path.join(tmpdir(), 'n8n-import-selection-'));
+		createdDirs.push(dir);
+		await buildEntityPackageDirectory(dir, {
+			projects: [
+				{ target: 'projects/p1', project: serializedProject({ id: projectId, name: 'p1' }) },
+			],
+			credentials: credentials.map(({ id, name, target, ...payload }) => ({
+				target: target ?? `projects/p1/credentials/credential-${id}`,
+				credential: serializedCredential({ id, name, ...payload }),
+			})),
+		});
+		return await Container.get(N8nPackagesService).importPackageSelectionFromDirectory(
+			{ user: owner, publicApi: false },
+			{ sourceDir: dir },
+			{ selectedProjectId: projectId, selectedWorkflowIds: [], selectedCredentialIds },
+		);
+	}
+
+	it('blocks a missing credential and creates nothing', async () => {
+		const project = await createTeamProject('Alpha', owner);
+
+		await expect(
+			importCredentials(
+				project.id,
+				[{ id: 'CRED1', name: 'GitHub', data: { server: '={{ $vars.GITHUB_URL }}' } }],
+				['CRED1'],
+			),
+		).rejects.toThrow('Import blocked');
+		expect(await Container.get(CredentialsRepository).findOneBy({ id: 'CRED1' })).toBeNull();
+	});
+
+	it('renames a credential of the project and keeps its stored values', async () => {
+		const project = await createTeamProject('Alpha', owner);
+		const existing = await saveCredential(githubCredentialPayload({ name: 'Old name' }), {
+			project,
+			role: 'credential:owner',
+		});
+		const read = async () => {
+			const row = await Container.get(CredentialsRepository).findOneByOrFail({ id: existing.id });
+			return {
+				row,
+				data: await new Credentials({ id: row.id, name: row.name }, row.type, row.data).getData(),
+			};
+		};
+		const before = (await read()).data;
+
+		const result = await importCredentials(
+			project.id,
+			[{ id: existing.id, name: 'New name' }],
+			[existing.id],
+		);
+
+		expect(result.credentials.updated).toEqual([existing.id]);
+		const after = await read();
+		expect(after.row.name).toBe('New name');
+		expect(after.data).toEqual(before);
+	});
+
+	it('updates the name and the expressions of a credential and keeps its secrets', async () => {
+		const project = await createTeamProject('Alpha', owner);
+		const existing = await saveCredential(
+			githubCredentialPayload({
+				name: 'Old name',
+				data: { accessToken: 'stored-secret', server: 'https://api.github.com' },
+			}),
+			{ project, role: 'credential:owner' },
+		);
+
+		const result = await importCredentials(
+			project.id,
+			[
+				{
+					id: existing.id,
+					name: 'New name',
+					data: { server: '={{ $vars.GITHUB_URL }}' },
+				},
+			],
+			[existing.id],
+		);
+
+		expect(result.credentials.updated).toEqual([existing.id]);
+		const row = await Container.get(CredentialsRepository).findOneByOrFail({ id: existing.id });
+		expect(row.name).toBe('New name');
+		const data = await new Credentials(
+			{ id: row.id, name: row.name },
+			row.type,
+			row.data,
+		).getData();
+		expect(data).toEqual({ accessToken: 'stored-secret', server: '={{ $vars.GITHUB_URL }}' });
+	});
+
+	it('leaves a credential of another project as it is', async () => {
+		const project = await createTeamProject('Alpha', owner);
+		const other = await createTeamProject('Other', owner);
+		const foreign = await saveCredential(githubCredentialPayload({ name: 'Other name' }), {
+			project: other,
+			role: 'credential:owner',
+		});
+
+		const result = await importCredentials(
+			project.id,
+			[{ id: foreign.id, name: 'New name' }],
+			[foreign.id],
+		);
+
+		expect(result.credentials).toMatchObject({ stubbed: [], updated: [] });
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id: foreign.id });
+		expect(stored.name).toBe('Other name');
+	});
+
+	it('rejects a credential that the package keeps outside the project folder', async () => {
+		const project = await createTeamProject('Alpha', owner);
+
+		await expect(
+			importCredentials(
+				project.id,
+				[{ id: 'CRED1', name: 'GitHub', target: 'credentials/credential-CRED1' }],
+				['CRED1'],
+			),
+		).rejects.toThrow(BadRequestError);
+		expect(await Container.get(CredentialsRepository).findOneBy({ id: 'CRED1' })).toBeNull();
 	});
 });

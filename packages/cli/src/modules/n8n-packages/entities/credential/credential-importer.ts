@@ -35,6 +35,7 @@ import type {
 	CredentialResolutionFailure,
 	CredentialUpdateCandidate,
 	PlacedCredentialRequirement,
+	SelectedCredentialPlan,
 } from './credential.types';
 import type { ImportBindingMap, ImportContext } from '../../n8n-packages.types';
 import { mergeRequirementConsumers } from '../../spec/requirement-consumers';
@@ -75,15 +76,124 @@ export class CredentialImporter {
 			]),
 		);
 
+		const { selected, forbidden: selectedForbidden } = await this.planSelected(context, request);
 		if (request.conflictPolicy === 'keep-existing') {
-			return { ...resolution, stubIds, candidates: [], updates: [], forbidden: [] };
+			return {
+				...resolution,
+				stubIds,
+				candidates: [],
+				updates: [],
+				forbidden: selectedForbidden,
+				selected,
+			};
 		}
 
+		const planned = await this.planUpdates(context.user, request, resolution);
 		return {
 			...resolution,
 			stubIds,
-			...(await this.planUpdates(context.user, request, resolution)),
+			...planned,
+			forbidden: [...planned.forbidden, ...selectedForbidden],
+			selected,
 		};
+	}
+
+	/**
+	 * Plans the credentials that a selection names and no workflow requires. One that the project
+	 * owns is updated with the package payload: name, description, expression values and the plain
+	 * values that decide which fields show. A package carries no secret and a merge keeps the stored
+	 * ones. A missing credential is not created: the user creates it from the bindings screen. A
+	 * credential of another project is left as it is. A type that differs from the package is not
+	 * applied: the stored values belong to the stored type.
+	 */
+	private async planSelected(
+		context: ImportContext,
+		request: CredentialBindingRequest,
+	): Promise<{ selected: SelectedCredentialPlan; forbidden: CredentialMatch[] }> {
+		const selected: SelectedCredentialPlan = {
+			missing: [],
+			updates: [],
+			ownedElsewhere: [],
+			unchanged: [],
+		};
+		const forbidden: CredentialMatch[] = [];
+		const requested = request.selectedCredentials ?? [];
+		if (requested.length === 0) return { selected, forbidden };
+
+		// With descriptions off, the description decides nothing: no difference, no write.
+		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
+		const destinations = new Map(
+			(
+				await Promise.all(
+					requested.map(
+						async ({ id }) =>
+							[
+								id,
+								await this.credentialsFinder.findById(id, { includeSharedProject: true }),
+							] as const,
+					),
+				)
+			).filter((entry): entry is [string, CredentialsEntity] => entry[1] !== null),
+		);
+		const updatable = await this.credentialsFinder.findCredentialIdsWithScopeForUser(
+			[...destinations.keys()],
+			context.user,
+			['credential:update'],
+		);
+
+		for (const requestedCredential of requested) {
+			const { id, name } = requestedCredential;
+			const packageCredential = descriptionsEnabled
+				? requestedCredential
+				: { ...requestedCredential, description: undefined };
+			const destination = destinations.get(id);
+			if (!destination) {
+				selected.missing.push(id);
+				continue;
+			}
+			if (
+				credentialOwnerProjectId(destination) !== context.projectId ||
+				destination.usageScope === 'instance'
+			) {
+				selected.ownedElsewhere.push({ id, name: destination.name });
+				continue;
+			}
+			if (!updatable.has(id)) {
+				// The comparison reads the stored values, so a credential that the user cannot update is
+				// not read. A different name blocks. Any other difference is not seen.
+				if (destination.name === name) selected.unchanged.push({ id, name });
+				else {
+					forbidden.push({ sourceId: id, targetId: id, targetName: destination.name, usedBy: [] });
+				}
+				continue;
+			}
+			const differs = credentialDiffers(
+				{
+					name: destination.name,
+					description: destination.description,
+					data: await this.readStoredData(destination),
+				},
+				packageCredential,
+			);
+			if (!differs) {
+				selected.unchanged.push({ id, name });
+				continue;
+			}
+			selected.updates.push({
+				sourceId: id,
+				targetId: id,
+				targetName: destination.name,
+				targetType: destination.type,
+				ownerProjectId: context.projectId,
+				name,
+				usedBy: [],
+				...(packageCredential.data !== undefined ? { data: packageCredential.data } : {}),
+				...(packageCredential.description !== undefined
+					? { description: packageCredential.description }
+					: {}),
+			});
+		}
+		return { selected, forbidden };
 	}
 
 	/**
@@ -201,7 +311,7 @@ export class CredentialImporter {
 	async assertCanCreate(
 		context: ImportContext,
 		request: CredentialBindingRequest,
-		resolution: CredentialResolution,
+		resolution: CredentialImportPlan,
 		projectPendingCreation: boolean,
 	): Promise<void> {
 		const toCreate = credentialsToStub(request.missingMode, resolution);
@@ -238,6 +348,9 @@ export class CredentialImporter {
 		plan: CredentialImportPlan,
 	): Promise<void> {
 		for (const [, [update]] of plannedCredentialUpdates(request.conflictPolicy, [plan])) {
+			await this.prepareUpdate(context.user, update);
+		}
+		for (const update of plan.selected.updates) {
 			await this.prepareUpdate(context.user, update);
 		}
 	}
@@ -314,33 +427,56 @@ export class CredentialImporter {
 	): Promise<string[]> {
 		const updated: string[] = [];
 
-		for (const [targetId, group] of plannedCredentialUpdates(request.conflictPolicy, [plan])) {
-			const prepared = await this.prepareUpdate(context.user, group[0]);
-			if (prepared === null) continue;
-
-			// Like the credential UI route. `createEncryptedData` sets only the id, name, type and
-			// data, and the update writes only the set columns: sharing, `isGlobal` and
-			// `isResolvable` stay. The description changes only when the package decides it.
-			const encrypted = await this.credentialsService.createEncryptedData({
-				id: targetId,
-				name: prepared.name,
-				type: prepared.type,
-				data: prepared.data,
-			});
-			if (prepared.description !== undefined) encrypted.description = prepared.description;
-			const saved = await this.credentialsService.update(
-				targetId,
-				encrypted,
-				{ kind: 'user', user: context.user },
-				prepared.data,
-				{ user: context.user },
-			);
-			if (saved === null) throw credentialNotFound(group[0]);
-
-			await this.emitCredentialUpdated(context.user, saved, prepared.data, context.ctx);
-			updated.push(...group.map(({ sourceId }) => sourceId));
+		for (const [, group] of plannedCredentialUpdates(request.conflictPolicy, [plan])) {
+			if (await this.writeUpdate(context, group[0])) {
+				updated.push(...group.map(({ sourceId }) => sourceId));
+			}
 		}
 
+		return updated;
+	}
+
+	/** Writes one update like the credential UI. Returns false when the credential already holds it. */
+	private async writeUpdate(
+		context: ImportContext,
+		update: CredentialUpdateCandidate,
+	): Promise<boolean> {
+		const prepared = await this.prepareUpdate(context.user, update);
+		if (prepared === null) return false;
+
+		// Like the credential UI route. `createEncryptedData` sets only the id, name, type and
+		// data, and the update writes only the set columns: sharing, `isGlobal` and
+		// `isResolvable` stay. The description changes only when the package decides it.
+		const encrypted = await this.credentialsService.createEncryptedData({
+			id: update.targetId,
+			name: prepared.name,
+			type: prepared.type,
+			data: prepared.data,
+		});
+		if (prepared.description !== undefined) encrypted.description = prepared.description;
+		const saved = await this.credentialsService.update(
+			update.targetId,
+			encrypted,
+			{ kind: 'user', user: context.user },
+			prepared.data,
+			{ user: context.user },
+		);
+		if (saved === null) throw credentialNotFound(update);
+
+		await this.emitCredentialUpdated(context.user, saved, prepared.data, context.ctx);
+		return true;
+	}
+
+	/**
+	 * Writes the selected credentials that no workflow requires. An update merges the package
+	 * payload into the stored values, so a secret stays. Run after {@link planSelected} found no
+	 * issue. Returns the source ids that it wrote.
+	 */
+	async applySelected(context: ImportContext, plan: CredentialImportPlan): Promise<string[]> {
+		const updated: string[] = [];
+		for (const update of plan.selected.updates) {
+			if (await this.writeUpdate(context, update)) updated.push(update.sourceId);
+		}
 		return updated;
 	}
 

@@ -192,9 +192,16 @@ export function toggleSelection(
 	return { mode: 'custom', selected };
 }
 
-/** The selectable resources inside a project or folder, at any depth. */
+/**
+ * The selectable resources inside a project or folder, at any depth. Credentials have their own
+ * group, so the checkbox of a project neither shows nor toggles them.
+ */
 export function selectableDescendants(graph: SelectionGraph, containerKey: ResourceKey) {
-	return selectableKeys(graph).filter((key) => ancestorsOf(graph, key).includes(containerKey));
+	return selectableKeys(graph).filter(
+		(key) =>
+			graph.resources.get(key)?.type !== 'credential' &&
+			ancestorsOf(graph, key).includes(containerKey),
+	);
 }
 
 /** What the checkbox of a project or folder selects: the container itself and everything in it. */

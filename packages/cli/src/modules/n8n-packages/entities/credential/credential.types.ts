@@ -98,13 +98,40 @@ export interface CredentialUpdateCandidate extends CredentialMatch {
 	description?: string | null;
 }
 
+/**
+ * What a selection does with a credential that no workflow requires. A selected credential of the
+ * project gets the name, the description, the expression values and the plain values that decide
+ * which fields show. A package never carries a secret, and a merge keeps the stored ones. The
+ * import never creates a selected credential.
+ */
+export interface SelectedCredentialPlan {
+	/**
+	 * Source ids of credentials that the destination lacks. Each one blocks the import as a missing
+	 * credential, which the user creates from the bindings screen.
+	 */
+	missing: string[];
+	/**
+	 * Credentials of the project that the package changes. The stored type stays, and the package
+	 * payload merges into the stored values.
+	 */
+	updates: CredentialUpdateCandidate[];
+	/** Credentials that another project owns. They stay as they are. */
+	ownedElsewhere: Array<{ id: string; name: string }>;
+	/** Credentials of the project that the package does not change. */
+	unchanged: Array<{ id: string; name: string }>;
+}
+
 export interface CredentialImportPlan extends CredentialResolution {
+	selected: SelectedCredentialPlan;
 	stubIds: ImportBindingMap;
 	/** Matched credentials the conflict policy can update. Empty under `keep-existing`. */
 	candidates: CredentialUpdateCandidate[];
 	/** The candidates that `overwrite` would change. */
 	updates: CredentialUpdateCandidate[];
-	/** Matches in the update scope that the user cannot update. Empty under `keep-existing`. */
+	/**
+	 * Matches in the update scope that the user cannot update. Empty under `keep-existing`, except
+	 * for a selected credential, which the user cannot update.
+	 */
 	forbidden: CredentialMatch[];
 }
 
@@ -160,6 +187,8 @@ export interface CredentialBindingRequest {
 	/** Package credential files by credential id. Read only when the policy is not `keep-existing`. */
 	packageCredentials?: ReadonlyMap<string, SerializedCredential>;
 	updateScope: CredentialUpdateScope;
+	/** Package files of the credentials that a selection names, for the selected-credential step. */
+	selectedCredentials?: SerializedCredential[];
 }
 
 export function createFailure(

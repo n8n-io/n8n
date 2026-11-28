@@ -94,10 +94,38 @@ describe('credentials in the Promote preview', () => {
 			expect(credentialRow(resources)).toMatchObject({ selectable: false, parentKey: null });
 		});
 
-		it('does not make a credential selectable on Apply', () => {
+		it('makes an added credential of the project selectable on Apply', () => {
 			const { resources } = preview(side([]), side([{ target: OWNED_TARGET }]), 'apply');
 
-			expect(credentialRow(resources)).toMatchObject({ selectable: false });
+			expect(credentialRow(resources)).toMatchObject({ change: 'added', selectable: true });
+		});
+
+		it('does not list a credential that the Apply plan keeps', () => {
+			const { resources } = buildPreview({
+				operation: {
+					direction: 'apply',
+					planned: new Map([['credential:C', { change: 'unchanged' }]]),
+				},
+				projectIds: [PROJECT.id],
+				base: side([]),
+				desired: side([{ target: OWNED_TARGET }]),
+			});
+
+			expect(credentialRow(resources)).toBeUndefined();
+		});
+
+		it('lists a credential that the Apply plan renames as selectable', () => {
+			const { resources } = buildPreview({
+				operation: {
+					direction: 'apply',
+					planned: new Map([['credential:C', { change: 'modified', previousName: 'Old key' }]]),
+				},
+				projectIds: [PROJECT.id],
+				base: side([]),
+				desired: side([{ target: OWNED_TARGET }]),
+			});
+
+			expect(credentialRow(resources)).toMatchObject({ change: 'modified', selectable: true });
 		});
 	});
 

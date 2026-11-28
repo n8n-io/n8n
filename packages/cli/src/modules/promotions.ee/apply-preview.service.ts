@@ -48,6 +48,7 @@ import { PACKAGE_SUBFOLDER } from './constants';
 import { crossProjectMoves, foldersInScope, type CrossProjectMoves } from './cross-project-moves';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { LocalPackageEntities } from './local-package-entities.service';
+import { PromotionCredentialSelectionService } from './promotion-credential-selection.service';
 import { exportInstancePackage, type InstancePackage } from './instance-package';
 import {
 	collectCredentialReferences,
@@ -145,6 +146,7 @@ export class ApplyPreviewService {
 		private readonly folderService: FolderService,
 		private readonly localEntities: LocalPackageEntities,
 		private readonly globalConfig: GlobalConfig,
+		private readonly credentialSelection: PromotionCredentialSelectionService,
 	) {}
 
 	/**
@@ -164,11 +166,14 @@ export class ApplyPreviewService {
 	}): Promise<ApplyPreview> {
 		const { reader, inventory } = await this.readPackage(files);
 		const moves = await this.findCrossProjectMoves(inventory, projectId);
+		// The user sees only the credentials they can read, so a hidden one is neither listed nor applied.
+		const unreadable = await this.credentialSelection.findUnreadableOwnedIds(user, projectId);
 		const selection = classifyProjectWorkflows(
 			inventory,
 			projectId,
 			await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([projectId]),
 			new Set(moves.workflows.map(({ id }) => id)),
+			unreadable,
 		);
 		// The import needs the project on the branch. Without it, the preview still shows what the
 		// branch lacks, and the check stops Apply.
@@ -192,6 +197,7 @@ export class ApplyPreviewService {
 			files,
 			manifest: plan?.manifest ?? (await reader.readManifest()),
 			tagsDisabled: this.globalConfig.tags.disabled,
+			visibleCredentialIds: new Set(selection.selectedCredentialIds),
 		});
 		return await this.finish(resources, dependencies, check);
 	}
@@ -398,7 +404,13 @@ function compareWithBranch({
 	files,
 	manifest,
 	tagsDisabled,
+	visibleCredentialIds,
 }: Pick<Parameters<typeof buildPreview>[0], 'operation' | 'projectIds'> & {
+	/**
+	 * Lists the credentials that the branch holds in the project folder, with no workflow using them,
+	 * when the user can see them. Omitted, it lists none.
+	 */
+	visibleCredentialIds?: ReadonlySet<string>;
 	instance: InstancePackage;
 	files: ReadonlyMap<string, Buffer>;
 	manifest: PreviewSide['manifest'];
@@ -417,6 +429,8 @@ function compareWithBranch({
 			blobByPath: new Map(instance.files.map(({ path, blobSha }) => [path, blobSha])),
 		},
 		desired: {
+			ownedCredentials: visibleCredentialIds !== undefined,
+			visibleCredentialIds,
 			manifest: manifest && tagsDisabled ? withoutTags(manifest) : manifest,
 			blobByPath: new Map(
 				[...files].map(([path, content]) => [
@@ -460,6 +474,7 @@ function classifyProjectWorkflows(
 	projectId: string,
 	ownedWorkflowIds: string[],
 	movedWorkflowIds: ReadonlySet<string>,
+	unreadableCredentialIds: ReadonlySet<string>,
 ): ImportSelection {
 	const selectedWorkflowIds = inventory.workflows
 		.filter((workflow) => workflow.projectId === projectId)
@@ -474,6 +489,11 @@ function classifyProjectWorkflows(
 		deletedWorkflowIds: ownedWorkflowIds.filter(
 			(id) => !selected.has(id) && !movedWorkflowIds.has(id),
 		),
+		// The preview lists every credential that the branch holds under the project and the user can read.
+		selectedCredentialIds: inventory.credentials
+			.filter(({ projectId: owner }) => owner === projectId)
+			.map(({ credential }) => credential.id)
+			.filter((id) => !unreadableCredentialIds.has(id)),
 	};
 }
 

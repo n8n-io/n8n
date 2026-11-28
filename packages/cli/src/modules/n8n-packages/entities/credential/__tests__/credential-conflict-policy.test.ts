@@ -8,6 +8,7 @@ import {
 	differingCredentials,
 	forbiddenCredentialUpdates,
 	isUpdateCandidate,
+	plannedCredentialSaves,
 	plannedCredentialUpdates,
 	resolveCredentialConflictPolicy,
 	type UpdatableCredential,
@@ -372,6 +373,31 @@ describe('forbiddenCredentialUpdates', () => {
 	it('reports nothing without forbidden matches', () => {
 		expect(forbiddenCredentialUpdates([{ forbidden: [] }])).toEqual([]);
 	});
+});
+
+describe('plannedCredentialSaves', () => {
+	const none = { missing: [], updates: [], ownedElsewhere: [], unchanged: [] };
+	const selected = candidate({ sourceId: 'selected-1', usedBy: [] });
+
+	it('keeps an overwrite update and a selected update of one destination in one group', () => {
+		const saves = plannedCredentialSaves('overwrite', [
+			{ updates: [candidate()], selected: none },
+			{ updates: [], selected: { ...none, updates: [selected] } },
+		]);
+
+		expect(saves).toEqual(new Map([['target-1', [candidate(), selected]]]));
+	});
+
+	it.each(['fail', 'keep-existing'] as const)(
+		'saves only the selected updates under %s',
+		(policy) => {
+			const saves = plannedCredentialSaves(policy, [
+				{ updates: [candidate()], selected: { ...none, updates: [selected] } },
+			]);
+
+			expect(saves).toEqual(new Map([['target-1', [selected]]]));
+		},
+	);
 });
 
 describe('plannedCredentialUpdates', () => {
