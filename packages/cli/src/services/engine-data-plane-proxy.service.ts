@@ -19,6 +19,12 @@ import type { ExecutionIdV2 } from '@/executions/execution-id';
 /** The engine refused the workflow before it saved an execution for it. */
 export class EngineRejectedWorkflowError extends UserError {}
 
+export class EngineV2UnavailableError extends UserError {
+	constructor() {
+		super('Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.');
+	}
+}
+
 /** The engine did not admit the run, and saved no execution for it. */
 export class EngineDidNotAdmitError extends OperationalError {}
 
@@ -135,9 +141,7 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 
 	async startExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {
 		if (!this.provider) {
-			throw new UserError(
-				'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
-			);
+			throw new EngineV2UnavailableError();
 		}
 
 		return await this.provider.startExecution(request);

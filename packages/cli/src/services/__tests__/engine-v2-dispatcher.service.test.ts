@@ -147,6 +147,7 @@ describe('EngineV2Dispatcher', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		lifecycleSubscriptions.subscribe.mockResolvedValue(undefined);
+		lifecycleSubscriptions.hasListener.mockReturnValue(false);
 		proxy.isAvailable.mockReturnValue(true);
 		proxy.startExecution.mockResolvedValue({ executionId: 'dp-uuid' });
 		payloadFiles.claimForExecution.mockResolvedValue(undefined);
@@ -254,18 +255,48 @@ describe('EngineV2Dispatcher', () => {
 			},
 		);
 
-		it('subscribes to lifecycle events for a run with a push ref', async () => {
-			await dispatcher.start(runData({ pushRef: 'push-1' }));
+		it.each([
+			['no caller id', { minted: false, listened: false }],
+			['a caller id that nobody listens to', { minted: true, listened: false }],
+			['a caller id with a listener', { minted: true, listened: true }],
+		])(
+			'subscribes to lifecycle events for a run with a push ref and %s',
+			async (_name, { minted, listened }) => {
+				const callerId = minted ? createExecutionIdV2() : undefined;
+				lifecycleSubscriptions.hasListener.mockImplementation((id) => listened && id === callerId);
+
+				const executionId = await dispatcher.start(
+					runData({ pushRef: 'push-1', engineV2ExecutionId: callerId }),
+				);
+
+				expect(proxy.startExecution).toHaveBeenCalledWith(
+					expect.objectContaining({ lifecycleEventSubscription: { kind: 'all' } }),
+				);
+				expect(lifecycleSubscriptions.subscribe).toHaveBeenCalledWith(executionId);
+			},
+		);
+
+		it('requests lifecycle events for a run with a listener and without a push ref', async () => {
+			const executionId = createExecutionIdV2();
+			lifecycleSubscriptions.hasListener.mockImplementation((id) => id === executionId);
+
+			await dispatcher.start(runData({ engineV2ExecutionId: executionId }));
 
 			expect(proxy.startExecution).toHaveBeenCalledWith(
 				expect.objectContaining({ lifecycleEventSubscription: { kind: 'all' } }),
 			);
+			expect(pushRegistry.register).not.toHaveBeenCalled();
+			expect(lifecycleSubscriptions.subscribe).not.toHaveBeenCalled();
 		});
 
 		it.each([
 			['a manual run without a push ref', runData()],
 			['an active trigger run', triggerRunData()],
 			['a webhook run', webhookRunData()],
+			[
+				'a webhook run with a caller id that nobody listens to',
+				webhookRunData(undefined, { engineV2ExecutionId: createExecutionIdV2() }),
+			],
 		])('does not subscribe to lifecycle events for %s', async (_name, data) => {
 			await dispatcher.start(data);
 

@@ -3,7 +3,8 @@
  *
  * The data plane publishes lifecycle events on the execution channel. The
  * control plane subscribes for the runs that an editor watches and relays the
- * events as push messages. This test uses the in-memory channel of in-process
+ * events as push messages. Control-plane code can also wait for the end of a
+ * run through these events. This test uses the in-memory channel of in-process
  * mode and a fake data plane that publishes events when a run starts.
  */
 
@@ -24,6 +25,7 @@ import { createLifecycleEventCodec } from '@/modules/engine-v2/execution-channel
 import { LifecycleEventChannelSender } from '@/modules/engine-v2/execution-channel/lifecycle-event-sender';
 import { Push } from '@/push';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import { EngineV2RunService } from '@/services/engine-v2-run.service';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -90,7 +92,7 @@ const runEvents = (
 	{ type: 'execution:completed', executionId, workflowId, at },
 ];
 
-const manualRun = async (pushRef?: string) => {
+const manualRunData = async (pushRef?: string) => {
 	const workflow = await createWorkflow(
 		{
 			active: false,
@@ -109,6 +111,12 @@ const manualRun = async (pushRef?: string) => {
 		pushRef,
 		triggerToStartFrom: { name: TRIGGER_NAME },
 	};
+
+	return { workflow, data };
+};
+
+const manualRun = async (pushRef?: string) => {
+	const { workflow, data } = await manualRunData(pushRef);
 
 	return { workflow, executionId: await Container.get(WorkflowRunner).run(data) };
 };
@@ -311,5 +319,49 @@ describe('lifecycle events of engine v2 runs', () => {
 		await manualRun();
 
 		expect(pushSend()).not.toHaveBeenCalled();
+	});
+});
+
+describe('waiting for the end of an engine v2 run', () => {
+	const runAndWait = async (pushRef?: string) => {
+		const { data } = await manualRunData(pushRef);
+		return await Container.get(EngineV2RunService).runAndWait(data, { timeoutMs: 5_000 });
+	};
+
+	test.each([
+		['completes', 'execution:completed', 'success'],
+		['fails', 'execution:failed', 'error'],
+	] as const)(
+		'runs a run without an editor, and resolves when it %s',
+		async (_name, endType, status) => {
+			startExecution.mockImplementation(async (request: StartExecutionRequest) => {
+				const { executionId, workflowId } = request;
+				const [started] = runEvents(executionId, workflowId, 'set-id');
+				await lifecycleEventSender.send(
+					[started, { type: endType, executionId, workflowId, at }],
+					new AbortController().signal,
+				);
+				return { executionId };
+			});
+
+			const { executionId, outcome } = await runAndWait();
+
+			expect(outcome).toEqual({ kind: 'finished', status });
+			expect(startExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ executionId, lifecycleEventSubscription: { kind: 'all' } }),
+			);
+			expect(pushSend()).not.toHaveBeenCalled();
+			expect(Container.get(EngineV2LifecycleSubscriptions).hasListener(executionId)).toBe(false);
+		},
+	);
+
+	test('runs a run that an editor watches, relays it, and resolves when it completes', async () => {
+		const { outcome } = await runAndWait('push-1');
+
+		expect(outcome).toEqual({ kind: 'finished', status: 'success' });
+		expect(sentMessages()).toContainEqual({
+			message: expect.objectContaining({ type: 'executionFinished' }),
+			pushRef: 'push-1',
+		});
 	});
 });
