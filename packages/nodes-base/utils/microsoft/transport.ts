@@ -1,4 +1,6 @@
+import { retryabilityFromError } from '@n8n/backend-network';
 import type {
+	Failure,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
@@ -49,6 +51,18 @@ export interface MicrosoftGraphForbiddenHint {
 	message: string;
 	description: string;
 	delegated?: { message: string; description: string };
+}
+
+/**
+ * A failure worth a retry (a 429, a 408, a 5xx or a network error) as a `failure`, with the
+ * `Retry-After` wait when Graph sent one. It is read from the original error, because the rebuilt `NodeApiError` keeps no response
+ * headers, and the sanitized Service Principal error keeps no error code either.
+ */
+function throttleFailure(error: unknown): Failure | undefined {
+	const { retryable, status, retryAfterMs } = retryabilityFromError(error);
+	if (retryable !== 'yes') return undefined;
+	const cause = status === 429 ? 'rate-limited' : 'temporarily-unavailable';
+	return retryAfterMs === undefined ? { cause } : { cause, retryAfterMs };
 }
 
 function wrappedGraphText(error: unknown): string {
@@ -336,6 +350,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 			}
 			return await this.helpers.requestOAuth2.call(this, credentialType, options);
 		} catch (error) {
+			const failure = throttleFailure(error);
 			if (isServicePrincipal) {
 				// App-only runs under a tenant-wide token: a raw Graph error body can carry
 				// correlation IDs and reflected input. For ANY status, never pass the raw
@@ -384,6 +399,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 					sanitizedError.httpStatusCode = httpCode;
 					errorOptions.httpCode = `${httpCode}`;
 				}
+				if (failure) errorOptions.failure = failure;
 				throw new NodeApiError(this.getNode(), sanitizedError, errorOptions);
 			}
 
@@ -411,6 +427,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 					}
 				}
 			}
+			if (failure) errorOptions.failure = failure;
 			throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 		}
 	}

@@ -10,6 +10,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
+import type { MessageFilters } from './v2/helpers/message-filters';
+import {
+	errorText,
+	filterChangeNotifications,
+	getMessageFilters,
+} from './v2/helpers/message-filters';
 import type { SubscriptionResponse, WebhookNotification } from './v2/helpers/types';
 import {
 	createSubscriptions,
@@ -349,6 +355,57 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'collection',
+				placeholder: 'Add Filter',
+				default: {},
+				description:
+					'Only trigger on messages that pass these filters. All filters share one Microsoft Graph read for each notification.',
+				displayOptions: {
+					show: {
+						event: ['newChannelMessage', 'newChatMessage'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Keyword',
+						name: 'keyword',
+						type: 'string',
+						default: '',
+						description:
+							'Only trigger when the message text or subject contains this text. The match ignores case.',
+					},
+					{
+						displayName: 'Mentions Me',
+						name: 'mentionsMe',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to trigger only when the message mentions you by name. @channel, @team and tag mentions do not count. Needs the User.Read permission.',
+						displayOptions: {
+							hide: {
+								...SP_HIDE,
+							},
+						},
+					},
+					{
+						displayName: 'Skip Bot Messages',
+						name: 'skipBotMessages',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to ignore messages that a bot or app sent',
+					},
+					{
+						displayName: 'Skip System Messages',
+						name: 'skipSystemMessages',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to ignore system messages, for example "member added"',
+					},
+				],
+			},
 		],
 	};
 
@@ -552,39 +609,76 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		const changeNotifications = accepted.filter(
 			(item) => isRecord(item) && !isLifecycleNotification(item),
 		) as WebhookNotification[];
-		// `workflowData` has one array for each output. The node has one output, so all change
-		// notifications go in one array. `clientState` is the stored secret. The items do not
-		// include it.
-		const workflowData = [
-			changeNotifications.map(({ clientState, ...notification }) => {
-				// The added fields go first. On a name clash the resourceData (or notification) value wins.
-				const json: IDataObject = {
-					...(typeof notification.changeType === 'string' && {
-						changeType: notification.changeType,
-					}),
-					...(typeof notification.resource === 'string' && { resource: notification.resource }),
-					...parseResourceIds(notification.resource),
-					...(isRecord(notification.resourceData) ? notification.resourceData : notification),
-				};
-				return { json };
-			}),
-		];
+		// `clientState` is the stored secret. The items do not include it.
+		const toItem = ({ clientState, ...notification }: WebhookNotification) => {
+			// The added fields go first. On a name clash the resourceData (or notification) value wins.
+			const json: IDataObject = {
+				...(typeof notification.changeType === 'string' && {
+					changeType: notification.changeType,
+				}),
+				...(typeof notification.resource === 'string' && { resource: notification.resource }),
+				...parseResourceIds(notification.resource),
+				...(isRecord(notification.resourceData) ? notification.resourceData : notification),
+			};
+			return { json };
+		};
 
-		if (lifecycleNotifications.length === 0) {
-			return { workflowData };
+		let filters: MessageFilters | undefined;
+		let filtersError: unknown;
+		try {
+			filters = changeNotifications.length > 0 ? getMessageFilters.call(this) : undefined;
+		} catch (error) {
+			// A throw before the ack answers 5xx and Graph re-delivers, so it waits for the ack.
+			filtersError = error;
+		}
+		// `workflowData` has one array for each output. The node has one output, so all change
+		// notifications go in one array.
+		if (
+			lifecycleNotifications.length === 0 &&
+			filters === undefined &&
+			filtersError === undefined
+		) {
+			return { workflowData: [changeNotifications.map(toItem)] };
 		}
 
-		// Ack before any Graph call: a slow answer makes Graph re-deliver.
+		// Ack before any Graph call (lifecycle handling and message reads): a slow answer makes
+		// Graph re-deliver.
 		res.status(202).end();
 		// A test run would list by the production URL and write production ids into the
 		// test static data.
-		if (this.getMode() !== 'manual') {
+		const ranLifecycle = lifecycleNotifications.length > 0 && this.getMode() !== 'manual';
+		if (ranLifecycle) {
 			await handleLifecycleNotifications.call(this, lifecycleNotifications, rejected);
 		}
 
-		// A lifecycle-only batch must leave `workflowData` undefined: any value starts an execution.
-		return changeNotifications.length > 0
-			? { noWebhookResponse: true, workflowData }
+		// A throw after the ack is a failed execution, but it skips the static-data save. That would
+		// lose the subscription ids the lifecycle handler just wrote, so such a batch only warns.
+		if (filtersError !== undefined) {
+			if (!ranLifecycle) throw ensureError(filtersError);
+			logTrigger.call(this, 'warn', 'failed to read the filters, notifications skipped', {
+				error: errorText(filtersError),
+			});
+			return { noWebhookResponse: true };
+		}
+
+		let passed = changeNotifications;
+		if (filters) {
+			const result = await filterChangeNotifications.call(this, changeNotifications, filters);
+			passed = result.passed;
+			if (result.denied) {
+				// The passed items of this batch are lost with the throw: a denied read must not hide
+				// behind a warning while other channels still pass. After the lifecycle handler ran, a
+				// throw would lose its subscription ids, so the batch only warns.
+				if (!ranLifecycle) throw result.denied;
+				const { message, description } = result.denied;
+				logTrigger.call(this, 'warn', description ? `${message}. ${description}` : message);
+			}
+		}
+
+		// A lifecycle-only or all-filtered batch must leave `workflowData` undefined: any value
+		// starts an execution.
+		return passed.length > 0
+			? { noWebhookResponse: true, workflowData: [passed.map(toItem)] }
 			: { noWebhookResponse: true };
 	}
 }

@@ -416,6 +416,14 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 			const channel = triggerProps.find((p) => p.name === 'channelId');
 			expect(channel?.displayOptions?.show?.watchAllChannels).toEqual([{ _cnd: { not: true } }]);
 		});
+
+		it('the Mentions Me filter is hidden under SP', () => {
+			const filters = triggerProps.find((p) => p.name === 'filters');
+			const mentionsMe = ((filters?.options ?? []) as INodeProperties[]).find(
+				(o) => o.name === 'mentionsMe',
+			);
+			expect(isSpHidden(mentionsMe)).toBe(true);
+		});
 	});
 
 	describe('activityNotification - available under SP with a recipient picker', () => {
