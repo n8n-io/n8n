@@ -1,6 +1,7 @@
 import { DEFAULT_AGENT_PERSONALISATION, type AgentPersonalisation } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { icons as lucide } from '@iconify-json/lucide';
 import { initWasm, Resvg } from '@resvg/resvg-wasm';
 import { readFileSync } from 'node:fs';
@@ -11,17 +12,39 @@ import { readRgbaPixels, type Rgba } from './png-pixels';
 import { buildTeamsIconSvgs, renderTeamsAppIcons } from '../teams-app-icons';
 import { ACCENT_COLOR } from '../teams-manifest.service';
 
-const workers = vi.hoisted(() => ({ live: 0, mostAtOnce: 0 }));
+const workers = vi.hoisted(() => ({ live: 0, mostAtOnce: 0, prototypeStates: [] as unknown[] }));
 
 // Counts workers alive at once. A worker counts until `terminate()` settles,
 // which the renderer awaits before it hands the next render a turn.
 vi.mock('node:worker_threads', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('node:worker_threads')>();
+	const reportPrototypeState = `
+const probePort = require('node:worker_threads').parentPort;
+const postMessage = probePort.postMessage.bind(probePort);
+probePort.postMessage = (message, ...args) => postMessage({
+	...message,
+	prototypeState: {
+		object: Object.isExtensible(Object.prototype),
+		array: Object.isExtensible(Array.prototype),
+		function: Object.isExtensible(Function.prototype),
+		number: Object.isExtensible(Number.prototype),
+		boolean: Object.isExtensible(Boolean.prototype),
+		string: Object.isExtensible(String.prototype),
+	},
+}, ...args);
+`;
 	class CountedWorker extends actual.Worker {
 		constructor(...args: ConstructorParameters<typeof actual.Worker>) {
-			super(...args);
+			const [source, options] = args;
+			super(
+				typeof source === 'string' && options?.eval ? reportPrototypeState + source : source,
+				options,
+			);
 			workers.live++;
 			workers.mostAtOnce = Math.max(workers.mostAtOnce, workers.live);
+			this.once('message', (message: { prototypeState: unknown }) => {
+				workers.prototypeStates.push(message.prototypeState);
+			});
 		}
 
 		async terminate() {
@@ -34,6 +57,8 @@ vi.mock('node:worker_threads', async (importOriginal) => {
 });
 
 mockInstance(Logger);
+const security = { disablePrototypeHardening: false };
+mockInstance(GlobalConfig, { security });
 
 const personalisation = (
 	icon: string,
@@ -63,6 +88,28 @@ const expectColor = ({ r, g, b }: Rgba, expected: [number, number, number], tole
 	);
 
 describe('renderTeamsAppIcons', () => {
+	afterEach(() => {
+		security.disablePrototypeHardening = false;
+	});
+
+	it.each([true, false])('uses the worker prototype policy when enabled=%s', async (enabled) => {
+		security.disablePrototypeHardening = !enabled;
+		workers.prototypeStates = [];
+
+		await render(personalisation('bot'));
+
+		expect(workers.prototypeStates).toEqual([
+			{
+				object: !enabled,
+				array: !enabled,
+				function: !enabled,
+				number: !enabled,
+				boolean: !enabled,
+				string: true,
+			},
+		]);
+	});
+
 	it('draws a 192px colour icon and a 32px outline icon', async () => {
 		const { color, outline } = await render(personalisation('bot'));
 

@@ -10,6 +10,8 @@ import { parse } from 'path';
 import readline from 'readline';
 import { Worker } from 'worker_threads';
 
+import { isPrototypeHardeningEnabled } from '@/prototype-hardening';
+
 import type { EventMessageTypes } from '../event-message-classes';
 import { isEventMessageOptions } from '../event-message-classes/abstract-event-message';
 import type { AbstractEventMessageOptions } from '../event-message-classes/abstract-event-message-options';
@@ -149,7 +151,9 @@ export class MessageEventBusLogWriter {
 		} else {
 			workerFileName = safeJoinPath(parsedName.dir, `${parsedName.name}-worker${parsedName.ext}`);
 		}
-		this._worker = new Worker(workerFileName);
+		this._worker = new Worker(workerFileName, {
+			workerData: { prototypeHardeningEnabled: isPrototypeHardeningEnabled() },
+		});
 		if (this.worker) {
 			this.worker.on('messageerror', async (error) => {
 				this.logger.error('Event Bus Log Writer thread error, attempting to restart...', { error });

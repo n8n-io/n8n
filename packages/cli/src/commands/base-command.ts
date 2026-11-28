@@ -196,6 +196,12 @@ export abstract class BaseCommand<F = never> {
 			);
 		}
 
+		if (this.globalConfig.security.disablePrototypeHardening) {
+			this.logger.warn(
+				'OBJECT PROTOTYPE HARDENING IS DISABLED. This is discouraged for production use. Please remove N8N_INSECURE_DISABLE_PROTOTYPE_HARDENING unless a module needs it.',
+			);
+		}
+
 		// Ensures that when a CLI command has a check for "instanceSettings.isMultiMainEnabled"
 		// that it reflects the configuration of the n8n instance running on the server.
 		const isMultiMainEnabled =

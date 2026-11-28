@@ -151,6 +151,7 @@ describe('Engine', () => {
 				rest: 'rest',
 			},
 			database: { type: 'sqlite' },
+			security: { disablePrototypeHardening: false },
 			sentry: { backendDsn: '' },
 			cache: { backend: 'memory' },
 			taskRunners: {},
