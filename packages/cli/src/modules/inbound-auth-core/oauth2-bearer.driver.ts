@@ -10,9 +10,11 @@ import {
 	type TrustedSource,
 	type Verified,
 } from '@n8n/inbound-auth';
+import { buildProtectedResourceMetadataUrl } from '@n8n/utils/build-protected-resource-metadata-url';
 import { decode, verify as verifyJwt, type Jwt } from 'jsonwebtoken';
 
 import { Logger } from '@n8n/backend-common';
+import { UrlService } from '@n8n/backend-services';
 import { getPublicKeyFromJwk } from './key.utils';
 
 type JwtFailure = { name: string; message: string };
@@ -38,6 +40,7 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 	constructor(
 		private readonly store: TrustedSourceStore,
 		private readonly localServer: LocalAuthorizationServer,
+		private readonly urlService: UrlService,
 		logger: Logger,
 	) {
 		super();
@@ -195,13 +198,13 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 		sources: TrustedSource[],
 	): { authorizationServers?: string[]; challenge?: string } {
 		try {
-			const url = new URL(resource.resource.url);
-
-			const path = url.pathname === '/' ? '' : url.pathname;
 			return {
 				authorizationServers: sources.filter((s) => s.type === 'oauth2').map((s) => s.issuer),
 				// The query selects among resources sharing a path (a webhook's `?method=`), so it stays.
-				challenge: `Bearer resource_metadata="${url.origin}/.well-known/oauth-protected-resource${path}${url.search}"`,
+				challenge: `Bearer resource_metadata="${buildProtectedResourceMetadataUrl(
+					resource.resource.url,
+					this.urlService.getInstanceBaseUrl(),
+				)}"`,
 			};
 		} catch (error) {
 			this.logger.warn('Failed to advertise resource', { error });

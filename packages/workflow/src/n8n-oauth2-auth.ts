@@ -1,3 +1,5 @@
+import { buildProtectedResourceMetadataUrl } from '@n8n/utils/build-protected-resource-metadata-url';
+
 import { recordConsumedAuth } from './auth-redaction';
 import { UnexpectedError } from './errors';
 import type { IUser, IWebhookFunctions } from './interfaces';
@@ -103,8 +105,7 @@ export const n8nOAuth2Auth = async (
 		trimTrailingSlash(webhookUrl) +
 		(options.method ? `?method=${options.method.toUpperCase()}` : '');
 
-	const u = new URL(resourceUrl);
-	const prmUrl = `${u.origin}/.well-known/oauth-protected-resource${u.pathname}${u.search}`;
+	const prmUrl = buildProtectedResourceMetadataUrl(resourceUrl, context.getInstanceBaseUrl());
 
 	const resp = context.getResponseObject();
 	const req = context.getRequestObject();
