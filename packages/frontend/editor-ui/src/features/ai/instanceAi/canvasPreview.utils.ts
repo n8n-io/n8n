@@ -498,6 +498,22 @@ export function getAppArtifactFromToolCall(tc: ArtifactToolCall): AppArtifact | 
 	return { appId: id, name, projectId };
 }
 
+const APP_VERSION_TOOL_NAMES = new Set<string>([
+	SHARED_BUILDER_TOOL_NAMES.COMMIT_APP,
+	SHARED_BUILDER_TOOL_NAMES.BIND_APP_RESOURCE,
+	SHARED_BUILDER_TOOL_NAMES.UNBIND_APP_RESOURCE,
+]);
+
+export function getAppWriteVersionIds(turns: readonly ArtifactTurn[]): string[] {
+	const ids: string[] = [];
+	for (const tc of artifactToolCalls(turns)) {
+		if (!APP_VERSION_TOOL_NAMES.has(tc.toolName) || tc.isLoading) continue;
+		const result = unwrapUntrustedToolResult(tc.result);
+		if (isRecord(result) && typeof result.versionId === 'string') ids.push(result.versionId);
+	}
+	return ids;
+}
+
 const APP_TARGET_TOOL_NAMES = new Set<string>([
 	SHARED_BUILDER_TOOL_NAMES.OPEN_APP,
 	SHARED_BUILDER_TOOL_NAMES.BIND_APP_RESOURCE,

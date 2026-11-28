@@ -4,6 +4,8 @@ import { computed, ref, reactive, nextTick, type Ref } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
+import { useSeenAppPreviewVersions } from '@n8n/frontend-module-apps';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { DEBOUNCE_TIME } from '@/app/constants';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
@@ -1510,6 +1512,35 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.appRefreshKey.value).toBe(initialKey + 1);
+		});
+
+		test('marks the app versions that the assistant wrote as seen', async () => {
+			useUsersStore().currentUserId = 'user-1';
+			const ctx = setup();
+			registerApp(ctx.thread);
+			const { hasSeen } = useSeenAppPreviewVersions();
+
+			ctx.thread.messages = [appCall('tc-commit', 'commit_app', { appId: 'app-1' })];
+			await nextTick();
+			expect(hasSeen('v1')).toBe(true);
+
+			ctx.thread.messages = [
+				...ctx.thread.messages,
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-bind',
+								toolName: 'bind_app_resource',
+								args: { appId: 'app-1' },
+								result: { versionId: 'v2', bindings: [] },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+			expect(hasSeen('v2')).toBe(true);
 		});
 
 		test('does not open an app the assistant only read', async () => {

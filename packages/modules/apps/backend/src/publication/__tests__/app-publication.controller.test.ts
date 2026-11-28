@@ -40,13 +40,13 @@ describe('App controller access', () => {
 		});
 	});
 
-	it('gates preview grants with the read scope', () => {
+	it('gates preview grants with the update scope', () => {
 		const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 			AppPreviewController as never,
 		);
 		expect(metadata.surface).toBeUndefined();
 		expect(metadata.routes.get('createGrant')?.accessScope).toEqual({
-			scope: 'app:read',
+			scope: 'app:update',
 			globalOnly: false,
 		});
 	});

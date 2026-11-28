@@ -143,6 +143,16 @@ describe('AppProtectedResource', () => {
 		expect(await resource.canRead(app, user)).toBe(false);
 	});
 
+	it('requires update access to preview', async () => {
+		const { resource, app, projectScope } = setup();
+		const user = mock<ResourcePrincipal>({ id: 'user' });
+
+		expect(await resource.canPreview(app, user)).toBe(true);
+		expect(projectScope.hasScopes).toHaveBeenCalledWith(user, app.projectId, ['app:update']);
+		projectScope.hasScopes.mockResolvedValue(false);
+		expect(await resource.canPreview(app, user)).toBe(false);
+	});
+
 	it('offers a grant that requires app:read in the project of a project app', async () => {
 		const { resource, app } = setup();
 
@@ -193,22 +203,23 @@ describe('AppProtectedResource', () => {
 			expect(descriptor?.getAudiences()).toEqual([previewUrl]);
 			expect(descriptor?.getGrant?.()).toEqual({
 				audiences: [previewUrl],
-				projectAccess: { projectId: 'project', scopes: ['app:read'] },
+				projectAccess: { projectId: 'project', scopes: ['app:update'] },
 			});
 			expect(await descriptor?.isAvailable?.()).toBe(true);
 		});
 
-		it('requires read access even for an instance app', async () => {
+		it('requires update access even for an instance app', async () => {
 			const { resource, app, projectScope } = setup();
 			app.visibility = 'instance';
 			const descriptor = resource.forApp(app, { kind: 'preview' });
 
 			expect(await descriptor.authorize(user)).toBe(true);
+			expect(projectScope.hasScopes).toHaveBeenCalledWith(user, 'project', ['app:update']);
 			projectScope.hasScopes.mockResolvedValue(false);
 			expect(await descriptor.authorize(user)).toBe(false);
 			expect(descriptor.getGrant?.()).toEqual({
 				audiences: [previewUrl],
-				projectAccess: { projectId: 'project', scopes: ['app:read'] },
+				projectAccess: { projectId: 'project', scopes: ['app:update'] },
 			});
 		});
 

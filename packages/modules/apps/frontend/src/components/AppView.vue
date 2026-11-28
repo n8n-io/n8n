@@ -180,6 +180,11 @@ defineExpose({ refresh });
 	overflow: auto;
 }
 
+// Apps show empty states without the default dashed outline.
+.content > :global(.n8n-empty-state) {
+	border: 0;
+}
+
 .flush {
 	padding: 0;
 	overflow: hidden;

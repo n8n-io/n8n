@@ -30,6 +30,7 @@
     "@n8n/rest-api-client": "workspace:*",
     "@n8n/stores": "workspace:*",
     "@n8n/telemetry": "workspace:*",
+    "@vueuse/core": "catalog:frontend",
     "uuid": "catalog:",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend"

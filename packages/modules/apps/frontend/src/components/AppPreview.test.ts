@@ -7,12 +7,15 @@ import {
 } from '@n8n/api-types';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { defineComponent, h, type PropType } from 'vue';
 
+import { providePermissions } from '../__tests__/fixtures';
 import { createAppPreview, getAppBuild, listAppVersions } from '../apps.api';
 import { useAppVersions, type AppVersions } from '../composables/useAppVersions';
+import { useSeenAppPreviewVersions } from '../composables/useSeenAppPreviewVersions';
 import AppPreview from './AppPreview.vue';
 
 vi.mock('../apps.api');
@@ -46,7 +49,15 @@ const version = (id: string, buildStatus: AppBuildStatus): AppVersionResponse =>
 });
 
 let grants = 0;
+let users = 0;
 let versions: AppVersions;
+
+/** Signs in a new user, so the seen versions of other tests do not apply. */
+function signInNewUser(...seenVersionIds: string[]) {
+	useUsersStore().currentUserId = `user-${++users}`;
+	const { markSeen } = useSeenAppPreviewVersions();
+	seenVersionIds.forEach(markSeen);
+}
 
 const AppPreviewHost = defineComponent({
 	props: {
@@ -94,6 +105,8 @@ const renderComponent = createComponentRenderer(AppPreviewHost, {
 describe('AppPreview', () => {
 	beforeEach(() => {
 		grants = 0;
+		signInNewUser('v1', 'v2', 'v3', '01234567-89ab-7cde-8f01-23456789abcd');
+		providePermissions(['app:read', 'app:update']);
 		vi.mocked(createAppPreview).mockImplementation(async (_ctx, _p, _a, versionId) => {
 			const code = `${versionId}-${++grants}`;
 			return {
@@ -109,6 +122,96 @@ describe('AppPreview', () => {
 		vi.restoreAllMocks();
 		vi.useRealTimers();
 		delete document.body.dataset.theme;
+	});
+
+	describe('run confirmation', () => {
+		beforeEach(() => signInNewUser());
+
+		it('asks before it runs a version that the user did not run or write', async () => {
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const { findByTestId, queryByTestId } = renderComponent();
+
+			expect(await findByTestId('app-preview-confirm')).toBeInTheDocument();
+			expect(queryByTestId('app-preview-frame')).not.toBeInTheDocument();
+			expect(createAppPreview).not.toHaveBeenCalled();
+		});
+
+		it('runs the version on confirmation and does not ask again for it', async () => {
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const first = renderComponent();
+			await userEvent.click(await first.findByRole('button', { name: 'Run app' }));
+
+			expect(await first.findByTestId('app-preview-frame')).toHaveAttribute(
+				'src',
+				expect.stringContaining('code=v2-1'),
+			);
+			first.unmount();
+
+			const second = renderComponent();
+			expect(await second.findByTestId('app-preview-frame')).toBeInTheDocument();
+		});
+
+		it('asks again when a new version replaces a running one', async () => {
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const { findByRole, findByTestId, queryByTestId } = renderComponent();
+			await userEvent.click(await findByRole('button', { name: 'Run app' }));
+			await findByTestId('app-preview-frame');
+
+			vi.mocked(listAppVersions).mockResolvedValue([
+				version('v3', 'succeeded'),
+				version('v2', 'succeeded'),
+			]);
+			await versions.refresh();
+
+			expect(await findByTestId('app-preview-confirm')).toBeInTheDocument();
+			expect(queryByTestId('app-preview-frame')).not.toBeInTheDocument();
+			expect(createAppPreview).toHaveBeenCalledOnce();
+		});
+
+		it('runs a version that the user saw at once', async () => {
+			useSeenAppPreviewVersions().markSeen('v2');
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const { findByTestId } = renderComponent();
+
+			expect(await findByTestId('app-preview-frame')).toBeInTheDocument();
+		});
+
+		it('replaces a failed preview with the confirmation for a new version', async () => {
+			useSeenAppPreviewVersions().markSeen('v2');
+			vi.mocked(createAppPreview).mockRejectedValue(new Error('denied'));
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const { findByTestId, queryByTestId } = renderComponent();
+			await findByTestId('app-preview-error');
+
+			vi.mocked(listAppVersions).mockResolvedValue([
+				version('v3', 'succeeded'),
+				version('v2', 'succeeded'),
+			]);
+			await versions.refresh();
+
+			expect(await findByTestId('app-preview-confirm')).toBeInTheDocument();
+			expect(queryByTestId('app-preview-error')).not.toBeInTheDocument();
+		});
+
+		it('runs the version when it becomes seen while the confirmation shows', async () => {
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const { findByTestId } = renderComponent();
+			await findByTestId('app-preview-confirm');
+
+			useSeenAppPreviewVersions().markSeen('v2');
+
+			expect(await findByTestId('app-preview-frame')).toBeInTheDocument();
+		});
+
+		it('does not request a preview without the update scope', async () => {
+			capabilityRegistry.clear();
+			providePermissions(['app:read']);
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const { findByTestId } = renderComponent();
+
+			expect(await findByTestId('app-preview-no-permission')).toBeInTheDocument();
+			expect(createAppPreview).not.toHaveBeenCalled();
+		});
 	});
 
 	it('shows the newest successful version with a new grant', async () => {

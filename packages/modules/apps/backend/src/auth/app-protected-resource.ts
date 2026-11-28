@@ -54,7 +54,7 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 			authorize: async (user) => {
 				const current = await currentApp();
 				if (!current) return false;
-				return preview ? await this.canRead(current, user) : await this.canAccess(current, user);
+				return preview ? await this.canPreview(current, user) : await this.canAccess(current, user);
 			},
 			getGrant: () => this.grantFor(app, kind),
 		};
@@ -69,7 +69,10 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 		kind: AppHostKind = 'published',
 	): ResourceGrant {
 		const audiences = [this.hosts.callbackUrl(app, kind)];
-		if (kind === 'published' && app.visibility === 'instance') return { audiences };
+		if (kind === 'preview') {
+			return { audiences, projectAccess: { projectId: app.projectId, scopes: ['app:update'] } };
+		}
+		if (app.visibility === 'instance') return { audiences };
 		return { audiences, projectAccess: { projectId: app.projectId, scopes: ['app:read'] } };
 	}
 
@@ -79,6 +82,11 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 
 	async canRead(app: App, user: ResourcePrincipal): Promise<boolean> {
 		return await this.projectScope.hasScopes(user, app.projectId, ['app:read']);
+	}
+
+	/** A preview runs unpublished code with the viewer's identity, so it needs edit access. */
+	async canPreview(app: App, user: ResourcePrincipal): Promise<boolean> {
+		return await this.projectScope.hasScopes(user, app.projectId, ['app:update']);
 	}
 
 	matchesVirtualClientUrl(value: string): boolean {

@@ -26,7 +26,9 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { createAppPreview } from '../apps.api';
+import { getAppPermissions } from '../apps.permissions';
 import type { AppVersions } from '../composables/useAppVersions';
+import { useSeenAppPreviewVersions } from '../composables/useSeenAppPreviewVersions';
 import AppPreviewOptionMenu from './AppPreviewOptionMenu.vue';
 import AppFeedbackLink from './feedback/AppFeedbackLink.vue';
 
@@ -71,6 +73,8 @@ const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
 const latestFetch = useLatestFetch();
+const { hasSeen, markSeen } = useSeenAppPreviewVersions();
+const { canPreview } = getAppPermissions(props.projectId);
 
 const { head, latestBuilt, building } = props.versions;
 
@@ -111,11 +115,16 @@ const previewOrigin = computed(() =>
 const loading = computed(() => props.versions.loading.value || granting.value);
 const failed = computed(() => props.versions.failed.value || grantFailed.value);
 const buildFailed = computed(() => head.value?.buildStatus === 'failed');
+const awaitingRun = computed(() => !!latestBuilt.value && !canRun(latestBuilt.value));
 // The Assistant saves a version only after its build, so while it works on a new
 // app there is no version yet. Show the build state for that whole wait.
 const firstBuild = computed(
 	() => building.value || (!!props.assistantWorking && !latestBuilt.value && !buildFailed.value),
 );
+
+function canRun(version: AppVersionResponse) {
+	return canPreview && hasSeen(version.id);
+}
 
 async function grant(versionId: string) {
 	return await createAppPreview(rootStore.restApiContext, props.projectId, props.app.id, versionId);
@@ -138,8 +147,9 @@ async function show(force = false) {
 	const version = latestBuilt.value;
 	if (!force && version?.id === preview.value?.version.id) return;
 	const isLatest = latestFetch.next();
-	if (!version) {
+	if (!version || !canRun(version)) {
 		granting.value = false;
+		grantFailed.value = false;
 		showPreview(null);
 		return;
 	}
@@ -147,6 +157,7 @@ async function show(force = false) {
 	try {
 		const { url, authorizeUrl } = await grant(version.id);
 		if (!isLatest()) return;
+		markSeen(version.id);
 		showPreview({ version, url, frameUrl: toFrameUrl(url), authorizeUrl });
 		grantFailed.value = false;
 	} catch (error) {
@@ -156,6 +167,10 @@ async function show(force = false) {
 	} finally {
 		if (isLatest()) granting.value = false;
 	}
+}
+
+function run() {
+	if (latestBuilt.value) markSeen(latestBuilt.value.id);
 }
 
 async function reload() {
@@ -225,11 +240,9 @@ onMounted(() => {
 	window.addEventListener('keydown', onKeyDown);
 });
 
-watch(
-	() => latestBuilt.value?.id,
-	async () => await show(),
-	{ immediate: true },
-);
+watch([() => latestBuilt.value?.id, awaitingRun], async () => await show(), {
+	immediate: true,
+});
 
 onBeforeUnmount(() => {
 	window.removeEventListener('message', onMessage);
@@ -340,7 +353,9 @@ onBeforeUnmount(() => {
 				:icon="{ type: 'icon', value: 'triangle-alert' }"
 				:heading="i18n.baseText('apps.preview.error.heading')"
 				:description="i18n.baseText('apps.preview.error.description')"
+				:button-text="i18n.baseText('apps.preview.error.reload')"
 				data-test-id="app-preview-error"
+				@click:button="reload"
 			/>
 			<iframe
 				v-else-if="preview"
@@ -353,6 +368,24 @@ onBeforeUnmount(() => {
 				sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads"
 				data-test-id="app-preview-frame"
 				@load="onFrameLoad"
+			/>
+			<N8nEmptyState
+				v-else-if="!canPreview"
+				:icon="{ type: 'icon', value: 'lock' }"
+				:heading="i18n.baseText('apps.preview.noPermission.heading')"
+				:description="i18n.baseText('apps.preview.noPermission.description')"
+				data-test-id="app-preview-no-permission"
+			/>
+			<N8nEmptyState
+				v-else-if="awaitingRun"
+				:icon="{ type: 'icon', value: 'circle-play' }"
+				:heading="
+					i18n.baseText('apps.preview.confirm.heading', { interpolate: { name: app.name } })
+				"
+				:description="i18n.baseText('apps.preview.confirm.description')"
+				:button-text="i18n.baseText('apps.preview.confirm.run')"
+				data-test-id="app-preview-confirm"
+				@click:button="run"
 			/>
 			<div
 				v-else-if="firstBuild"
@@ -379,7 +412,7 @@ onBeforeUnmount(() => {
 			/>
 			<N8nEmptyState
 				v-else
-				:icon="{ type: 'icon', value: 'eye' }"
+				:icon="{ type: 'icon', value: 'layout-template' }"
 				:heading="i18n.baseText('apps.preview.empty.heading')"
 				:description="i18n.baseText('apps.preview.empty.description')"
 				data-test-id="app-preview-empty"
@@ -477,6 +510,11 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	max-width: 32rem;
+}
+
+// Apps show empty states without the default dashed outline.
+.stage > :global(.n8n-empty-state) {
+	border: 0;
 }
 
 .frame {

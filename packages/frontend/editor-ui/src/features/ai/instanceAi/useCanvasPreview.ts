@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
+import { useSeenAppPreviewVersions } from '@n8n/frontend-module-apps';
 import { useI18n } from '@n8n/i18n';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { useSkillsStore } from '@/features/settings/context/skills.store';
@@ -13,6 +14,7 @@ import {
 	getLatestAgentArtifactResult,
 	getLatestSkillArtifactResult,
 	getLatestAppArtifactResult,
+	getAppWriteVersionIds,
 	getExecutionResultsByWorkflow,
 	isAppInLiveTurn,
 } from './canvasPreview.utils';
@@ -813,6 +815,14 @@ export function useCanvasPreview({
 		(id) => {
 			if (activeTabId.value === id) appRefreshKey.value++;
 		},
+	);
+
+	// The user caused the versions that their assistant wrote, so their preview is marked as seen`
+	const { markSeen: markAppVersionSeen } = useSeenAppPreviewVersions();
+	watch(
+		() => getAppWriteVersionIds(thread.artifactTurns),
+		(versionIds) => versionIds.forEach(markAppVersionSeen),
+		{ immediate: true, flush: 'sync' },
 	);
 
 	// --- Close data table preview if the active table is deleted ---
