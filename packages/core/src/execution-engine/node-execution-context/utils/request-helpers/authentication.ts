@@ -226,9 +226,9 @@ export async function requestWithAuthentication(
 	let requestSent = false;
 	let response: IN8nHttpFullResponse | undefined;
 
-	const refreshAndResend = async (surfaceOriginal: () => unknown) => {
+	const refreshAndResend = async (surfaceOriginal: () => unknown, shouldRefresh = true) => {
 		try {
-			if (credentialsDecrypted === undefined) return surfaceOriginal();
+			if (credentialsDecrypted === undefined || !shouldRefresh) return surfaceOriginal();
 
 			const data = await additionalData.credentialsHelper.preAuthentication(
 				{ helpers: this.helpers },
@@ -345,9 +345,17 @@ export async function requestWithAuthentication(
 			return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 		}
 	} catch (error) {
+		const shouldRefresh =
+			credentialsDecrypted !== undefined &&
+			(additionalCredentialOptions?.preAuthenticationRetryStatusCode === undefined ||
+				shouldRetryAfterPreAuthentication(
+					error.statusCode ?? error.response?.status,
+					credentialsDecrypted,
+					additionalCredentialOptions,
+				));
 		return await refreshAndResend(() => {
 			throw error;
-		});
+		}, shouldRefresh);
 	}
 
 	const result = requestOptions.resolveWithFullResponse ? response : response?.body;
