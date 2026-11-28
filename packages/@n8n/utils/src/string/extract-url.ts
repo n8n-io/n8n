@@ -1,25 +1,30 @@
 const URL_REGEXP =
 	/(?:(?:https?|ftp):\/\/)(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?=([^\s]+#.*)?)#?[^\s]*/i;
 
-// RFC 3986, Appendix C: these characters delimit a URL in a text. They are never part of it.
-const DELIMITERS = '<>"';
+// These characters delimit a URL in a text. They are never part of it.
+const DELIMITERS = /[<>"]/;
+
+// At the end of a URL, these characters usually belong to the sentence.
+const SENTENCE_PUNCTUATION = '.,;:!?';
+
+function count(text: string, char: string): number {
+	return text.split(char).length - 1;
+}
 
 /**
- * Gives the index where the URL stops. RFC 3986 permits `(` and `)` in a URL,
- * so a `)` stops the URL only when the URL does not open it.
+ * Removes the sentence punctuation and the unmatched `)` characters from the
+ * end of the URL. Characters in the middle of the URL stay.
  */
-function findUrlEnd(candidate: string): number {
-	let openParentheses = 0;
-	for (let index = 0; index < candidate.length; index++) {
-		const char = candidate[index];
-		if (DELIMITERS.includes(char)) return index;
-		if (char === '(') openParentheses++;
-		if (char === ')') {
-			if (openParentheses === 0) return index;
-			openParentheses--;
-		}
+function trimEnd(url: string): string {
+	let end = url.length;
+	let unmatchedClosings = count(url, ')') - count(url, '(');
+	while (end > 0) {
+		const char = url[end - 1];
+		if (char === ')' && unmatchedClosings > 0) unmatchedClosings--;
+		else if (!SENTENCE_PUNCTUATION.includes(char)) break;
+		end--;
 	}
-	return candidate.length;
+	return url.slice(0, end);
 }
 
 /**
@@ -30,5 +35,5 @@ export function extractUrl(text: string): string | undefined {
 	const matched = URL_REGEXP.exec(text);
 	if (!matched) return undefined;
 
-	return matched[0].slice(0, findUrlEnd(matched[0]));
+	return trimEnd(matched[0].split(DELIMITERS)[0]);
 }

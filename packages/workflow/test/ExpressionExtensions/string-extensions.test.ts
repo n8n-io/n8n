@@ -225,12 +225,13 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test.each([
+			['Docs: https://docs.n8n.io.', 'https://docs.n8n.io'],
+			['Visit https://example.com, then come back', 'https://example.com'],
+			['File at https://example.com/data.csv;', 'https://example.com/data.csv'],
+			['Search https://example.com/search?q=n8n!', 'https://example.com/search?q=n8n'],
 			['See (https://example.com) for details', 'https://example.com'],
 			['(see https://example.com/docs).', 'https://example.com/docs'],
-			[
-				'(see https://en.wikipedia.org/wiki/Rust_(language))',
-				'https://en.wikipedia.org/wiki/Rust_(language)',
-			],
+			['Wiki (https://example.com/C_(lang))', 'https://example.com/C_(lang)'],
 			['Go to <https://example.com/a> now', 'https://example.com/a'],
 			['Go to "https://example.com/a" now', 'https://example.com/a'],
 		])('.extractUrl should stop where the URL stops in %j', (text, url) => {
@@ -241,10 +242,9 @@ describe('Data Transformation Functions', () => {
 			'https://example.com/',
 			'https://example.com/a.b,c;d:e!f',
 			'https://example.com/?time=12:30',
+			'https://example.com/?q=:)&page=2',
 			'https://en.wikipedia.org/wiki/C_(programming_language)',
 			"https://en.wikipedia.org/wiki/Kids'_Choice_Awards",
-			'https://en.wikipedia.org/wiki/Washington,_D.C.',
-			'https://example.com/page?',
 		])('.extractUrl should keep all characters of %j', (url) => {
 			expect(evaluate('={{ $json.text.extractUrl() }}', [{ text: `Go to ${url} now` }])).toEqual(
 				url,
