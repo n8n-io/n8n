@@ -26,7 +26,11 @@ type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'> &
 	getSuspendedRun?(config: {
 		agentId: string;
 		runId: string;
-	}): Promise<{ threadId: string; toolResults: EarlierToolResult[] } | null>;
+	}): Promise<{
+		threadId: string;
+		toolResults: EarlierToolResult[];
+		backgroundApproval?: true;
+	} | null>;
 };
 
 /** Covers both an expired callback key and a checkpoint that is gone. */
@@ -362,10 +366,7 @@ export class AgentChatHitlResumeHandler {
 					statusHandle,
 					...(cardUserId ? { actingUserId: cardUserId } : {}),
 					...(suspendedRun
-						? {
-								agentThreadId: suspendedRun.threadId,
-								earlierToolResults: suspendedRun.toolResults,
-							}
+						? { agentThreadId: suspendedRun.threadId, earlierToolResults: suspendedRun.toolResults }
 						: {}),
 				});
 			} finally {

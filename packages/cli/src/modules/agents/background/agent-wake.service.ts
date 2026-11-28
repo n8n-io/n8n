@@ -261,6 +261,8 @@ export class AgentWakeService {
 			const { running, suspendedCheckpoint } = await this.conversationState.inspect(
 				first.parentAgentId,
 				threadId,
+				{},
+				{ includeBackground: false },
 			);
 			if (running || suspendedCheckpoint !== null) return;
 			await this.runWake(agent, identity, jobs, threadId, first.parentResourceId, signal, {

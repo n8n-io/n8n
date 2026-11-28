@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Publisher } from '@n8n/backend-services';
 
+import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -160,6 +161,22 @@ describe('AgentWorkflowToolResumeService → lifecycle wiring', () => {
 			'call-1',
 			{ type: 'workflow_finished', value: 'success' },
 			{ messageContext: null, allowLegacyThreadId: true },
+		);
+	});
+
+	it('keeps the settled approval available when another chat turn owns the thread', async () => {
+		const { service, bridge, chatIntegrationService, backgroundJobService } = setup();
+		chatIntegrationService.getBridge.mockReturnValue(bridge);
+		bridge.resumeInAgentThread.mockRejectedValueOnce(new AgentTurnAlreadyRunningError());
+
+		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
+		expect(backgroundJobService.consumeSettledApprovals).not.toHaveBeenCalled();
+
+		await service.resumeIfSuspended(agentRun, 'success');
+		expect(bridge.resumeInAgentThread).toHaveBeenCalledTimes(2);
+		expect(backgroundJobService.consumeSettledApprovals).toHaveBeenCalledWith(
+			agentRun.runId,
+			agentRun.agentId,
 		);
 	});
 

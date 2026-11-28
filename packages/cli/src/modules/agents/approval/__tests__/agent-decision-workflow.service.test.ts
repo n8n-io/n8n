@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { getAgentRuntimeDefinitionHash } from '../../utils/agent-config-hash';
 import type { AgentsConfig } from '@n8n/config';
 import { AgentChannelHitlService } from '../agent-channel-hitl.service';
@@ -546,36 +547,68 @@ describe('Request from agent workflow approval', () => {
 	});
 
 	it.each([
-		['n8n_chat', true, false],
-		['n8n_chat', false, true],
-		['slack', false, false],
-		['telegram', false, false],
-		['discord', false, false],
+		['n8n_chat', true, false, 'workflow', true, true, false],
+		['n8n_chat', false, true, 'channel', true, true, false],
+		['slack', false, false, 'workflow', false, false, false],
+		['slack', false, false, 'workflow', true, true, false],
+		['slack', false, false, 'workflow', true, false, true],
+		['slack', false, false, 'channel', true, true, false],
+		['telegram', false, false, 'workflow', true, true, false],
+		['discord', false, false, 'channel', true, true, false],
+		['webhook', false, false, 'workflow', true, false, false],
 	] as const)(
-		'asks the requester before external review in %s (preview=%s, publishedChat=%s)',
-		async (integrationType, previewChat, publishedN8nChat) => {
-			const { service, tool, jobs, executions, loader, context, suspend, handler } = setup();
+		'asks the requester before review in %s (preview=%s, publishedChat=%s, method=%s, enabled=%s, background=%s, tool can suspend=%s)',
+		async (
+			integrationType,
+			previewChat,
+			publishedN8nChat,
+			method,
+			enabled,
+			background,
+			toolCanSuspend,
+		) => {
+			const { service, tool, jobs, executions, loader, context, suspend, handler, runtimeConfig } =
+				setup();
+			runtimeConfig.backgroundTasksEnabled = enabled;
 			Container.set(WorkflowRunner, mock<WorkflowRunner>());
 			const execute = vi
 				.spyOn(workflowTools, 'executeWorkflow')
 				.mockResolvedValue({ executionId: 'child', status: 'waiting' });
-			loader.loadWorkflow.mockResolvedValue(
-				mock<WorkflowEntity>({
-					id: 'decision',
-					nodes: [
-						{
-							id: 'trigger',
-							disabled: false,
-							name: 'Request from agent',
-							type: 'n8n-nodes-base.agentDecisionTrigger',
-							typeVersion: 1,
-							position: [0, 0],
-							parameters: {},
-						},
-					],
-					settings: {},
-				}),
-			);
+			const decisionWorkflow = mock<WorkflowEntity>({
+				id: 'decision',
+				nodes: [
+					{
+						id: 'trigger',
+						disabled: false,
+						name: 'Request from agent',
+						type: 'n8n-nodes-base.agentDecisionTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				settings: {},
+			});
+			loader.loadWorkflow.mockResolvedValue(decisionWorkflow);
+			const channels = mock<AgentChannelHitlService>();
+			channels.prepareWorkflow.mockResolvedValue(decisionWorkflow);
+			Container.set(AgentChannelHitlService, channels);
+			const agentConfig: AgentJsonConfig =
+				method === 'workflow'
+					? configuration
+					: {
+							...configuration,
+							hitlConfigurations: [
+								{
+									id: 'review',
+									name: 'Channel approval',
+									method: 'channel',
+									channel: 'slack',
+									credentialId: 'credential',
+									recipient: { kind: 'user', id: 'U1' },
+								},
+							],
+						};
 			jobs.findWorkflowJobByExecutionId.mockResolvedValue(
 				mock<AgentBackgroundJob>({ id: 'job', status: 'running', workflowId: 'decision' }),
 			);
@@ -583,13 +616,13 @@ describe('Request from agent workflow approval', () => {
 				mock<IExecutionResponse>({ status: 'waiting' }),
 			);
 			const wrapped = service.wrap(
-				tool,
+				toolCanSuspend ? { ...tool, suspendSchema: z.unknown() } : tool,
 				{ type: 'configuration', configurationIds: ['review'] },
-				configuration,
+				agentConfig,
 				{
 					agentId: 'agent',
 					projectId: 'project',
-					published: publishedN8nChat,
+					published: !previewChat,
 					integrationType,
 					previewChat,
 					publishedN8nChat,
@@ -622,6 +655,7 @@ describe('Request from agent workflow approval', () => {
 			};
 			await wrapped.handler?.({}, initial);
 			expect(execute).not.toHaveBeenCalled();
+			expect(suspend.mock.calls[0][1].continuation).not.toHaveProperty('backgroundApproval');
 			expect(handler).not.toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				type: 'approval',
@@ -637,6 +671,7 @@ describe('Request from agent workflow approval', () => {
 				},
 			);
 			const [waiting, options] = suspend.mock.calls[1];
+			expect(options.continuation.backgroundApproval).toBe(background ? true : undefined);
 			expect(execute.mock.calls[0][2].requester).toEqual({
 				id: 'original-author',
 				name: 'Alex Example',
@@ -655,9 +690,9 @@ describe('Request from agent workflow approval', () => {
 			expect(waiting).toEqual({
 				type: 'workflow_wait',
 				approval: true,
+				...(background ? { backgroundApproval: true } : {}),
 				displayName: undefined,
-				workflowId: 'decision',
-				workflowExecutionId: 'child',
+				...(method === 'workflow' ? { workflowId: 'decision', workflowExecutionId: 'child' } : {}),
 				title: 'Waiting for approval to run write.',
 				components: [
 					{ type: 'section', text: 'Update the selected record.' },

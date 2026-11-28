@@ -1125,6 +1125,8 @@ export class AgentRuntimeReconstructionService {
 					integrationType: options.integrationType,
 					userId: options.attributionUserId ?? options.user?.id,
 					previewChat: options.previewChat,
+					allowBackgroundTasks:
+						options.runtimeProfile === 'top-level' && options.allowBackgroundTasks !== false,
 					publishedN8nChat:
 						options.runType === 'production' &&
 						options.integrationType === N8N_CHAT_INTEGRATION_TYPE &&

@@ -254,6 +254,8 @@ export interface AgentInputBoundary {
 }
 
 export interface ExecutionOptions {
+	/** Tool calls in thread history whose background work can still resume. */
+	pendingBackgroundToolCallIds?: readonly string[];
 	/** Allow tool calls. Defaults to true. Keep tool definitions for history replay when false. */
 	toolsEnabled?: boolean;
 	/**
@@ -467,6 +469,8 @@ export interface StreamResult {
 export interface ResumeOptions {
 	runId: string;
 	toolCallId: string;
+	/** Finish after executing the resumed tool call, before another model step. */
+	toolCallOnly?: true;
 	/** Merge these host metadata keys after the resume claim succeeds. Requires persistence. */
 	hostMetadata?: JSONObject;
 	/** @internal Host lifecycle hook invoked after the checkpoint claim succeeds. */

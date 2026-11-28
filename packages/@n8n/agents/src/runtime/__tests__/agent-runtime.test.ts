@@ -7800,6 +7800,27 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 		expect(third.finishReason).toBe('stop');
 	});
 
+	it('runs the saved tool without another model step when resumed as background work', async () => {
+		const { runtime } = createRuntimeWithTools([makeApprovalTool()], 1);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		const resumed = await runtime.resume(
+			'stream',
+			{ approved: true },
+			{ runId, toolCallId, toolCallOnly: true },
+		);
+		const chunks = await collectChunks(resumed.stream);
+
+		expect(chunks).toContainEqual(expect.objectContaining({ type: 'tool-result', toolCallId }));
+		expect(streamText).not.toHaveBeenCalled();
+		await expect(
+			runtime.resume('stream', { approved: true }, { runId, toolCallId, toolCallOnly: true }),
+		).rejects.toThrow('No suspended run');
+	});
+
 	it('deletes the checkpoint after a resumed stream run completes', async () => {
 		const { runtime } = createRuntimeWithTools([makeApprovalTool()], 1);
 

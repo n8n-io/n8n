@@ -745,12 +745,12 @@ describe('background_jobs resume', () => {
 describe('background_jobs cancel', () => {
 	it('cancels within the calling thread only', async () => {
 		const { jobService, options } = setup();
-		jobService.cancel.mockResolvedValue('cancelled');
+		jobService.cancelFromTool.mockResolvedValue('cancelled');
 		const tool = createBackgroundJobsTool(options);
 
 		const output = await tool.handler!({ action: 'cancel', jobId: 'job-1' }, { persistence });
 
-		expect(jobService.cancel).toHaveBeenCalledWith('thread-1', 'job-1');
+		expect(jobService.cancelFromTool).toHaveBeenCalledWith('thread-1', 'job-1', undefined);
 		expect(output).toEqual({ status: 'cancelled' });
 	});
 
@@ -761,6 +761,6 @@ describe('background_jobs cancel', () => {
 		const output = await tool.handler!({ action: 'cancel', jobId: 'job-1' }, {});
 
 		expect(output).toEqual({ status: 'not-found' });
-		expect(jobService.cancel).not.toHaveBeenCalled();
+		expect(jobService.cancelFromTool).not.toHaveBeenCalled();
 	});
 });

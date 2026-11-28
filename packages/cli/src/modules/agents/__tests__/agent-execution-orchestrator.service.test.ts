@@ -5279,6 +5279,88 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(checkpointStorage.delete).toHaveBeenNthCalledWith(3, 'run-1', agentId);
 	});
 
+	it.each([
+		[true, false, 'The approved call to send finished.'],
+		[false, false, 'Approval was declined for send.'],
+		[true, true, 'The pending action for send did not complete. See the session for details.'],
+	] as const)(
+		'streams the external approval outcome (approved=%s, failed=%s)',
+		async (approved, isError, delta) => {
+			const { service, checkpointStorage, runtimeCacheService } = makeService();
+			const toolCallId = 'tc-1';
+			const toolName = 'send';
+			const runId = 'run-1';
+			const call = { toolCallId, toolName, input: {} };
+			checkpointStorage.getStatus.mockResolvedValue({
+				status: 'active',
+				checkpoint: {
+					status: 'suspended',
+					persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+					pendingToolCalls: {
+						[toolCallId]: {
+							...call,
+							runId,
+							suspended: true,
+							suspendPayload: { type: 'workflow_wait' },
+							resumeSchema: {},
+							continuation: {
+								__agentDecisionWorkflow: true,
+								executionId: 'execution-1',
+								definitionHash: 'hash',
+								backgroundApproval: true,
+							},
+						},
+					},
+					messageList: {
+						messages: [
+							{
+								id: 'm-1',
+								createdAt: new Date(0),
+								role: 'assistant',
+								content: [{ ...call, type: 'tool-call', state: 'pending' }],
+							},
+						],
+						historyIds: [],
+						inputIds: [],
+						responseIds: ['m-1'],
+					},
+				},
+			});
+			const result: StreamChunk = {
+				type: 'tool-result',
+				toolCallId,
+				toolName,
+				output: {},
+				isError,
+			};
+			const runtime = makeRuntime([
+				{ type: 'tool-approval', phase: 'resolved', toolCallId, toolName, response: { approved } },
+				result,
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+			const resumeData = { type: 'workflow_finished', value: 'success' };
+			const chunks = await collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId,
+					toolCallId,
+					resumeData,
+					integrationType: 'slack',
+				}),
+			);
+			expect(runtime.agent.resume).toHaveBeenCalledWith(
+				'stream',
+				resumeData,
+				expect.objectContaining({ toolCallOnly: true }),
+			);
+			expect(chunks).toContainEqual(result);
+			expect(chunks).toContainEqual({ type: 'text-delta', id: toolCallId, delta });
+		},
+	);
+
 	it('passes tracing telemetry returned by AgentRunTracingService into stream() and resume()', async () => {
 		const { service, checkpointStorage, runtimeCacheService, agentRunTracingService } =
 			makeService();

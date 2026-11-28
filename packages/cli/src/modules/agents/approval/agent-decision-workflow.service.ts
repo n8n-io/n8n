@@ -8,6 +8,8 @@ import { getToolApprovalDisplayName, wrapToolForApproval } from '@n8n/agents/too
 import {
 	AGENT_DECISION_TRIGGER_NODE_TYPE,
 	AgentDecisionSchema,
+	N8N_CHAT_INTEGRATION_TYPE,
+	WEBHOOK_INTEGRATION_TYPE,
 	WORKFLOW_WAIT_SUSPEND_TYPE,
 	type AgentApprovalRoute,
 	type AgentJsonConfig,
@@ -52,6 +54,7 @@ interface ApprovalRunIdentity {
 	userId?: string;
 	previewChat?: boolean;
 	publishedN8nChat?: boolean;
+	allowBackgroundTasks?: boolean;
 }
 
 const RESUME_SCHEMA = z.object({ type: z.string().optional(), value: z.string().optional() });
@@ -86,6 +89,20 @@ export class AgentDecisionWorkflowService {
 			toolCodeByName,
 			identity.integrations,
 		);
+		const hasAsyncChat =
+			identity.previewChat === true ||
+			identity.publishedN8nChat === true ||
+			(identity.published &&
+				identity.integrationType !== undefined &&
+				identity.integrationType !== 'task' &&
+				identity.integrationType !== WEBHOOK_INTEGRATION_TYPE &&
+				identity.integrationType !== N8N_CHAT_INTEGRATION_TYPE);
+		const canBackgroundInChat =
+			this.config.backgroundTasksEnabled &&
+			identity.allowBackgroundTasks !== false &&
+			hasAsyncChat &&
+			// A protected tool's own suspension needs the original foreground turn.
+			tool.suspendSchema === undefined;
 		const handler = tool.handler;
 		const reviewed: BuiltTool = {
 			...tool,
@@ -162,6 +179,7 @@ export class AgentDecisionWorkflowService {
 						identity,
 						definitionHash,
 						workflowVersionId,
+						canBackgroundInChat || (pending.success && pending.data.backgroundApproval === true),
 					);
 				};
 				return await review(firstIndex);
@@ -246,6 +264,7 @@ export class AgentDecisionWorkflowService {
 		identity: ApprovalRunIdentity,
 		definitionHash: string,
 		reviewedWorkflowVersionId?: string,
+		backgroundApproval = false,
 	): Promise<unknown> {
 		const pending = DECISION_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
 		const argumentsRedacted = ctx.persistence?.hostMetadata?.approvalArgumentsRedacted === true;
@@ -455,10 +474,13 @@ export class AgentDecisionWorkflowService {
 		job = await this.expireIfPastDeadline(job, executionId);
 		if (!job) throw new OperationalError('The approval job is unavailable');
 		if (job.status === 'running') {
+			const canBackground =
+				backgroundApproval && !readWorkflowCaller(ctx.persistence?.hostMetadata?.workflowCaller);
 			return await ctx.suspend(
 				{
 					type: WORKFLOW_WAIT_SUSPEND_TYPE,
 					approval: true,
+					...(canBackground ? { backgroundApproval: true } : {}),
 					displayName: getToolApprovalDisplayName(tool),
 					...(configuration.method === 'workflow'
 						? { workflowId: job.workflowId, workflowExecutionId: executionId }
@@ -479,6 +501,7 @@ export class AgentDecisionWorkflowService {
 						__agentDecisionWorkflow: true,
 						executionId,
 						definitionHash,
+						...(canBackground ? { backgroundApproval: true } : {}),
 						...(workflowVersionId ? { workflowVersionId } : {}),
 					},
 					resumeSchema: RESUME_SCHEMA,

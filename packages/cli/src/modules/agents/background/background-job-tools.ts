@@ -6,6 +6,7 @@ import { Tool } from '@n8n/agents/tool';
 import type { SubAgentSource } from '@n8n/api-types';
 import { z } from 'zod';
 
+import { readReviewRequester } from '../approval/review-requester';
 import { resolveSandboxFileRefs } from '../agent-sandbox-files.service';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { readIntegrationMessageContext } from '../integrations/integration-message-context';
@@ -219,6 +220,7 @@ export function createBackgroundJobsTool(options: BackgroundJobsToolOptions): Bu
 		)
 		.systemInstruction(
 			'Use action "check" at most once per turn (omit jobIds for all, or pass all needed IDs in one call). ' +
+				'Cancel a pending approval only when the latest user message explicitly asks to cancel that action. ' +
 				'Continue independent work or end your turn with a short progress message; completion triggers a follow-up. Never wait, sleep, poll, or claim running jobs are complete.\n' +
 				`Call ${BACKGROUND_JOBS_TOOL_NAME} with action "resume" only when the latest user message explicitly asks to continue stopped tasks (never automatically or for unrelated messages). ` +
 				'For a plan, pass planId and only the requested planTaskIds (omit planTaskIds for the whole plan; omit both outside a plan). Never replace paused sub-agents with new jobs. Continuing does not approve pending tools or restart cancelled workflows.',
@@ -247,7 +249,11 @@ async function checkJobs(
 		parentThreadId,
 		jobs
 			.filter(
-				(job) => job.status !== 'running' && job.status !== 'suspended' && !job.pauseRequestId,
+				(job) =>
+					job.kind !== 'approval' &&
+					job.status !== 'running' &&
+					job.status !== 'suspended' &&
+					!job.pauseRequestId,
 			)
 			.map((job) => job.id),
 	);
@@ -388,7 +394,13 @@ async function cancelJob(
 	const parentThreadId = threadIdOf(ctx);
 	if (!parentThreadId || !input.jobId) return { status: 'not-found' };
 
-	return { status: await options.jobService.cancel(parentThreadId, input.jobId) };
+	return {
+		status: await options.jobService.cancelFromTool(
+			parentThreadId,
+			input.jobId,
+			readReviewRequester(ctx.persistence),
+		),
+	};
 }
 
 function truncateResult(result: string): string {

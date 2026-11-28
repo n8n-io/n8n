@@ -19,24 +19,41 @@ import type { AgentMessage, ContentToolCall, MessageContent } from '../../types/
  * `stripOrphanedToolMessages`: there a pending block is the *current* turn's
  * live suspension, which receives its real result on resume.
  */
-export function settleOrphanedToolMessages<T extends AgentMessage>(messages: T[]): T[] {
-	return messages.map((msg) => {
-		if (!isLlmMessage(msg)) return msg;
-		if (!msg.content.some((block) => block.type === 'tool-call' && block.state === 'pending')) {
-			return msg;
-		}
+export function settleOrphanedToolMessages<T extends AgentMessage>(
+	messages: T[],
+	backgroundToolCallIds?: ReadonlySet<string>,
+): T[] {
+	return messages.map((message) => settlePendingToolCalls(message, backgroundToolCallIds, true));
+}
 
-		const content = msg.content.map((block: MessageContent) => {
-			if (block.type !== 'tool-call' || block.state !== 'pending') return block;
-			const { suspension, ...rest } = block;
-			return {
-				...rest,
-				state: 'rejected' as const,
-				error: buildAbandonedSuspensionError(block),
-			};
-		});
-		return { ...msg, content };
+function settlePendingToolCalls<T extends AgentMessage>(
+	message: T,
+	backgroundToolCallIds: ReadonlySet<string> | undefined,
+	showBackgroundStatus: boolean,
+): T {
+	if (!isLlmMessage(message)) return message;
+	let changed = false;
+	const content = message.content.map((block: MessageContent) => {
+		if (block.type !== 'tool-call' || block.state !== 'pending') return block;
+		const isBackground = backgroundToolCallIds?.has(block.toolCallId);
+		if (isBackground && !showBackgroundStatus) return block;
+		changed = true;
+		const { suspension, ...rest } = block;
+		return {
+			...rest,
+			...(isBackground
+				? {
+						state: 'resolved' as const,
+						output: {
+							status: 'pending_background_action',
+							message:
+								'The background action is pending or its outcome has not been recorded. Do not repeat the call.',
+						},
+					}
+				: { state: 'rejected' as const, error: buildAbandonedSuspensionError(block) }),
+		};
 	});
+	return changed ? { ...message, content } : message;
 }
 
 /**
@@ -64,10 +81,14 @@ export async function settleAbandonedToolCallsInMemory(
 /** `settleOrphanedToolMessages`, plus the messages that it changed. */
 export function settleOrphanedToolMessagesWithChanges<T extends AgentMessage>(
 	messages: T[],
+	backgroundToolCallIds?: ReadonlySet<string>,
 ): { settled: T[]; changed: T[] } {
-	const settled = settleOrphanedToolMessages(messages);
-	// Unchanged messages keep their identity, so only settled ones are rewritten.
-	const changed = settled.filter((message, index) => message !== messages[index]);
+	const settled = settleOrphanedToolMessages(messages, backgroundToolCallIds);
+	// Persist abandoned calls without replacing pending background calls in the same message.
+	const persisted = backgroundToolCallIds?.size
+		? messages.map((message) => settlePendingToolCalls(message, backgroundToolCallIds, false))
+		: settled;
+	const changed = persisted.filter((message, index) => message !== messages[index]);
 	return { settled, changed };
 }
 

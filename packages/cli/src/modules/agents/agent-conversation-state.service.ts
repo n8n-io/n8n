@@ -2,6 +2,7 @@ import type { SerializableAgentState } from '@n8n/agents';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { getBackgroundApproval } from './approval/decision-continuation';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 
@@ -17,10 +18,11 @@ export class AgentConversationStateService {
 		agentId: string,
 		threadId: string,
 		ctx: OperationContext = {},
+		options?: { includeBackground?: boolean },
 	): Promise<{ running: boolean; suspendedCheckpoint: SerializableAgentState | null }> {
 		const [running, suspendedCheckpoint] = await Promise.all([
 			this.executionRepository.existsRunningByThread(threadId, ctx),
-			this.checkpointStorage.findSuspendedForThread(agentId, threadId, ctx),
+			this.checkpointStorage.findSuspendedForThread(agentId, threadId, ctx, options),
 		]);
 		return { running, suspendedCheckpoint };
 	}
@@ -46,6 +48,7 @@ export class AgentConversationStateService {
 	): Promise<{
 		threadId: string;
 		toolResults: Array<{ toolCallId: string; toolName: string; output: unknown }>;
+		backgroundApproval?: true;
 	} | null> {
 		const result = await this.checkpointStorage.getStatus(runId, agentId);
 		// A run that is already claimed or done has no queue for a resume to send.
@@ -61,6 +64,10 @@ export class AgentConversationStateService {
 					? [{ toolCallId: block.toolCallId, toolName: block.toolName, output: block.output }]
 					: [],
 			);
-		return { threadId: persistence.threadId, toolResults };
+		return {
+			threadId: persistence.threadId,
+			toolResults,
+			...(getBackgroundApproval(result.checkpoint) ? { backgroundApproval: true } : {}),
+		};
 	}
 }

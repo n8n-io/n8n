@@ -728,6 +728,19 @@ describe('AgentWakeService', () => {
 		expect(suspended.jobRepository.markMailConsumed).not.toHaveBeenCalled();
 	});
 
+	it('delivers a finished job while an external approval waits in the background', async () => {
+		const { service, checkpointStorage, orchestrator, jobRepository } = setup();
+		checkpointStorage.findSuspendedForThread.mockImplementation(
+			async (_agentId, _threadId, _ctx, options) =>
+				options?.includeBackground === false ? null : mock({ status: 'suspended' }),
+		);
+
+		await service.attemptWake('thread-1');
+
+		expect(orchestrator.executeForWake).toHaveBeenCalledOnce();
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], false);
+	});
+
 	it.each(['running', 'suspended'])(
 		'delivers a child approval while the parent is %s',
 		async (parentStatus) => {
@@ -814,6 +827,7 @@ describe('AgentWakeService', () => {
 			'agent-1',
 			'thread-1',
 			{},
+			{ includeBackground: false },
 		);
 		expect(resumed.orchestrator.executeForWake).toHaveBeenCalledTimes(1);
 	});

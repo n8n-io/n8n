@@ -469,6 +469,68 @@ describe('MemoryOrchestrator.loadInto with abandoned suspensions', () => {
 		expect(observed).toMatchObject({ status: 'ran', cursorAdvanced: true });
 	});
 
+	it('shows a background action as pending and leaves its stored call available for resume', async () => {
+		const store = await seedAbandonedSuspension();
+		const list = new AgentMessageList();
+
+		await buildOrchestrator(store).loadInto(list, {
+			pendingBackgroundToolCallIds: ['tc1'],
+			persistence: {
+				threadId: THREAD_ID,
+				resourceId: RESOURCE_ID,
+				persistSettledSuspensions: true,
+			},
+		});
+
+		expect(list.messages()).toContainEqual(
+			expect.objectContaining({
+				id: 'm2',
+				content: [
+					expect.objectContaining({
+						state: 'resolved',
+						output: expect.objectContaining({ status: 'pending_background_action' }),
+					}),
+				],
+			}),
+		);
+		expect(await storedToolCallState(store)).toMatchObject({ state: 'pending', toolCallId: 'tc1' });
+	});
+
+	it('writes back an abandoned call alongside a live background call', async () => {
+		const store = new InMemoryMemory();
+		const [call] = pendingSetup.content;
+		if (call.type !== 'tool-call') throw new Error('Expected a pending tool call');
+		await seedThread(store, [
+			{
+				...pendingSetup,
+				content: [call, { ...call, toolCallId: 'abandoned' }],
+			},
+		]);
+		const list = new AgentMessageList();
+		await buildOrchestrator(store).loadInto(list, {
+			pendingBackgroundToolCallIds: ['tc1'],
+			persistence: {
+				threadId: THREAD_ID,
+				resourceId: RESOURCE_ID,
+				persistSettledSuspensions: true,
+			},
+		});
+
+		const [stored] = await store.getMessages(THREAD_ID, { limit: 1 });
+		expect(stored).toMatchObject({
+			content: [
+				{ toolCallId: 'tc1', state: 'pending' },
+				{ toolCallId: 'abandoned', state: 'rejected' },
+			],
+		});
+		expect(list.messages().at(-1)).toMatchObject({
+			content: [
+				{ toolCallId: 'tc1', state: 'resolved', output: { status: 'pending_background_action' } },
+				{ toolCallId: 'abandoned', state: 'rejected' },
+			],
+		});
+	});
+
 	it('keeps the stored tool call pending without the host guarantee', async () => {
 		const store = await seedAbandonedSuspension();
 		const list = new AgentMessageList();

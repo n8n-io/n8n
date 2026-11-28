@@ -42,7 +42,12 @@ export class AgentMessageSteeringService {
 	async findEligible(thread: AgentExecutionThread, ctx: OperationContext = {}) {
 		const execution = await this.executions.findSteerable(thread.id, ctx);
 		if (!execution) return null;
-		if (await this.checkpoints.findSuspendedForThread(thread.agentId, thread.id, ctx)) return null;
+		if (
+			await this.checkpoints.findSuspendedForThread(thread.agentId, thread.id, ctx, {
+				includeBackground: false,
+			})
+		)
+			return null;
 		return execution;
 	}
 

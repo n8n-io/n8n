@@ -52,6 +52,63 @@ function makeService() {
 }
 
 describe('N8NCheckpointStorage', () => {
+	it('admits chat while one tool waits for background approval and keeps its checkpoint', async () => {
+		const { service, repository } = makeService();
+		const call = {
+			...suspendedState.pendingToolCalls['tc-1'],
+			suspended: true as const,
+			runId: 'run-1',
+			suspendPayload: { type: 'workflow_wait' },
+			resumeSchema: { type: 'object' as const },
+			continuation: {
+				__agentDecisionWorkflow: true,
+				executionId: 'child',
+				definitionHash: 'hash',
+				backgroundApproval: true,
+			},
+		};
+		const block = {
+			type: 'tool-call' as const,
+			state: 'pending' as const,
+			toolCallId: call.toolCallId,
+			toolName: call.toolName,
+			input: call.input,
+		};
+		const message = { id: 'response', role: 'assistant' as const, content: [block] };
+		const background = {
+			...suspendedState,
+			pendingToolCalls: { 'tc-1': call },
+			messageList: {
+				...suspendedState.messageList,
+				messages: [message],
+				responseIds: [message.id],
+			},
+		};
+		const row = mock<AgentCheckpoint>({ state: JSON.stringify(background) });
+		repository.findActiveForThread.mockResolvedValue([row]);
+
+		await expect(service.findSuspendedForThread('agent-1', 'thread-1')).resolves.toEqual(
+			background,
+		);
+		await expect(
+			service.findSuspendedForThread('agent-1', 'thread-1', {}, { includeBackground: false }),
+		).resolves.toBeNull();
+		await expect(service.findBackgroundApprovalToolCalls('agent-1', 'thread-1')).resolves.toEqual([
+			'tc-1',
+		]);
+
+		row.state = JSON.stringify({ ...background, status: 'running' });
+		await expect(service.findBackgroundApprovalToolCalls('agent-1', 'thread-1')).resolves.toEqual([
+			'tc-1',
+		]);
+
+		message.content.push({ ...block, toolCallId: 'tc-2' });
+		row.state = JSON.stringify(background);
+		await expect(
+			service.findSuspendedForThread('agent-1', 'thread-1', {}, { includeBackground: false }),
+		).resolves.toEqual(background);
+	});
+
 	it('creates new checkpoints with the storage agent as owner', async () => {
 		const { service, repository } = makeService();
 		const checkpoint = {

@@ -20,6 +20,7 @@ import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repo
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
+import { getBackgroundApproval } from '../approval/decision-continuation';
 import { checkpointExecutionId } from '../types/agent-queued-message';
 import { getDelegatedChildCheckpoints } from '../utils/delegated-child-checkpoints';
 
@@ -302,6 +303,7 @@ export class N8NCheckpointStorage {
 		agentId: string,
 		threadId: string,
 		ctx: OperationContext = {},
+		{ includeBackground = true }: { includeBackground?: boolean } = {},
 	): Promise<SerializableAgentState | null> {
 		const rows = await this.agentCheckpointRepository.findActiveForThread(
 			agentId,
@@ -311,9 +313,33 @@ export class N8NCheckpointStorage {
 		);
 		for (const row of rows) {
 			const checkpoint = this.parseSuspendedState(row.state, threadId);
-			if (checkpoint) return checkpoint;
+			if (checkpoint && (includeBackground || !getBackgroundApproval(checkpoint)))
+				return checkpoint;
 		}
 		return null;
+	}
+
+	async findBackgroundApprovalToolCalls(agentId: string, threadId: string): Promise<string[]> {
+		const rows = await this.agentCheckpointRepository.findActiveForThread(
+			agentId,
+			threadId,
+			this.expiryCutoff(),
+		);
+		return rows.flatMap((row) => {
+			const checkpoint = row.state
+				? jsonParse<SerializableAgentState | null>(row.state, { fallbackValue: null })
+				: null;
+			if (
+				!checkpoint ||
+				checkpoint.persistence?.threadId !== threadId ||
+				checkpoint.persistence.delegated
+			)
+				return [];
+			// A crash after the resume claim leaves an unknown outcome. Keep the
+			// call visible to later turns without giving them permission to retry it.
+			const approval = getBackgroundApproval(checkpoint, { includeClaimed: true });
+			return approval ? [approval.call.toolCallId] : [];
+		});
 	}
 
 	async hasNoConflictingThreadResource(
