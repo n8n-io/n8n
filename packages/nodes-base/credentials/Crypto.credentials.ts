@@ -34,6 +34,17 @@ export class Crypto implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'Public Key',
+			name: 'signPublicKey',
+			type: 'string',
+			description: 'Public Key (PEM) used in the Verify action',
+			typeOptions: {
+				rows: 4,
+				password: true,
+			},
+			default: '',
+		},
+		{
 			displayName: 'Encryption Passphrase',
 			name: 'encryptionPassphrase',
 			type: 'string',
