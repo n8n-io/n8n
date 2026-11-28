@@ -4,6 +4,7 @@ import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';
 import { isBinaryLike } from '@/app/utils/typeGuards';
 import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { generatePath } from '@/app/utils/mappingUtils';
 
 export function inferAssignmentType(value: unknown): string {
 	if (typeof value === 'boolean') return 'boolean';
@@ -40,18 +41,18 @@ export function inputDataToAssignments(input: IDataObject): AssignmentValue[] {
 				processValue(objectValue as IDataObject, [...path, key]);
 			}
 		} else {
-			const stringPath = path.reduce((fullPath: string, part) => {
+			const name = path.reduce((fullPath: string, part) => {
 				if (typeof part === 'number') {
 					return `${fullPath}[${part}]`;
 				}
-				return `${fullPath}.${part}`;
-			}, '$json');
+				return fullPath ? `${fullPath}.${part}` : part;
+			}, '');
 
-			const expression = `={{ ${stringPath} }}`;
 			assignments.push({
 				id: uuid(),
-				name: stringPath.replace('$json.', ''),
-				value: expression,
+				name,
+				// Keys such as "first name" or "user-id" need bracket access in the expression
+				value: `={{ ${generatePath('$json', path)} }}`,
 				type: inferAssignmentType(value),
 			});
 		}
