@@ -1,4 +1,10 @@
-import { ProjectRelationRepository, User } from '@n8n/db';
+import {
+	ProjectRelationRepository,
+	RoleRepository,
+	User,
+	type OperationContext,
+	type Transaction,
+} from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ProjectScopeService } from '../project-scope.service';
@@ -16,7 +22,8 @@ const makeUser = (globalScopes: string[] = []) =>
 describe('ProjectScopeService', () => {
 	const roleService = mock<RoleService>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
-	const service = new ProjectScopeService(roleService, projectRelationRepository);
+	const roleRepository = mock<RoleRepository>();
+	const service = new ProjectScopeService(roleService, projectRelationRepository, roleRepository);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -108,13 +115,38 @@ describe('ProjectScopeService', () => {
 		const result = await service.getProjectIds(makeUser(), ['agent:update']);
 
 		expect(roleService.rolesWithScope).toHaveBeenCalledOnce();
-		expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['agent:update']);
+		expect(roleService.rolesWithScope).toHaveBeenCalledWith(
+			'project',
+			['agent:update'],
+			expect.any(Function),
+		);
 		expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledOnce();
-		expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith('user-1', [
-			'project:admin',
-			'project:editor',
-		]);
+		expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+			'user-1',
+			['project:admin', 'project:editor'],
+			{},
+		);
 		expect(result).toEqual(['project-1', 'project-2']);
+	});
+
+	it('uses the supplied context for role loading and project membership checks', async () => {
+		const ctx: OperationContext = { trx: mock<Transaction>() };
+		roleRepository.findAll.mockResolvedValue([]);
+		roleService.rolesWithScope.mockImplementationOnce(async (_namespace, _scopes, loadRoles) => {
+			await loadRoles?.();
+			return ['project:editor'];
+		});
+		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['project-1']);
+
+		await expect(service.getProjectIds(makeUser(), ['agent:update'], ctx)).resolves.toEqual([
+			'project-1',
+		]);
+		expect(roleRepository.findAll).toHaveBeenCalledWith(ctx);
+		expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+			'user-1',
+			['project:editor'],
+			ctx,
+		);
 	});
 
 	describe('getMemberProjectIds', () => {
@@ -129,6 +161,7 @@ describe('ProjectScopeService', () => {
 			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
 				'user-1',
 				['project:admin'],
+				{},
 			);
 			expect(result).toEqual(['project-1']);
 		});

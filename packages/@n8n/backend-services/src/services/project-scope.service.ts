@@ -1,4 +1,9 @@
-import { ProjectRelationRepository, type User } from '@n8n/db';
+import {
+	ProjectRelationRepository,
+	RoleRepository,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type AuthPrincipal, type Scope } from '@n8n/permissions';
 
@@ -14,6 +19,7 @@ export class ProjectScopeService {
 	constructor(
 		private readonly roleService: RoleService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly roleRepository: RoleRepository,
 	) {}
 
 	/** Whether the user's global role, or their role in the project, grants all `scopes`. */
@@ -34,18 +40,30 @@ export class ProjectScopeService {
 		return await this.roleService.rolesWithScope('project', scopes);
 	}
 
-	async getProjectIds(user: User, scopes: Scope[]): Promise<string[] | null> {
+	async getProjectIds(
+		user: User,
+		scopes: Scope[],
+		ctx: OperationContext = {},
+	): Promise<string[] | null> {
 		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return null;
 
-		return await this.getMemberProjectIds(user, scopes);
+		return await this.getMemberProjectIds(user, scopes, ctx);
 	}
 
 	/**
 	 * Like {@link getProjectIds}, but ignores the global role: only projects the
 	 * user is a member of with a role that grants all `scopes`.
 	 */
-	async getMemberProjectIds(user: User, scopes: Scope[]): Promise<string[]> {
-		const roles = await this.roleService.rolesWithScope('project', scopes);
-		return await this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, roles);
+	async getMemberProjectIds(
+		user: User,
+		scopes: Scope[],
+		ctx: OperationContext = {},
+	): Promise<string[]> {
+		const roles = await this.roleService.rolesWithScope(
+			'project',
+			scopes,
+			async () => await this.roleRepository.findAll(ctx),
+		);
+		return await this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, roles, ctx);
 	}
 }
