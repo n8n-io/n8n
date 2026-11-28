@@ -5,6 +5,8 @@ import { binaryToStringWithEncodingDetection } from '../buffer-decoding';
 import type { MockedFunction } from 'vitest';
 
 describe('buffer-decoding utils', () => {
+	const createInvalidUtf8Buffer = (prefix: string) =>
+		Buffer.concat([Buffer.from(prefix, 'utf8'), Buffer.from([0xe9])]);
 	let mockHelpers: IExecuteFunctions['helpers'];
 	let mockBinaryToString: MockedFunction<
 		(body: Buffer | Readable, encoding?: BufferEncoding) => Promise<string>
@@ -123,7 +125,7 @@ describe('buffer-decoding utils', () => {
 
 		describe('Replacement character detection and re-encoding', () => {
 			it('should detect replacement characters and try chardet for Buffer', async () => {
-				const buffer = Buffer.from('test content with �', 'utf8');
+				const buffer = createInvalidUtf8Buffer('test content with ');
 				const contentType = 'text/html';
 
 				mockBinaryToString
@@ -141,7 +143,7 @@ describe('buffer-decoding utils', () => {
 				expect(result).toBe('test content with proper chars');
 			});
 
-			it('should detect high ASCII pattern and try chardet for Buffer', async () => {
+			it('should use chardet when the input buffer is not valid UTF-8', async () => {
 				const buffer = Buffer.from([0x80, 0x81, 0x82, 0x83]); // High ASCII bytes
 				const contentType = 'text/html';
 				const highAsciiString = String.fromCharCode(0x80, 0x81, 0x82, 0x83);
@@ -162,10 +164,10 @@ describe('buffer-decoding utils', () => {
 
 			it('should try Chinese encodings for Readable streams with replacement chars', async () => {
 				const readable = new Readable();
-				readable.push('content with �');
+				readable.push(createInvalidUtf8Buffer('content with '));
 				readable.push(null);
 				const contentType = 'text/html';
-				const buffer = Buffer.from('content with �');
+				const buffer = createInvalidUtf8Buffer('content with ');
 
 				mockBinaryToBuffer.mockResolvedValue(buffer);
 				mockBinaryToString
@@ -189,10 +191,10 @@ describe('buffer-decoding utils', () => {
 
 			it('should try all Chinese encodings for Readable streams if needed', async () => {
 				const readable = new Readable();
-				readable.push('content with �');
+				readable.push(createInvalidUtf8Buffer('content with '));
 				readable.push(null);
 				const contentType = 'text/html';
-				const buffer = Buffer.from('content with �');
+				const buffer = createInvalidUtf8Buffer('content with ');
 
 				mockBinaryToBuffer.mockResolvedValue(buffer);
 				mockBinaryToString
@@ -216,10 +218,10 @@ describe('buffer-decoding utils', () => {
 
 			it('should return original string if all Chinese encodings fail for Readable', async () => {
 				const readable = new Readable();
-				readable.push('content with �');
+				readable.push(createInvalidUtf8Buffer('content with '));
 				readable.push(null);
 				const contentType = 'text/html';
-				const buffer = Buffer.from('content with �');
+				const buffer = createInvalidUtf8Buffer('content with ');
 
 				mockBinaryToBuffer.mockResolvedValue(buffer);
 				mockBinaryToString
@@ -242,7 +244,7 @@ describe('buffer-decoding utils', () => {
 
 		describe('Error handling', () => {
 			it('should handle chardet returning null for Buffer', async () => {
-				const buffer = Buffer.from('test content with �', 'utf8');
+				const buffer = createInvalidUtf8Buffer('test content with ');
 				const contentType = 'text/html';
 
 				mockBinaryToBuffer.mockResolvedValue(buffer);
@@ -256,7 +258,7 @@ describe('buffer-decoding utils', () => {
 			});
 
 			it('should handle chardet returning same encoding as default', async () => {
-				const buffer = Buffer.from('test content with �', 'utf8');
+				const buffer = createInvalidUtf8Buffer('test content with ');
 				const contentType = 'text/html';
 
 				mockBinaryToBuffer.mockResolvedValue(buffer);
@@ -271,10 +273,10 @@ describe('buffer-decoding utils', () => {
 
 			it('should handle errors in Chinese encoding attempts gracefully', async () => {
 				const readable = new Readable();
-				readable.push('content with �');
+				readable.push(createInvalidUtf8Buffer('content with '));
 				readable.push(null);
 				const contentType = 'text/html';
-				const buffer = Buffer.from('content with �');
+				const buffer = createInvalidUtf8Buffer('content with ');
 
 				mockBinaryToBuffer.mockResolvedValue(buffer);
 				mockBinaryToString
@@ -295,10 +297,10 @@ describe('buffer-decoding utils', () => {
 
 			it('should return original string if all Chinese encodings throw errors', async () => {
 				const readable = new Readable();
-				readable.push('content with �');
+				readable.push(createInvalidUtf8Buffer('content with '));
 				readable.push(null);
 				const contentType = 'text/html';
-				const buffer = Buffer.from('content with �');
+				const buffer = createInvalidUtf8Buffer('content with ');
 
 				mockBinaryToBuffer.mockResolvedValue(buffer);
 				mockBinaryToString
@@ -350,10 +352,10 @@ describe('buffer-decoding utils', () => {
 
 			it('should not re-encode if Chinese encoding returns empty string', async () => {
 				const readable = new Readable();
-				readable.push('content with �');
+				readable.push(createInvalidUtf8Buffer('content with '));
 				readable.push(null);
 				const contentType = 'text/html';
-				const buffer = Buffer.from('content with �');
+				const buffer = createInvalidUtf8Buffer('content with ');
 
 				mockBinaryToBuffer.mockResolvedValue(buffer);
 				mockBinaryToString
@@ -372,37 +374,32 @@ describe('buffer-decoding utils', () => {
 				expect(result).toBe('content with �'); // Should return original
 			});
 
-			it('should handle very short high ASCII sequences (less than 3 chars)', async () => {
-				const buffer = Buffer.from([0x80, 0x81]); // Only 2 high ASCII bytes
+			it('should preserve valid UTF-8 with two Latin-1 characters', async () => {
+				const validUtf8Text = 'éø';
+				const buffer = Buffer.from(validUtf8Text, 'utf8');
 				const contentType = 'text/html';
-				const shortHighAsciiString = String.fromCharCode(0x80, 0x81);
 
-				mockBinaryToString.mockResolvedValue(shortHighAsciiString);
+				mockBinaryToString.mockResolvedValue(validUtf8Text);
 
 				const result = await binaryToStringWithEncodingDetection(buffer, contentType, mockHelpers);
 
-				expect(result).toBe(shortHighAsciiString);
-				expect(mockBinaryToString).toHaveBeenCalledTimes(1); // Should not trigger re-encoding
+				expect(result).toBe(validUtf8Text);
+				expect(mockBinaryToString).toHaveBeenCalledTimes(1);
 				expect(mockDetectBinaryEncoding).not.toHaveBeenCalled();
 			});
 
-			it('should handle mixed content with both replacement chars and high ASCII', async () => {
-				const buffer = Buffer.from(
-					'test � content ' + String.fromCharCode(0x80, 0x81, 0x82),
-					'utf8',
-				);
-				const contentType = 'text/html';
+			it('should preserve valid UTF-8 with Latin-1 text and a literal replacement character', async () => {
+				const validUtf8Text = '{"name":"Küçük","value":"�"}';
+				const buffer = Buffer.from(validUtf8Text, 'utf8');
+				const contentType = 'application/json; charset=utf-8';
 
-				mockBinaryToString
-					.mockResolvedValueOnce('test � content ' + String.fromCharCode(0x80, 0x81, 0x82))
-					.mockResolvedValueOnce('test proper content decoded');
-
-				mockDetectBinaryEncoding.mockReturnValue('windows-1252');
+				mockBinaryToString.mockResolvedValue(validUtf8Text);
 
 				const result = await binaryToStringWithEncodingDetection(buffer, contentType, mockHelpers);
 
-				expect(result).toBe('test proper content decoded');
-				expect(mockDetectBinaryEncoding).toHaveBeenCalledWith(buffer);
+				expect(result).toBe(validUtf8Text);
+				expect(mockBinaryToString).toHaveBeenCalledTimes(1);
+				expect(mockDetectBinaryEncoding).not.toHaveBeenCalled();
 			});
 		});
 
@@ -422,7 +419,7 @@ describe('buffer-decoding utils', () => {
 			});
 
 			it('should return result from specified encoding even if it contains replacement chars', async () => {
-				const buffer = Buffer.from('test content with �', 'utf8');
+				const buffer = createInvalidUtf8Buffer('test content with ');
 				const contentType = 'text/html; charset=iso-8859-1';
 
 				mockBinaryToString.mockResolvedValue('test content with �');
