@@ -185,6 +185,33 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		return new Map(ownerRows.map(({ workflowId, project }) => [workflowId, project]));
 	}
 
+	/** Summary of a workflow owned by the given project, or null when the project does not own it. */
+	async findOwnedWorkflowSummary(
+		projectId: string,
+		workflowId: string,
+	): Promise<{ id: string; name: string; isArchived: boolean } | null> {
+		const row = await this.findOne({
+			where: {
+				projectId,
+				workflowId,
+				role: 'workflow:owner',
+			},
+			relations: { workflow: true },
+			select: {
+				projectId: true,
+				workflowId: true,
+				role: true,
+				workflow: { id: true, name: true, isArchived: true },
+			},
+		});
+		if (!row?.workflow) return null;
+		return {
+			id: row.workflow.id,
+			name: row.workflow.name,
+			isArchived: row.workflow.isArchived,
+		};
+	}
+
 	async findSharingRole(
 		userId: string,
 		workflowId: string,

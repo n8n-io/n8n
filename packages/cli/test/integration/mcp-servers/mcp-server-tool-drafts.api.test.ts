@@ -223,6 +223,31 @@ describe('POST /projects/:projectId/mcp-servers/:serverId/tools/:toolId/draft', 
 		]);
 	});
 
+	it('returns a drafted field without saving when persist is false', async () => {
+		const { serverId, tool, draftUrl } = await setup();
+		answer({ toolName: 'get_campaign_kpis' });
+
+		const response = await testServer
+			.authAgentFor(editor)
+			.post(draftUrl)
+			.send({ field: 'toolName', persist: false })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			status: 'drafted',
+			tool: {
+				toolName: 'get_campaign_kpis',
+				description: tool.description,
+			},
+		});
+		const server = await testServer.authAgentFor(editor).get(base(serverId)).expect(200);
+		expect(server.body.data.tools[0]).toMatchObject({
+			toolName: tool.toolName,
+			description: tool.description,
+			draftSource: 'defaults',
+		});
+	});
+
 	it('keeps the default text without the Assistant, and makes no model call', async () => {
 		const { tool, draftUrl } = await setup();
 		isAvailable.mockResolvedValue(false);

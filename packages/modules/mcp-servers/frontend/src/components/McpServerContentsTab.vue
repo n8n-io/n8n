@@ -74,6 +74,10 @@ const latestDetailFetch = useLatestFetch();
 let descriptionSaveSeq = 0;
 /** Sequence of the newest description PATCH already applied to `server`. */
 let appliedDescriptionSeq = 0;
+/** Monotonic session counter for the open tool modal so canceled Generate drafts do not leak. */
+let modalSession = 0;
+/** Monotonic revision counter for non-persisted Generate drafts pushed into the modal. */
+let draftedRevision = 0;
 const style = useCssModule();
 
 const server = ref<McpServerDetailResponse | null>(null);
@@ -96,9 +100,9 @@ const generating = ref(new Map<string, Set<McpServerToolDraftField>>());
 const savingToolId = ref<string | null>(null);
 /** The tool whose remove request is currently in flight. */
 const removingToolId = ref<string | null>(null);
-/** Incremented when a per-field "Generate" succeeds for the open tool modal. */
-const draftedNameRevision = ref(0);
-const draftedDescriptionRevision = ref(0);
+/** Latest non-persisted "Generate" draft for the open tool modal, applied only on Save. */
+const draftedName = ref<{ value: string; revision: number } | null>(null);
+const draftedDescription = ref<{ value: string; revision: number } | null>(null);
 /** Loaded inputs, outputs, and source name for the open tool modal. */
 const selectedToolDetail = ref<McpServerToolDetailResponse | null>(null);
 const selectedToolDetailLoading = ref(false);
@@ -150,6 +154,9 @@ async function loadToolDetail(toolId: string) {
 }
 
 watch(selectedToolId, (toolId) => {
+	modalSession++;
+	draftedName.value = null;
+	draftedDescription.value = null;
 	if (!toolId) {
 		latestDetailFetch.next();
 		selectedToolDetailLoading.value = false;
@@ -195,18 +202,6 @@ function replaceTool(updated: McpServerToolResponse) {
 	server.value.tools = server.value.tools.map((tool) => (tool.id === updated.id ? updated : tool));
 }
 
-/** A "Generate" answer changes only its field, so a save that ran meanwhile keeps its text. */
-function mergeDraftedField(drafted: McpServerToolResponse, field: McpServerToolDraftField) {
-	const current = server.value?.tools.find(({ id }) => id === drafted.id);
-	if (!current) return;
-	replaceTool({
-		...current,
-		[field]: drafted[field],
-		draftSource: drafted.draftSource,
-		updatedAt: drafted.updatedAt,
-	});
-}
-
 async function load() {
 	const isLatest = latestFetch.next();
 	loading.value = true;
@@ -242,6 +237,20 @@ async function reload() {
 				: tool;
 		});
 		server.value = next;
+		if (selectedToolId.value) {
+			if (selectedTool.value) {
+				void loadToolDetail(selectedToolId.value);
+			} else {
+				modalSession++;
+				draftedName.value = null;
+				draftedDescription.value = null;
+				latestDetailFetch.next();
+				selectedToolId.value = null;
+				selectedToolDetail.value = null;
+				selectedToolDetailLoading.value = false;
+				selectedToolDetailError.value = false;
+			}
+		}
 	} catch (error) {
 		if (!isLatest()) return;
 		toast.showError(error, i18n.baseText('mcpServers.tools.loadError'));
@@ -330,23 +339,14 @@ async function onAdd(workflowIds: string[]) {
 }
 
 /** `not_available` gives the tool with its default text, so the chip shows it in both cases. */
-async function requestDraft(tool: McpServerToolResponse, field?: McpServerToolDraftField) {
-	const { status, tool: drafted } = await draftTool(
+async function requestInitialDraft(tool: McpServerToolResponse) {
+	const { tool: drafted } = await draftTool(
 		rootStore.restApiContext,
 		props.projectId,
 		props.serverId,
 		tool.id,
-		field,
 	);
-	if (field) {
-		mergeDraftedField(drafted, field);
-		if (status === 'drafted' && selectedToolId.value === tool.id) {
-			if (field === 'toolName') draftedNameRevision.value++;
-			else draftedDescriptionRevision.value++;
-		}
-	} else {
-		replaceTool(drafted);
-	}
+	replaceTool(drafted);
 }
 
 /**
@@ -361,7 +361,7 @@ async function draftNewTools(tools: McpServerToolResponse[]) {
 	async function worker() {
 		for (let tool = queue.shift(); tool; tool = queue.shift()) {
 			try {
-				await requestDraft(tool);
+				await requestInitialDraft(tool);
 			} catch (error) {
 				failed++;
 				lastError = error;
@@ -395,18 +395,35 @@ function setGenerating(toolId: string, fields: Set<McpServerToolDraftField>) {
 	generating.value = next;
 }
 
+/** Preview-only draft for one modal field; the builder applies it on Save or discards it on Cancel. */
 async function onGenerate(tool: McpServerToolResponse, field: McpServerToolDraftField) {
 	const running = generating.value.get(tool.id) ?? new Set();
 	if (running.has(field)) return;
+	const session = modalSession;
 	setGenerating(tool.id, new Set(running).add(field));
 	try {
-		await requestDraft(tool, field);
+		const { status, tool: drafted } = await draftTool(
+			rootStore.restApiContext,
+			props.projectId,
+			props.serverId,
+			tool.id,
+			field,
+			{ persist: false },
+		);
+		if (status === 'drafted' && session === modalSession && selectedToolId.value === tool.id) {
+			if (field === 'toolName') {
+				draftedName.value = { value: drafted.toolName, revision: ++draftedRevision };
+			} else {
+				draftedDescription.value = { value: drafted.description, revision: ++draftedRevision };
+			}
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('mcpServers.tools.draftError'));
+	} finally {
+		const after = new Set(generating.value.get(tool.id));
+		after.delete(field);
+		setGenerating(tool.id, after);
 	}
-	const after = new Set(generating.value.get(tool.id));
-	after.delete(field);
-	setGenerating(tool.id, after);
 }
 
 async function onSave(tool: McpServerToolResponse, changes: UpdateMcpServerToolDto) {
@@ -537,8 +554,8 @@ onMounted(load);
 				:saving="selectedTool ? savingToolId === selectedTool.id : false"
 				:removing="selectedTool ? removingToolId === selectedTool.id : false"
 				:generating="selectedTool ? generatingFields(selectedTool.id) : []"
-				:drafted-name-revision="draftedNameRevision"
-				:drafted-description-revision="draftedDescriptionRevision"
+				:drafted-name="draftedName"
+				:drafted-description="draftedDescription"
 				:workflow-href="selectedTool?.targetId ? workflowHref(selectedTool.targetId) : null"
 				@close="selectedToolId = null"
 				@save="selectedTool && onSave(selectedTool, $event)"

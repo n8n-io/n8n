@@ -13,6 +13,7 @@ import {
 	type DialogSize,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useId } from 'vue';
 
 // Shared modal shell for MCP server tools (workflows, nodes, and agents), mirroring AgentModal.
 const props = withDefaults(
@@ -62,6 +63,7 @@ defineSlots<{
 }>();
 
 const i18n = useI18n();
+const titleMessageId = useId();
 
 function onOpenChange(value: boolean) {
 	if (!value && props.busy) return;
@@ -107,6 +109,8 @@ function onInteractOutside(event: Event) {
 							:max-length="props.titleMaxLength"
 							max-width="100%"
 							:disabled="props.busy"
+							:aria-invalid="props.titleError ? 'true' : undefined"
+							:aria-describedby="props.titleError || props.titleHint ? titleMessageId : undefined"
 							:class="[$style.editableTitle, $style.mono]"
 							data-test-id="mcp-tool-dialog-title-edit"
 							@update:model-value="emit('update:title', $event)"
@@ -144,10 +148,10 @@ function onInteractOutside(event: Event) {
 			>
 				<N8nText
 					v-if="props.titleError"
+					:id="titleMessageId"
 					tag="p"
 					size="small"
 					color="danger"
-					role="alert"
 					:class="$style.titleMessage"
 					data-test-id="mcp-tool-dialog-name-error"
 				>
@@ -155,6 +159,7 @@ function onInteractOutside(event: Event) {
 				</N8nText>
 				<N8nText
 					v-else-if="props.titleHint"
+					:id="titleMessageId"
 					tag="p"
 					size="small"
 					color="text-light"
@@ -213,6 +218,7 @@ function onInteractOutside(event: Event) {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
+@use '@n8n/design-system/css/mixins/utils';
 
 [role='dialog'].dialog {
 	--n8n-dialog-region--padding: 0;
@@ -261,9 +267,7 @@ function onInteractOutside(event: Event) {
 }
 
 .title {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	@include utils.utils-ellipsis;
 }
 
 .editableTitle {
@@ -281,7 +285,7 @@ function onInteractOutside(event: Event) {
 	flex-shrink: 0;
 	opacity: 0;
 	color: var(--text-color--subtle);
-	transition: opacity var(--duration--snappy) ease;
+	transition: opacity var(--duration--snappy) var(--easing--ease-out);
 }
 
 .headerActions {

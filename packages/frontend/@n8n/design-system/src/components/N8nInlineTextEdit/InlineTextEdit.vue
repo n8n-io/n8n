@@ -1,7 +1,11 @@
 <script lang="ts" setup>
 import { useElementSize } from '@vueuse/core';
 import { EditableArea, EditableInput, EditablePreview, EditableRoot } from 'reka-ui';
-import { computed, ref, useTemplateRef, watchEffect } from 'vue';
+import { computed, ref, useAttrs, useTemplateRef, watchEffect } from 'vue';
+
+defineOptions({ inheritAttrs: false });
+
+const INPUT_ARIA_ATTRS = new Set(['aria-invalid', 'aria-describedby']);
 
 type Props = {
 	modelValue: string;
@@ -24,6 +28,14 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	'update:model-value': [value: string];
 }>();
+
+const attrs = useAttrs();
+const rootAttrs = computed(() =>
+	Object.fromEntries(Object.entries(attrs).filter(([key]) => !INPUT_ARIA_ATTRS.has(key))),
+);
+const inputAriaAttrs = computed(() =>
+	Object.fromEntries(Object.entries(attrs).filter(([key]) => INPUT_ARIA_ATTRS.has(key))),
+);
 
 const editableRoot = useTemplateRef('editableRoot');
 const measureSpan = useTemplateRef('measureSpan');
@@ -105,6 +117,7 @@ defineExpose({ forceFocus, forceCancel });
 <template>
 	<EditableRoot
 		ref="editableRoot"
+		v-bind="rootAttrs"
 		:placeholder="placeholder"
 		:model-value="editingValue"
 		submit-mode="both"
@@ -138,6 +151,7 @@ defineExpose({ forceFocus, forceCancel });
 			<!-- size=1 stops the input's default intrinsic width from inflating fit-content sizing -->
 			<EditableInput
 				ref="input"
+				v-bind="inputAriaAttrs"
 				:size="1"
 				:class="$style.inlineRenameInput"
 				data-test-id="inline-edit-input"

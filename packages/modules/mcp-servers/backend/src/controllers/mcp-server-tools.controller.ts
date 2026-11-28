@@ -80,6 +80,7 @@ export class McpServerToolsController {
 			req.params.toolId,
 			{ userId: req.user.id, source: 'ui' },
 			dto.field,
+			{ persist: dto.persist },
 		);
 	}
 

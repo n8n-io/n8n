@@ -147,12 +147,16 @@ export async function draftTool(
 	serverId: string,
 	toolId: string,
 	field?: McpServerToolDraftField,
+	options?: { persist?: boolean },
 ): Promise<McpServerToolDraftResponse> {
 	return await makeRestApiRequest(
 		context,
 		'POST',
 		`${serverPath(projectId, serverId)}/tools/${toolId}/draft`,
-		field ? { field } : {},
+		{
+			...(field ? { field } : {}),
+			...(options?.persist === false ? { persist: false } : {}),
+		},
 	);
 }
 

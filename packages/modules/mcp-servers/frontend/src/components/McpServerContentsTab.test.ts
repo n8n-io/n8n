@@ -929,14 +929,12 @@ describe('McpServerContentsTab', () => {
 				PROJECT_ID,
 				SERVER_ID,
 				tool().id,
-				undefined,
 			);
 			expect(api.draftTool).toHaveBeenCalledWith(
 				expect.anything(),
 				PROJECT_ID,
 				SERVER_ID,
 				second.id,
-				undefined,
 			);
 
 			first.resolve({
@@ -1018,9 +1016,12 @@ describe('McpServerContentsTab', () => {
 			['toolName', 'name'],
 			['description', 'description'],
 		] as const)(
-			'"Generate" below the %s writes that field, with a loading state meanwhile',
+			'"Generate" below the %s writes only that field in the modal and applies it on Save',
 			async (field, testId) => {
 				api.getMcpServer.mockResolvedValue(server([tool()]));
+				api.updateTool.mockImplementation(async (_c, _p, _s, _t, changes) =>
+					tool({ ...changes, draftSource: 'edited' }),
+				);
 				const call = deferred<unknown>();
 				api.draftTool.mockReturnValue(call.promise);
 				const { findByTestId } = await render();
@@ -1034,6 +1035,7 @@ describe('McpServerContentsTab', () => {
 					SERVER_ID,
 					tool().id,
 					field,
+					{ persist: false },
 				);
 				expect(screen.getByTestId(`mcp-tool-dialog-generating-${testId}`)).toBeInTheDocument();
 				expect(screen.getByTestId(`mcp-tool-dialog-generate-${testId}`)).toBeDisabled();
@@ -1048,11 +1050,64 @@ describe('McpServerContentsTab', () => {
 				);
 				if (field === 'toolName') {
 					expect(screen.getByTestId('inline-edit-preview')).toHaveTextContent(text);
+					// Chip on the page stays unchanged until Save.
+					expect(await findByTestId('mcp-tool-chip')).toHaveTextContent('get_campaign_numbers');
 				} else {
 					expect(screen.getByTestId('mcp-tool-dialog-description-input')).toHaveValue(text);
 				}
+
+				await userEvent.click(screen.getByTestId('mcp-tool-dialog-save'));
+				await waitFor(() =>
+					expect(api.updateTool).toHaveBeenCalledExactlyOnceWith(
+						expect.anything(),
+						PROJECT_ID,
+						SERVER_ID,
+						tool().id,
+						{ [field]: text },
+					),
+				);
 			},
 		);
+
+		it('discards a generated field when Cancel is clicked without saving it', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			api.draftTool.mockResolvedValue({
+				status: 'drafted',
+				tool: tool({ toolName: 'get_campaign_kpis', draftSource: 'ai' }),
+			});
+			const { findByTestId } = await render();
+
+			await userEvent.click(await findByTestId('mcp-tool-chip'));
+			await userEvent.click(await screen.findByTestId('mcp-tool-dialog-generate-name'));
+			await waitFor(() =>
+				expect(screen.getByTestId('inline-edit-preview')).toHaveTextContent('get_campaign_kpis'),
+			);
+
+			await userEvent.click(screen.getByTestId('mcp-tool-dialog-cancel'));
+			await waitFor(() => expect(screen.queryByTestId('mcp-tool-dialog')).not.toBeInTheDocument());
+			expect(api.updateTool).not.toHaveBeenCalled();
+			expect(await findByTestId('mcp-tool-chip')).toHaveTextContent('get_campaign_numbers');
+		});
+
+		it('disables the description input and Generate button while Save is in flight', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			const save = deferred<McpServerToolResponse>();
+			api.updateTool.mockReturnValueOnce(save.promise);
+			const { findByTestId } = await render();
+
+			await userEvent.click(await findByTestId('mcp-tool-chip'));
+			const description = await screen.findByTestId('mcp-tool-dialog-description-input');
+			await userEvent.clear(description);
+			await userEvent.type(description, 'Updated description.');
+			await userEvent.click(screen.getByTestId('mcp-tool-dialog-save'));
+
+			expect(description).toBeDisabled();
+			expect(screen.getByTestId('mcp-tool-dialog-generate-description')).toBeDisabled();
+			expect(screen.getByTestId('mcp-tool-dialog-generate-name')).toBeDisabled();
+
+			save.resolve(tool({ description: 'Updated description.', draftSource: 'edited' }));
+			await waitFor(() => expect(screen.queryByTestId('mcp-tool-dialog')).not.toBeInTheDocument());
+		});
 
 		it('keeps the name that the builder edits while "Generate" writes the description', async () => {
 			api.getMcpServer.mockResolvedValue(server([tool()]));
@@ -1245,6 +1300,72 @@ describe('McpServerContentsTab', () => {
 			const chips = await findAllByTestId('mcp-tool-chip');
 			expect(chips).toHaveLength(1);
 			expect(chips[0]).toHaveAttribute('data-highlighted', 'false');
+		});
+
+		it('invalidates a pending tool detail request on refresh and refetches fresh detail', async () => {
+			const staleDetail = deferred<McpServerToolDetailResponse>();
+			const freshDetail = deferred<McpServerToolDetailResponse>();
+			api.getMcpServer.mockResolvedValueOnce(server([tool({ brokenReason: 'not_published' })]));
+			api.getToolDetail
+				.mockReturnValueOnce(staleDetail.promise)
+				.mockReturnValueOnce(freshDetail.promise);
+
+			const { findByTestId, rerender } = await render({ props: { refreshKey: 0 } });
+			await userEvent.click(await findByTestId('mcp-tool-chip'));
+			await screen.findByTestId('mcp-tool-dialog');
+
+			api.getMcpServer.mockResolvedValueOnce(server([tool({ brokenReason: null })]));
+			await rerender({ refreshKey: 1 });
+
+			await waitFor(() => expect(api.getToolDetail).toHaveBeenCalledTimes(2));
+
+			// A late pre-refresh response must not populate stale fields or restore brokenReason.
+			staleDetail.resolve(
+				toolDetail({
+					brokenReason: 'not_published',
+					inputs: [{ name: 'stale_input', type: 'string' }],
+					outputs: [{ name: 'stale_output', type: 'string' }],
+				}),
+			);
+			await staleDetail.promise;
+			await new Promise((resolve) => setTimeout(resolve));
+
+			expect(screen.queryByTestId('mcp-tool-dialog-broken-callout')).not.toBeInTheDocument();
+			expect(screen.queryByText('stale_input')).not.toBeInTheDocument();
+
+			freshDetail.resolve(
+				toolDetail({
+					brokenReason: null,
+					inputs: [{ name: 'fresh_input', type: 'number' }],
+					outputs: [{ name: 'fresh_output', type: 'boolean' }],
+				}),
+			);
+
+			expect(await screen.findByText('fresh_input')).toBeInTheDocument();
+			expect(await screen.findByText('fresh_output')).toBeInTheDocument();
+			expect(screen.queryByTestId('mcp-tool-dialog-broken-callout')).not.toBeInTheDocument();
+		});
+
+		it('closes the open tool modal and ignores a late detail response when refresh removes the tool', async () => {
+			const staleDetail = deferred<McpServerToolDetailResponse>();
+			api.getMcpServer.mockResolvedValueOnce(server([tool()]));
+			api.getToolDetail.mockReturnValueOnce(staleDetail.promise);
+
+			const { findByTestId, rerender } = await render({ props: { refreshKey: 0 } });
+			await userEvent.click(await findByTestId('mcp-tool-chip'));
+			await screen.findByTestId('mcp-tool-dialog');
+
+			api.getMcpServer.mockResolvedValueOnce(server([]));
+			await rerender({ refreshKey: 1 });
+
+			await waitFor(() => expect(screen.queryByTestId('mcp-tool-dialog')).not.toBeInTheDocument());
+
+			staleDetail.resolve(toolDetail({ inputs: [{ name: 'stale_input', type: 'string' }] }));
+			await staleDetail.promise;
+			await new Promise((resolve) => setTimeout(resolve));
+
+			expect(screen.queryByTestId('mcp-tool-dialog')).not.toBeInTheDocument();
+			expect(api.getToolDetail).toHaveBeenCalledTimes(1);
 		});
 	});
 });

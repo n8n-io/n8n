@@ -39,9 +39,9 @@ const props = withDefaults(
 		removing?: boolean;
 		/** The fields for which a "Generate" call runs. */
 		generating?: McpServerToolDraftField[];
-		/** Incremented when a "Generate" call finishes for each field, to sync the modal draft. */
-		draftedNameRevision?: number;
-		draftedDescriptionRevision?: number;
+		/** Latest non-persisted "Generate" draft for each field, applied only on Save. */
+		draftedName?: { value: string; revision: number } | null;
+		draftedDescription?: { value: string; revision: number } | null;
 		/** The URL of the source workflow, which opens in a new tab. */
 		workflowHref: string | null;
 	}>(),
@@ -54,8 +54,8 @@ const props = withDefaults(
 		saving: false,
 		removing: false,
 		generating: () => [],
-		draftedNameRevision: 0,
-		draftedDescriptionRevision: 0,
+		draftedName: null,
+		draftedDescription: null,
 	},
 );
 
@@ -113,16 +113,16 @@ watch(
 );
 
 watch(
-	() => props.draftedNameRevision,
-	() => {
-		if (props.tool) toolName.value = props.tool.toolName;
+	() => props.draftedName,
+	(draft) => {
+		if (props.tool && draft) toolName.value = draft.value;
 	},
 );
 
 watch(
-	() => props.draftedDescriptionRevision,
-	() => {
-		if (props.tool) description.value = props.tool.description;
+	() => props.draftedDescription,
+	(draft) => {
+		if (props.tool && draft) description.value = draft.value;
 	},
 );
 
@@ -221,6 +221,7 @@ function handleSave() {
 			:show-generate="showGenerate"
 			:drafting="drafting"
 			:generating-description="isGeneratingDescription"
+			:busy="busy"
 			:workflow-href="displayedWorkflowHref"
 			@generate-description="emit('generate', 'description')"
 			@retry-detail="emit('retryDetail')"

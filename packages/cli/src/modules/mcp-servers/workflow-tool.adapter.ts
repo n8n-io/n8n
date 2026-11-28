@@ -45,8 +45,10 @@ function isRedactedFieldMarker(value: unknown): boolean {
 	return isRecord(value) && value.__redacted === true;
 }
 
-function inferValueType(value: unknown): McpServerToolFieldType {
-	if (value === null || value === undefined || isRedactedFieldMarker(value)) return 'any';
+type InferredFieldType = McpServerToolFieldType | 'unknown';
+
+function inferValueType(value: unknown): InferredFieldType {
+	if (value === null || value === undefined || isRedactedFieldMarker(value)) return 'unknown';
 	if (Array.isArray(value)) return 'array';
 	const valueType = typeof value;
 	switch (valueType) {
@@ -65,20 +67,25 @@ function inferOutputFields(items: INodeExecutionData[]): McpServerToolField[] | 
 	if (items.length > 0 && items.every((item) => item.redaction?.redacted === true)) {
 		return null;
 	}
-	const fields = new Map<string, McpServerToolFieldType>();
+	const fields = new Map<string, InferredFieldType>();
 	for (const item of items) {
 		if (item.redaction?.redacted === true || !isRecord(item.json)) continue;
 		for (const [name, value] of Object.entries(item.json)) {
 			const nextType = inferValueType(value);
 			const existing = fields.get(name);
-			if (existing === undefined || existing === 'any') {
+			if (existing === undefined) {
 				fields.set(name, nextType);
-			} else if (nextType !== 'any' && existing !== nextType) {
+			} else if (existing === 'unknown') {
+				if (nextType !== 'unknown') fields.set(name, nextType);
+			} else if (existing !== 'any' && nextType !== 'unknown' && existing !== nextType) {
 				fields.set(name, 'any');
 			}
 		}
 	}
-	return Array.from(fields, ([name, type]) => ({ name, type }));
+	return Array.from(fields, ([name, type]) => ({
+		name,
+		type: type === 'unknown' ? 'any' : type,
+	}));
 }
 
 /** Workflow tools of custom MCP servers. They run through the shared runner, as the server's project. */
@@ -134,13 +141,10 @@ export class WorkflowToolAdapter extends WorkflowToolPort {
 		workflowId: string,
 		user: User,
 	): Promise<WorkflowToolInspection> {
-		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds([workflowId]);
-		if (owners.get(workflowId)?.id !== projectId) {
-			return { sourceName: null, inputs: [], outputs: null };
-		}
-		const [workflow] = await this.workflowRepository.findByIds([workflowId], {
-			fields: ['name', 'isArchived'],
-		});
+		const workflow = await this.sharedWorkflowRepository.findOwnedWorkflowSummary(
+			projectId,
+			workflowId,
+		);
 		if (!workflow || workflow.isArchived) {
 			return { sourceName: null, inputs: [], outputs: null };
 		}

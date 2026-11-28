@@ -1,6 +1,11 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-import { getMcpServerPublicShare, getMcpServerShare, getToolDetail } from '../mcp-servers.api';
+import {
+	draftTool,
+	getMcpServerPublicShare,
+	getMcpServerShare,
+	getToolDetail,
+} from '../mcp-servers.api';
 
 const makeRestApiRequest = vi.hoisted(() => vi.fn());
 vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
@@ -29,6 +34,19 @@ describe('tool detail request', () => {
 			context,
 			'GET',
 			'/projects/project-1/mcp-servers/server-1/tools/tool-1',
+		);
+	});
+});
+
+describe('tool draft request', () => {
+	it('sends persist: false when requesting a modal preview draft', async () => {
+		await draftTool(context, 'project-1', 'server-1', 'tool-1', 'toolName', { persist: false });
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'POST',
+			'/projects/project-1/mcp-servers/server-1/tools/tool-1/draft',
+			{ field: 'toolName', persist: false },
 		);
 	});
 });

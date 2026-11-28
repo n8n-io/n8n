@@ -339,6 +339,62 @@ describe('McpServerToolsService.draftTool saves a drafted name', () => {
 		await expect(draft()).rejects.toBeInstanceOf(McpServerToolNotFoundError);
 		expect(tools.updateInServer).toHaveBeenCalledTimes(1);
 	});
+
+	it('returns a collision-free draft without saving when persist is false', async () => {
+		const servers = mock<McpServerRepository>();
+		const tools = mock<McpServerToolRepository>();
+		const { workflows, textDrafts } = mockMcpServerPorts();
+		const tool = mock<McpServerTool>({
+			id: TOOL_ID,
+			serverId: SERVER_ID,
+			kind: 'workflow',
+			targetId: 'workflow-1',
+			toolName: 'old_name',
+			description: 'Old text.',
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+		const competing = mock<McpServerTool>({ id: 'other-tool', toolName: 'get_campaign' });
+		servers.findInProject.mockResolvedValue(mock<McpServer>({ id: SERVER_ID }));
+		tools.findInServer.mockResolvedValue(tool);
+		tools.listByServer.mockResolvedValue([tool, competing]);
+		textDrafts.isAvailable.mockResolvedValue(true);
+		textDrafts.draft.mockResolvedValue({
+			status: 'drafted',
+			text: JSON.stringify({ toolName: 'get_campaign' }),
+		});
+		workflows.describe.mockResolvedValue({
+			callable: true,
+			name: 'Campaign',
+			description: null,
+			inputSchema: { type: 'object', additionalProperties: true },
+			nodeNames: [],
+		});
+		const service = new McpServerToolsService(
+			servers,
+			tools,
+			workflows,
+			textDrafts,
+			mock<EventService>(),
+			mock<Logger>(),
+		);
+
+		const result = await service.draftTool(
+			mock<User>(),
+			PROJECT_ID,
+			SERVER_ID,
+			TOOL_ID,
+			ACTOR,
+			'toolName',
+			{ persist: false },
+		);
+
+		expect(result).toMatchObject({
+			status: 'drafted',
+			tool: { toolName: 'get_campaign_2', description: 'Old text.' },
+		});
+		expect(tools.updateInServer).not.toHaveBeenCalled();
+	});
 });
 
 describe('McpServerToolsService.getToolDetail', () => {

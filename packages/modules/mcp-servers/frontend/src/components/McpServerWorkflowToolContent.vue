@@ -30,6 +30,7 @@ const props = defineProps<{
 	showGenerate: boolean;
 	drafting: boolean;
 	generatingDescription: boolean;
+	busy?: boolean;
 	workflowHref: string | null;
 }>();
 
@@ -88,7 +89,7 @@ const outputs = computed(() => props.detail?.outputs ?? null);
 						v-model="description"
 						type="textarea"
 						:rows="3"
-						:disabled="generatingDescription"
+						:disabled="generatingDescription || busy"
 						:maxlength="MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH"
 						:class="$style.resizable"
 						data-test-id="mcp-tool-dialog-description-input"
@@ -114,7 +115,7 @@ const outputs = computed(() => props.detail?.outputs ?? null);
 						variant="ghost"
 						size="xsmall"
 						:label="i18n.baseText('mcpServers.tools.row.generate')"
-						:disabled="generatingDescription"
+						:disabled="generatingDescription || busy"
 						:class="$style.generate"
 						data-test-id="mcp-tool-dialog-generate-description"
 						data-attr="mcp-tool-dialog-generate-description"
@@ -255,6 +256,8 @@ const outputs = computed(() => props.detail?.outputs ?? null);
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/utils';
+
 .container {
 	display: flex;
 	flex-direction: column;
@@ -286,9 +289,7 @@ const outputs = computed(() => props.detail?.outputs ?? null);
 
 .sourceLabel {
 	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	@include utils.utils-ellipsis;
 }
 
 .openWorkflow {
@@ -362,8 +363,6 @@ const outputs = computed(() => props.detail?.outputs ?? null);
 .fieldName {
 	font-family: var(--font-family--monospace);
 	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	@include utils.utils-ellipsis;
 }
 </style>

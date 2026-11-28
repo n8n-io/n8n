@@ -246,12 +246,11 @@ describe('WorkflowToolAdapter', () => {
 			name = 'Get campaign numbers',
 			nodes: INode[] = [triggerNode],
 		) {
-			deps.sharedWorkflows.findOwnerProjectsByWorkflowIds.mockResolvedValue(
-				new Map([[WORKFLOW_ID, Object.assign(new Project(), { id: PROJECT_ID })]]),
-			);
-			deps.workflows.findByIds.mockResolvedValue([
-				Object.assign(new WorkflowEntity(), { id: WORKFLOW_ID, name, isArchived: false }),
-			]);
+			deps.sharedWorkflows.findOwnedWorkflowSummary.mockResolvedValue({
+				id: WORKFLOW_ID,
+				name,
+				isArchived: false,
+			});
 			deps.workflowLoader.loadWorkflow.mockResolvedValue(
 				Object.assign(new WorkflowEntity(), { id: WORKFLOW_ID, name, nodes }),
 			);
@@ -298,6 +297,11 @@ describe('WorkflowToolAdapter', () => {
 															nullable: 42,
 															mixed: 99,
 															extra: 'later',
+														},
+													},
+													{
+														json: {
+															mixed: true,
 														},
 													},
 												],
@@ -453,17 +457,41 @@ describe('WorkflowToolAdapter', () => {
 			expect(deps.executionService.getLastSuccessfulExecution).not.toHaveBeenCalled();
 		});
 
-		it('returns empty details when the workflow moved to another project or is archived', async () => {
+		it('returns empty details when the workflow moved to another project', async () => {
 			const deps = setup();
-			deps.sharedWorkflows.findOwnerProjectsByWorkflowIds.mockResolvedValue(
-				new Map([[WORKFLOW_ID, Object.assign(new Project(), { id: 'other-project' })]]),
-			);
+			deps.sharedWorkflows.findOwnedWorkflowSummary.mockResolvedValue(null);
 
 			await expect(deps.adapter.inspect(PROJECT_ID, WORKFLOW_ID, user)).resolves.toEqual({
 				sourceName: null,
 				inputs: [],
 				outputs: null,
 			});
+			expect(deps.sharedWorkflows.findOwnedWorkflowSummary).toHaveBeenCalledWith(
+				PROJECT_ID,
+				WORKFLOW_ID,
+			);
+			expect(deps.workflowLoader.loadWorkflow).not.toHaveBeenCalled();
+			expect(deps.executionService.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('returns empty details when the workflow is archived in the same project', async () => {
+			const deps = setup();
+			deps.sharedWorkflows.findOwnedWorkflowSummary.mockResolvedValue({
+				id: WORKFLOW_ID,
+				name: 'Archived workflow',
+				isArchived: true,
+			});
+
+			await expect(deps.adapter.inspect(PROJECT_ID, WORKFLOW_ID, user)).resolves.toEqual({
+				sourceName: null,
+				inputs: [],
+				outputs: null,
+			});
+			expect(deps.sharedWorkflows.findOwnedWorkflowSummary).toHaveBeenCalledWith(
+				PROJECT_ID,
+				WORKFLOW_ID,
+			);
+			expect(deps.workflowLoader.loadWorkflow).not.toHaveBeenCalled();
 			expect(deps.executionService.getLastSuccessfulExecution).not.toHaveBeenCalled();
 		});
 	});

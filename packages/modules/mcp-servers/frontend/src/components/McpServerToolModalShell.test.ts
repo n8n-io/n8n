@@ -85,4 +85,23 @@ describe('McpServerToolModalShell', () => {
 		await userEvent.keyboard('{Escape}');
 		expect(emitted('update:open')).toBeUndefined();
 	});
+
+	it('links title validation errors via aria-describedby and aria-invalid without role="alert"', async () => {
+		renderComponent({
+			props: {
+				open: true,
+				title: 'Invalid-Name',
+				editableTitle: true,
+				canUpdate: true,
+				titleError: 'Use lowercase letters, numbers, and underscores.',
+			},
+		});
+
+		const error = await screen.findByTestId('mcp-tool-dialog-name-error');
+		const input = screen.getByTestId('inline-edit-input');
+		expect(error).not.toHaveAttribute('role', 'alert');
+		expect(error).toHaveAttribute('id');
+		expect(input).toHaveAttribute('aria-invalid', 'true');
+		expect(input).toHaveAttribute('aria-describedby', error.getAttribute('id'));
+	});
 });

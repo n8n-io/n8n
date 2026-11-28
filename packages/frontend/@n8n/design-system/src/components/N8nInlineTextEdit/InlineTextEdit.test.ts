@@ -150,4 +150,24 @@ describe('N8nInlineTextEdit', () => {
 		const input = wrapper.getByTestId('inline-edit-input');
 		expect(input).toHaveFocus();
 	});
+
+	it('forwards aria-invalid and aria-describedby to the inner input', () => {
+		const wrapper = renderComponent({
+			props: {
+				modelValue: 'Test Value',
+			},
+			attrs: {
+				'aria-invalid': 'true',
+				'aria-describedby': 'title-error',
+				'data-test-id': 'inline-root',
+			},
+		});
+
+		const root = wrapper.getByTestId('inline-root');
+		const input = wrapper.getByTestId('inline-edit-input');
+		expect(input).toHaveAttribute('aria-invalid', 'true');
+		expect(input).toHaveAttribute('aria-describedby', 'title-error');
+		expect(root).not.toHaveAttribute('aria-invalid');
+		expect(root).not.toHaveAttribute('aria-describedby');
+	});
 });
