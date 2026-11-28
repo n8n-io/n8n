@@ -25,7 +25,12 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	taskStop: StoredAgentTaskStop | null;
 
 	/** A test chat: every turn and resume is a test run, also after a restart. */
-	@Column({ name: 'isTestChat', type: 'boolean', default: false })
+	@Column({
+		name: 'isTestChat',
+		type: 'boolean',
+		default: false,
+		comment: 'True for a test chat: its tool calls go to a simulation, not to real services.',
+	})
 	testChat: boolean;
 
 	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })

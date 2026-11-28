@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import { mockEntityManager } from '@test/mocking';
 import type { TransactionRunner } from '@n8n/db';
+import { Not } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentAttentionFlagRepository } from '../repositories/agent-attention-flag.repository';
@@ -42,6 +43,24 @@ describe('AgentExecutionRepository', () => {
 			const result = await repository.findLatestSuspendedByThreadId('thread-1');
 
 			expect(result).toBeNull();
+		});
+	});
+
+	describe('hasFinishedByThread', () => {
+		it('looks for an execution of the thread that is not running', async () => {
+			vi.spyOn(repository, 'exists').mockResolvedValue(true);
+
+			await expect(repository.hasFinishedByThread('thread-1')).resolves.toBe(true);
+
+			expect(repository.exists).toHaveBeenCalledWith({
+				where: { threadId: 'thread-1', status: Not('running') },
+			});
+		});
+
+		it('returns false when the thread has no finished execution', async () => {
+			vi.spyOn(repository, 'exists').mockResolvedValue(false);
+
+			await expect(repository.hasFinishedByThread('thread-1')).resolves.toBe(false);
 		});
 	});
 

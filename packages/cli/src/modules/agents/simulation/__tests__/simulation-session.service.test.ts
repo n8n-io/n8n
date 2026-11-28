@@ -203,7 +203,17 @@ describe('SimulationSessionService', () => {
 
 		const session = await service.openForDraftRun(openInput);
 
+		// A missing session means a live run, which this path must never produce.
+		expect(session).toBeDefined();
 		expect(session?.worldId).toBeUndefined();
+		const tools = await service.describeTools('agent-1', 'project-1');
+		expect(tools).toContainEqual(
+			expect.objectContaining({
+				toolName: 'Send_Slack',
+				testability: 'blocked',
+				reason: 'simulator_unavailable',
+			}),
+		);
 	});
 
 	it('blocks every call when the world fails to open, without falling back', async () => {
@@ -215,6 +225,36 @@ describe('SimulationSessionService', () => {
 
 		expect(session).toBeDefined();
 		expect(session?.worldId).toBeUndefined();
+	});
+
+	it('opens the world again on the next turn after it failed to open', async () => {
+		const backend = llmBackend();
+		vi.mocked(backend.openWorld).mockRejectedValueOnce(new Error('mock model not configured'));
+		const { service } = setup({ backend });
+
+		const failed = await service.openForDraftRun(openInput);
+		const retried = await service.openForDraftRun({ ...openInput, message: 'again' });
+		const reused = await service.openForDraftRun({ ...openInput, message: 'and again' });
+
+		expect(failed?.worldId).toBeUndefined();
+		expect(retried).not.toBe(failed);
+		expect(retried?.worldId).toBe('world-1');
+		expect(reused).toBe(retried);
+		expect(backend.openWorld).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps the same session while the world still fails to open', async () => {
+		const backend = llmBackend();
+		vi.mocked(backend.openWorld).mockRejectedValue(new Error('mock model not configured'));
+		const { service } = setup({ backend });
+
+		const first = await service.openForDraftRun(openInput);
+		const second = await service.openForDraftRun({ ...openInput, message: 'again' });
+
+		// The same session keeps the same runtime cache key, so no runtime is built again.
+		expect(second).toBe(first);
+		expect(second?.runtimeCacheKey).toBe(first?.runtimeCacheKey);
+		expect(backend.openWorld).toHaveBeenCalledTimes(2);
 	});
 
 	it('lists which tools can be tested, with n8n blocks before the backend sees them', async () => {
