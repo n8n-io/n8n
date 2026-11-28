@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError, ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 import type { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
+import type { AgentPublicRunService } from '@/modules/agents/agent-public-run.service';
 import type { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import type { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { toAgentPublicDto, type AgentResponseMapper } from '@/modules/agents/agent-response.mapper';
@@ -21,14 +22,19 @@ describe('AgentsPublicController route metadata', () => {
 	);
 	const routes = new Map(metadata.routes);
 
-	it('registers the agent routes', () => {
+	it('registers the public agent routes', () => {
 		expect([...routes.keys()].sort()).toEqual([
 			'archiveAgent',
 			'createAgent',
 			'deleteAgent',
 			'getAgent',
+			'getAgentVersion',
+			'listAgentExecutions',
+			'listAgentVersions',
 			'listAgents',
 			'publishAgent',
+			'runAgent',
+			'stopAgentExecution',
 			'unarchiveAgent',
 			'unpublishAgent',
 			'updateAgent',
@@ -111,6 +117,22 @@ describe('AgentsPublicController route metadata', () => {
 		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
 	});
 
+	it('listAgentVersions requires the agent:read API key scope and project RBAC check', () => {
+		expect(routes.get('listAgentVersions')?.apiKeyScope).toBe('agent:read');
+		expect(routes.get('listAgentVersions')?.accessScope).toEqual({
+			scope: 'agent:read',
+			globalOnly: false,
+		});
+	});
+
+	it('getAgentVersion requires the agent:read API key scope and project RBAC check', () => {
+		expect(routes.get('getAgentVersion')?.apiKeyScope).toBe('agent:read');
+		expect(routes.get('getAgentVersion')?.accessScope).toEqual({
+			scope: 'agent:read',
+			globalOnly: false,
+		});
+	});
+
 	it('listAgents requires the agent:list API key scope and no path-param RBAC check', () => {
 		// Cross-project list: `AgentsService` enforces the per-project scope,
 		// the same reasoning as the internal agents list route.
@@ -124,6 +146,14 @@ describe('AgentsPublicController route metadata', () => {
 		expect(route?.responseDto).toBeDefined();
 	});
 
+	it('runAgent requires the agent:execute API key scope and project RBAC check', () => {
+		expect(routes.get('runAgent')?.apiKeyScope).toBe('agent:execute');
+		expect(routes.get('runAgent')?.accessScope).toEqual({
+			scope: 'agent:execute',
+			globalOnly: false,
+		});
+	});
+
 	it('updateAgent requires the agent:update API key scope and project RBAC check', () => {
 		expect(routes.get('updateAgent')?.apiKeyScope).toBe('agent:update');
 		expect(routes.get('updateAgent')?.accessScope).toEqual({
@@ -132,12 +162,47 @@ describe('AgentsPublicController route metadata', () => {
 		});
 	});
 
+	it('runAgent answers 200 and documents 404 and 422', () => {
+		const route = routes.get('runAgent');
+		expect(route?.successStatus).toBe(200);
+		expect(route?.responseDto).toBeDefined();
+		expect(route?.errorResponses?.map((response) => response.status)).toEqual(
+			expect.arrayContaining([404, 422]),
+		);
+	});
+
+	it('stopAgentExecution requires the agent:execute API key scope and project RBAC check', () => {
+		expect(routes.get('stopAgentExecution')?.apiKeyScope).toBe('agent:execute');
+		expect(routes.get('stopAgentExecution')?.accessScope).toEqual({
+			scope: 'agent:execute',
+			globalOnly: false,
+		});
+		expect(routes.get('stopAgentExecution')?.successStatus).toBe(200);
+		expect(
+			routes.get('stopAgentExecution')?.errorResponses?.some((response) => response.status === 404),
+		).toBe(true);
+	});
+
 	it('updateAgent answers 200 with the public agent DTO and declares the conflict', () => {
 		const route = routes.get('updateAgent');
 		expect(route?.successStatus).toBe(200);
 		expect(route?.responseDto).toBeDefined();
 		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
 		expect(route?.errorResponses?.some((response) => response.status === 409)).toBe(true);
+	});
+
+	it('listAgentExecutions requires the agent:read API key scope and project RBAC check', () => {
+		expect(routes.get('listAgentExecutions')?.apiKeyScope).toBe('agent:read');
+		expect(routes.get('listAgentExecutions')?.accessScope).toEqual({
+			scope: 'agent:read',
+			globalOnly: false,
+		});
+		expect(routes.get('listAgentExecutions')?.successStatus).toBe(200);
+		expect(
+			routes
+				.get('listAgentExecutions')
+				?.errorResponses?.some((response) => response.status === 404),
+		).toBe(true);
 	});
 
 	it('publishAgent requires the agent:publish API key scope and project RBAC check', () => {
@@ -209,6 +274,7 @@ describe('AgentsPublicController createAgent', () => {
 		agentResponseMapper,
 		agentDefaultModelResolverService,
 		agentCustomToolsService,
+		mock<AgentPublicRunService>(),
 		mock<AgentConfigService>(),
 		mock<AgentPublishService>(),
 	);
@@ -349,6 +415,7 @@ describe('AgentsPublicController getAgent', () => {
 		agentResponseMapper,
 		mock<AgentDefaultModelResolverService>(),
 		mock<AgentCustomToolsService>(),
+		mock<AgentPublicRunService>(),
 		mock<AgentConfigService>(),
 		mock<AgentPublishService>(),
 	);
@@ -404,6 +471,7 @@ describe('AgentsPublicController listAgents', () => {
 		agentResponseMapper,
 		mock<AgentDefaultModelResolverService>(),
 		mock<AgentCustomToolsService>(),
+		mock<AgentPublicRunService>(),
 		mock<AgentConfigService>(),
 		mock<AgentPublishService>(),
 	);
@@ -512,6 +580,7 @@ describe('AgentsPublicController updateAgent', () => {
 		agentResponseMapper,
 		mock<AgentDefaultModelResolverService>(),
 		mock<AgentCustomToolsService>(),
+		mock<AgentPublicRunService>(),
 		agentConfigService,
 		mock<AgentPublishService>(),
 	);
@@ -656,6 +725,7 @@ describe('AgentsPublicController deleteAgent', () => {
 		agentResponseMapper,
 		agentDefaultModelResolverService,
 		mock<AgentCustomToolsService>(),
+		mock<AgentPublicRunService>(),
 		mock<AgentConfigService>(),
 		mock<AgentPublishService>(),
 	);
@@ -698,6 +768,178 @@ describe('AgentsPublicController deleteAgent', () => {
 	});
 });
 
+describe('AgentsPublicController run and stop', () => {
+	const agentPublicRunService = mock<AgentPublicRunService>();
+	const controller = new AgentsPublicController(
+		mock<AgentsService>(),
+		mock<AgentResponseMapper>(),
+		mock<AgentDefaultModelResolverService>(),
+		mock<AgentCustomToolsService>(),
+		agentPublicRunService,
+		mock<AgentConfigService>(),
+		mock<AgentPublishService>(),
+	);
+	const req = mock<AuthenticatedRequest>();
+	const res = mock<Response>();
+
+	it('delegates a run to the public run service', async () => {
+		const body = { response: 'Hello', sessionId: 'session-1', executionId: 'execution-1' };
+		agentPublicRunService.run.mockResolvedValue(body as never);
+
+		await expect(controller.runAgent(req, res, 'agent-1', { message: 'Hi' })).resolves.toBe(body);
+		expect(agentPublicRunService.run).toHaveBeenCalledWith(
+			req.user,
+			'agent-1',
+			{ message: 'Hi' },
+			expect.any(AbortSignal),
+		);
+	});
+
+	it('delegates a stop to the public run service', async () => {
+		const body = { executionId: 'execution-1', status: 'cancel_requested' as const };
+		agentPublicRunService.stop.mockResolvedValue(body);
+
+		await expect(controller.stopAgentExecution(req, res, 'agent-1', 'execution-1')).resolves.toBe(
+			body,
+		);
+		expect(agentPublicRunService.stop).toHaveBeenCalledWith(req.user, 'agent-1', 'execution-1');
+	});
+
+	it('delegates an executions list to the public run service and encodes the next cursor', async () => {
+		const row = {
+			executionId: 'execution-1',
+			sessionId: 'session-1',
+			status: 'success' as const,
+			source: 'public_api',
+			createdAt: '2026-11-19T14:00:00.000Z',
+			startedAt: null,
+			stoppedAt: null,
+			usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5, cost: 0.1 },
+		};
+		agentPublicRunService.listExecutions.mockResolvedValue({ count: 1, data: [row] });
+
+		await expect(
+			controller.listAgentExecutions(req, res, 'agent-1', { limit: 100 }),
+		).resolves.toEqual({ data: [row], nextCursor: null });
+		expect(agentPublicRunService.listExecutions).toHaveBeenCalledWith(req.user, 'agent-1', {
+			offset: 0,
+			limit: 100,
+			sessionId: undefined,
+			status: undefined,
+		});
+	});
+});
+
+describe('AgentsPublicController agent versions', () => {
+	const agentsService = mock<AgentsService>();
+	const agentPublishService = mock<AgentPublishService>();
+	const controller = new AgentsPublicController(
+		agentsService,
+		mock<AgentResponseMapper>(),
+		mock<AgentDefaultModelResolverService>(),
+		mock<AgentCustomToolsService>(),
+		mock<AgentPublicRunService>(),
+		mock<AgentConfigService>(),
+		agentPublishService,
+	);
+	const req = mock<AuthenticatedRequest>();
+	const res = mock<Response>();
+
+	const version = {
+		versionId: 'version-1',
+		agentId: 'agent-1',
+		name: 'Support',
+		description: null,
+		author: 'Ada Lovelace',
+		createdAt: '2025-01-03T00:00:00.000Z',
+		updatedAt: '2025-01-03T00:00:00.000Z',
+		isActive: true,
+		isCurrent: false,
+		includesN8nChat: true,
+	};
+
+	beforeEach(() => {
+		agentsService.findById.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' } as never);
+	});
+
+	it('returns one cursor page and drops editor-only list fields', async () => {
+		agentPublishService.listVersions.mockResolvedValue([
+			version,
+			{ ...version, versionId: 'version-2' },
+			{ ...version, versionId: 'version-3' },
+		]);
+
+		const result = await controller.listAgentVersions(req, res, 'agent-1', { limit: 2 });
+
+		expect(agentPublishService.listVersions).toHaveBeenCalledWith('agent-1', 'project-1', 3, 0);
+		expect(result.data).toHaveLength(2);
+		expect(result.data[0]).toEqual({
+			versionId: 'version-1',
+			agentId: 'agent-1',
+			name: 'Support',
+			description: null,
+			author: 'Ada Lovelace',
+			createdAt: '2025-01-03T00:00:00.000Z',
+			updatedAt: '2025-01-03T00:00:00.000Z',
+			isActive: true,
+			isCurrent: false,
+		});
+		expect(result.data[0]).not.toHaveProperty('includesN8nChat');
+		expect(result.nextCursor).toEqual(expect.any(String));
+	});
+
+	it('returns a null cursor on the last page', async () => {
+		agentPublishService.listVersions.mockResolvedValue([version]);
+
+		const result = await controller.listAgentVersions(req, res, 'agent-1', { limit: 2 });
+
+		expect(result.data).toHaveLength(1);
+		expect(result.nextCursor).toBeNull();
+	});
+
+	it('answers 404 when the agent has no project', async () => {
+		agentsService.findById.mockResolvedValue(null);
+
+		await expect(controller.listAgentVersions(req, res, 'missing', { limit: 10 })).rejects.toThrow(
+			NotFoundError,
+		);
+		expect(agentPublishService.listVersions).not.toHaveBeenCalled();
+	});
+
+	it('returns the saved document and omits editor-only fields', async () => {
+		agentPublishService.getVersionSummary.mockResolvedValue(version);
+		agentPublishService.getVersion.mockResolvedValue({
+			definition: {
+				schema: { name: 'Support', model: '', instructions: 'Help users.' },
+				tools: { lookup: { code: 'return 1;', descriptor: { name: 'lookup' } } },
+				skills: {
+					writing: { name: 'Writing', description: 'Write', instructions: 'Write well.' },
+				},
+				tasks: new Map([['task-1', { name: 'Daily' }]]),
+			},
+		} as never);
+
+		const result = await controller.getAgentVersion(req, res, 'agent-1', 'version-1');
+
+		expect(result).toEqual({
+			versionId: 'version-1',
+			agentId: 'agent-1',
+			name: 'Support',
+			description: null,
+			author: 'Ada Lovelace',
+			createdAt: '2025-01-03T00:00:00.000Z',
+			updatedAt: '2025-01-03T00:00:00.000Z',
+			isActive: true,
+			isCurrent: false,
+			config: { name: 'Support', model: '', instructions: 'Help users.' },
+			tools: { lookup: { code: 'return 1;', descriptor: { name: 'lookup' } } },
+			skills: { writing: { name: 'Writing', description: 'Write', instructions: 'Write well.' } },
+		});
+		expect(result).not.toHaveProperty('includesN8nChat');
+		expect(result).not.toHaveProperty('tasks');
+	});
+});
+
 describe('AgentsPublicController archive and unarchive', () => {
 	const agentsService = mock<AgentsService>();
 	const agentResponseMapper = mock<AgentResponseMapper>();
@@ -707,6 +949,7 @@ describe('AgentsPublicController archive and unarchive', () => {
 		agentResponseMapper,
 		mock<AgentDefaultModelResolverService>(),
 		mock<AgentCustomToolsService>(),
+		mock<AgentPublicRunService>(),
 		mock<AgentConfigService>(),
 		agentPublishService,
 	);

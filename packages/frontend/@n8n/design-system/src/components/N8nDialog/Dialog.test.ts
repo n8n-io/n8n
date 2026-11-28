@@ -492,18 +492,25 @@ describe('N8nDialog', () => {
 
 	describe('props', () => {
 		describe('size', () => {
-			it.each(['small', 'medium', 'large', 'xlarge', '2xlarge', 'fit', 'full', 'cover'] as const)(
-				'should apply %s size class',
-				async (size) => {
-					const user = userEvent.setup();
-					const { getByTestId, getByRole } = renderDialog({ size });
+			it.each([
+				'small',
+				'medium',
+				'large',
+				'xlarge',
+				'2xlarge',
+				'3xlarge',
+				'fit',
+				'full',
+				'cover',
+			] as const)('should apply %s size class', async (size) => {
+				const user = userEvent.setup();
+				const { getByTestId, getByRole } = renderDialog({ size });
 
-					await user.click(getByTestId('dialog-trigger'));
+				await user.click(getByTestId('dialog-trigger'));
 
-					const dialog = getByRole('dialog');
-					expect(dialog.className).toContain(size === '2xlarge' ? '2xlarge' : size);
-				},
-			);
+				const dialog = getByRole('dialog');
+				expect(dialog.className).toContain(size === '2xlarge' ? '2xlarge' : size);
+			});
 
 			it('should default to medium size', async () => {
 				const user = userEvent.setup();

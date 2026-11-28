@@ -22,6 +22,11 @@ const foldersEnabled = ref(false);
 const folderReadAllowed = ref(true);
 const folderWriteAllowed = ref(false);
 const agentUpdateAllowed = ref(true);
+const agentReadAllowed = ref(true);
+const agentCreateAllowed = ref(true);
+const listableProjects = ref(['project-1', 'project-2', 'personal-project']);
+const globalScopes = ref<string[]>([]);
+const currentProjectScopes = ref<string[]>();
 const branchReadOnly = ref(false);
 const navigation = ref<{ projectId?: string; folderId?: string }>({});
 
@@ -90,7 +95,13 @@ vi.mock('@n8n/stores/settings.store', () => ({
 }));
 
 vi.mock('@n8n/stores/users.store', () => ({
-	useUsersStore: () => ({ currentUser: { globalScopes: [] } }),
+	useUsersStore: () => ({
+		currentUser: {
+			get globalScopes() {
+				return globalScopes.value;
+			},
+		},
+	}),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -111,21 +122,28 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({
-		currentProject: { id: 'project-1' },
-		personalProject: { id: 'personal-project' },
-		myProjects: [
-			{
-				id: 'project-1',
-				get scopes() {
-					return [
-						...(folderReadAllowed.value ? ['folder:list'] : []),
-						...(folderWriteAllowed.value
-							? ['folder:create', 'folder:update', 'folder:delete']
-							: []),
-					];
-				},
+		currentProject: {
+			id: 'project-1',
+			get scopes() {
+				return currentProjectScopes.value;
 			},
-		],
+		},
+		personalProject: { id: 'personal-project' },
+		myProjects: ['project-1', 'project-2', 'personal-project'].map((id) => ({
+			id,
+			get scopes() {
+				return [
+					...(listableProjects.value.includes(id) ? ['agent:list'] : []),
+					...(agentReadAllowed.value ? ['agent:read'] : []),
+					...(agentCreateAllowed.value ? ['agent:create'] : []),
+					...(agentUpdateAllowed.value ? ['agent:update'] : []),
+					...(id === 'project-1' && folderReadAllowed.value ? ['folder:list'] : []),
+					...(id === 'project-1' && folderWriteAllowed.value
+						? ['folder:create', 'folder:update', 'folder:delete']
+						: []),
+				];
+			},
+		})),
 	}),
 }));
 
@@ -154,13 +172,6 @@ vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => (
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({ set: mocks.setTitle }),
 }));
-
-vi.mock('../composables/useAgentPermissions', async () => {
-	const { ref } = await import('vue');
-	return {
-		useAgentPermissions: () => ({ canCreate: ref(true), canUpdate: agentUpdateAllowed }),
-	};
-});
 
 vi.mock(
 	'@/experiments/agentsListEmptyStateTemplates/useAgentsListEmptyStateTemplatesExperiment',
@@ -200,9 +211,11 @@ vi.mock('@/app/components/layouts/ResourcesListLayout.vue', async () => {
 			},
 			template: `
 				<div data-test-id="resources-list-layout">
+					<slot name="header" />
 					<div data-test-id="resources-refreshing">{{ String(resourcesRefreshing) }}</div>
 					<div data-test-id="resources-total">{{ totalItems }}</div>
-					<slot v-if="resources.length === 0 && hasEmptyState !== false" name="empty" />
+					<slot v-if="$slots.unavailable" name="unavailable" />
+					<slot v-else-if="resources.length === 0 && hasEmptyState !== false" name="empty" />
 					<template v-else>
 						<slot name="list-prepend" />
 						<div v-for="(item, index) in resources" :key="item.id">
@@ -267,9 +280,16 @@ const mountView = async () => {
 				},
 				AgentFolderToolbar: true,
 				AgentFolderDialog: true,
-				ProjectHeader: { template: '<div><slot /></div>' },
+				ProjectHeader: {
+					name: 'ProjectHeader',
+					props: ['mainButton', 'disableAgentCreation'],
+					template: '<div><slot /></div>',
+				},
 				InsightsSummary: true,
-				N8nEmptyState: { template: '<div />' },
+				N8nEmptyState: {
+					props: ['heading', 'description'],
+					template: '<div>{{ heading }} {{ description }}</div>',
+				},
 				ResourcesListEmptyState: {
 					template: '<div data-test-id="agents-list-empty-fallback" />',
 				},
@@ -306,6 +326,11 @@ afterEach(() => {
 beforeEach(() => {
 	foldersEnabled.value = false;
 	agentUpdateAllowed.value = true;
+	agentReadAllowed.value = true;
+	agentCreateAllowed.value = true;
+	listableProjects.value = ['project-1', 'project-2', 'personal-project'];
+	globalScopes.value = [];
+	currentProjectScopes.value = undefined;
 	folderReadAllowed.value = true;
 	folderWriteAllowed.value = false;
 	branchReadOnly.value = false;
@@ -982,6 +1007,116 @@ describe('AgentsListView — empty state templates', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it.each([false, true])(
+		'shows a permission state instead of creation actions with templates enabled: %s',
+		async (showTemplates) => {
+			listableProjects.value = ['project-2'];
+			templatesEnabled.value = showTemplates;
+			foldersEnabled.value = true;
+			mocks.routeFolderId = 'folder-1';
+			mocks.routeQuery = { showArchived: 'true' };
+
+			const wrapper = await mountView();
+
+			expect(wrapper.text()).toContain('agents.list.noPermission.heading');
+			expect(wrapper.text()).toContain('agents.list.noPermission.description');
+			expect(wrapper.getComponent({ name: 'ProjectHeader' }).props()).toMatchObject({
+				mainButton: 'agent',
+				disableAgentCreation: true,
+			});
+			expect(wrapper.find('[data-test-id="agents-list-intro"]').exists()).toBe(false);
+			expect(wrapper.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(false);
+			expect(mocks.listAgentsPage).not.toHaveBeenCalled();
+			expect(mocks.getProjectFolders).not.toHaveBeenCalled();
+			expect(mocks.toastShowError).not.toHaveBeenCalled();
+			expect(trackTemplatesExposure).not.toHaveBeenCalled();
+		},
+	);
+
+	it('keeps a folder link scoped without create or folder read access', async () => {
+		mocks.routeFolderId = 'folder-1';
+		agentCreateAllowed.value = false;
+		agentReadAllowed.value = false;
+		foldersEnabled.value = true;
+		mocks.listAgentsPage.mockResolvedValue({ count: 1, data: [agent('a1', 'Support Agent')] });
+
+		const wrapper = await mountView();
+
+		expect(wrapper.get('[data-test-id="agent-card"]').text()).toBe('Support Agent');
+		expect(mocks.getProjectFolders).not.toHaveBeenCalled();
+		expect(mocks.listAgentsPage.mock.lastCall?.[2]).toMatchObject({
+			filter: { parentFolderId: 'folder-1' },
+		});
+	});
+
+	it('shows a neutral empty state when the user can list but not create agents', async () => {
+		agentCreateAllowed.value = false;
+		templatesEnabled.value = true;
+
+		const wrapper = await mountView();
+
+		expect(wrapper.text()).toContain('agents.list.empty.readOnly.heading');
+		expect(wrapper.getComponent({ name: 'ProjectHeader' }).props('disableAgentCreation')).toBe(
+			true,
+		);
+		expect(wrapper.find('[data-test-id="agents-list-intro"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(false);
+		expect(trackTemplatesExposure).not.toHaveBeenCalled();
+	});
+
+	it('uses fresh project scopes when the project membership list is stale', async () => {
+		listableProjects.value = [];
+		currentProjectScopes.value = ['agent:list'];
+		mocks.listAgentsPage.mockResolvedValue({ count: 1, data: [agent('a1', 'Support Agent')] });
+
+		const wrapper = await mountView();
+
+		expect(wrapper.get('[data-test-id="agent-card"]').text()).toBe('Support Agent');
+	});
+
+	it('shows the permission state on Overview when no projects allow listing', async () => {
+		mocks.routeProjectId = undefined;
+		listableProjects.value = [];
+
+		const wrapper = await mountView();
+
+		expect(wrapper.text()).toContain('agents.list.noPermission.heading');
+		expect(mocks.listAgentsPageGlobal).not.toHaveBeenCalled();
+	});
+
+	it('allows Overview listing with a global grant and no project grant', async () => {
+		mocks.routeProjectId = undefined;
+		listableProjects.value = [];
+		globalScopes.value = ['agent:list'];
+		mocks.listAgentsPageGlobal.mockResolvedValue({
+			count: 1,
+			data: [agent('a1', 'Support Agent')],
+		});
+
+		const wrapper = await mountView();
+
+		expect(wrapper.get('[data-test-id="agent-card"]').text()).toBe('Support Agent');
+	});
+
+	it('ignores a pending load after switching to a project without access', async () => {
+		let rejectLoad!: (error: Error) => void;
+		mocks.listAgentsPage.mockReturnValueOnce(
+			new Promise((_resolve, reject) => {
+				rejectLoad = reject;
+			}),
+		);
+		const wrapper = await mountView();
+
+		navigation.value = { projectId: 'restricted-project' };
+		await flushPromises();
+		rejectLoad(new Error('request failed'));
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('agents.list.noPermission.heading');
+		expect(mocks.listAgentsPage).toHaveBeenCalledTimes(1);
+		expect(mocks.toastShowError).not.toHaveBeenCalled();
 	});
 
 	it('keeps the current empty state unless the experiment is enabled', async () => {

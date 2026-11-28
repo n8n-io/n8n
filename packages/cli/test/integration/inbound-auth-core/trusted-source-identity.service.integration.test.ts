@@ -538,7 +538,7 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			'creates a user with a personal project and a jit binding from config v%s',
 			async (version) => {
 				const source = await seedSource(jit, 'admin', version);
-				expect(source.config.version).toBe(2);
+				expect(source.config.version).toBe(3);
 				expect(source.config.identity.provision).toEqual({ person: 'jit' });
 
 				const context = expectOk(

@@ -17,6 +17,33 @@ describe('ProjectRelationRepository', () => {
 		await testDb.terminate();
 	});
 
+	describe('findProjectRole()', () => {
+		it('returns the role of a member of the project', async () => {
+			const member = await createMember();
+			const team = await createTeamProject();
+			await linkUserToProject(member, team, 'project:viewer');
+
+			const role = await Container.get(ProjectRelationRepository).findProjectRole({
+				userId: member.id,
+				projectId: team.id,
+			});
+
+			expect(role?.slug).toBe('project:viewer');
+		});
+
+		it('returns null for a user outside the project', async () => {
+			const outsider = await createMember();
+			const team = await createTeamProject();
+
+			await expect(
+				Container.get(ProjectRelationRepository).findProjectRole({
+					userId: outsider.id,
+					projectId: team.id,
+				}),
+			).resolves.toBeNull();
+		});
+	});
+
 	describe('countPeopleByRole()', () => {
 		it('counts the project roles of people only', async () => {
 			const person = await createMember();

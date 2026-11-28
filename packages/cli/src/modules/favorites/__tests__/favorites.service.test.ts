@@ -1,11 +1,15 @@
 import {
 	FavoriteResourceResolverRegistry,
 	type FavoriteResourceResolver,
+	type FolderFinderService,
+	type ProjectScopeService,
 } from '@n8n/backend-services';
 import {
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
+	type Folder,
 	type FolderRepository,
+	type Project,
 	type ProjectRepository,
 	type SharedWorkflowRepository,
 	type User,
@@ -48,6 +52,8 @@ describe('FavoritesService', () => {
 	const projectRepository = mock<ProjectRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const folderRepository = mock<FolderRepository>();
+	const projectScopeService = mock<ProjectScopeService>();
+	const folderFinderService = mock<FolderFinderService>();
 	const dataTableResolver = {
 		globalReadScope: 'dataTable:read',
 		findMeta: vi.fn<FavoriteResourceResolver['findMeta']>(),
@@ -68,6 +74,8 @@ describe('FavoritesService', () => {
 		sharedWorkflowRepository,
 		folderRepository,
 		resolverRegistry,
+		projectScopeService,
+		folderFinderService,
 	);
 
 	afterEach(() => vi.clearAllMocks());
@@ -197,6 +205,8 @@ describe('FavoritesService', () => {
 				sharedWorkflowRepository,
 				folderRepository,
 				new FavoriteResourceResolverRegistry(),
+				projectScopeService,
+				folderFinderService,
 			);
 
 			const result = await serviceWithoutResolvers.getEnrichedFavorites(makeUser());
@@ -438,16 +448,30 @@ describe('FavoritesService', () => {
 	});
 
 	describe('addFavorite', () => {
-		it('should create and save a new favorite', async () => {
+		const allowWorkflowAccess = (resourceId = 'res1') => {
+			projectScopeService.getProjectRoleSlugs.mockResolvedValue(['project:viewer']);
+			sharedWorkflowRepository.findWorkflowIdsInUserProjects.mockResolvedValue(
+				new Set([resourceId]),
+			);
+		};
+
+		it('should create and save a new favorite when user has access', async () => {
+			const user = makeUser();
 			const favorite = mock<UserFavorite>();
+			allowWorkflowAccess();
 			repo.findOne.mockResolvedValue(null);
-			workflowRepository.existsBy.mockResolvedValue(true);
 			repo.count.mockResolvedValue(0);
 			repo.create.mockReturnValue(favorite);
 			repo.save.mockResolvedValue(favorite);
 
-			const result = await service.addFavorite('user1', 'res1', 'workflow');
+			const result = await service.addFavorite(user, 'res1', 'workflow');
 
+			expect(projectScopeService.getProjectRoleSlugs).toHaveBeenCalledWith(user, ['workflow:read']);
+			expect(sharedWorkflowRepository.findWorkflowIdsInUserProjects).toHaveBeenCalledWith(
+				['res1'],
+				'user1',
+				['project:viewer'],
+			);
 			expect(repo.create).toHaveBeenCalledWith({
 				userId: 'user1',
 				resourceId: 'res1',
@@ -457,33 +481,36 @@ describe('FavoritesService', () => {
 			expect(result).toBe(favorite);
 		});
 
-		it('should return existing favorite without saving if already exists', async () => {
+		it('should return existing favorite without saving if already exists and accessible', async () => {
 			const existing = mock<UserFavorite>();
+			allowWorkflowAccess();
 			repo.findOne.mockResolvedValue(existing);
 
-			const result = await service.addFavorite('user1', 'res1', 'workflow');
+			const result = await service.addFavorite(makeUser(), 'res1', 'workflow');
 
 			expect(repo.create).not.toHaveBeenCalled();
 			expect(repo.save).not.toHaveBeenCalled();
 			expect(result).toBe(existing);
 		});
 
-		it('should throw NotFoundError when resource does not exist', async () => {
-			repo.findOne.mockResolvedValue(null);
-			workflowRepository.existsBy.mockResolvedValue(false);
+		it('should throw NotFoundError even if a prior favorite row exists when user lacks access', async () => {
+			projectScopeService.getProjectRoleSlugs.mockResolvedValue(['project:viewer']);
+			sharedWorkflowRepository.findWorkflowIdsInUserProjects.mockResolvedValue(new Set());
 
-			await expect(service.addFavorite('user1', 'res1', 'workflow')).rejects.toThrow(NotFoundError);
+			await expect(service.addFavorite(makeUser(), 'res1', 'workflow')).rejects.toThrow(
+				NotFoundError,
+			);
 
-			expect(repo.create).not.toHaveBeenCalled();
+			expect(repo.findOne).not.toHaveBeenCalled();
 			expect(repo.save).not.toHaveBeenCalled();
 		});
 
 		it('should throw BadRequestError when favorites limit is reached', async () => {
+			allowWorkflowAccess();
 			repo.findOne.mockResolvedValue(null);
-			workflowRepository.existsBy.mockResolvedValue(true);
 			repo.count.mockResolvedValue(200);
 
-			await expect(service.addFavorite('user1', 'res1', 'workflow')).rejects.toThrow(
+			await expect(service.addFavorite(makeUser(), 'res1', 'workflow')).rejects.toThrow(
 				BadRequestError,
 			);
 
@@ -493,74 +520,191 @@ describe('FavoritesService', () => {
 
 		it('should allow adding when count is one below the limit', async () => {
 			const favorite = mock<UserFavorite>();
+			allowWorkflowAccess();
 			repo.findOne.mockResolvedValue(null);
-			workflowRepository.existsBy.mockResolvedValue(true);
 			repo.count.mockResolvedValue(199);
 			repo.create.mockReturnValue(favorite);
 			repo.save.mockResolvedValue(favorite);
 
-			const result = await service.addFavorite('user1', 'res1', 'workflow');
+			const result = await service.addFavorite(makeUser(), 'res1', 'workflow');
 
 			expect(repo.save).toHaveBeenCalled();
 			expect(result).toBe(favorite);
 		});
 
-		it.each([
-			{ resourceType: 'workflow' as const, repository: 'workflowRepository' },
-			{ resourceType: 'project' as const, repository: 'projectRepository' },
-			{ resourceType: 'folder' as const, repository: 'folderRepository' },
-		])(
-			'should check existence using the correct repository for $resourceType',
-			async ({ resourceType, repository }) => {
-				const repositories = {
-					workflowRepository,
-					projectRepository,
-					folderRepository,
-				};
-				repo.findOne.mockResolvedValue(null);
-				repositories[repository as keyof typeof repositories].existsBy.mockResolvedValue(false);
+		describe('workflow access', () => {
+			it('should throw NotFoundError when user lacks workflow:read access', async () => {
+				projectScopeService.getProjectRoleSlugs.mockResolvedValue(['project:viewer']);
+				sharedWorkflowRepository.findWorkflowIdsInUserProjects.mockResolvedValue(new Set());
 
-				await expect(service.addFavorite('user1', 'res1', resourceType)).rejects.toThrow(
+				await expect(service.addFavorite(makeUser(), 'wf1', 'workflow')).rejects.toThrow(
 					NotFoundError,
 				);
-				expect(repositories[repository as keyof typeof repositories].existsBy).toHaveBeenCalledWith(
-					{ id: 'res1' },
-				);
-			},
-		);
 
-		it.each([
-			{ resourceType: 'dataTable' as const, resolver: dataTableResolver },
-			{ resourceType: 'agent' as const, resolver: agentResolver },
-		])(
-			'should check existence using the registered resolver for $resourceType',
-			async ({ resourceType, resolver }) => {
-				repo.findOne.mockResolvedValue(null);
-				resolver.exists.mockResolvedValue(false);
+				expect(repo.save).not.toHaveBeenCalled();
+			});
 
-				await expect(service.addFavorite('user1', 'res1', resourceType)).rejects.toThrow(
-					NotFoundError,
-				);
-				expect(resolver.exists).toHaveBeenCalledWith('res1');
-			},
-		);
-
-		it.each([
-			{ resourceType: 'dataTable' as const, resolver: dataTableResolver },
-			{ resourceType: 'agent' as const, resolver: agentResolver },
-		])(
-			'should create the favorite when the resolver reports the $resourceType exists',
-			async ({ resourceType, resolver }) => {
+			it('should check workflow existence directly for users with global workflow:read', async () => {
+				const admin = makeAdmin();
 				const favorite = mock<UserFavorite>();
+				projectScopeService.getProjectRoleSlugs.mockResolvedValue(null);
+				workflowRepository.existsBy.mockResolvedValue(true);
 				repo.findOne.mockResolvedValue(null);
-				resolver.exists.mockResolvedValue(true);
 				repo.count.mockResolvedValue(0);
 				repo.create.mockReturnValue(favorite);
 				repo.save.mockResolvedValue(favorite);
 
-				const result = await service.addFavorite('user1', 'res1', resourceType);
+				const result = await service.addFavorite(admin, 'wf1', 'workflow');
 
-				expect(resolver.exists).toHaveBeenCalledWith('res1');
+				expect(workflowRepository.existsBy).toHaveBeenCalledWith({ id: 'wf1' });
+				expect(sharedWorkflowRepository.findWorkflowIdsInUserProjects).not.toHaveBeenCalled();
+				expect(result).toBe(favorite);
+			});
+
+			it('should throw NotFoundError for global admin when workflow does not exist', async () => {
+				projectScopeService.getProjectRoleSlugs.mockResolvedValue(null);
+				workflowRepository.existsBy.mockResolvedValue(false);
+
+				await expect(service.addFavorite(makeAdmin(), 'missing', 'workflow')).rejects.toThrow(
+					NotFoundError,
+				);
+
+				expect(repo.save).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('project access', () => {
+			it('should create favorite when user has project:read on the project', async () => {
+				const user = makeUser();
+				const favorite = mock<UserFavorite>();
+				projectScopeService.getProjectRoleSlugs.mockResolvedValue(['project:viewer']);
+				projectRepository.findOneWithUserRoles.mockResolvedValue(mock<Project>({ id: 'proj1' }));
+				repo.findOne.mockResolvedValue(null);
+				repo.count.mockResolvedValue(0);
+				repo.create.mockReturnValue(favorite);
+				repo.save.mockResolvedValue(favorite);
+
+				const result = await service.addFavorite(user, 'proj1', 'project');
+
+				expect(projectScopeService.getProjectRoleSlugs).toHaveBeenCalledWith(user, [
+					'project:read',
+				]);
+				expect(projectRepository.findOneWithUserRoles).toHaveBeenCalledWith('proj1', 'user1', [
+					'project:viewer',
+				]);
+				expect(result).toBe(favorite);
+			});
+
+			it('should throw NotFoundError when user lacks project:read on the project', async () => {
+				projectScopeService.getProjectRoleSlugs.mockResolvedValue(['project:viewer']);
+				projectRepository.findOneWithUserRoles.mockResolvedValue(null);
+
+				await expect(service.addFavorite(makeUser(), 'proj1', 'project')).rejects.toThrow(
+					NotFoundError,
+				);
+
+				expect(repo.save).not.toHaveBeenCalled();
+			});
+
+			it('should throw NotFoundError without querying repository when no project roles grant project:read', async () => {
+				projectScopeService.getProjectRoleSlugs.mockResolvedValue([]);
+
+				await expect(service.addFavorite(makeUser(), 'proj1', 'project')).rejects.toThrow(
+					NotFoundError,
+				);
+
+				expect(projectRepository.findOneWithUserRoles).not.toHaveBeenCalled();
+				expect(repo.save).not.toHaveBeenCalled();
+			});
+
+			it('should allow global admin to favorite an existing project', async () => {
+				const admin = makeAdmin();
+				const favorite = mock<UserFavorite>();
+				projectScopeService.getProjectRoleSlugs.mockResolvedValue(null);
+				projectRepository.findOneWithUserRoles.mockResolvedValue(mock<Project>({ id: 'proj1' }));
+				repo.findOne.mockResolvedValue(null);
+				repo.count.mockResolvedValue(0);
+				repo.create.mockReturnValue(favorite);
+				repo.save.mockResolvedValue(favorite);
+
+				const result = await service.addFavorite(admin, 'proj1', 'project');
+
+				expect(projectRepository.findOneWithUserRoles).toHaveBeenCalledWith(
+					'proj1',
+					'admin1',
+					undefined,
+				);
+				expect(result).toBe(favorite);
+			});
+		});
+
+		describe('folder access', () => {
+			it('should create favorite when user has folder:read on the folder', async () => {
+				const user = makeUser();
+				const favorite = mock<UserFavorite>();
+				folderFinderService.findFoldersByIdsForUser.mockResolvedValue([
+					mock<Folder>({ id: 'folder1', homeProject: mock<Project>({ id: 'proj1' }) }),
+				]);
+				repo.findOne.mockResolvedValue(null);
+				repo.count.mockResolvedValue(0);
+				repo.create.mockReturnValue(favorite);
+				repo.save.mockResolvedValue(favorite);
+
+				const result = await service.addFavorite(user, 'folder1', 'folder');
+
+				expect(folderFinderService.findFoldersByIdsForUser).toHaveBeenCalledWith(
+					['folder1'],
+					user,
+					['folder:read'],
+				);
+				expect(result).toBe(favorite);
+			});
+
+			it('should throw NotFoundError when user lacks folder:read or folder does not exist', async () => {
+				folderFinderService.findFoldersByIdsForUser.mockResolvedValue([]);
+
+				await expect(service.addFavorite(makeUser(), 'folder1', 'folder')).rejects.toThrow(
+					NotFoundError,
+				);
+
+				expect(repo.save).not.toHaveBeenCalled();
+			});
+
+			it('should throw NotFoundError when folder has no homeProject', async () => {
+				folderFinderService.findFoldersByIdsForUser.mockResolvedValue([
+					mock<Folder>({ id: 'folder1', homeProject: undefined as unknown as Project }),
+				]);
+
+				await expect(service.addFavorite(makeUser(), 'folder1', 'folder')).rejects.toThrow(
+					NotFoundError,
+				);
+
+				expect(repo.save).not.toHaveBeenCalled();
+			});
+		});
+
+		describe.each([
+			{ resourceType: 'dataTable' as const, resolver: dataTableResolver },
+			{ resourceType: 'agent' as const, resolver: agentResolver },
+		])('$resourceType access', ({ resourceType, resolver }) => {
+			it('should create favorite when resource exists and user has read scope in its project', async () => {
+				const user = makeUser();
+				const favorite = mock<UserFavorite>();
+				resolver.findMeta.mockResolvedValue(
+					new Map([['res1', { name: 'Res', projectId: 'proj1' }]]),
+				);
+				projectScopeService.hasScopes.mockResolvedValue(true);
+				repo.findOne.mockResolvedValue(null);
+				repo.count.mockResolvedValue(0);
+				repo.create.mockReturnValue(favorite);
+				repo.save.mockResolvedValue(favorite);
+
+				const result = await service.addFavorite(user, 'res1', resourceType);
+
+				expect(resolver.findMeta).toHaveBeenCalledWith(['res1']);
+				expect(projectScopeService.hasScopes).toHaveBeenCalledWith(user, 'proj1', [
+					resolver.globalReadScope,
+				]);
 				expect(repo.create).toHaveBeenCalledWith({
 					userId: 'user1',
 					resourceId: 'res1',
@@ -568,8 +712,37 @@ describe('FavoritesService', () => {
 				});
 				expect(repo.save).toHaveBeenCalledWith(favorite);
 				expect(result).toBe(favorite);
-			},
-		);
+			});
+
+			it('should throw NotFoundError when resource does not exist', async () => {
+				resolver.findMeta.mockResolvedValue(new Map());
+
+				await expect(service.addFavorite(makeUser(), 'res1', resourceType)).rejects.toThrow(
+					NotFoundError,
+				);
+
+				expect(resolver.findMeta).toHaveBeenCalledWith(['res1']);
+				expect(projectScopeService.hasScopes).not.toHaveBeenCalled();
+				expect(repo.save).not.toHaveBeenCalled();
+			});
+
+			it('should throw NotFoundError when user lacks read scope in the resource project', async () => {
+				const user = makeUser();
+				resolver.findMeta.mockResolvedValue(
+					new Map([['res1', { name: 'Res', projectId: 'proj-other' }]]),
+				);
+				projectScopeService.hasScopes.mockResolvedValue(false);
+
+				await expect(service.addFavorite(user, 'res1', resourceType)).rejects.toThrow(
+					NotFoundError,
+				);
+
+				expect(projectScopeService.hasScopes).toHaveBeenCalledWith(user, 'proj-other', [
+					resolver.globalReadScope,
+				]);
+				expect(repo.save).not.toHaveBeenCalled();
+			});
+		});
 
 		it('should throw NotFoundError when the resource type has no registered resolver', async () => {
 			const serviceWithoutResolvers = new FavoritesService(
@@ -579,12 +752,13 @@ describe('FavoritesService', () => {
 				sharedWorkflowRepository,
 				folderRepository,
 				new FavoriteResourceResolverRegistry(),
+				projectScopeService,
+				folderFinderService,
 			);
-			repo.findOne.mockResolvedValue(null);
 
-			await expect(serviceWithoutResolvers.addFavorite('user1', 'res1', 'agent')).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(
+				serviceWithoutResolvers.addFavorite(makeUser(), 'res1', 'agent'),
+			).rejects.toThrow(NotFoundError);
 			expect(repo.save).not.toHaveBeenCalled();
 		});
 	});

@@ -456,6 +456,10 @@ describe('approval details', () => {
 			'Rename column "notes" to "comment"',
 		],
 		[{ action: 'archive-workflow', name: 'Orders', id: 'wf1' }, 'Archive Orders (ID: wf1)'],
+		[
+			{ action: 'archive-agent', name: 'Support', id: 'a1' },
+			'Archive Agent Support (ID: a1)? This unpublishes the Agent and keeps its data.',
+		],
 		[{ action: 'restore-workflow', name: 'Orders', id: 'wf1' }, 'Restore Orders (ID: wf1)'],
 		[{ action: 'unpublish-workflow', name: 'Orders', id: 'wf1' }, 'Unpublish Orders (ID: wf1)'],
 		[

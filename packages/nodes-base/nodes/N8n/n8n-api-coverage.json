@@ -14,15 +14,26 @@
 		"GET /agents/{agentId}": {
 			"status": "gap"
 		},
+		"GET /agents/{agentId}/executions": {
+			"status": "gap"
+		},
+		"GET /agents/{agentId}/versions": {
+			"status": "gap"
+		},
+		"GET /agents/{agentId}/versions/{versionId}": {},
 		"POST /agents": {
 			"status": "gap"
 		},
 		"POST /agents/{agentId}/archive": {
 			"status": "gap"
 		},
+		"POST /agents/{agentId}/executions/{executionId}/stop": {
+			"status": "gap"
+		},
 		"POST /agents/{agentId}/publish": {
 			"status": "gap"
 		},
+		"POST /agents/{agentId}/run": {},
 		"POST /agents/{agentId}/unarchive": {
 			"status": "gap"
 		},

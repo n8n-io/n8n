@@ -17,6 +17,8 @@ import type {
 import { AUTO_MAP, BATCH_MODE, DATA_MODE } from '../../helpers/interfaces';
 import {
 	escapeSqlIdentifier,
+	getTableName,
+	isDatabaseExpression,
 	prepareErrorItem,
 	replaceEmptyStringsByNulls,
 } from '../../helpers/utils';
@@ -86,7 +88,7 @@ const properties: INodeProperties[] = [
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumns',
-							loadOptionsDependsOn: ['table.value'],
+							loadOptionsDependsOn: ['database.value', 'table.value'],
 						},
 						default: [],
 					},
@@ -124,7 +126,7 @@ export async function execute(
 	let returnData: INodeExecutionData[] = [];
 	const items = replaceEmptyStringsByNulls(inputItems, nodeOptions.replaceEmptyStrings as boolean);
 
-	const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
+	const databasePerItem = isDatabaseExpression(this);
 
 	const dataMode = this.getNodeParameter('dataMode', 0) as string;
 	const queryBatching = (nodeOptions.queryBatching as QueryMode) || BATCH_MODE.SINGLE;
@@ -132,6 +134,32 @@ export async function execute(
 	const queries: QueryWithValues[] = [];
 
 	if (queryBatching === BATCH_MODE.SINGLE) {
+		let table = '';
+		// Without a Database expression, only index 0 is read, for compatibility with saved workflows.
+		const tableReads = databasePerItem ? items.length : 1;
+		for (let i = 0; i < tableReads; i++) {
+			try {
+				const itemTable = getTableName(this, i);
+				if (i === 0) {
+					table = itemTable;
+				} else if (itemTable !== table) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Database or Table value is not the same for all items',
+						{
+							itemIndex: i,
+							description:
+								'Set Options > Query Batching to Independent or Transaction to insert each item into its own table',
+						},
+					);
+				}
+			} catch (error) {
+				if (!this.continueOnFail()) throw error;
+				// No query runs, so the error item is the only output.
+				return [prepareErrorItem(items[i].json, error as NodeOperationError, i)];
+			}
+		}
+
 		let columns: string[] = [];
 		let insertItems: IDataObject[] = [];
 
@@ -189,8 +217,13 @@ export async function execute(
 
 		queries.push({ query, values });
 	} else {
+		let firstTable: string | undefined;
 		for (let i = 0; i < items.length; i++) {
 			try {
+				// Without a Database expression, index 0 is read once, for compatibility with saved workflows.
+				const itemTable = databasePerItem
+					? getTableName(this, i)
+					: (firstTable ??= getTableName(this, 0));
 				let columns: string[] = [];
 				let insertItem: IDataObject = {};
 
@@ -224,7 +257,7 @@ export async function execute(
 				const placeholder = `(${columns.map(() => '?').join(',')})`;
 
 				const query = `INSERT ${priority} ${ignore} INTO ${escapeSqlIdentifier(
-					table,
+					itemTable,
 				)} (${escapedColumns}) VALUES ${placeholder};`;
 
 				const values = Object.values(insertItem) as QueryValues;

@@ -12,6 +12,8 @@ import {
 } from '../config/env-yaml';
 import { isPresetName, PRESETS, type PresetName } from '../config/presets';
 import { envPaths } from '../environment';
+import { defaultLicense, describeLicense, listLicenses } from '../licenses';
+import { addLicenseInteractively } from './license';
 import { launcherComponents, processComponents, runnerComponents } from '../topology/components';
 import { validateTopology } from '../topology/validate';
 import { ask, type Choice, confirm, intro, multiselect, note, outro, select } from '../ui/prompt';
@@ -133,8 +135,47 @@ function summary(input: TopologyInput): string {
 	].join('\n');
 }
 
-/** Asks for a topology and a name with arrow-key prompts. Returns undefined when the user declines. */
-export async function wizard(givenName?: string): Promise<TopologyInput | undefined> {
+// License names cannot start with `:`, so these values do not clash with a name.
+const NO_LICENSE = ':none';
+const NEW_LICENSE = ':new';
+
+/** Asks for a stored license, or adds a new one. Returns undefined for no license. */
+async function licenseStep(mains: number): Promise<string | undefined> {
+	while (true) {
+		const names = listLicenses();
+		const fallback = defaultLicense();
+		const choice = await select<string>(
+			'License',
+			[
+				{
+					value: NO_LICENSE,
+					label: 'None',
+					hint: mains > 1 ? 'multi-main needs a license' : undefined,
+				},
+				...names.map((name) => ({
+					value: name,
+					label: describeLicense(name),
+					hint: name === fallback ? 'default' : undefined,
+				})),
+				{ value: NEW_LICENSE, label: '+ Add a new license…' },
+			],
+			fallback ?? (mains > 1 && names.length > 0 ? names[0] : NO_LICENSE),
+		);
+		if (choice === NO_LICENSE) return undefined;
+		if (choice !== NEW_LICENSE) return choice;
+		const added = await addLicenseInteractively();
+		if (added) return added;
+	}
+}
+
+/**
+ * Asks for a topology and a name with arrow-key prompts. Returns undefined when
+ * the user declines. A given license (a name, or `false` for none) skips the license step.
+ */
+export async function wizard(
+	givenName?: string,
+	options: { license?: string | false } = {},
+): Promise<TopologyInput | undefined> {
 	intro(pc.bold('rig · new environment'));
 
 	const presetNames = Object.keys(PRESETS).filter(isPresetName);
@@ -164,6 +205,9 @@ export async function wizard(givenName?: string): Promise<TopologyInput | undefi
 		},
 	]);
 	if (mail) topology.mail = { provider: 'mailpit' };
+	const license =
+		options.license === undefined ? await licenseStep(topology.mains ?? 1) : options.license;
+	if (license) topology.license = license;
 	const used = slotsInUse();
 	const sharing = used.get(0);
 	if (sharing) {

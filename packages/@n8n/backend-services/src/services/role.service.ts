@@ -224,7 +224,7 @@ export class RoleService {
 			return [];
 		}
 
-		const scopes = await this.scopeRepository.findByList(requested);
+		const scopes = await this.scopeRepository.findByList(requested, {});
 		if (scopes.length !== requested.length) {
 			const invalidScopes = requested.filter((slug) => !scopes.some((s) => s.slug === slug));
 			throw new Error(`The following scopes are invalid: ${invalidScopes.join(', ')}`);
@@ -504,7 +504,7 @@ export class RoleService {
 			throw new NotFoundError(`Role ${roleSlug} not found`);
 		}
 
-		const scopes = await this.scopeRepository.findByListOrFail(scopeSlugs);
+		const scopes = await this.scopeRepository.findByListOrFail(scopeSlugs, {});
 
 		const alreadyAssignedSlugs = new Set(role.scopes.map((s) => s.slug));
 		const scopesToAdd = scopes.filter((s) => !alreadyAssignedSlugs.has(s.slug));

@@ -5,6 +5,7 @@ import { computed } from 'vue';
 
 import { EngineV2Module } from '../engine-v2.module';
 import { engineV2Check, type EngineCompatibilityReason } from '../engineV2Check';
+import { groupEngineV2Reasons } from '../engineV2Findings';
 
 /** Getters for the open workflow. The shell owns the document store, so it passes them in. */
 export interface EngineV2CompatibilityWorkflowSource {
@@ -42,6 +43,9 @@ export function useEngineV2Compatibility(workflow: EngineV2CompatibilityWorkflow
 		reasons.value.filter((reason) => reason.severity === 'blocking'),
 	);
 
+	/** One group for each node with reasons, and one for each reason with no node. */
+	const groups = computed(() => groupEngineV2Reasons(reasons.value));
+
 	/** Reads only the gate and the node-type answer, so a node creator row never runs the check. */
 	function isNodeTypeIncompatible(nodeTypeName: string): boolean {
 		// Not `isActive.value && …`: before the settings load, `isModuleActive` returns `undefined`.
@@ -49,7 +53,7 @@ export function useEngineV2Compatibility(workflow: EngineV2CompatibilityWorkflow
 		return !engineV2Check.isNodeTypeSupported(nodeTypeName);
 	}
 
-	return { reasons, blockingReasons, isNodeTypeIncompatible };
+	return { reasons, blockingReasons, groups, isNodeTypeIncompatible };
 }
 
 /** Why engine v2 blocks publishing. The publish tooltip and the publish toast use it. */

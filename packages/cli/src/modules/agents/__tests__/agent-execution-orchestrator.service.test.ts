@@ -3024,6 +3024,85 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 	});
 
+	it('runs a Public API turn on the published version with a user-owned session', async () => {
+		const { service, executionService, runtimeCacheService, agentExecutionStatisticsRepository } =
+			makeService();
+		executionService.canUsePublicApiThread.mockResolvedValue(true);
+		const runtime = makeRuntime();
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.executeForPublicApiPublished({
+				agentId,
+				projectId,
+				user,
+				message: 'Hello',
+				memory: { threadId: 'thread-1', resourceId: 'public-api:user-1' },
+			}),
+		);
+
+		expect(agentExecutionStatisticsRepository.recordAgentExecution).toHaveBeenCalledTimes(1);
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
+			expect.objectContaining({
+				integrationType: 'public_api',
+				usePublishedVersion: true,
+				attributionUserId: user.id,
+				sandboxPrincipalHash: userPrincipalHash,
+				// A synchronous channel: no background task wakes, so no background tasks.
+				allowBackgroundTasks: false,
+			}),
+		);
+		expect(readReviewRequester(runtime.agent.stream.mock.calls[0][1]?.persistence)).toEqual({
+			id: user.id,
+			source: 'public_api',
+		});
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({
+				access: { accessScope: 'user', ownerId: user.id },
+				source: 'public_api',
+				telemetry: expect.objectContaining({ runType: 'production', userId: user.id }),
+				previewChat: undefined,
+				// No chat surface shows the run, so mid-turn steering is off;
+				// the stop endpoint aborts the run instead.
+				acceptsSteering: false,
+			}),
+			expect.any(Date),
+		);
+	});
+
+	it('rejects a Public API turn with a foreign thread or memory scope', async () => {
+		const { service, executionService, runtimeCacheService } = makeService();
+		executionService.canUsePublicApiThread.mockResolvedValue(true);
+		for (const resourceId of ['draft-chat:user-1', 'public-api:other-user']) {
+			await expect(
+				collect(
+					service.executeForPublicApiPublished({
+						agentId,
+						projectId,
+						user,
+						message: 'Hello',
+						memory: { threadId: 'thread-1', resourceId },
+					}),
+				),
+			).rejects.toThrow('Session not found');
+		}
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+
+		executionService.canUsePublicApiThread.mockResolvedValue(false);
+		await expect(
+			collect(
+				service.executeForPublicApiPublished({
+					agentId,
+					projectId,
+					user,
+					message: 'Hello',
+					memory: { threadId: 'thread-1', resourceId: 'public-api:user-1' },
+				}),
+			),
+		).rejects.toThrow('Session not found');
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
 	it('rejects an in-app chat turn with a foreign memory scope', async () => {
 		const { service, runtimeCacheService } = makeService();
 

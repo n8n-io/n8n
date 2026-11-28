@@ -23,9 +23,9 @@ export const AGENT_N8N_CHAT_VIEW = 'AgentN8nChatView';
 export const AGENT_N8N_CHAT_LIBRARY_VIEW = 'AgentN8nChatLibraryView';
 
 /**
- * n8n Chat agent search cap, shared by the library view and the "Chat with"
- * picker. Matches the backend filter (`agentListFilterSchema.query` `.max(128)`,
- * `@n8n/api-types`), so a longer search term never reaches the API.
+ * n8n Chat agent search cap for the library view. Matches the backend filter
+ * (`agentListFilterSchema.query` `.max(128)`, `@n8n/api-types`), so a longer
+ * search term never reaches the API.
  */
 export const AGENT_N8N_CHAT_SEARCH_MAX_LENGTH = 128;
 

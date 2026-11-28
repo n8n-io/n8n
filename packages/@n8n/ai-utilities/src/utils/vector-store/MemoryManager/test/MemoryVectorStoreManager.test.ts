@@ -142,12 +142,10 @@ describe('MemoryVectorStoreManager', () => {
 		const metadataSizeBefore = instance['storeMetadata'].get('test-key')?.size;
 		expect(metadataSizeBefore).toBe(1000);
 
-		// Now clear the store by calling the private method directly
-		instance['clearStoreMetadata']('test-key');
+		instance.clearStore('test-key');
 
-		// Verify metadata was reset
-		const metadataSizeAfter = instance['storeMetadata'].get('test-key')?.size;
-		expect(metadataSizeAfter).toBe(0);
+		expect(instance.getMemoryKeysList()).not.toContain('test-key');
+		expect(instance['storeMetadata'].has('test-key')).toBe(false);
 
 		// The memory usage should be reduced
 		expect(instance.getMemoryUsage()).toBe(0);

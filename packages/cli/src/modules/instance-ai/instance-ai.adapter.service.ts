@@ -215,7 +215,7 @@ import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
 import type { AssistantCredentialTestTarget } from './turn-setup/assistant-turn-overrides';
 import { DataTableRepository, DataTableService } from '@n8n/backend-module-data-table';
 
-import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
+import { SkillsGate, SkillSyncFlagGate, WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import {
 	MCP_REGISTRY_PACKAGE_NAME,
 	getMcpRegistryCredentialOptions,
@@ -454,6 +454,7 @@ export interface InstanceAiFeatureFlags {
 	instanceContextEnabled: boolean;
 	assistantSkillsEnabled: boolean;
 	skillSourcesEnabled?: boolean;
+	workflowsInSkillsEnabled?: boolean;
 	preferencesNoteVariant?: string;
 }
 
@@ -608,6 +609,7 @@ export class InstanceAiAdapterService {
 			credentialDescriptionsEnabled?: boolean;
 			assistantSkillsEnabled?: boolean;
 			skillSourcesEnabled?: boolean;
+			workflowsInSkillsEnabled?: boolean;
 			/** Host-resolved main model for the run. */
 			modelId?: ModelConfig;
 			/** Host-resolved utility model. Absent → utility calls use `modelId`. */
@@ -642,6 +644,7 @@ export class InstanceAiAdapterService {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			skillSourcesEnabled,
+			workflowsInSkillsEnabled,
 			modelId,
 			utilityModelId,
 			onHelperUsage,
@@ -740,6 +743,7 @@ export class InstanceAiAdapterService {
 				user,
 				assistantSkillsEnabled === true,
 				skillSourcesEnabled,
+				workflowsInSkillsEnabled,
 			),
 			appService: this.createAppAdapter(user, projectId, threadId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
@@ -802,6 +806,7 @@ export class InstanceAiAdapterService {
 		user: User,
 		assistantSkillsEnabled: boolean,
 		skillSourcesEnabled?: boolean,
+		workflowsInSkillsEnabled?: boolean,
 	): InstanceAiSkillService | undefined {
 		try {
 			if (!Container.get(SkillsGate).isEnabled) return undefined;
@@ -809,6 +814,7 @@ export class InstanceAiAdapterService {
 				user,
 				assistantSkillsEnabled,
 				skillSourcesEnabled,
+				workflowsInSkillsEnabled,
 			);
 		} catch (error) {
 			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {
@@ -858,8 +864,15 @@ export class InstanceAiAdapterService {
 	async resolveExperimentGates(user: User): Promise<InstanceAiFeatureFlags> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		let skillSourcesEnabled = false;
+		let workflowsInSkillsEnabled = false;
 		try {
-			flags = await Container.get(PostHogClient).getFeatureFlags(user);
+			const [userFlags, workflowsInSkillsFlag] = await Promise.allSettled([
+				Container.get(PostHogClient).getFeatureFlags(user),
+				(async () => await Container.get(WorkflowsInSkillsFlagGate).isEnabled())(),
+			]);
+			if (userFlags.status === 'fulfilled') flags = userFlags.value;
+			workflowsInSkillsEnabled =
+				workflowsInSkillsFlag.status === 'fulfilled' && workflowsInSkillsFlag.value;
 			// Reuse the assignments already fetched for this turn.
 			skillSourcesEnabled = Container.get(SkillSyncFlagGate).isEnabledForFlags(flags);
 		} catch {
@@ -889,6 +902,7 @@ export class InstanceAiAdapterService {
 			instanceContextEnabled: this.globalConfig.activityLog.enabled,
 			assistantSkillsEnabled: true,
 			...(skillSourcesEnabled ? { skillSourcesEnabled } : {}),
+			...(workflowsInSkillsEnabled ? { workflowsInSkillsEnabled } : {}),
 			...(typeof preferencesNoteVariant === 'string' ? { preferencesNoteVariant } : {}),
 		};
 	}

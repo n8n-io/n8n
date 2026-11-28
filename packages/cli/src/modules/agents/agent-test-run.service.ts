@@ -29,7 +29,7 @@ import type { SimulationSession } from './simulation/simulation-session';
 import { SimulationSessionService } from './simulation/simulation-session.service';
 import { findPendingStandardApproval, parseStandardApprovalSuspension } from './standard-approval';
 import type { AgentExecutionStreamChunk } from './types/agent-steering';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import { draftChatMemoryResourceId, publicApiMemoryResourceId } from './utils/agent-memory-scope';
 import type { AgentSessionMode } from './utils/agent-thread-access';
 
 interface PrepareDraftRunInput {
@@ -146,6 +146,19 @@ export type AgentTestRunResult =
 	| (PreparedDraftRunResult & { sessionId: string })
 	| Exclude<PrepareDraftRunResult, { status: 'ready' }>;
 
+export interface ExecutePublishedRunInput {
+	agentId: string;
+	projectId: string;
+	user: User;
+	sessionId?: string;
+	message: string;
+	abortSignal?: AbortSignal;
+}
+
+export type PublishedRunResult =
+	| (PreparedDraftRunResult & { sessionId: string })
+	| { status: 'session_not_found' };
+
 export class InvalidAgentTestRunCheckpointError extends UserError {
 	readonly code = 'invalid_checkpoint';
 
@@ -229,7 +242,7 @@ export class AgentTestRunService {
 	 * the `agent:execute` the routes check. A chat-only member reaches published
 	 * agents through n8n Chat instead.
 	 */
-	private async assertCanRunDraft(user: User, projectId: string): Promise<void> {
+	async assertCanRunDraft(user: User, projectId: string): Promise<void> {
 		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to run the draft of this agent.');
 		}
@@ -308,6 +321,56 @@ export class AgentTestRunService {
 		return { ...result, sessionId: prepared.sessionId };
 	}
 
+	/**
+	 * Run the published version for the Public API. The session belongs to the
+	 * API key's user and only continues other `public_api` runs of this agent.
+	 * A published agent is validated at publish time, so this skips the draft
+	 * runnable checks.
+	 */
+	async executePublishedRun({
+		agentId,
+		projectId,
+		user,
+		sessionId,
+		message,
+		abortSignal,
+	}: ExecutePublishedRunInput): Promise<PublishedRunResult> {
+		const sessionMode: AgentSessionMode = sessionId ? 'existing' : 'new';
+		if (
+			sessionId &&
+			!(await this.agentExecutionService.canUsePublicApiThread(
+				sessionId,
+				projectId,
+				agentId,
+				user.id,
+				sessionMode,
+			))
+		) {
+			return { status: 'session_not_found' };
+		}
+		const resolvedSessionId = sessionId ?? randomUUID();
+
+		let executionId: string | undefined;
+		const stream = this.agentExecutionOrchestratorService.executeForPublicApiPublished({
+			agentId,
+			projectId,
+			message,
+			memory: {
+				threadId: resolvedSessionId,
+				resourceId: publicApiMemoryResourceId(user.id),
+			},
+			user,
+			sessionMode,
+			onExecutionRecorded: (id) => {
+				executionId = id;
+			},
+			...(abortSignal ? { abortSignal } : {}),
+		});
+
+		const result = await this.collectDraftRun(stream, '', () => executionId, {});
+		return { ...result, sessionId: resolvedSessionId };
+	}
+
 	async resumeDraftRun({
 		sessionId,
 		response,
@@ -368,10 +431,13 @@ export class AgentTestRunService {
 		agentId,
 		suspensions,
 		userId,
+		resourceId = draftChatMemoryResourceId(userId),
 	}: {
 		agentId: string;
 		suspensions: Array<Pick<AgentTestRunSuspension, 'runId'>>;
 		userId: string;
+		/** The memory scope the suspended run lives in. A draft run defaults to the draft scope. */
+		resourceId?: string;
 	}): Promise<boolean> {
 		const runIds = [...new Set(suspensions.map(({ runId }) => runId))];
 		try {
@@ -381,7 +447,7 @@ export class AgentTestRunService {
 						await this.agentExecutionOrchestratorService.cancelChatRun({
 							agentId,
 							runId,
-							resourceId: draftChatMemoryResourceId(userId),
+							resourceId,
 						}),
 				),
 			);

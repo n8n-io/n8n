@@ -16,6 +16,8 @@ import { AppsModule } from '@n8n/frontend-module-apps';
 import { EngineV2Module } from '@n8n/frontend-module-engine-v2';
 import { HtmlDisplayModeModule } from '@n8n/frontend-module-html-display-mode';
 import { McpServersModule } from '@n8n/frontend-module-mcp-servers';
+import { ApiKeysModule } from '@n8n/frontend-module-api-keys/api-keys.module';
+import { RolesModule } from '@n8n/frontend-module-roles/roles.module';
 
 /**
  * The static list is the design, not a placeholder (design §9). n8n self-hosted
@@ -51,4 +53,6 @@ export const modules: FrontendModuleDescription[] = [
 	EngineV2Module,
 	HtmlDisplayModeModule,
 	McpServersModule,
+	ApiKeysModule,
+	RolesModule,
 ];

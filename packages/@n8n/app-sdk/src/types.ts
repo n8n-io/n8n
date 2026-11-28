@@ -153,7 +153,7 @@ export type AgentSseEvent =
 	| { type: 'reasoning-end'; id: string }
 	| { type: 'tool-input-start'; toolCallId: string; toolName: string }
 	| { type: 'tool-input-delta'; toolCallId: string; delta: string }
-	| { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
+	| { type: 'tool-call'; toolCallId: string; toolName: string; input?: unknown }
 	| { type: 'tool-execution-start'; toolCallId: string; toolName: string; startTime: number }
 	| {
 			type: 'tool-execution-end';
@@ -166,7 +166,7 @@ export type AgentSseEvent =
 			type: 'tool-result';
 			toolCallId: string;
 			toolName: string;
-			output: unknown;
+			output?: unknown;
 			isError?: boolean;
 			canceled?: boolean;
 	  }
