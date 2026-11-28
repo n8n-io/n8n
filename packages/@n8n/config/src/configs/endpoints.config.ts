@@ -228,12 +228,12 @@ export class EndpointsConfig {
 	mcpBuilderEnabled: boolean = true;
 
 	/**
-	 * Force-enable MCP Apps support (the iframe UI attached to MCP tools).
-	 * Acts as an operator-level override of the PostHog experiment.
-	 * Cannot force-disable: setting this to `false` falls back to PostHog.
+	 * Whether MCP clients can show an interactive workflow preview when they
+	 * build a workflow through the MCP server. Set to false to return the
+	 * workflow without the preview.
 	 */
 	@Env('N8N_MCP_APPS_ENABLED')
-	mcpAppsEnabled: boolean = false;
+	mcpAppsEnabled: boolean = true;
 
 	/** Maximum number of OAuth clients that can be registered for MCP. */
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')

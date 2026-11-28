@@ -7,7 +7,6 @@ import { createListTagsTool } from '../tools/list-tags.tool';
 
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore `type McpServer`; keep createMcpHandler.
 import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
-import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
 import {
 	EventService,
@@ -116,7 +115,6 @@ const mockModuleRegistry = () => {
 };
 
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
-	mcpApps: { enabled: false, variant: 'unassigned' },
 	instanceContextEnabled: false,
 	...overrides,
 });
@@ -417,10 +415,7 @@ describe('McpService', () => {
 	});
 
 	describe('resolveFeatureFlags', () => {
-		const buildResolutionService = (opts: {
-			postHogClient: Mocked<PostHogClient>;
-			mcpAppsEnabled?: boolean;
-		}) =>
+		const buildResolutionService = (opts: { postHogClient: Mocked<PostHogClient> }) =>
 			new McpService(
 				mockLogger(),
 				executionsConfig,
@@ -436,7 +431,6 @@ describe('McpService', () => {
 						...new EndpointsConfig(),
 						webhook: '/webhook',
 						webhookTest: '/webhook-test',
-						mcpAppsEnabled: opts.mcpAppsEnabled ?? false,
 					},
 				}),
 				mockInstance(TelemetryProxy),
@@ -479,14 +473,12 @@ describe('McpService', () => {
 		it('resolves user flags and turns instance context on', async () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
-				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
 				'140_mcp_empty_preferences_note': 'variant',
 			});
 			const service = buildResolutionService({ postHogClient });
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				credentialDescriptionsEnabled: true,
-				mcpApps: { enabled: true, variant: 'variant' },
 				instanceContextEnabled: true,
 				skillsExtensionEnabled: false,
 				preferencesNoteVariant: 'variant',
@@ -518,53 +510,6 @@ describe('McpService', () => {
 				buildResolutionService({ postHogClient }).resolveFeatureFlags(user),
 			).resolves.toMatchObject({
 				instanceContextEnabled: true,
-				mcpApps: { enabled: false, variant: 'unassigned' },
-			});
-		});
-
-		describe('MCP Apps', () => {
-			it('reports `env_override` when the operator force-enables MCP Apps', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({});
-				const service = buildResolutionService({ postHogClient, mcpAppsEnabled: true });
-
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					mcpApps: { enabled: true, variant: 'env_override' },
-				});
-			});
-
-			it('reports `variant` for users in the experiment cohort', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
-				});
-				const service = buildResolutionService({ postHogClient });
-
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					mcpApps: { enabled: true, variant: 'variant' },
-				});
-			});
-
-			it('reports `control` for users in the control cohort', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[MCP_APPS_FLAG]: MCP_APPS_VARIANT_CONTROL,
-				});
-				const service = buildResolutionService({ postHogClient });
-
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					mcpApps: { enabled: false, variant: 'control' },
-				});
-			});
-
-			it('reports `unassigned` when the flag is missing from the PostHog response', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({});
-				const service = buildResolutionService({ postHogClient });
-
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					mcpApps: { enabled: false, variant: 'unassigned' },
-				});
 			});
 		});
 
@@ -580,42 +525,6 @@ describe('McpService', () => {
 			await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
 				skillsExtensionEnabled: enabled,
 			});
-		});
-
-		it('still queries PostHog when only some features are env-overridden', async () => {
-			const postHogClient = mockInstance(PostHogClient);
-			postHogClient.getFeatureFlags.mockResolvedValue({});
-			const service = buildResolutionService({ postHogClient, mcpAppsEnabled: true });
-
-			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
-				credentialDescriptionsEnabled: true,
-				mcpApps: { enabled: true, variant: 'env_override' },
-				instanceContextEnabled: true,
-				skillsExtensionEnabled: false,
-				preferencesNoteVariant: 'unassigned',
-			});
-
-			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
-		});
-
-		it('resolves the instance context flag while MCP Apps are env-overridden', async () => {
-			const postHogClient = mockInstance(PostHogClient);
-			postHogClient.getFeatureFlags.mockResolvedValue({});
-			postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
-			const service = buildResolutionService({
-				postHogClient,
-				mcpAppsEnabled: true,
-			});
-
-			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
-				credentialDescriptionsEnabled: true,
-				mcpApps: { enabled: true, variant: 'env_override' },
-				instanceContextEnabled: true,
-				skillsExtensionEnabled: false,
-				preferencesNoteVariant: 'unassigned',
-			});
-
-			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -1786,12 +1695,9 @@ describe('McpService', () => {
 		});
 
 		describe('MCP Apps integration', () => {
-			// Resolution of the MCP Apps flag (PostHog cohort, env override,
-			// error fallback) is covered in the `resolveFeatureFlags` block.
-			// These tests assume the caller (controller) has already resolved
-			// the flags and focus on `getServer`'s tool-registration behavior.
-			const appsEnabled = mcpFeatureFlags({ mcpApps: { enabled: true, variant: 'variant' } });
+			const flags = mcpFeatureFlags();
 			type BuildServiceOpts = {
+				appsEnabled?: boolean;
 				builderEnabled?: boolean;
 				diagnosticsEnabled?: boolean;
 				instanceBaseUrl?: string;
@@ -1800,6 +1706,7 @@ describe('McpService', () => {
 			};
 
 			const buildService = ({
+				appsEnabled = true,
 				builderEnabled = true,
 				diagnosticsEnabled = true,
 				instanceBaseUrl = 'https://n8n.test',
@@ -1824,6 +1731,7 @@ describe('McpService', () => {
 							webhook: '/webhook',
 							webhookTest: '/webhook-test',
 							rest: 'rest',
+							mcpAppsEnabled: appsEnabled,
 							mcpBuilderEnabled: builderEnabled,
 						},
 						diagnostics: {
@@ -1878,12 +1786,12 @@ describe('McpService', () => {
 				(registerWorkflowPreviewApp as Mock).mockClear();
 			});
 
-			it('registers the preview app and marks the create tool with the app resource when MCP Apps is enabled', async () => {
+			it('registers the preview app and marks the create tool with the app resource', async () => {
 				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 				const postHogClient = mockInstance(PostHogClient);
 
 				const service = buildService({ postHogClient });
-				const server = await service.getServer(user, appsEnabled);
+				const server = await service.getServer(user, flags);
 
 				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
 				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
@@ -1917,7 +1825,7 @@ describe('McpService', () => {
 				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 				const service = buildService({ diagnosticsEnabled: false });
 
-				await service.getServer(user, appsEnabled);
+				await service.getServer(user, flags);
 
 				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
 					unknown,
@@ -1938,7 +1846,7 @@ describe('McpService', () => {
 				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 				const service = buildService({ instanceBaseUrl: 'not-a-url' });
 
-				await expect(service.getServer(user, appsEnabled)).resolves.toBeDefined();
+				await expect(service.getServer(user, flags)).resolves.toBeDefined();
 
 				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
 					unknown,
@@ -1960,7 +1868,7 @@ describe('McpService', () => {
 				const telemetry = mockInstance(TelemetryProxy);
 
 				const service = buildService({ telemetry });
-				await service.getServer(user, appsEnabled, { name: 'Claude Desktop', version: '1.2.3' });
+				await service.getServer(user, flags, { name: 'Claude Desktop', version: '1.2.3' });
 
 				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
 					unknown,
@@ -1975,19 +1883,20 @@ describe('McpService', () => {
 				});
 			});
 
-			it('does not register the preview app when MCP Apps is disabled', async () => {
+			it('registers the create tool without the preview app when N8N_MCP_APPS_ENABLED is false', async () => {
 				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
-				const server = await buildService().getServer(user, mcpFeatureFlags());
+				const server = await buildService({ appsEnabled: false }).getServer(user, flags);
 
 				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
+				expect(registeredCreateTool(server)).toBeDefined();
 				expect(registeredCreateTool(server)?._meta).toBeUndefined();
 			});
 
-			it('does not register the preview app when builder is disabled, even if MCP Apps is enabled', async () => {
+			it('does not register the preview app when builder is disabled', async () => {
 				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
-				await buildService({ builderEnabled: false }).getServer(user, appsEnabled);
+				await buildService({ builderEnabled: false }).getServer(user, flags);
 
 				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
 			});

@@ -72,7 +72,6 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 const hasGlobalScope = vi.mocked(permissions.hasGlobalScope);
 
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
-	mcpApps: { enabled: false, variant: 'unassigned' },
 	instanceContextEnabled: false,
 	...overrides,
 });

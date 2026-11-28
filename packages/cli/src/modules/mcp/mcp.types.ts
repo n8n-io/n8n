@@ -182,8 +182,6 @@ export type McpAuthContext = {
 	caller?: McpCallerAuth;
 };
 
-export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';
-
 // Telemetry payloads
 export type UserConnectedToMCPEventPayload = {
 	user_id?: string;
@@ -195,8 +193,6 @@ export type UserConnectedToMCPEventPayload = {
 	mcp_connection_status: 'success' | 'error';
 	/** Status the server answered a failed handshake with; unset on success. */
 	http_status?: number;
-	mcp_apps_enabled?: boolean;
-	mcp_apps_variant?: McpAppsTelemetryVariant;
 	'$feature/140_mcp_empty_preferences_note'?: string;
 	error?: string;
 };

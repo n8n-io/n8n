@@ -143,8 +143,6 @@ export class McpController {
 			client_version: clientInfo?.version,
 			protocol_version: getProtocolVersion(req),
 			auth_type: (req as McpAuthenticatedRequest).mcpCaller?.authType,
-			mcp_apps_enabled: featureFlags.mcpApps.enabled,
-			mcp_apps_variant: featureFlags.mcpApps.variant,
 			[`$feature/${MCP_EMPTY_PREFERENCES_NOTE_FLAG}`]: featureFlags.preferencesNoteVariant,
 		};
 
