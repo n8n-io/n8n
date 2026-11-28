@@ -42,6 +42,14 @@ vi.mock('vue-router', async () => {
 	};
 });
 
+const mcpServers = vi.hoisted(() => ({ enabled: true, openCreateMcpServerDialog: vi.fn() }));
+vi.mock('@/experiments/customMcpServers/customMcpServersEnabled', () => ({
+	customMcpServersEnabled: () => mcpServers.enabled,
+}));
+vi.mock('@n8n/frontend-module-mcp-servers', () => ({
+	openCreateMcpServerDialog: mcpServers.openCreateMcpServerDialog,
+}));
+
 const trackClickedNewAgent = vi.fn();
 vi.mock('@/features/agents/composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({
@@ -75,7 +83,7 @@ const ProjectCreateResourceStub = {
 			<button data-test-id="action-agent" @click="$emit('action', 'agent')">Agent</button>
 			<button data-test-id="action-app" @click="$emit('action', 'app')">App</button>
 			<div data-test-id="add-resource-actions" >
-				<button v-for="action in $props.actions" :key="action.value" :data-test-id="'menu-' + action.value"></button>
+				<button v-for="action in $props.actions" :key="action.value" :data-test-id="'menu-' + action.value" :disabled="action.disabled" @click="$emit('action', action.value)"></button>
 			</div>
 		</div>
 	`,
@@ -708,6 +716,31 @@ describe('ProjectHeader', () => {
 			expect(createAppMock).toHaveBeenCalledWith({ projectId: project.id, appId });
 		});
 
+		it('opens the create dialog of MCP servers when mcpServer is the main action', async () => {
+			mcpServers.enabled = true;
+			const project = createTestProject({ scopes: ['mcpServer:create'] });
+			projectsStore.currentProject = project;
+			const { getByTestId } = renderComponent({ props: { mainButton: 'mcpServer' } });
+
+			await userEvent.click(getByTestId('add-resource-mcpServer'));
+
+			expect(mcpServers.openCreateMcpServerDialog).toHaveBeenCalledWith(project.id);
+		});
+
+		it('falls back to the workflow button when custom MCP servers are off', () => {
+			mcpServers.enabled = false;
+			projectsStore.currentProject = createTestProject({
+				scopes: ['workflow:create', 'mcpServer:create'],
+			});
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { mainButton: 'mcpServer' },
+			});
+
+			expect(getByTestId('add-resource-workflow')).toBeInTheDocument();
+			expect(queryByTestId('add-resource-mcpServer')).not.toBeInTheDocument();
+		});
+
 		it('should render workflow button as main by default', () => {
 			const project = createTestProject({
 				scopes: ['workflow:create'],
@@ -811,6 +844,31 @@ describe('ProjectHeader', () => {
 
 			expect(getByTestId('add-resource-agent')).toBeInTheDocument();
 			expect(getByTestId('add-resource-agent')).toBeEnabled();
+		});
+
+		it('keeps Create agent disabled while permitted dropdown actions still work', async () => {
+			settingsStore.isAgentsEnabled = true;
+			const project = createTestProject({ scopes: ['workflow:create', 'agent:create'] });
+			projectsStore.currentProject = project;
+			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { mainButton: 'agent', disableAgentCreation: true },
+			});
+
+			expect(getByTestId('add-resource-agent')).toBeDisabled();
+			expect(queryByTestId('add-resource-workflow')).not.toBeInTheDocument();
+			expect(queryByTestId('menu-agent')).not.toBeInTheDocument();
+			expect(getByTestId('menu-credential')).toBeDisabled();
+			const workflowAction = getByTestId('menu-workflow');
+			expect(workflowAction).toBeEnabled();
+			await userEvent.click(workflowAction);
+			expect(mockPush).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: VIEWS.NEW_WORKFLOW,
+					query: expect.objectContaining({ projectId: project.id }),
+				}),
+			);
 		});
 
 		it('should disable agent create button when no scope allows it', () => {

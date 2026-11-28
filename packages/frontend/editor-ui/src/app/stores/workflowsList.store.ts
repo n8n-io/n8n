@@ -208,6 +208,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		select,
 		isArchived,
 		triggerNodeTypes,
+		excludePersonalProjectsOfOthers,
 		options,
 	}: {
 		projectId?: string;
@@ -218,6 +219,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		select?: string[];
 		isArchived?: boolean;
 		triggerNodeTypes?: string[];
+		excludePersonalProjectsOfOthers?: boolean;
 		options?: workflowsApi.GetWorkflowsOptions;
 	}): Promise<IWorkflowDb[]> {
 		if (ids?.length === 0) return [];
@@ -230,6 +232,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 			tags,
 			isArchived,
 			triggerNodeTypes,
+			excludePersonalProjectsOfOthers,
 		};
 
 		// Check if filter has meaningful values (not just undefined, null, or empty arrays/strings)

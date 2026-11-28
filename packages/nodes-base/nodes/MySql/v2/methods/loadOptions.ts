@@ -1,7 +1,7 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 import type { MysqlNodeCredentials } from '../helpers/interfaces';
-import { escapeSqlIdentifier } from '../helpers/utils';
+import { escapeSqlIdentifier, quoteSqlIdentifier } from '../helpers/utils';
 import { createPool } from '../transport';
 
 export async function getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -16,12 +16,15 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 		const table = this.getNodeParameter('table', 0, {
 			extractValue: true,
 		}) as string;
+		const database = this.getNodeParameter('database', '', { extractValue: true });
 
 		const columns = (
 			await connection.query(
-				`SHOW COLUMNS FROM ${escapeSqlIdentifier(table)} FROM ${escapeSqlIdentifier(
-					credentials.database,
-				)}`,
+				`SHOW COLUMNS FROM ${escapeSqlIdentifier(table)} FROM ${
+					typeof database === 'string' && database
+						? quoteSqlIdentifier(database)
+						: escapeSqlIdentifier(credentials.database)
+				}`,
 			)
 		)[0] as IDataObject[];
 

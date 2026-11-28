@@ -22,6 +22,8 @@ export const executionIdParamSchema = numericIdParamSchema('The ID of the execut
 
 export const workflowIdParamSchema = stringIdParamSchema('The ID of the workflow');
 export const agentIdParamSchema = stringIdParamSchema('The ID of the agent.');
+export const agentExecutionIdParamSchema = stringIdParamSchema('The ID of the agent execution.');
+export const agentVersionIdParamSchema = stringIdParamSchema('The ID of the agent version.');
 export const workflowVersionIdParamSchema = stringIdParamSchema('The ID of the workflow version');
 export const testRunIdParamSchema = stringIdParamSchema('The ID of the test run.');
 export const projectIdParamSchema = stringIdParamSchema('The ID of the project.');

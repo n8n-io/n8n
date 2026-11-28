@@ -1,5 +1,4 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { MessageContent } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { GuardrailModelRunner, GuardrailResult } from '@n8n/ai-utilities/guardrails';
 import {
@@ -8,6 +7,8 @@ import {
 } from '@n8n/ai-utilities/guardrails';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+
+import { toParserInputText } from '@utils/output_parsers/parserInput';
 
 import type { LLMConfig } from '../actions/types';
 
@@ -20,19 +21,6 @@ export async function getChatModel(this: IExecuteFunctions): Promise<BaseChatMod
 	}
 	return model as BaseChatModel;
 }
-
-// FIXME: https://github.com/langchain-ai/langchainjs/issues/9012
-// This is a manual fix to extract the text from the response.
-// Replace with const chain = chatPrompt.pipe(model).pipe(outputParser); when the issue is fixed.
-const extractText = (content: MessageContent): string => {
-	if (typeof content === 'string') {
-		return content;
-	}
-	if (content[0].type === 'text') {
-		return content[0].text as string;
-	}
-	throw new Error('Invalid content type');
-};
 
 /**
  * LangChain adapter for the model-agnostic guardrail seam in
@@ -51,7 +39,9 @@ export function createLangChainGuardrailRunner(model: BaseChatModel): GuardrailM
 			input,
 			system_message: systemPrompt,
 		});
-		return extractText(result.content);
+		// Read only the text blocks: models with thinking enabled put a thinking
+		// block before the text, and a reply can have more than one text block.
+		return toParserInputText(result);
 	};
 }
 

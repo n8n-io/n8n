@@ -21,7 +21,14 @@ properties:
       - projectAdmins
       - projectAdminsAndEditors
     description: 'Who can apply changes into a project. `instanceAdmins`: only instance owners and admins. `projectAdmins`: also project admins, in their projects. `projectAdminsAndEditors`: also project admins and editors, in their projects.'
+  requireApproval:
+    type: string
+    enum:
+      - whenConfigured
+      - alwaysRequired
+    description: 'Whether a promote needs a review. `whenConfigured`: each Promote environment uses its own review setting. `alwaysRequired`: every promote pushes a new branch. With a `gitlab` provider, it also opens a merge request. With a `git` provider, n8n cannot see the review and cannot stop direct pushes.'
 required:
   - whoCanPromote
   - whoCanApprove
   - whoCanApply
+  - requireApproval

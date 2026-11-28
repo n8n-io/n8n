@@ -144,6 +144,7 @@ const triggerIcon = computed((): IconName => {
 		case 'n8n_chat_production':
 			return 'message-square';
 		case 'webhook':
+		case 'public_api':
 			return 'plug';
 		default:
 			return 'bolt-filled';
@@ -165,6 +166,9 @@ const triggerLabel = computed((): string => {
 	}
 	if (source === 'webhook') {
 		return i18n.baseText('agentSessions.origin.webhook');
+	}
+	if (source === 'public_api') {
+		return i18n.baseText('agentSessions.origin.publicApi');
 	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });

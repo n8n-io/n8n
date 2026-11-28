@@ -8,12 +8,14 @@ import type { TelemetryProxy } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
+import type { z } from 'zod';
 
 import {
 	SkillNameTakenError,
 	type SkillService,
 	type SkillSourceService,
 	type SkillSyncFlagGate,
+	type WorkflowsInSkillsFlagGate,
 } from '@/modules/skills';
 import { SkillSourceRequestError, SkillSyncedError } from '@/modules/skills/testing';
 
@@ -84,7 +86,14 @@ describe('McpSkillToolsService', () => {
 	const skillService = mock<SkillService>();
 	const skillSources = mock<SkillSourceService>();
 	const skillSyncGate = mock<SkillSyncFlagGate>();
-	const service = new McpSkillToolsService(telemetry, skillService, skillSources, skillSyncGate);
+	const workflowsInSkillsGate = mock<WorkflowsInSkillsFlagGate>();
+	const service = new McpSkillToolsService(
+		telemetry,
+		skillService,
+		skillSources,
+		skillSyncGate,
+		workflowsInSkillsGate,
+	);
 	let tools: Map<string, Handler>;
 
 	const callTool = async (name: string, input: Record<string, unknown>) => {
@@ -169,6 +178,41 @@ describe('McpSkillToolsService', () => {
 		expect(
 			(await callTool('get_skill', { skillId: 'skill_a' })).structuredContent,
 		).not.toHaveProperty('availableToMCP');
+	});
+
+	describe('workflow mention hint', () => {
+		const workflowMentionHint =
+			'To make a skill run an n8n workflow, link the workflow in the instructions as [Workflow name](n8n://workflow/<workflow-id>).';
+
+		async function instructionsDescriptions() {
+			const registered: Array<Parameters<RegisterToolFn>[0]> = [];
+			await service.registerTools((tool) => registered.push(tool), user, true);
+			const schemaOf = (name: string) =>
+				registered.find((tool) => tool.name === name)?.config.inputSchema as Record<
+					string,
+					z.ZodTypeAny
+				>;
+			const createSkill = schemaOf('create_skill').skill as z.AnyZodObject;
+			return {
+				create: createSkill.shape.instructions.description,
+				update: schemaOf('update_skill').instructions.description,
+			};
+		}
+
+		it('tells the client how to mention a workflow when the flag is on', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+
+			expect(await instructionsDescriptions()).toEqual({
+				create: workflowMentionHint,
+				update: workflowMentionHint,
+			});
+		});
+
+		it('says nothing about workflow mentions when the flag is off', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(false);
+
+			expect(await instructionsDescriptions()).toEqual({ create: undefined, update: undefined });
+		});
 	});
 
 	describe('search_n8n_skills', () => {

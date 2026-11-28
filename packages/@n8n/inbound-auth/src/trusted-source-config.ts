@@ -31,7 +31,13 @@ export const RoleMappingRuleSchema = z.object({
 });
 export type RoleMappingRule = z.infer<typeof RoleMappingRuleSchema>;
 
-export const SurfaceIdSchema = z.enum(['public-api', 'instance-mcp', 'trigger', 'apps']);
+export const SurfaceIdSchema = z.enum([
+	'public-api',
+	'instance-mcp',
+	'trigger',
+	'apps',
+	'mcp-servers',
+]);
 export type SurfaceId = z.infer<typeof SurfaceIdSchema>;
 
 export const ManagedBySchema = z.enum(['system', 'admin']);
@@ -159,6 +165,12 @@ export const TrustedSourceConfigV2Schema = TrustedSourceConfigV1Schema.extend({
 });
 export type TrustedSourceConfigV2 = z.infer<typeof TrustedSourceConfigV2Schema>;
 export type TrustedSourceConfigV2Input = z.input<typeof TrustedSourceConfigV2Schema>;
+/** Same document as v2. The version marks system rows that have the `mcp-servers` surface. */
+export const TrustedSourceConfigV3Schema = TrustedSourceConfigV2Schema.extend({
+	version: z.literal(3),
+});
+export type TrustedSourceConfigV3 = z.infer<typeof TrustedSourceConfigV3Schema>;
+export type TrustedSourceConfigV3Input = z.input<typeof TrustedSourceConfigV3Schema>;
 export type TrustedSourceConfigInput = z.input<typeof TrustedSourceConfigSchema>;
 
 const ownerRoleIssue = (path: Array<string | number>): z.IssueData => ({
@@ -177,7 +189,11 @@ const ownerRoleIssue = (path: Array<string | number>): z.IssueData => ({
  * has to stay a plain object, and the rules hold for every version anyway.
  */
 export const TrustedSourceConfigSchema = z
-	.discriminatedUnion('version', [TrustedSourceConfigV1Schema, TrustedSourceConfigV2Schema])
+	.discriminatedUnion('version', [
+		TrustedSourceConfigV1Schema,
+		TrustedSourceConfigV2Schema,
+		TrustedSourceConfigV3Schema,
+	])
 	.superRefine((config, ctx) => {
 		const { authentication, identity } = config;
 		const provisionPerson =
@@ -303,9 +319,21 @@ export const configMigrations: Record<number, ConfigMigration> = {
 			},
 		};
 	},
+	// Adds the surface of custom MCP servers to system rows, as step 1 did for apps.
+	2: (config, { managedBy }) => {
+		if (config.version !== 2) return config;
+		return {
+			...config,
+			version: 3,
+			surfaces:
+				managedBy === 'system'
+					? { ...config.surfaces, 'mcp-servers': config.surfaces['mcp-servers'] ?? {} }
+					: config.surfaces,
+		};
+	},
 };
 
-export const LATEST_TRUSTED_SOURCE_CONFIG_VERSION = 2;
+export const LATEST_TRUSTED_SOURCE_CONFIG_VERSION = 3;
 
 export type TrustedSourceConfigLatest = Extract<
 	TrustedSourceConfig,

@@ -109,6 +109,37 @@ describe('DatabaseLeaseProvider', () => {
 		}
 	});
 
+	it('waits on stop for the delete of a session that a failed registration left', async () => {
+		let finishInsert!: () => void;
+		sessions.insertSession.mockImplementationOnce(
+			async () => await new Promise<void>((resolve) => (finishInsert = resolve)),
+		);
+		const registering = expect(provider.registerHolder('test-kind', options, hold)).rejects.toThrow(
+			'did not finish within the lease length',
+		);
+		await vi.advanceTimersByTimeAsync(20 * 1000);
+		await registering;
+
+		let finishDelete!: () => void;
+		sessions.deleteSession.mockImplementationOnce(
+			async () => await new Promise<void>((resolve) => (finishDelete = resolve)),
+		);
+		let stopped = false;
+		const stopping = provider.stop().then(() => {
+			stopped = true;
+		});
+		finishInsert();
+		await vi.advanceTimersByTimeAsync(0);
+
+		const [inserted] = insertedSessions();
+		expect(sessions.deleteSession).toHaveBeenCalledWith(inserted.id, {});
+		expect(stopped).toBe(false);
+
+		finishDelete();
+		await stopping;
+		expect(stopped).toBe(true);
+	});
+
 	it('starts no session for a kind that registers after stop', async () => {
 		await provider.stop();
 

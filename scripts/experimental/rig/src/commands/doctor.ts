@@ -25,6 +25,12 @@ import {
 	releaseBinaryPath,
 	releaseMethod,
 } from '../launcher/binary';
+import {
+	describeLicense,
+	licenseExists,
+	readLicenseValues,
+	validateLicenseValues,
+} from '../licenses';
 import { isPortFree, portOwner } from '../runtime/health';
 import { liveState } from '../runtime/state';
 import { browserLabel, installedBrowsers } from '../integrations/browser';
@@ -390,6 +396,70 @@ export function secretOverrideChecks(env: RigEnv): Check[] {
 	return [...overrides.values()];
 }
 
+export function licenseChecks(env: RigEnv | undefined): Check[] {
+	const checks: Check[] = [];
+	const configured = loadGlobalConfig().license.default;
+	if (configured && !licenseExists(configured)) {
+		checks.push({
+			status: 'warn',
+			label: 'Default',
+			detail: `license "${configured}" does not exist`,
+			hint: `Set another with \`${RIG} license default <name>\`.`,
+		});
+	} else {
+		const problems = configured ? licenseProblems(configured) : undefined;
+		checks.push(
+			configured && problems && problems.length > 0
+				? invalidLicenseCheck('Default', configured, problems)
+				: {
+						status: 'info',
+						label: 'Default',
+						detail: configured ?? `none · ${RIG} create uses no license`,
+					},
+		);
+	}
+	const name = env?.topology.license;
+	if (!env || !name) {
+		if (env) checks.push({ status: 'info', label: env.name, detail: 'no license' });
+		return checks;
+	}
+	if (!licenseExists(name)) {
+		checks.push({
+			status: 'warn',
+			label: env.name,
+			detail: `license "${name}" does not exist`,
+			hint: `Add it with \`${RIG} license add ${name}\`, or run \`${RIG} license use <name>\`.`,
+		});
+		return checks;
+	}
+	const problems = licenseProblems(name);
+	if (!problems) return checks;
+	checks.push(
+		problems.length > 0
+			? invalidLicenseCheck(env.name, name, problems)
+			: { status: 'ok', label: env.name, detail: describeLicense(name) },
+	);
+	return checks;
+}
+
+/** Undefined when rig cannot read the license. The "Secrets encryption" section reports that. */
+function licenseProblems(name: string): string[] | undefined {
+	try {
+		return validateLicenseValues(readLicenseValues(name));
+	} catch {
+		return undefined;
+	}
+}
+
+function invalidLicenseCheck(label: string, name: string, problems: string[]): Check {
+	return {
+		status: 'warn',
+		label,
+		detail: `${name} is not valid: ${problems.join(' ')}`,
+		hint: 'n8n can reject it. Keep it only to test an invalid license.',
+	};
+}
+
 function toolChecks(): Check[] {
 	const { browser, editor } = loadGlobalConfig();
 	const browsers = installedBrowsers().map((b) => b.label);
@@ -500,7 +570,8 @@ function printSection(title: string, checks: Check[]): void {
 export const doctorCommand = defineCommand({
 	meta: {
 		name: 'doctor',
-		description: 'Check the tools, the checkout, the launcher, ports, and secrets encryption',
+		description:
+			'Check the tools, the checkout, the launcher, ports, licenses, and secrets encryption',
 	},
 	args: { ...envArg },
 	async run({ args }) {
@@ -547,6 +618,7 @@ export const doctorCommand = defineCommand({
 				],
 			]);
 		}
+		sections.push(['Licenses', licenseChecks(env)]);
 		sections.push(['Secrets encryption', secretsChecks()]);
 		sections.push(['Browser and editor', toolChecks()]);
 

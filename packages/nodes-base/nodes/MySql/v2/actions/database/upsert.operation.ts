@@ -12,6 +12,7 @@ import type { QueryRunner, QueryValues, QueryWithValues } from '../../helpers/in
 import { AUTO_MAP, DATA_MODE } from '../../helpers/interfaces';
 import {
 	escapeSqlIdentifier,
+	getTableName,
 	prepareErrorItem,
 	replaceEmptyStringsByNulls,
 } from '../../helpers/utils';
@@ -62,7 +63,7 @@ const properties: INodeProperties[] = [
 			'The column to compare when finding the rows to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
-			loadOptionsDependsOn: ['schema.value', 'table.value'],
+			loadOptionsDependsOn: ['database.value', 'table.value'],
 		},
 		default: '',
 		hint: "Used to find the correct row to update. Doesn't get changed. Has to be unique.",
@@ -110,7 +111,7 @@ const properties: INodeProperties[] = [
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumnsWithoutColumnToMatchOn',
-							loadOptionsDependsOn: ['schema.value', 'table.value'],
+							loadOptionsDependsOn: ['database.value', 'table.value'],
 						},
 						default: [],
 					},
@@ -153,9 +154,7 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const table = this.getNodeParameter('table', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const table = getTableName(this, i);
 
 			const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
 

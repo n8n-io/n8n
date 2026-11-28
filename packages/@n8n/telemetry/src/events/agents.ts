@@ -358,6 +358,43 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			status: agentStatus,
 		}),
 	},
+	AGENT_RAN_SKILL_WORKFLOW: {
+		name: 'Agent ran skill workflow',
+		description:
+			'An agent called the tool of a workflow that one of its skills mentions, and n8n started the workflow or failed to start it. Fires once for each call, when the tool returns. A workflow that the user attached to the agent as a tool sends no event, also when a skill mentions it. Fires only when the workflows in skills flag is on.',
+		properties: z.object({
+			agent_id: z.string(),
+			user_id: z
+				.string()
+				.optional()
+				.describe(
+					'Absent for runs without an n8n user, such as some chat integrations, and for agents that a workflow starts. PostHog drops events without a user, so count these runs in BigQuery',
+				),
+			workflow_id: z.string(),
+			skill_ids: z
+				.array(z.string())
+				.describe('The attached skills of the agent that mention the workflow'),
+			run_type: agentRunType,
+			status: z
+				.enum(['success', 'failure', 'pending'])
+				.describe(
+					'`success` is a finished execution. `failure` is an execution that failed or was canceled, or a workflow that n8n could not run. `pending` is an execution that waits, for example at a Wait node, or that runs in the background. The event does not report how a pending execution ends',
+				),
+			failure_reason: z
+				.enum([
+					'workflow_error',
+					'canceled',
+					'not_found',
+					'not_published',
+					'incompatible',
+					'unexpected',
+				])
+				.optional()
+				.describe(
+					'Only for `failure`. `workflow_error` is an execution that ended with an error. `canceled` is an execution or an agent run that was stopped. `not_found`, `not_published` and `incompatible` are workflows that n8n could not run. `unexpected` is any other error',
+				),
+		}),
+	},
 	AGENT_RUN_USED_KNOWLEDGE: {
 		name: 'Agent run used knowledge',
 		description:
@@ -1317,10 +1354,10 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_SELECTED_N8N_CHAT_AGENT: {
 		name: 'User selected n8n chat agent',
 		description:
-			'The user picked a published agent to chat with over n8n Chat, from a card, the agents library, or the chat-page agent picker dropdown.',
+			'The user picked a published agent to chat with over n8n Chat, from a card or the agents library.',
 		properties: z.object({
 			agent_id: z.string(),
-			source: z.enum(['card', 'library', 'dropdown']),
+			source: z.enum(['card', 'library']),
 			variant: n8nChatVariant,
 			push_ref: pushRef,
 		}),

@@ -567,6 +567,46 @@ describe('ChatTrigger Node', () => {
 			});
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
+
+		it.each(['unsupportedMode', 'BasicAuth'])(
+			'returns 500 without workflowData when authentication mode "%s" is unsupported',
+			async (authentication) => {
+				const { validateAuth: actualValidateAuth } =
+					await vi.importActual<typeof import('../GenericFunctions')>('../GenericFunctions');
+				vi.mocked(validateAuth).mockImplementationOnce(actualValidateAuth);
+
+				mockContext.getMode.mockReturnValue('webhook');
+				mockContext.getHeaderData.mockReturnValue({});
+				mockContext.getNode.mockReturnValue({
+					name: 'Chat Trigger',
+					type: 'n8n-nodes-langchain.chatTrigger',
+					typeVersion: 1.5,
+					webhookId: 'abc123',
+				} as INode);
+				mockContext.getNodeParameter.mockImplementation(
+					(
+						paramName: string,
+						defaultValue?: boolean | string | object,
+					): boolean | string | object | undefined => {
+						if (paramName === 'public') return true;
+						if (paramName === 'mode') return 'hostedChat';
+						if (paramName === 'options') return {};
+						if (paramName === 'availableInChat') return false;
+						if (paramName === 'authentication') return authentication;
+						return defaultValue;
+					},
+				);
+
+				const result = await chatTrigger.webhook(mockContext);
+
+				expect(validateAuth).toHaveBeenCalledWith(mockContext);
+				expect(mockResponse.writeHead).toHaveBeenCalledWith(500, {
+					'www-authenticate': 'Basic realm="Webhook abc123"',
+				});
+				expect(mockResponse.end).toHaveBeenCalledWith('Unsupported authentication method!');
+				expect(result).toEqual({ noWebhookResponse: true });
+			},
+		);
 	});
 
 	describe('message-send credential readiness gate', () => {

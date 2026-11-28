@@ -136,6 +136,60 @@ describe('OAuthConsentService', () => {
 			expect(result).toEqual({ ok: false, reason: 'forbidden' });
 		});
 
+		it('returns the reason, the resource name, and the hints when the resource describes its refusal', async () => {
+			oauthSessionService.verifySession.mockReturnValue({
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: 'state',
+				resource: 'https://n8n.example.com/mcp-servers/sales-tools',
+			});
+			oauthClientRepository.findById.mockResolvedValue(mock<OAuthClient>({ id: 'client-123' }));
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				displayName: 'Sales tools',
+				uiHints: { icon: 'mcp', consentType: 'mcp-server' },
+				scopes: [],
+				authorize: async () => false,
+				describeRefusal: async () => ({ reason: 'not_member', projectName: 'Sales' }),
+			} as unknown as ProtectedResource);
+
+			const result = await service.getConsentDetails('token', mock<User>({ id: 'user-1' }));
+
+			expect(result).toEqual({
+				ok: false,
+				reason: 'forbidden',
+				refusal: {
+					reason: 'not_member',
+					projectName: 'Sales',
+					resourceName: 'Sales tools',
+					uiHints: { icon: 'mcp', consentType: 'mcp-server' },
+				},
+			});
+		});
+
+		it('still answers forbidden when the resource cannot describe its refusal', async () => {
+			oauthSessionService.verifySession.mockReturnValue({
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: 'state',
+				resource: 'https://n8n.example.com/mcp-servers/sales-tools',
+			});
+			oauthClientRepository.findById.mockResolvedValue(mock<OAuthClient>({ id: 'client-123' }));
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				displayName: 'Sales tools',
+				scopes: [],
+				authorize: async () => false,
+				describeRefusal: async () => {
+					throw new Error('Database unavailable');
+				},
+			} as unknown as ProtectedResource);
+
+			const result = await service.getConsentDetails('token', mock<User>({ id: 'user-1' }));
+
+			expect(result).toEqual({ ok: false, reason: 'forbidden' });
+		});
+
 		it('should return null when client not found', async () => {
 			const sessionToken = 'valid-session-token';
 			const sessionPayload = {

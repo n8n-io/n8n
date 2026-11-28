@@ -1,13 +1,24 @@
 import {
+	agentExecutionIdParamSchema,
 	agentIdParamSchema,
+	agentVersionIdParamSchema,
+	AgentExecutionListPublicDto,
 	AgentListPublicDto,
 	AgentPublicDto,
+	AgentRunPublicDto,
+	AgentVersionListPublicDto,
+	AgentVersionPublicDto,
 	CreatedAgentPublicDto,
 	CreateAgentPublicDto,
 	DeletedAgentPublicDto,
+	ListAgentExecutionsPublicQueryDto,
+	ListAgentVersionsPublicQueryDto,
 	ListAgentsPublicQueryDto,
 	PublishAgentPublicDto,
+	RunAgentPublicDto,
+	StoppedAgentExecutionPublicDto,
 	UpdateAgentPublicDto,
+	type AgentVersionListItemDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -32,6 +43,8 @@ import type { Response } from 'express';
 import { BadRequestError, NotFoundError, UnprocessableRequestError, UserError } from '@n8n/errors';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
+import { AgentPublicRunService } from '@/modules/agents/agent-public-run.service';
+import { SESSION_STOPPED_REASON } from '@/modules/agents/agent-session-stop-reason';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import {
@@ -52,6 +65,7 @@ export class AgentsPublicController {
 		private readonly agentResponseMapper: AgentResponseMapper,
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
+		private readonly agentPublicRunService: AgentPublicRunService,
 		private readonly agentConfigService: AgentConfigService,
 		private readonly agentPublishService: AgentPublishService,
 	) {}
@@ -123,6 +137,75 @@ export class AgentsPublicController {
 		return await this.agentResponseMapper.toPublicDto(agent, agent.projectId ?? '', req.user);
 	}
 
+	@Get('/:agentId/versions')
+	@ApiKeyScope('agent:read')
+	@ProjectScope('agent:read')
+	@ApiSummary('Retrieve agent version history')
+	@ApiDescription(
+		'Returns a paginated list of saved agent versions for an agent. ' +
+			'The response is one cursor page: read the next page with the cursor query parameter.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentVersionListPublicDto)
+	@ApiErrorResponse(404)
+	async listAgentVersions(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Query query: ListAgentVersionsPublicQueryDto,
+	): Promise<AgentVersionListPublicDto> {
+		const agent = await this.requireProjectAgent(agentId);
+		const { offset, limit } = resolveOffsetPagination({ cursor: query.cursor, limit: query.limit });
+		const versions = await this.agentPublishService.listVersions(
+			agentId,
+			agent.projectId,
+			limit + 1,
+			offset,
+		);
+		const hasMore = versions.length > limit;
+		const data = hasMore ? versions.slice(0, limit) : versions;
+
+		return {
+			data: data.map(toPublicAgentVersion),
+			nextCursor: encodeNextCursor({
+				offset,
+				limit,
+				numberOfTotalRecords: hasMore ? offset + limit + 1 : offset + data.length,
+			}),
+		};
+	}
+
+	@Get('/:agentId/versions/:versionId')
+	@ApiKeyScope('agent:read')
+	@ProjectScope('agent:read')
+	@ApiSummary('Retrieve an agent version')
+	@ApiDescription(
+		'Retrieve one saved version of an agent, including its configuration, tools, and skills.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentVersionPublicDto)
+	@ApiErrorResponse(404)
+	async getAgentVersion(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Param('versionId', agentVersionIdParamSchema) versionId: string,
+	): Promise<AgentVersionPublicDto> {
+		const agent = await this.requireProjectAgent(agentId);
+		// The summary owns list metadata. The version read owns the saved document.
+		const [summary, { definition }] = await Promise.all([
+			this.agentPublishService.getVersionSummary(agentId, agent.projectId, versionId),
+			this.agentPublishService.getVersion(agentId, agent.projectId, versionId),
+		]);
+
+		return {
+			...toPublicAgentVersion(summary),
+			config: definition.schema,
+			tools: definition.tools ?? {},
+			skills: definition.skills,
+		};
+	}
+
 	@Get('/')
 	@ApiKeyScope('agent:list')
 	@ApiSummary('List agents')
@@ -148,6 +231,93 @@ export class AgentsPublicController {
 
 		return {
 			data: data.map(mapAgentListPublicItem),
+			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
+		};
+	}
+
+	@Post('/:agentId/run')
+	@ApiKeyScope('agent:execute')
+	@ProjectScope('agent:execute')
+	@ApiSummary('Run an agent')
+	@ApiDescription(
+		'Run the latest published version of an agent and wait for the final response. ' +
+			'Omit sessionId to start a session. Send the same sessionId to continue that session. ' +
+			'The Public API rejects an agent that has no published version, ' +
+			'and an agent whose published version uses a tool that needs approval.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentRunPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(422)
+	async runAgent(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Body body: RunAgentPublicDto,
+	): Promise<AgentRunPublicDto> {
+		// The request is the only handle the caller has until the response.
+		// Close aborts the run. A finished response must not.
+		const abortController = new AbortController();
+		const abortIfDisconnected = () => {
+			if (!res.writableEnded) abortController.abort(SESSION_STOPPED_REASON);
+		};
+		res.on('close', abortIfDisconnected);
+		try {
+			return await this.agentPublicRunService.run(req.user, agentId, body, abortController.signal);
+		} finally {
+			res.off('close', abortIfDisconnected);
+		}
+	}
+
+	@Post('/:agentId/executions/:executionId/stop')
+	@ApiKeyScope('agent:execute')
+	@ProjectScope('agent:execute')
+	@ApiSummary('Stop an agent run')
+	@ApiDescription(
+		'Stop a run of this agent. A finished run returns its status. An unknown execution returns 404.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, StoppedAgentExecutionPublicDto)
+	@ApiErrorResponse(404)
+	async stopAgentExecution(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Param('executionId', agentExecutionIdParamSchema) executionId: string,
+	): Promise<StoppedAgentExecutionPublicDto> {
+		return await this.agentPublicRunService.stop(req.user, agentId, executionId);
+	}
+
+	@Get('/:agentId/executions')
+	@ApiKeyScope('agent:read')
+	@ProjectScope('agent:read')
+	@ApiSummary('List agent executions')
+	@ApiDescription(
+		'List the runs of one agent that you can see, newest first. Project sessions are visible to every project member, private sessions only to their owner. ' +
+			'The response is one cursor page: read the next page with the cursor query parameter. ' +
+			'Narrow the list to one session with sessionId, or to one run status with status. ' +
+			'Runs of a sub-agent do not appear in this list.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentExecutionListPublicDto)
+	@ApiErrorResponse(404)
+	async listAgentExecutions(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Query query: ListAgentExecutionsPublicQueryDto,
+	): Promise<AgentExecutionListPublicDto> {
+		const { offset, limit } = resolveOffsetPagination({ cursor: query.cursor, limit: query.limit });
+
+		const { count, data } = await this.agentPublicRunService.listExecutions(req.user, agentId, {
+			offset,
+			limit,
+			sessionId: query.sessionId,
+			status: query.status,
+		});
+
+		return {
+			data,
 			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
 		};
 	}
@@ -375,6 +545,14 @@ export class AgentsPublicController {
 		return await this.agentResponseMapper.toPublicDto(restored, existing.projectId, req.user);
 	}
 
+	private async requireProjectAgent(agentId: string) {
+		const agent = await this.agentsService.findById(agentId);
+		if (!agent?.projectId) {
+			throw new NotFoundError('Not Found');
+		}
+		return agent;
+	}
+
 	private toDeletedAgentPublicDto(agent: DeletedAgentSnapshot): DeletedAgentPublicDto {
 		return {
 			id: agent.id,
@@ -387,6 +565,21 @@ export class AgentsPublicController {
 			updatedAt: toIsoTimestamp(agent.updatedAt),
 		};
 	}
+}
+
+function toPublicAgentVersion(item: AgentVersionListItemDto) {
+	return {
+		versionId: item.versionId,
+		agentId: item.agentId,
+		name: item.name ?? null,
+		description: item.description ?? null,
+		author: item.author,
+		createdAt: item.createdAt,
+		updatedAt: item.updatedAt,
+		isActive: item.isActive,
+		isCurrent: item.isCurrent ?? false,
+		...(item.lastPublished ? { lastPublished: item.lastPublished } : {}),
+	};
 }
 
 function toIsoTimestamp(value: Date | string | undefined): string {

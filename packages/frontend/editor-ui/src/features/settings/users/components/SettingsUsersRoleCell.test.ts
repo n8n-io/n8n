@@ -60,15 +60,11 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 });
 
 // Stub out heavy sub-components that rely on router / dialogs.
-vi.mock('@/features/roles/components/RoleHoverPopover.vue', () => ({
-	default: { name: 'RoleHoverPopover', template: '<div><slot /></div>' },
-}));
-vi.mock('@/features/roles/components/RoleContactAdminModal.vue', () => ({
-	default: { name: 'RoleContactAdminModal', template: '<div />' },
-}));
-vi.mock('@/features/roles/components/CustomRolesUpgradeModal.vue', () => ({
-	default: { name: 'CustomRolesUpgradeModal', template: '<div />' },
-}));
+const roleComponentStubs = {
+	RoleHoverPopover: { template: '<div><slot /></div>' },
+	RoleContactAdminModal: { template: '<div />' },
+	CustomRolesUpgradeModal: { template: '<div />' },
+};
 
 // Permission checks are scope-based; grant all scopes by default so the editable UI renders.
 vi.mock('@/app/utils/rbac/permissions', () => ({
@@ -143,6 +139,7 @@ describe('SettingsUsersRoleCell', () => {
 		vi.mocked(hasPermission).mockReturnValue(true);
 		renderComponent = createComponentRenderer(SettingsUsersRoleCell, {
 			pinia: pinia(),
+			global: { stubs: roleComponentStubs },
 			props: { data: mockUser },
 		});
 	});
