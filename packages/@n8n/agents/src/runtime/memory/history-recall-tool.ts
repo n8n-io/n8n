@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-import { messageToText } from './message-text';
+import { historyToolCallRef } from './compacted-tool-calls';
+import { messageToText, toolResultToText } from './message-text';
 import { getCreatedAt } from '../../sdk/message';
 import { Tool } from '../../sdk/tool';
 import type { BuiltMemory } from '../../types';
@@ -16,6 +17,25 @@ const MAX_TEXT_CHARS = 4_000;
 const CURSOR_OVERFLOW = 20;
 
 const ReadHistoryInputSchema = z.object({
+	toolCallId: z
+		.string()
+		.min(1)
+		.max(4096)
+		.optional()
+		.describe('Return one stored tool result by exact call ID. Ignores text search and paging.'),
+	toolCallRef: z
+		.string()
+		.regex(/^[a-zA-Z0-9_-]{43}$/)
+		.optional()
+		.describe('Return the stored result for a reference listed in compacted history.'),
+	offset: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Character offset for a call ID or reference lookup. If truncated, add the returned text length to offset and call again.',
+		),
 	query: z
 		.string()
 		.optional()
@@ -100,7 +120,7 @@ function cutAtCursor(messages: AgentDbMessage[], before: Date, beforeId: string)
 }
 
 const INSTRUCTION =
-	'Earlier parts of this conversation can be replaced by an observation log. When you need an exact detail the log left out (an id, a value, a tool result), call read_history instead of guessing.';
+	'Earlier parts of this conversation can be replaced by an observation log. Use read_history to recover missing details. If compacted history lists a call reference, pass it as toolCallRef to recover that result.';
 
 /** Read the stored thread, including messages the observation log replaced. */
 export function createReadHistoryTool(opts: {
@@ -109,12 +129,48 @@ export function createReadHistoryTool(opts: {
 }) {
 	return new Tool(READ_HISTORY_TOOL_NAME)
 		.description(
-			'Read earlier messages of this conversation, including ones replaced by the observation log. Search by text or page back by time.',
+			'Read earlier messages of this conversation, including ones replaced by the observation log. Look up a tool result by call ID or reference, search by text, or page back by time.',
 		)
 		.systemInstruction(INSTRUCTION)
 		.input(ReadHistoryInputSchema)
 		.output(ReadHistoryOutputSchema)
-		.handler(async ({ query, before, beforeId, limit }): Promise<ReadHistoryOutput> => {
+		.handler(async (input): Promise<ReadHistoryOutput> => {
+			const { toolCallId, toolCallRef, offset, query, before, beforeId, limit } = input;
+			if (toolCallId || toolCallRef) {
+				const history = await opts.memory.getMessages(opts.persistence.threadId, {
+					resourceId: opts.persistence.resourceId,
+				});
+				for (let i = history.length - 1; i >= 0; i--) {
+					const message = history[i];
+					if (!('role' in message) || message.role !== 'assistant') continue;
+					const calls = message.content.filter((block) => block.type === 'tool-call');
+					for (const [index, block] of calls.entries()) {
+						if (
+							block.state !== 'pending' &&
+							(toolCallId
+								? block.toolCallId === toolCallId
+								: historyToolCallRef(message.id, index) === toolCallRef)
+						) {
+							const text = toolResultToText(block);
+							const start = Math.min(offset ?? 0, text.length);
+							const end = start + MAX_TEXT_CHARS;
+							return {
+								messages: [
+									{
+										id: message.id,
+										role: message.role,
+										createdAt: getCreatedAt(message)?.toISOString(),
+										text: text.slice(start, end),
+										offset: start,
+										truncated: end < text.length,
+									},
+								],
+							};
+						}
+					}
+				}
+				return { messages: [] };
+			}
 			const beforeDate = before ? new Date(before) : undefined;
 			if (beforeDate && isNaN(beforeDate.getTime())) {
 				throw new Error(`read_history: "before" is not a valid ISO timestamp: ${before}`);

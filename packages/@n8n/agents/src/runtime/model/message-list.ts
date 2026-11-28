@@ -206,6 +206,9 @@ export class AgentMessageList {
 	/** Rendered observation-log memory for this run. Set by buildMessageList / resume. */
 	observationLogMemory: string | undefined;
 
+	/** References to calls excluded at turn start, before this list loaded. */
+	earlierCompactedToolCalls: string[] = [];
+
 	/**
 	 * Where the observation log goes. `system` folds it into the volatile system
 	 * message; `message` sends it as the first conversation message, so log
@@ -489,6 +492,9 @@ export class AgentMessageList {
 			...(this.earlierLoadedSkillIds.size > 0 && {
 				earlierLoadedSkillIds: [...this.earlierLoadedSkillIds],
 			}),
+			...(this.earlierCompactedToolCalls.length > 0 && {
+				earlierCompactedToolCalls: [...this.earlierCompactedToolCalls],
+			}),
 		};
 	}
 
@@ -508,6 +514,7 @@ export class AgentMessageList {
 			if (responseIdSet.has(msg.id)) list.responseSet.add(msg);
 		}
 		list.addEarlierLoadedSkills(data.earlierLoadedSkillIds ?? []);
+		list.earlierCompactedToolCalls = data.earlierCompactedToolCalls ?? [];
 		list.sortAllByCreatedAt();
 		return list;
 	}
