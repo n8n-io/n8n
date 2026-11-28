@@ -163,6 +163,11 @@ The stack does not pull the image when `platform` is set, because that pull can 
 Set `entrypoint` and `command` to override the image `ENTRYPOINT` and `CMD`.
 Worker and webhook containers append their subcommand (`worker`, `webhook`) to `command`.
 
+Set `memoryBytes` and `memorySwapBytes` to enforce exact byte limits on `HostConfig.Memory` and `HostConfig.MemorySwap`.
+`memoryBytes` overrides `resourceQuota.memory` (in GiB).
+To disable swap, set `memorySwapBytes` equal to `memoryBytes`, or to the byte equivalent of `resourceQuota.memory` (`Math.ceil(resourceQuota.memory * 1024 ** 3)`).
+Set `memorySwapBytes` to `-1` for unlimited swap.
+
 ```typescript
 test.use({
   capability: {

@@ -28,6 +28,13 @@ export interface SignInResult {
 	version: string;
 }
 
+export interface HealthCheckResult {
+	status: number;
+	body: unknown;
+	text: string;
+	readinessStatus: number;
+}
+
 export interface WebhookRunResult {
 	workflowId: string;
 	webhookPath: string;
@@ -305,6 +312,19 @@ export class DeploymentProbe {
 		}
 
 		return lastResponse!;
+	}
+
+	/** Check `/healthz` and `/healthz/readiness`. */
+	async checkHealth(): Promise<HealthCheckResult> {
+		const healthRes = await this.fetch('healthz');
+		const { body, text } = await parseJsonBody(healthRes);
+		const readinessRes = await this.fetch('healthz/readiness');
+		return {
+			status: healthRes.status(),
+			body,
+			text,
+			readinessStatus: readinessRes.status(),
+		};
 	}
 
 	/** Check readiness, complete owner setup if needed, and log in via REST API. */
