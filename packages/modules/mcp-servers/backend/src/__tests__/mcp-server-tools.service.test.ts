@@ -7,8 +7,8 @@ import type { McpServerToolRepository } from '../database/repositories/mcp-serve
 import { McpServerToolsService } from '../services/mcp-server-tools.service';
 import type { McpServer } from '../database/entities/mcp-server.entity';
 import type { McpServerRepository } from '../database/repositories/mcp-server.repository';
-import type { TextDraftPort } from '../tools/text-draft-port';
-import type { WorkflowToolListItem, WorkflowToolPort } from '../tools/workflow-tool-port';
+import type { TextDraftPort } from '../ports/text-draft.port';
+import type { WorkflowToolListItem, WorkflowToolPort } from '../ports/workflow-tool.port';
 
 const PROJECT_ID = 'project-1';
 const SERVER_ID = '7b0c2a52-3c1f-4f53-9a51-0c0d8c3a0a01';

@@ -1,11 +1,13 @@
 import { CUSTOM_MCP_SERVERS_FLAG, CUSTOM_MCP_SERVERS_FLAG_VARIANT } from '@n8n/api-types';
 import { EventService, PostHogClient, UrlService } from '@n8n/backend-services';
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
+import { RefreshTokenPort } from '@n8n/backend-module-mcp-servers';
 import {
-	McpServerBlock,
-	McpServerConnection,
-	RefreshTokenPort,
-} from '@n8n/backend-module-mcp-servers';
+	clearMcpServerTables,
+	createMcpServerConnection,
+	findMcpServerBlocks,
+	findMcpServerConnections,
+} from '@n8n/backend-module-mcp-servers/testing';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AssignableProjectRole } from '@n8n/permissions';
@@ -74,9 +76,14 @@ async function addConnection(
 	lastUsedAt: Date,
 	serverId = server.id,
 ) {
-	await Container.get(DataSource)
-		.getRepository(McpServerConnection)
-		.insert({ serverId, userId: user.id, oauthClientId, clientName, firstUsedAt, lastUsedAt });
+	await createMcpServerConnection({
+		serverId,
+		userId: user.id,
+		oauthClientId,
+		clientName,
+		firstUsedAt,
+		lastUsedAt,
+	});
 }
 
 async function addRefreshToken(
@@ -103,11 +110,11 @@ async function refreshTokens() {
 }
 
 async function blockRows() {
-	return await Container.get(DataSource).getRepository(McpServerBlock).find();
+	return await findMcpServerBlocks();
 }
 
 async function connectionRows() {
-	return await Container.get(DataSource).getRepository(McpServerConnection).find();
+	return await findMcpServerConnections();
 }
 
 beforeAll(async () => {
@@ -149,13 +156,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate([
-		'McpServerConnection',
-		'McpServerBlock',
-		'McpServerTool',
-		'McpServer',
-		'RefreshToken',
-	]);
+	await clearMcpServerTables();
+	await testDb.truncate(['RefreshToken']);
 	setFlag(true);
 	server = await createServer('support-desk');
 	emit = vi.spyOn(Container.get(EventService), 'emit');

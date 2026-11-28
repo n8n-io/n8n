@@ -1,6 +1,5 @@
-import type { McpServersConfig } from '../../mcp-servers.config';
-
-import { McpServerRunCap } from '../run-cap';
+import type { McpServersConfig } from '../mcp-servers.config';
+import { McpServerRunCap } from '../services/mcp-server-run-cap.service';
 
 describe('McpServerRunCap', () => {
 	it('refuses a run when the server has as many runs in flight as the cap', () => {

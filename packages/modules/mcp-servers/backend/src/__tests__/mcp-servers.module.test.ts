@@ -4,18 +4,19 @@ import { mock } from 'vitest-mock-extended';
 
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
-import { RefreshTokenPort } from '../access/refresh-token-port';
 import { McpServersModule } from '../mcp-servers.module';
-import { McpServerProtectedResource } from '../runtime/mcp-server-protected-resource';
-import { OAuthClientNamePort } from '../tools/oauth-client-name-port';
-import { TextDraftPort } from '../tools/text-draft-port';
-import { McpServerToolAdapters, WorkflowToolPort } from '../tools/workflow-tool-port';
+import { McpServerAdapters } from '../ports/mcp-server-adapters';
+import { OAuthClientNamePort } from '../ports/oauth-client-name.port';
+import { RefreshTokenPort } from '../ports/refresh-token.port';
+import { TextDraftPort } from '../ports/text-draft.port';
+import { WorkflowToolPort } from '../ports/workflow-tool.port';
+import { McpServerProtectedResource } from '../services/mcp-server-protected-resource.service';
 
 // The REST routes have their integration tests in the CLI. Their imports only slow this test.
 vi.mock('../controllers/mcp-servers.controller', () => ({}));
 vi.mock('../controllers/mcp-server-tools.controller', () => ({}));
-vi.mock('../runtime/mcp-server-runtime.controller', () => ({}));
-vi.mock('../access/mcp-server-access.controller', () => ({}));
+vi.mock('../controllers/mcp-server-runtime.controller', () => ({}));
+vi.mock('../controllers/mcp-server-access.controller', () => ({}));
 
 describe('McpServersModule', () => {
 	it('registers the module entrypoint', () => {
@@ -27,7 +28,7 @@ describe('McpServersModule', () => {
 		const textDrafts = mock<TextDraftPort>();
 		const clients = mock<OAuthClientNamePort>();
 		const refreshTokens = mock<RefreshTokenPort>();
-		Container.set(McpServerToolAdapters, {
+		Container.set(McpServerAdapters, {
 			resolve: () => ({ workflows, textDrafts, clients, refreshTokens }),
 		});
 		Container.set(McpServerProtectedResource, mock<McpServerProtectedResource>());

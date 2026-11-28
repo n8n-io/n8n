@@ -1,11 +1,11 @@
 import type { EventService } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
 
-import type { McpServerConnection } from '../../database/entities/mcp-server-connection.entity';
-import type { McpServer } from '../../database/entities/mcp-server.entity';
-import type { OAuthClientNamePort } from '../../tools/oauth-client-name-port';
-import { McpServerConnectionRecorder } from '../mcp-server-connection-recorder';
-import type { McpServerConnectionRepository } from '../mcp-server-connection.repository';
+import type { McpServerConnection } from '../database/entities/mcp-server-connection.entity';
+import type { McpServer } from '../database/entities/mcp-server.entity';
+import type { McpServerConnectionRepository } from '../database/repositories/mcp-server-connection.repository';
+import type { OAuthClientNamePort } from '../ports/oauth-client-name.port';
+import { McpServerConnectionRecorder } from '../services/mcp-server-connection-recorder.service';
 
 const NOW = new Date('2026-11-25T12:00:00.000Z');
 const server = mock<McpServer>({ id: 'server-1' });
