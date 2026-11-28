@@ -42,6 +42,8 @@ import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import {
 	getParameterTypeOption,
@@ -123,6 +125,8 @@ const {
 	isRagStarterCalloutVisible,
 } = useCalloutHelpers();
 const aiGateway = useAiGateway();
+const aiGatewayStore = useAiGatewayStore();
+const { openUpgrade: openAiGatewayUpgrade } = useAiGatewayTopUp();
 
 const MODEL_PARAMETER_NAMES = new Set(['modelId', 'model', 'modelName']);
 
@@ -667,6 +671,12 @@ const aiGatewayUnsupportedNoticeIndex = computed(() => {
 		: items.findIndex((item) => item.parameter.name === 'operation');
 });
 
+// Render the premium-models hint once, under the top-level model parameter.
+const aiGatewayPremiumModelsHintIndex = computed(() => {
+	if (props.path !== 'parameters' || !aiGatewayStore.hasHiddenPremiumModels(node.value)) return -1;
+	return parameterItems.value.findIndex((item) => MODEL_PARAMETER_NAMES.has(item.parameter.name));
+});
+
 const aiGatewayOperationDisplayName = computed(() => {
 	const params = props.path
 		? (get(props.nodeValues, props.path) as INodeParameters | undefined)
@@ -1064,6 +1074,20 @@ watch(
 					})
 				}}
 			</N8nNotice>
+
+			<N8nNotice
+				v-if="index === aiGatewayPremiumModelsHintIndex"
+				theme="info"
+				:content="
+					i18n.baseText(
+						aiGatewayStore.canUpgrade
+							? 'aiGateway.premiumModels.notice'
+							: 'aiGateway.premiumModels.notice.member',
+					)
+				"
+				data-test-id="ai-gateway-premium-models-notice"
+				@action="openAiGatewayUpgrade('premiumModels')"
+			/>
 		</div>
 		<div v-if="parameterItems.length === 0" :class="{ indent }">
 			<slot />

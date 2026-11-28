@@ -168,6 +168,37 @@ describe('AiGatewayTopUpModal.vue', () => {
 		expect(mockGoToUpgrade).toHaveBeenCalledWith('ai-gateway-top-up', 'upgrade-ai-gateway-top-up');
 	});
 
+	it.each([
+		{
+			variant: 'premiumModels',
+			title: 'Upgrade your plan to use premium models',
+			description: /Premium models aren't available with Gateway credits on a trial/,
+			source: 'ai-gateway-premium-models',
+			campaign: 'upgrade-ai-gateway-premium-models',
+		},
+		{
+			variant: 'requestLimit',
+			title: 'Upgrade your plan to send larger requests',
+			description: /each request with Gateway credits can cost up to \$0\.50/,
+			source: 'ai-gateway-request-limit',
+			campaign: 'upgrade-ai-gateway-request-limit',
+		},
+	] as const)(
+		'shows the $variant upgrade copy without services',
+		async ({ variant, title, description, source, campaign }) => {
+			const { usersStore } = renderModal({ variant });
+
+			expect(screen.getByText(title)).toBeInTheDocument();
+			expect(screen.getByText(description)).toBeInTheDocument();
+			expect(screen.queryByTestId('ai-gateway-topup-services')).not.toBeInTheDocument();
+			expect(usersStore.fetchUsers).not.toHaveBeenCalled();
+
+			await userEvent.click(screen.getByRole('button', { name: 'Upgrade' }));
+
+			expect(mockGoToUpgrade).toHaveBeenCalledWith(source, campaign);
+		},
+	);
+
 	it('names every featured partner, installed or not', () => {
 		renderModal({ variant: 'ownerTrial' });
 

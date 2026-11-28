@@ -563,6 +563,7 @@ export class FrontendService {
 		const isAiBuilderEnabled = this.license.isLicensed(LICENSE_FEATURES.AI_BUILDER);
 
 		this.settings.license.planName = this.license.getPlanName();
+		this.settings.license.planGroup = this.license.getValue('planGroup');
 		this.settings.license.consumerId = this.license.getConsumerId();
 
 		// Re-resolve on every settings fetch so a license upgrade/downgrade

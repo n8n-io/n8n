@@ -78,6 +78,15 @@ const FEATURED_SERVICES = [
 	logo: Component;
 }>;
 
+// Variants without a link cannot upgrade, so their action contacts the Instance Owner.
+const UPGRADE_LINKS = {
+	ownerTrial: ['ai-gateway-top-up', 'upgrade-ai-gateway-top-up'],
+	premiumModels: ['ai-gateway-premium-models', 'upgrade-ai-gateway-premium-models'],
+	requestLimit: ['ai-gateway-request-limit', 'upgrade-ai-gateway-request-limit'],
+	memberTrial: undefined,
+	member: undefined,
+} as const satisfies Record<AiGatewayTopUpVariant, readonly [string, string] | undefined>;
+
 const props = defineProps<{
 	variant: AiGatewayTopUpVariant;
 }>();
@@ -88,11 +97,11 @@ const usersStore = useUsersStore();
 const { goToUpgrade } = usePageRedirectionHelper();
 
 const isOpen = ref(true);
-const isOwnerTrial = computed(() => props.variant === 'ownerTrial');
-const needsOwnerEmail = computed(
-	() => props.variant === 'member' || props.variant === 'memberTrial',
+const upgradeLink = computed(() => UPGRADE_LINKS[props.variant]);
+const needsOwnerEmail = computed(() => upgradeLink.value === undefined);
+const showsServices = computed(
+	() => props.variant === 'ownerTrial' || props.variant === 'memberTrial',
 );
-const showsServices = computed(() => props.variant !== 'member');
 const ownerEmails = computed(() =>
 	usersStore.allUsers
 		.filter((user) => user.role === ROLE.Owner)
@@ -116,6 +125,8 @@ const title = computed(() => {
 		ownerTrial: 'aiGateway.topUp.modal.title.trial',
 		memberTrial: 'aiGateway.topUp.modal.title.member',
 		member: 'aiGateway.topUp.modal.title.member',
+		premiumModels: 'aiGateway.upgrade.modal.title.premiumModels',
+		requestLimit: 'aiGateway.upgrade.modal.title.requestLimit',
 	} as const satisfies Record<AiGatewayTopUpVariant, BaseTextKey>;
 	return i18n.baseText(keys[props.variant]);
 });
@@ -125,12 +136,14 @@ const description = computed(() => {
 		ownerTrial: 'aiGateway.topUp.modal.description.trial',
 		memberTrial: 'aiGateway.topUp.modal.description.member.trial',
 		member: 'aiGateway.topUp.modal.description.member',
+		premiumModels: 'aiGateway.upgrade.modal.description.premiumModels',
+		requestLimit: 'aiGateway.upgrade.modal.description.requestLimit',
 	} as const satisfies Record<AiGatewayTopUpVariant, BaseTextKey>;
 	return i18n.baseText(keys[props.variant]);
 });
 
 const actionLabel = computed(() => {
-	if (isOwnerTrial.value) return i18n.baseText('generic.upgrade');
+	if (upgradeLink.value) return i18n.baseText('generic.upgrade');
 	return i18n.baseText('aiGateway.topUp.modal.cta.contactAdmin');
 });
 
@@ -153,9 +166,10 @@ function ownerMailtoHref(): string {
 }
 
 async function onAction(): Promise<void> {
-	if (isOwnerTrial.value) {
+	if (upgradeLink.value) {
+		const [source, campaign] = upgradeLink.value;
 		close();
-		await goToUpgrade('ai-gateway-top-up', 'upgrade-ai-gateway-top-up');
+		await goToUpgrade(source, campaign);
 		return;
 	}
 

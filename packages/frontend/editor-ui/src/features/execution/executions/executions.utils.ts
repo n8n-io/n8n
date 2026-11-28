@@ -43,8 +43,14 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
-import { h } from 'vue';
+import { h, type FunctionalComponent } from 'vue';
 import NodeExecutionErrorMessage from '@/app/components/NodeExecutionErrorMessage.vue';
+import {
+	isGatewayTrialRequestCostLimitError,
+	useAiGatewayStore,
+} from '@/app/stores/aiGateway.store';
+import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
+import { sanitizeHtml } from '@n8n/frontend-utils/htmlUtils';
 import { parse } from 'flatted';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
@@ -348,6 +354,18 @@ export function getExecutionErrorMessage({
 	return errorMessage;
 }
 
+// The toast can show outside the canvas, where no global link actions are registered.
+// Error toast telemetry reads the `message` prop.
+const GatewayRequestLimitMessage: FunctionalComponent<{ message: string }> = ({ message }) =>
+	h('span', {
+		innerHTML: sanitizeHtml(message),
+		onClick: (event: MouseEvent) => {
+			if (event.target instanceof HTMLAnchorElement) {
+				useAiGatewayTopUp().openUpgrade('requestLimit');
+			}
+		},
+	});
+
 export function getExecutionErrorToastConfiguration({
 	error,
 	lastNodeExecuted,
@@ -366,6 +384,20 @@ export function getExecutionErrorToastConfiguration({
 
 	if (error.name === 'SubworkflowOperationError') {
 		return { title: error.message, message: error.description ?? '' };
+	}
+
+	if (isGatewayTrialRequestCostLimitError(error)) {
+		const title = i18n.baseText('aiGateway.requestLimit.toast.title');
+		if (!useAiGatewayStore().canUpgrade) {
+			return { title, message: i18n.baseText('aiGateway.requestLimit.toast.message.member') };
+		}
+
+		return {
+			title,
+			message: h(GatewayRequestLimitMessage, {
+				message: i18n.baseText('aiGateway.requestLimit.toast.message'),
+			}),
+		};
 	}
 
 	if (

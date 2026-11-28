@@ -6,14 +6,22 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY, CLOUD_N8N_CONNECT_TOP_UP_PATH } from '@/app/constants';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 
 export type AiGatewayTopUpSource = 'settings_page' | 'credential_selector' | 'agent_budget_card';
 
-export type AiGatewayTopUpVariant = 'member' | 'memberTrial' | 'ownerTrial';
+/** `premiumModels` and `requestLimit` explain a trial limit to the Instance Owner. */
+export type AiGatewayTopUpVariant =
+	| 'member'
+	| 'memberTrial'
+	| 'ownerTrial'
+	| 'premiumModels'
+	| 'requestLimit';
 
 export function useAiGatewayTopUp() {
 	const uiStore = useUIStore();
 	const usersStore = useUsersStore();
+	const aiGatewayStore = useAiGatewayStore();
 	const cloudPlanStore = useCloudPlanStore();
 	const telemetry = useTelemetry();
 	const toast = useToast();
@@ -53,5 +61,11 @@ export function useAiGatewayTopUp() {
 		});
 	}
 
-	return { openTopUp };
+	/** Opens the modal that explains a trial limit. Only users who can upgrade see it. */
+	function openUpgrade(variant: 'premiumModels' | 'requestLimit'): void {
+		if (!aiGatewayStore.canUpgrade) return;
+		uiStore.openModalWithData({ name: AI_GATEWAY_TOP_UP_MODAL_KEY, data: { variant } });
+	}
+
+	return { openTopUp, openUpgrade };
 }
