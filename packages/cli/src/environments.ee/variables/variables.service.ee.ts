@@ -307,8 +307,14 @@ export class VariablesService {
 			}
 		}
 
-		if (variable.key) {
-			await this.validateUniqueVariable(variable.key, newProjectId, id);
+		// Moving a variable into another scope can also create a duplicate key,
+		// so validate whenever the key or the target scope changes.
+		if (variable.key || existingVariable.project?.id !== newProjectId) {
+			await this.validateUniqueVariable(
+				variable.key ?? existingVariable.key,
+				newProjectId,
+				id,
+			);
 		}
 
 		await this.variablesRepository.update(id, {

@@ -655,6 +655,20 @@ describe('VariablesService', () => {
 			).rejects.toThrow('A variable with key "VAR1" already exists in the specified project');
 		});
 
+		it('user should not be able to move a variable into a project that already has that key', async () => {
+			// ARRANGE
+			const user = await createAdmin();
+			const target = await createTeamProject();
+			const source = await createTeamProject();
+			await createProjectVariable('SHARED_KEY', '1', target);
+			const moved = await createProjectVariable('SHARED_KEY', '2', source);
+
+			// ACT & ASSERT — only the scope changes, but the key would collide
+			await expect(
+				variablesService.update(user, moved.id, { projectId: target.id }),
+			).rejects.toThrow('A variable with key "SHARED_KEY" already exists in the specified project');
+		});
+
 		it('user should not be able to change variable key to one that already exists (global -> project)', async () => {
 			// ARRANGE
 			const user = await createAdmin();
