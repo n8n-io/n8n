@@ -138,6 +138,7 @@ const triggerLabel = computed(() => {
 	if (source === 'instance-ai') return i18n.baseText('agentSessions.origin.instanceAi');
 	if (source === 'n8n_chat_production') return i18n.baseText('agentSessions.origin.n8nChat');
 	if (source === 'webhook') return i18n.baseText('agentSessions.origin.webhook');
+	if (source === 'public_api') return i18n.baseText('agentSessions.origin.publicApi');
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 
@@ -153,6 +154,7 @@ const triggerIcon = computed<IconName>(() => {
 		case 'workflow':
 			return sessionMetadata.value.source;
 		case 'webhook':
+		case 'public_api':
 			return 'plug';
 		case 'instance-ai':
 			return 'sparkles';

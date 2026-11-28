@@ -121,6 +121,20 @@ describe('ResourcesListLayout', () => {
 		expect(queryByTestId('resources-list-search')).not.toBeInTheDocument();
 	});
 
+	it('shows the unavailable state instead of the list and leaves the browser search shortcut available', async () => {
+		const { queryByTestId, getByText } = renderComponent({
+			props: { resources: TEST_WORKFLOWS, loading: true },
+			slots: { unavailable: () => 'No access to this list' },
+		});
+		await waitAllPromises();
+
+		expect(getByText('No access to this list')).toBeInTheDocument();
+		expect(queryByTestId('resources-list-search')).not.toBeInTheDocument();
+		const shortcut = new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, cancelable: true });
+		window.dispatchEvent(shortcut);
+		expect(shortcut.defaultPrevented).toBe(false);
+	});
+
 	it('should render the list chrome while refreshing an empty list without an empty state', () => {
 		const { getByTestId } = renderComponent({
 			props: {
