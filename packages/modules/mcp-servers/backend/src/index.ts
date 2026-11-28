@@ -26,4 +26,4 @@ export {
 } from './tools/workflow-tool-port';
 export { TextDraftPort, type TextDraftResult } from './tools/text-draft-port';
 export { OAuthClientNamePort } from './tools/oauth-client-name-port';
-export { OAuthGrantPort } from './tools/oauth-grant-port';
+export { RefreshTokenPort } from './access/refresh-token-port';

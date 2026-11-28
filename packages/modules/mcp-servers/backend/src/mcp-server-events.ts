@@ -33,6 +33,10 @@ export interface McpServerEventMap {
 		field: McpServerToolDraftField | 'both';
 		status: McpServerToolDraftStatus;
 	};
+	/** The first authorized request of a person with one AI client on a server. */
+	'mcp-server-connected': { serverId: string; userId: string; clientName: string };
+	'mcp-server-person-blocked': McpServerActor & { serverId: string; blockedUserId: string };
+	'mcp-server-access-restored': McpServerActor & { serverId: string; restoredUserId: string };
 	/** An AI client called a tool. `clientName` comes from the OAuth client registration. */
 	'mcp-server-tool-called': {
 		serverId: string;

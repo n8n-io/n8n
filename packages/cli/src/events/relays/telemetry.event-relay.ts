@@ -430,6 +430,9 @@ export class TelemetryEventRelay extends EventRelay {
 			'mcp-server-deleted': (event) => this.mcpServerDeleted(event),
 			'mcp-server-tool-added': (event) => this.mcpServerToolAdded(event),
 			'mcp-server-tool-called': (event) => this.mcpServerToolCalled(event),
+			'mcp-server-connected': (event) => this.mcpServerConnected(event),
+			'mcp-server-person-blocked': (event) => this.mcpServerPersonBlocked(event),
+			'mcp-server-access-restored': (event) => this.mcpServerAccessRestored(event),
 			'mcp-server-share-viewed': (event) => this.mcpServerShareViewed(event),
 			'mcp-server-tool-drafted': (event) => this.mcpServerToolDrafted(event),
 		});
@@ -693,6 +696,56 @@ export class TelemetryEventRelay extends EventRelay {
 			status,
 			duration_ms: durationMs,
 		});
+	}
+
+	private mcpServerConnected({
+		serverId,
+		userId,
+		clientName,
+	}: RelayEventMap['mcp-server-connected']) {
+		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CONNECTED_TO_CUSTOM_MCP_SERVER, {
+			server_id: serverId,
+			user_id: userId,
+			client_name: clientName,
+		});
+	}
+
+	private mcpServerPersonBlocked({
+		serverId,
+		userId,
+		blockedUserId,
+		source,
+		threadId,
+	}: RelayEventMap['mcp-server-person-blocked']) {
+		this.telemetry.track(
+			TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_BLOCKED_PERSON_FROM_CUSTOM_MCP_SERVER,
+			{
+				server_id: serverId,
+				user_id: userId,
+				blocked_user_id: blockedUserId,
+				source,
+				thread_id: threadId,
+			},
+		);
+	}
+
+	private mcpServerAccessRestored({
+		serverId,
+		userId,
+		restoredUserId,
+		source,
+		threadId,
+	}: RelayEventMap['mcp-server-access-restored']) {
+		this.telemetry.track(
+			TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_RESTORED_ACCESS_TO_CUSTOM_MCP_SERVER,
+			{
+				server_id: serverId,
+				user_id: userId,
+				restored_user_id: restoredUserId,
+				source,
+				thread_id: threadId,
+			},
+		);
 	}
 
 	private mcpServerShareViewed({

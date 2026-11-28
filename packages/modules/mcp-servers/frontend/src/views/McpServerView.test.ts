@@ -18,6 +18,7 @@ const api = vi.hoisted(() => ({
 	getMcpServer: vi.fn(),
 	updateMcpServer: vi.fn(),
 	deleteMcpServer: vi.fn(),
+	listMcpServerConnections: vi.fn(),
 }));
 vi.mock('../mcp-servers.api', () => api);
 
@@ -133,6 +134,7 @@ describe('McpServerView', () => {
 			...body,
 		}));
 		api.deleteMcpServer.mockResolvedValue(undefined);
+		api.listMcpServerConnections.mockResolvedValue({ connections: [], blocks: [] });
 	});
 
 	afterEach(() => {
@@ -260,9 +262,34 @@ describe('McpServerView', () => {
 			await renderPage();
 
 			expect(screen.getByText('Contents')).toBeInTheDocument();
-			expect(screen.getByText('Connections')).toBeInTheDocument();
+			expect(await screen.findByText('Connections 0')).toBeInTheDocument();
 			expect(screen.getByTestId('mcp-server-contents')).toBeInTheDocument();
 			expect(screen.queryByTestId('mcp-server-connections')).not.toBeInTheDocument();
+		});
+
+		it('counts a row for each person and client, and for a blocked person with no client', async () => {
+			const person = { firstName: 'Tom', lastName: 'Becker', email: 'tom@acme.com' };
+			const usedAt = '2026-11-24T10:00:00.000Z';
+			const connection = {
+				...person,
+				clientName: 'Cursor',
+				firstUsedAt: usedAt,
+				lastUsedAt: usedAt,
+			};
+			api.listMcpServerConnections.mockResolvedValue({
+				connections: [
+					{ ...connection, userId: 'user-1', oauthClientId: 'cursor' },
+					{ ...connection, userId: 'user-1', oauthClientId: 'claude-code' },
+				],
+				blocks: [
+					{ ...person, userId: 'user-1', blockedById: null, blockedAt: usedAt },
+					{ ...person, userId: 'user-2', blockedById: null, blockedAt: usedAt },
+				],
+			});
+
+			await renderPage();
+
+			expect(await screen.findByText('Connections 3')).toBeInTheDocument();
 		});
 
 		it('opens the connections on their own route', async () => {
@@ -276,8 +303,9 @@ describe('McpServerView', () => {
 		it('changes the route when a tab is selected', async () => {
 			await renderPage();
 
-			await userEvent.click(screen.getByText('Connections'));
+			await userEvent.click(await screen.findByText('Connections 0'));
 
+			expect(api.listMcpServerConnections).toHaveBeenCalledTimes(2);
 			expect(push).toHaveBeenCalledWith({
 				name: MCP_SERVER_CONNECTIONS_VIEW,
 				params: route.params,
@@ -487,6 +515,22 @@ describe('McpServerView', () => {
 			expect(await screen.findByTestId('mcp-server-not-found')).toHaveTextContent(
 				'MCP server not found',
 			);
+		});
+
+		it('does not load the connections of a server that does not exist', async () => {
+			api.getMcpServer.mockRejectedValue(new ResponseError('Not found', { httpStatusCode: 404 }));
+			api.listMcpServerConnections.mockRejectedValue(
+				new ResponseError('Not found', { httpStatusCode: 404 }),
+			);
+			capabilityRegistry.provide(capabilities.projectPermissions, {
+				scopesFor: () => BUILDER,
+				isReadOnly: () => false,
+			});
+			renderComponent();
+
+			await screen.findByTestId('mcp-server-not-found');
+			// The connections call would answer 404 too and show a second error toast.
+			expect(api.listMcpServerConnections).not.toHaveBeenCalled();
 		});
 	});
 });

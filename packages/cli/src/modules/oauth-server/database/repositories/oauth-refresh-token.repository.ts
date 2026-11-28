@@ -42,7 +42,17 @@ export class RefreshTokenRepository extends BaseRepository<RefreshToken> {
 		return result.affected ?? 0;
 	}
 
-	/** Deletes every refresh token of one resource URL. Returns the rows affected. */
+	/** Deletes the tokens of one user for one resource, on all clients. Returns the rows affected. */
+	async deleteByUserAndResource(
+		userId: string,
+		resource: string,
+		ctx: OperationContext,
+	): Promise<number> {
+		const result = await this.managerFor(ctx).delete(RefreshToken, { userId, resource });
+		return result.affected ?? 0;
+	}
+
+	/** Deletes the tokens of all users for one resource. Returns the rows affected. */
 	async deleteByResource(resource: string, ctx: OperationContext): Promise<number> {
 		const result = await this.managerFor(ctx).delete(RefreshToken, { resource });
 		return result.affected ?? 0;

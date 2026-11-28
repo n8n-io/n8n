@@ -205,12 +205,14 @@ export const mcpServerToolCandidateSchema = z.object({
 });
 export type McpServerToolCandidate = z.infer<typeof mcpServerToolCandidateSchema>;
 
-const mcpServerPersonSchema = z.object({
+/** A person in the Connections tab. A service account never connects, so every row is a person. */
+export const mcpServerPersonSchema = z.object({
 	userId: z.string().uuid(),
 	firstName: z.string().nullable(),
 	lastName: z.string().nullable(),
 	email: z.string().nullable(),
 });
+export type McpServerPerson = z.infer<typeof mcpServerPersonSchema>;
 
 export const mcpServerConnectionSchema = mcpServerPersonSchema.extend({
 	oauthClientId: z.string(),
@@ -252,4 +254,9 @@ export const MCP_SERVER_ACTION_SCOPES = {
 	updateTool: 'mcpServer:update',
 	draftTool: 'mcpServer:update',
 	removeTool: 'mcpServer:update',
+	listConnections: 'mcpServer:read',
+	// Block, restore access, and remove change who can use the server.
+	blockPerson: 'mcpServer:update',
+	restoreAccess: 'mcpServer:update',
+	removePerson: 'mcpServer:update',
 } as const satisfies Record<string, Scope>;

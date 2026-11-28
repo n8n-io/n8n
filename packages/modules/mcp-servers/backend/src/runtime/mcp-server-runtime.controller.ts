@@ -12,8 +12,11 @@ import { Container } from '@n8n/di';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Request, Response } from 'express';
 
+import { McpServerConnectionRecorder } from '../access/mcp-server-connection-recorder';
+import type { McpServer } from '../database/entities/mcp-server.entity';
 import { McpServersConfig } from '../mcp-servers.config';
 import { MCP_SERVERS_PATH, McpServerProtectedResource } from './mcp-server-protected-resource';
+import type { McpServerCaller } from './mcp-server-runtime.service';
 import { McpServerRuntimeService } from './mcp-server-runtime.service';
 
 type RuntimeRequest = Request<{ slug: string }>;
@@ -36,6 +39,7 @@ export class McpServerRuntimeController {
 	constructor(
 		private readonly resources: McpServerProtectedResource,
 		private readonly runtime: McpServerRuntimeService,
+		private readonly connections: McpServerConnectionRecorder,
 		private readonly logger: Logger,
 	) {}
 
@@ -56,6 +60,9 @@ export class McpServerRuntimeController {
 			return;
 		}
 
+		const caller = this.runtime.callerOf(admitted.context);
+		await this.recordUse(server, caller);
+
 		try {
 			const { createMcpHandler } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 				async () => await import('@modelcontextprotocol/server'),
@@ -63,7 +70,6 @@ export class McpServerRuntimeController {
 			const { toNodeHandler } = await lazyImport<typeof import('@modelcontextprotocol/node')>(
 				async () => await import('@modelcontextprotocol/node'),
 			);
-			const caller = this.runtime.callerOf(admitted.context);
 			const handler = createMcpHandler(
 				async () => await this.runtime.createServer(server, caller),
 				{ legacy: 'stateless', onerror: (error) => this.logError(error) },
@@ -98,6 +104,18 @@ export class McpServerRuntimeController {
 	@Delete('/:slug', routeOptions)
 	async delete(req: RuntimeRequest, res: Response) {
 		await this.methodNotAllowed(req, res);
+	}
+
+	/** The connection row only informs the builder. A failed write must not fail the request. */
+	private async recordUse(server: McpServer, caller: McpServerCaller) {
+		if (!caller.clientId) return;
+		try {
+			await this.connections.recordUse(server, caller.userId, caller.clientId);
+		} catch (error) {
+			this.logger.warn('Could not record the use of a custom MCP server', {
+				error: ensureError(error).message,
+			});
+		}
 	}
 
 	private logError(error: unknown) {

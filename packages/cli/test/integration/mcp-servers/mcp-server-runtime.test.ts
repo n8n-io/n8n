@@ -1,4 +1,5 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { CUSTOM_MCP_SERVERS_FLAG, CUSTOM_MCP_SERVERS_FLAG_VARIANT } from '@n8n/api-types';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -16,12 +17,16 @@ import {
 } from '@n8n/backend-test-utils';
 import {
 	McpServer,
+	McpServerBlock,
+	McpServerConnection,
 	McpServersConfig,
 	McpServerTool,
+	OAuthClientNamePort,
 	WorkflowToolPort,
 	type WorkflowToolRunResult,
 } from '@n8n/backend-module-mcp-servers';
 import type { Project, User } from '@n8n/db';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { Container } from '@n8n/di';
 import { LocalAuthorizationServer } from '@n8n/inbound-auth';
 import { DataSource } from '@n8n/typeorm';
@@ -50,6 +55,7 @@ const testServer = setupTestServer({
 });
 
 const CLIENT_ID = 'claude-code-client';
+const SECOND_CLIENT_ID = 'cursor-client';
 
 const TRIGGER: INode = {
 	id: 'trigger',
@@ -68,6 +74,7 @@ let viewer: User;
 let outsider: User;
 let project: Project;
 let serverSlug: string;
+let serverId: string;
 
 const runtimeUrl = (slug: string) => {
 	const { port } = testServer.httpServer.address() as AddressInfo;
@@ -79,13 +86,13 @@ const resourceUrl = (slug: string) =>
 	`${Container.get(UrlService).getInstanceBaseUrl()}/mcp-servers/${slug}`;
 
 /** An access token as the n8n sign-in issues it, for one resource. */
-async function tokenFor(user: User, resource: string) {
+async function tokenFor(user: User, resource: string, clientId = CLIENT_ID) {
 	const tokens = Container.get(OAuthTokenService);
-	const pair = tokens.generateTokenPair(user.id, CLIENT_ID, resource, []);
+	const pair = tokens.generateTokenPair(user.id, clientId, resource, []);
 	await tokens.saveTokenPair(
 		pair.accessToken,
 		pair.refreshToken,
-		CLIENT_ID,
+		clientId,
 		user.id,
 		[],
 		pair.audience,
@@ -129,9 +136,12 @@ async function addTool(serverId: string, toolName: string, targetId: string, pos
 		});
 }
 
+/** The runtime reads the flag for the instance, and the builder API for the user. */
 function setFlag(on: boolean) {
-	vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance).mockResolvedValue(
-		on ? 'test' : undefined,
+	const postHog = Container.get(PostHogClient);
+	vi.mocked(postHog.getFeatureFlagForInstance).mockResolvedValue(on ? 'test' : undefined);
+	vi.mocked(postHog.getFeatureFlags).mockResolvedValue(
+		on ? { [CUSTOM_MCP_SERVERS_FLAG]: CUSTOM_MCP_SERVERS_FLAG_VARIANT } : {},
 	);
 }
 
@@ -148,15 +158,20 @@ beforeAll(async () => {
 	member = await createMember();
 	viewer = await createMember();
 	outsider = await createMember();
-	await Container.get(DataSource)
-		.getRepository(OAuthClient)
-		.save({
-			id: CLIENT_ID,
-			name: 'Claude Code',
-			redirectUris: ['https://example.com/callback'],
-			grantTypes: ['authorization_code'],
-			tokenEndpointAuthMethod: 'none',
-		});
+	for (const [id, name] of [
+		[CLIENT_ID, 'Claude Code'],
+		[SECOND_CLIENT_ID, 'Cursor'],
+	]) {
+		await Container.get(DataSource)
+			.getRepository(OAuthClient)
+			.save({
+				id,
+				name,
+				redirectUris: ['https://example.com/callback'],
+				grantTypes: ['authorization_code'],
+				tokenEndpointAuthMethod: 'none',
+			});
+	}
 
 	// The module seeded the system source at init. Discovery normally runs as a system task: run
 	// it once here, reading the local authorization server in process, never over HTTP.
@@ -176,7 +191,15 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['McpServerTool', 'McpServer', 'WorkflowEntity', 'SharedWorkflow']);
+	await testDb.truncate([
+		'McpServerConnection',
+		'McpServerBlock',
+		'McpServerTool',
+		'McpServer',
+		'WorkflowEntity',
+		'SharedWorkflow',
+		'RefreshToken',
+	]);
 	project = await createTeamProject('Sales');
 	await linkUserToProject(member, project, 'project:editor');
 	await linkUserToProject(viewer, project, 'project:viewer');
@@ -184,6 +207,7 @@ beforeEach(async () => {
 
 	serverSlug = `sales-tools-${uuidv7().slice(-8)}`;
 	const server = await createServer(serverSlug, 'Pipeline numbers for the sales team.');
+	serverId = server.id;
 	const workflow = await createActiveWorkflow(
 		{ name: 'Pipeline summary', nodes: [TRIGGER], connections: {} },
 		project,
@@ -500,5 +524,115 @@ describe('Custom MCP server runtime access', () => {
 
 	it('answers GET with 404 for an unknown server', async () => {
 		await testServer.restlessAgent.get('/mcp-servers/no-such-server').expect(404);
+	});
+});
+
+describe('Custom MCP server connections', () => {
+	const connections = () => Container.get(DataSource).getRepository(McpServerConnection);
+
+	it('writes a connection row with the client name on the first request and sends "connected"', async () => {
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+		const client = await connect(await tokenFor(member, resourceUrl(serverSlug)));
+		await client.listTools();
+		await client.close();
+
+		expect(await connections().find()).toEqual([
+			expect.objectContaining({
+				serverId,
+				userId: member.id,
+				oauthClientId: CLIENT_ID,
+				clientName: 'Claude Code',
+			}),
+		]);
+		const connected = emit.mock.calls.filter(([name]) => name === 'mcp-server-connected');
+		expect(connected).toEqual([
+			['mcp-server-connected', { serverId, userId: member.id, clientName: 'Claude Code' }],
+		]);
+	});
+
+	it('updates the last use at most one time each minute', async () => {
+		const token = await tokenFor(member, resourceUrl(serverSlug));
+		await post(serverSlug, token).expect(200);
+		const key = { serverId, userId: member.id, oauthClientId: CLIENT_ID };
+
+		const tenSecondsAgo = new Date(Date.now() - 10_000);
+		await connections().update(key, { lastUsedAt: tenSecondsAgo });
+		await post(serverSlug, token).expect(200);
+		expect((await connections().findOneByOrFail(key)).lastUsedAt).toEqual(tenSecondsAgo);
+
+		const twoMinutesAgo = new Date(Date.now() - 120_000);
+		await connections().update(key, { lastUsedAt: twoMinutesAgo });
+		await post(serverSlug, token).expect(200);
+		const { firstUsedAt, lastUsedAt } = await connections().findOneByOrFail(key);
+		expect(lastUsedAt.getTime()).toBeGreaterThan(Date.now() - 10_000);
+		expect(firstUsedAt.getTime()).toBeLessThan(lastUsedAt.getTime() + 1);
+	});
+
+	it('answers the request when the connection write fails', async () => {
+		// The client name lookup runs inside the recorder, on the first use.
+		vi.spyOn(Container.get(OAuthClientNamePort), 'getName').mockRejectedValue(new Error('db down'));
+		const token = await tokenFor(member, resourceUrl(serverSlug));
+
+		await post(serverSlug, token).expect(200);
+		const client = await connect(token);
+		await expect(client.listTools()).resolves.toBeDefined();
+		await client.close();
+
+		expect(await connections().find()).toEqual([]);
+	});
+
+	it('writes no connection row for a refused request', async () => {
+		await post(serverSlug, await tokenFor(outsider, resourceUrl(serverSlug))).expect(403);
+
+		expect(await connections().find()).toEqual([]);
+	});
+});
+
+describe('Custom MCP server block', () => {
+	const blockPath = () => `/projects/${project.id}/mcp-servers/${serverId}/blocks`;
+
+	it('refuses every client of a blocked person at once, and lets them in again after restore', async () => {
+		const token = await tokenFor(viewer, resourceUrl(serverSlug));
+		const secondToken = await tokenFor(viewer, resourceUrl(serverSlug), SECOND_CLIENT_ID);
+		const client = await connect(token);
+		const secondClient = await connect(secondToken);
+
+		await testServer.authAgentFor(member).post(blockPath()).send({ userId: viewer.id }).expect(200);
+
+		await expect(client.listTools()).rejects.toThrow();
+		await expect(secondClient.listTools()).rejects.toThrow();
+		for (const accessToken of [token, secondToken]) {
+			const refused = await post(serverSlug, accessToken);
+			expect(refused.statusCode).toBe(403);
+			expect(refused.headers['www-authenticate']).toMatch(/error="insufficient_scope"/);
+		}
+		// The block deleted the refresh token, so the client cannot get a new access token.
+		expect(
+			await Container.get(DataSource).getRepository(RefreshToken).findBy({ userId: viewer.id }),
+		).toEqual([]);
+
+		await testServer.authAgentFor(member).delete(`${blockPath()}/${viewer.id}`).expect(200);
+		// An access token from before the block works again until it ends, at most one hour later.
+		expect((await post(serverSlug, token)).statusCode).toBe(200);
+		const again = await connect(await tokenFor(viewer, resourceUrl(serverSlug)));
+		await expect(again.listTools()).resolves.toBeDefined();
+		await again.close();
+	});
+
+	it('gives the reason "blocked" on the consent page', async () => {
+		await Container.get(DataSource)
+			.getRepository(McpServerBlock)
+			.insert({ serverId, userId: viewer.id, blockedById: member.id, blockedAt: new Date() });
+		const resource = await Container.get(ProtectedResourceRegistry).getByResourceUrl(
+			resourceUrl(serverSlug),
+		);
+		if (!resource) throw new Error('The server has no protected resource');
+
+		expect(await resource.authorize(viewer)).toBe(false);
+		expect(await resource.describeRefusal?.(viewer)).toEqual({
+			reason: 'blocked',
+			projectName: 'Sales',
+		});
+		expect(await resource.authorize(member)).toBe(true);
 	});
 });
