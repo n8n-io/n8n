@@ -450,4 +450,4 @@ See observability package documentation for details.
 
 - [isolated-vm GitHub](https://github.com/laverdet/isolated-vm)
 - [quickjs-emscripten GitHub](https://github.com/justjake/quickjs-emscripten)
-- [n8n workflow package](../workflow/)
+- [n8n workflow package](../../workflow/)
