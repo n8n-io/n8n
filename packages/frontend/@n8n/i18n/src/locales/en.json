@@ -2466,6 +2466,7 @@
 	"logs.overview.body.empty.message": "Nothing to display yet. Execute the workflow to see execution logs.",
 	"logs.overview.body.emptyGroup": "empty",
 	"logs.overview.body.dataTooLarge.message": "This execution's data is too large to display.",
+	"logs.overview.body.unableToLoadSubExecution": "Unable to load sub execution",
 	"logs.overview.body.empty.action": "Execute the workflow",
 	"logs.overview.body.summaryText.for": "{status} for {time}",
 	"logs.overview.body.summaryText.in": "{status} in {time}",
@@ -12229,5 +12230,8 @@
 	"selfHealing.config.subWorkflows.tooltip": "Sub-workflows this workflow calls",
 	"selfHealing.config.subWorkflows.count": "{count} sub-workflow | {count} sub-workflows",
 	"selfHealing.config.subWorkflows.external": "Other project",
-	"selfHealing.config.subWorkflows.notCovered": "Not covered"
+	"selfHealing.config.subWorkflows.notCovered": "Not covered",
+	"toolParameters.field.toolName": "Tool name",
+	"toolParameters.field.query": "Query",
+	"toolParameters.error.unknown": "Unknown error occurred"
 }

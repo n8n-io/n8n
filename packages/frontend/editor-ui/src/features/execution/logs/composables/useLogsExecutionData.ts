@@ -15,6 +15,7 @@ import {
 	mergeStartData,
 } from '@/features/execution/logs/logs.utils';
 import { useToast } from '@n8n/composables/useToast';
+import { useI18n } from '@n8n/i18n';
 import type { LatestNodeInfo, LogEntry, LogTreeFilter } from '../logs.types';
 import { isChatNode } from '@/app/utils/aiUtils';
 import { CHAT_TRIGGER_NODE_TYPE, LOGS_EXECUTION_DATA_THROTTLE_DURATION } from '@/app/constants';
@@ -38,6 +39,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const currentExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 	const toast = useToast();
+	const i18n = useI18n();
 
 	// Shallow: `response` is the store's execution object. The store never
 	// mutates it, so it is a stable snapshot of the run.
@@ -145,7 +147,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 
 			subWorkflowNodeGroups.value[locator.workflowId] = subExecution.workflowData.nodeGroups ?? [];
 		} catch (e) {
-			toast.showError(e, 'Unable to load sub execution');
+			toast.showError(e, i18n.baseText('logs.overview.body.unableToLoadSubExecution'));
 		}
 	}
 
