@@ -26,19 +26,44 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const input = useTemplateRef<{ blur?: () => void }>('input');
 const draft = ref(props.modelValue);
+const editing = ref(false);
+/** The latest value submitted to the parent; reset when the parent updates or reports a failure. */
+let lastSubmitted = props.modelValue;
 
-watch([() => props.modelValue, () => props.revision], ([value]) => {
-	draft.value = value;
-});
+watch(
+	() => props.modelValue,
+	(value) => {
+		if (editing.value) return;
+		draft.value = value;
+		lastSubmitted = value;
+	},
+);
+
+watch(
+	() => props.revision,
+	() => {
+		lastSubmitted = props.modelValue;
+		if (!editing.value) draft.value = props.modelValue;
+	},
+);
 
 function save() {
 	const value = draft.value.trim();
 	draft.value = value;
-	if (value !== props.modelValue) emit('update:modelValue', value);
+	if (value === lastSubmitted) return;
+	lastSubmitted = value;
+	emit('update:modelValue', value);
+}
+
+function onBlur() {
+	editing.value = false;
+	save();
 }
 
 function cancel() {
+	editing.value = false;
 	draft.value = props.modelValue;
+	lastSubmitted = props.modelValue;
 	input.value?.blur?.();
 }
 </script>
@@ -59,7 +84,9 @@ function cancel() {
 			:placeholder="i18n.baseText('mcpServers.server.description.placeholder')"
 			:aria-label="i18n.baseText('mcpServers.server.description.title')"
 			data-test-id="mcp-server-description-input"
-			@blur="save"
+			@focus="editing = true"
+			@input="editing = true"
+			@blur="onBlur"
 			@keydown.esc.stop="cancel"
 			@keydown.enter.meta.prevent="save"
 			@keydown.enter.ctrl.prevent="save"

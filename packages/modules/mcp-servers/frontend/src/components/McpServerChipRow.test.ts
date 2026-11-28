@@ -57,4 +57,27 @@ describe('McpServerChipRow', () => {
 
 		expect(queryByTestId('add-workflow')).not.toBeInTheDocument();
 	});
+
+	it('marks slotted chips as inert when disabled', async () => {
+		const { getByTestId, getByText, emitted } = renderRow({
+			props: { itemCount: 1, disabled: true },
+			slots: { default: '<button type="button">chip_one</button>' },
+		});
+
+		expect(getByText('chip_one').parentElement).toHaveAttribute('inert');
+		const addButton = getByTestId('add-workflow');
+		expect(addButton).toHaveAttribute('aria-disabled', 'true');
+		await userEvent.click(addButton);
+		expect(emitted('add')).toBeUndefined();
+	});
+
+	it('leaves slotted chips interactive when enabled', () => {
+		const { getByTestId, getByText } = renderRow({
+			props: { itemCount: 1, disabled: false },
+			slots: { default: '<button type="button">chip_one</button>' },
+		});
+
+		expect(getByText('chip_one').parentElement).not.toHaveAttribute('inert');
+		expect(getByTestId('add-workflow')).not.toHaveAttribute('aria-disabled', 'true');
+	});
 });

@@ -31,6 +31,8 @@ const props = defineProps<{
 	canGenerate?: boolean;
 	/** The first draft after the add runs. */
 	drafting?: boolean;
+	/** A remove request is running for this tool. */
+	removing?: boolean;
 	/** The fields for which a "Generate" call runs. */
 	generating?: McpServerToolDraftField[];
 	/** The URL of the source workflow, which opens in a new tab. */
@@ -45,11 +47,17 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+/** Kept across close so the dialog header and body do not clear during the fade-out animation. */
+const displayedTool = ref<McpServerToolResponse | null>(props.tool);
+const displayedWorkflowHref = ref<string | null>(props.workflowHref);
 const toolName = ref('');
 const description = ref('');
 
 /** The field that the builder types in. A new tool object does not reset it. */
 const editing = ref<McpServerToolDraftField | null>(null);
+/** Latest submitted values, so blur followed by close does not send a second PATCH. */
+let lastSubmittedName = '';
+let lastSubmittedDescription = '';
 
 watch(
 	() => props.tool,
@@ -58,30 +66,41 @@ watch(
 			editing.value = null;
 			return;
 		}
+		displayedTool.value = tool;
+		displayedWorkflowHref.value = props.workflowHref;
 		const switched = !previous || tool.id !== previous.id;
 		if (switched) editing.value = null;
 		if (switched || tool.toolName !== previous.toolName || editing.value !== 'toolName') {
 			toolName.value = tool.toolName;
+			lastSubmittedName = tool.toolName;
 		}
 		if (switched || tool.description !== previous.description || editing.value !== 'description') {
 			description.value = tool.description;
+			lastSubmittedDescription = tool.description;
 		}
 	},
 	{ immediate: true },
 );
 
+watch(
+	() => props.workflowHref,
+	(href) => {
+		if (props.tool) displayedWorkflowHref.value = href;
+	},
+);
+
 const open = computed({
 	get: () => props.tool !== null,
 	set: (value: boolean) => {
-		if (!value) emit('close');
+		if (!value) close();
 	},
 });
 
 // A broken tool has no published workflow to read, so the server refuses its draft.
-const showGenerate = computed(() => !!props.canGenerate && !props.tool?.brokenReason);
+const showGenerate = computed(() => !!props.canGenerate && !displayedTool.value?.brokenReason);
 const nameInvalid = computed(() => !mcpServerToolNameSchema.safeParse(toolName.value).success);
 const missingDescription = computed(
-	() => !props.drafting && (props.tool?.description.trim() ?? '') === '',
+	() => !props.drafting && (displayedTool.value?.description.trim() ?? '') === '',
 );
 
 function isGenerating(field: McpServerToolDraftField) {
@@ -90,7 +109,8 @@ function isGenerating(field: McpServerToolDraftField) {
 
 function saveName() {
 	editing.value = null;
-	if (!props.tool || nameInvalid.value || toolName.value === props.tool.toolName) return;
+	if (!props.tool || nameInvalid.value || toolName.value === lastSubmittedName) return;
+	lastSubmittedName = toolName.value;
 	emit('update', { toolName: toolName.value });
 }
 
@@ -98,23 +118,45 @@ function saveDescription() {
 	editing.value = null;
 	if (!props.tool) return;
 	const value = description.value.trim();
-	if (value === props.tool.description) return;
+	if (value === lastSubmittedDescription) return;
+	lastSubmittedDescription = value;
 	emit('update', { description: value });
+}
+
+function flushPendingChanges() {
+	if (!props.tool || !props.canUpdate || props.drafting) return;
+	const changes: UpdateMcpServerToolDto = {};
+	if (!nameInvalid.value && toolName.value !== lastSubmittedName) {
+		lastSubmittedName = toolName.value;
+		changes.toolName = toolName.value;
+	}
+	const value = description.value.trim();
+	if (value !== lastSubmittedDescription) {
+		lastSubmittedDescription = value;
+		changes.description = value;
+	}
+	editing.value = null;
+	if (Object.keys(changes).length > 0) emit('update', changes);
+}
+
+function close() {
+	flushPendingChanges();
+	emit('close');
 }
 </script>
 
 <template>
 	<N8nDialog
 		v-model:open="open"
-		:header="tool?.toolName ?? ''"
+		:header="displayedTool?.toolName ?? ''"
 		:aria-description="i18n.baseText('mcpServers.tools.dialog.ariaDescription')"
 		size="medium"
 		data-test-id="mcp-tool-dialog"
 	>
-		<N8nDialogBody v-if="tool" :class="$style.body">
-			<div v-if="workflowHref" :class="$style.sourceLine">
+		<N8nDialogBody v-if="displayedTool" :class="$style.body">
+			<div v-if="displayedWorkflowHref" :class="$style.sourceLine">
 				<N8nLink
-					:to="workflowHref"
+					:to="displayedWorkflowHref"
 					new-window
 					size="small"
 					data-test-id="mcp-tool-dialog-source-link"
@@ -125,11 +167,11 @@ function saveDescription() {
 			</div>
 
 			<N8nCallout
-				v-if="tool.brokenReason"
+				v-if="displayedTool.brokenReason"
 				theme="warning"
 				data-test-id="mcp-tool-dialog-broken-callout"
 			>
-				{{ i18n.baseText(`mcpServers.tools.broken.callout.${tool.brokenReason}`) }}
+				{{ i18n.baseText(`mcpServers.tools.broken.callout.${displayedTool.brokenReason}`) }}
 			</N8nCallout>
 
 			<div v-if="drafting" :class="$style.drafting" data-test-id="mcp-tool-dialog-drafting">
@@ -240,35 +282,36 @@ function saveDescription() {
 					<N8nText tag="p" size="small" color="text-light">
 						{{ i18n.baseText('mcpServers.tools.row.toolName') }}
 					</N8nText>
-					<N8nText tag="p" :class="$style.monoText">{{ tool.toolName }}</N8nText>
+					<N8nText tag="p" :class="$style.monoText">{{ displayedTool.toolName }}</N8nText>
 				</div>
 				<div>
 					<N8nText tag="p" size="small" color="text-light">
 						{{ i18n.baseText('mcpServers.tools.row.description') }}
 					</N8nText>
 					<N8nText tag="p" :class="$style.readonlyDescription">
-						{{ tool.description || i18n.baseText('mcpServers.tools.row.noDescription') }}
+						{{ displayedTool.description || i18n.baseText('mcpServers.tools.row.noDescription') }}
 					</N8nText>
 				</div>
 			</template>
 		</N8nDialogBody>
 
-		<N8nDialogFooter :class="$style.footer">
+		<N8nDialogFooter>
 			<N8nButton
 				v-if="canUpdate"
 				variant="ghost"
 				icon="trash-2"
 				:label="i18n.baseText('mcpServers.tools.row.remove')"
+				:loading="removing"
+				:disabled="removing"
 				data-test-id="mcp-tool-dialog-remove"
 				data-attr="mcp-tool-dialog-remove"
 				@click="emit('remove')"
 			/>
 			<N8nButton
 				variant="outline"
-				:class="$style.closeButton"
 				:label="i18n.baseText('generic.close')"
 				data-test-id="mcp-tool-dialog-close"
-				@click="emit('close')"
+				@click="close"
 			/>
 		</N8nDialogFooter>
 	</N8nDialog>
@@ -331,13 +374,5 @@ function saveDescription() {
 
 .readonlyDescription {
 	white-space: pre-wrap;
-}
-
-.footer {
-	justify-content: space-between;
-}
-
-.closeButton {
-	margin-inline-start: auto;
 }
 </style>

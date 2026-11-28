@@ -594,8 +594,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	flex: 1;
-	min-height: 0;
+	flex: 1 0 auto;
 	box-sizing: border-box;
 	max-width: var(--mcp-server--content-max-width);
 	width: 100%;

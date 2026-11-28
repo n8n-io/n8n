@@ -208,6 +208,147 @@ describe('McpServerContentsTab', () => {
 			await waitFor(() => expect(input).toHaveValue('Pipeline numbers'));
 			expect(toast.showError).toHaveBeenCalledTimes(1);
 		});
+
+		it('keeps an in-progress description edit when an earlier save resolves or fails', async () => {
+			api.getMcpServer.mockResolvedValue(server([], true, 'Initial'));
+			const firstSave = deferred<McpServerDetailResponse>();
+			const secondSave = deferred<McpServerDetailResponse>();
+			api.updateMcpServer
+				.mockReturnValueOnce(firstSave.promise)
+				.mockReturnValueOnce(secondSave.promise);
+			const { findByTestId } = await render();
+
+			const input = await findByTestId('mcp-server-description-input');
+			await userEvent.clear(input);
+			await userEvent.type(input, 'First draft');
+			await fireEvent.blur(input);
+
+			await userEvent.click(input);
+			await userEvent.type(input, ' and more');
+
+			firstSave.resolve(server([], true, 'First draft'));
+			await firstSave.promise;
+			await new Promise((resolve) => setTimeout(resolve));
+
+			expect(input).toHaveValue('First draft and more');
+
+			await fireEvent.blur(input);
+			await userEvent.click(input);
+			await userEvent.type(input, ' still typing');
+
+			secondSave.reject(new Error('Server error'));
+			await waitFor(() => expect(toast.showError).toHaveBeenCalledTimes(1));
+
+			expect(input).toHaveValue('First draft and more still typing');
+		});
+
+		it('ignores stale responses and failures from superseded description saves', async () => {
+			api.getMcpServer.mockResolvedValue(server([], true, 'Initial'));
+			const firstSave = deferred<McpServerDetailResponse>();
+			const secondSave = deferred<McpServerDetailResponse>();
+			const thirdSave = deferred<McpServerDetailResponse>();
+			api.updateMcpServer
+				.mockReturnValueOnce(firstSave.promise)
+				.mockReturnValueOnce(secondSave.promise)
+				.mockReturnValueOnce(thirdSave.promise);
+			const { findByTestId, emitted } = await render();
+
+			const input = await findByTestId('mcp-server-description-input');
+			await userEvent.clear(input);
+			await userEvent.type(input, 'First');
+			await fireEvent.blur(input);
+
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Second');
+			await fireEvent.blur(input);
+
+			secondSave.resolve(server([], true, 'Second'));
+			await waitFor(() => expect(emitted('server-updated')).toHaveLength(1));
+
+			firstSave.resolve(server([], true, 'First'));
+			await firstSave.promise;
+			await new Promise((resolve) => setTimeout(resolve));
+
+			expect(input).toHaveValue('Second');
+			expect(emitted('server-updated')).toHaveLength(1);
+			expect(emitted('server-updated')?.[0]).toEqual([
+				expect.objectContaining({ description: 'Second' }),
+			]);
+
+			// A late failure from an older save must not revert a newer save or show an error toast.
+			const fourthSave = deferred<McpServerDetailResponse>();
+			api.updateMcpServer.mockReturnValueOnce(fourthSave.promise);
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Third');
+			await fireEvent.blur(input);
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Fourth');
+			await fireEvent.blur(input);
+
+			fourthSave.resolve(server([], true, 'Fourth'));
+			await waitFor(() => expect(emitted('server-updated')).toHaveLength(2));
+
+			thirdSave.reject(new Error('Stale error'));
+			await new Promise((resolve) => setTimeout(resolve));
+
+			expect(input).toHaveValue('Fourth');
+			expect(toast.showError).not.toHaveBeenCalled();
+		});
+
+		it('still saves when reverting back to the initial description while an earlier save runs', async () => {
+			api.getMcpServer.mockResolvedValue(server([], true, 'Initial'));
+			const firstSave = deferred<McpServerDetailResponse>();
+			const revertSave = deferred<McpServerDetailResponse>();
+			api.updateMcpServer
+				.mockReturnValueOnce(firstSave.promise)
+				.mockReturnValueOnce(revertSave.promise);
+			const { findByTestId } = await render();
+
+			const input = await findByTestId('mcp-server-description-input');
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Temporary');
+			await fireEvent.blur(input);
+
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Initial');
+			await fireEvent.blur(input);
+
+			expect(api.updateMcpServer).toHaveBeenCalledTimes(2);
+			expect(api.updateMcpServer).toHaveBeenLastCalledWith(
+				expect.anything(),
+				PROJECT_ID,
+				SERVER_ID,
+				{ description: 'Initial' },
+			);
+
+			revertSave.resolve(server([], true, 'Initial'));
+			firstSave.resolve(server([], true, 'Temporary'));
+			await firstSave.promise;
+			await new Promise((resolve) => setTimeout(resolve));
+
+			expect(input).toHaveValue('Initial');
+		});
+
+		it('does not send a duplicate PATCH when blurring after Ctrl+Enter while saving', async () => {
+			api.getMcpServer.mockResolvedValue(server([], true, 'Initial'));
+			const save = deferred<McpServerDetailResponse>();
+			api.updateMcpServer.mockReturnValueOnce(save.promise);
+			const { findByTestId } = await render();
+
+			const input = await findByTestId('mcp-server-description-input');
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Saved with shortcut');
+			await fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
+			await fireEvent.blur(input);
+
+			expect(api.updateMcpServer).toHaveBeenCalledTimes(1);
+
+			save.resolve(server([], true, 'Saved with shortcut'));
+			await save.promise;
+			await new Promise((resolve) => setTimeout(resolve));
+
+			expect(input).toHaveValue('Saved with shortcut');
+		});
 	});
 
 	describe('workflow picker', () => {
@@ -339,6 +480,28 @@ describe('McpServerContentsTab', () => {
 			await waitFor(() => expect(screen.queryByTestId('mcp-tool-dialog')).not.toBeInTheDocument());
 		});
 
+		it('does not open a hidden capability tool from ?expand=<tool>', async () => {
+			api.getMcpServer.mockResolvedValue(
+				server([
+					tool({ kind: 'node', toolName: 'hidden_node_tool' }),
+					tool({
+						id: '0190a8d6-4a2e-7000-8000-0000000000a2',
+						kind: 'agent',
+						toolName: 'hidden_agent_tool',
+					}),
+					tool({
+						id: '0190a8d6-4a2e-7000-8000-0000000000a3',
+						kind: 'skill',
+						toolName: 'hidden_skill_tool',
+					}),
+				]),
+			);
+			const { findByTestId } = await render({ path: '/?expand=hidden_node_tool' });
+			await findByTestId('mcp-server-capabilities-panel');
+
+			expect(screen.queryByTestId('mcp-tool-dialog')).not.toBeInTheDocument();
+		});
+
 		it('saves an edit of the description when the field loses focus', async () => {
 			api.getMcpServer.mockResolvedValue(server([tool()]));
 			api.updateTool.mockImplementation(async (_c, _p, _s, _t, changes) =>
@@ -413,6 +576,66 @@ describe('McpServerContentsTab', () => {
 			const link = await screen.findByTestId('mcp-tool-dialog-source-link');
 			expect(link).toHaveTextContent('From workflow');
 			expect(link.closest('a') ?? link).toHaveAttribute('href', '/workflow/wf-5');
+		});
+
+		it('saves unsaved tool edits when the modal closes via Escape without blurring first', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			api.updateTool.mockImplementation(async (_c, _p, _s, _t, changes) =>
+				tool({ ...changes, draftSource: 'edited' }),
+			);
+			const { findByTestId } = await render();
+
+			await userEvent.click(await findByTestId('mcp-tool-chip'));
+			const description = await screen.findByTestId('mcp-tool-dialog-description-input');
+			await userEvent.clear(description);
+			await userEvent.type(description, 'Saved on escape.');
+			await userEvent.keyboard('{Escape}');
+
+			await waitFor(() =>
+				expect(api.updateTool).toHaveBeenCalledExactlyOnceWith(
+					expect.anything(),
+					PROJECT_ID,
+					SERVER_ID,
+					tool().id,
+					{ description: 'Saved on escape.' },
+				),
+			);
+			await waitFor(() => expect(screen.queryByTestId('mcp-tool-dialog')).not.toBeInTheDocument());
+		});
+
+		it('does not send a duplicate update when clicking Close right after editing', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			const save = deferred<McpServerToolResponse>();
+			api.updateTool.mockReturnValueOnce(save.promise);
+			const { findByTestId } = await render();
+
+			await userEvent.click(await findByTestId('mcp-tool-chip'));
+			const description = await screen.findByTestId('mcp-tool-dialog-description-input');
+			await userEvent.clear(description);
+			await userEvent.type(description, 'Saved on close.');
+			await userEvent.click(screen.getByTestId('mcp-tool-dialog-close'));
+
+			expect(api.updateTool).toHaveBeenCalledTimes(1);
+			save.resolve(tool({ description: 'Saved on close.', draftSource: 'edited' }));
+			await save.promise;
+		});
+
+		it('disables Remove while deleting so double clicks do not send a second delete', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			const remove = deferred<undefined>();
+			api.removeTool.mockReturnValueOnce(remove.promise);
+			const { findByTestId } = await render();
+
+			await userEvent.click(await findByTestId('mcp-tool-chip'));
+			const removeButton = await screen.findByTestId('mcp-tool-dialog-remove');
+			await userEvent.click(removeButton);
+			expect(removeButton).toBeDisabled();
+			await userEvent.click(removeButton);
+
+			expect(api.removeTool).toHaveBeenCalledTimes(1);
+
+			remove.resolve(undefined);
+			await waitFor(() => expect(screen.queryByTestId('mcp-tool-dialog')).not.toBeInTheDocument());
 		});
 
 		it('removes a tool from the modal and closes it', async () => {

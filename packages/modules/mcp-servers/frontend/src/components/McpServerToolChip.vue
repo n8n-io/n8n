@@ -39,6 +39,7 @@ const hasWarning = computed(() => !props.drafting && props.warningReasons.length
 <template>
 	<div :class="$style.chipGroup">
 		<N8nTooltip :disabled="!hasWarning" placement="top" as-child>
+			<!-- Raw button: N8nButton does not support a pill chip with a truncating label and trailing warning icon. -->
 			<button
 				type="button"
 				:class="[

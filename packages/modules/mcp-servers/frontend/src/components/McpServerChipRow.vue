@@ -40,7 +40,9 @@ const emit = defineEmits<{
 
 		<div :class="$style.content">
 			<div :class="$style.chips">
-				<slot />
+				<div :class="$style.existingChips" :inert="props.disabled || undefined">
+					<slot />
+				</div>
 
 				<template v-if="props.hideAdd" />
 				<N8nTooltip
@@ -116,6 +118,10 @@ const emit = defineEmits<{
 	min-width: 0;
 }
 
+.existingChips {
+	display: contents;
+}
+
 .emptyAddButton {
 	--button--color: var(--text-color--subtler);
 	margin-inline-start: calc(-1 * var(--spacing--xs));
@@ -127,7 +133,7 @@ const emit = defineEmits<{
 	}
 }
 
-@media (max-width: 768px) {
+@container mcp-server-editor (max-width: 48rem) {
 	.row {
 		flex-direction: column;
 		gap: var(--spacing--xs);

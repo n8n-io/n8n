@@ -64,6 +64,8 @@ const router = useRouter();
 const rootStore = useRootStore();
 /** The first load and each reload: only the newest response sets the server. */
 const latestFetch = useLatestFetch();
+/** Rapid description edits: only the newest PATCH updates the server or reverts on error. */
+const latestDescriptionSave = useLatestFetch();
 const style = useCssModule();
 
 const server = ref<McpServerDetailResponse | null>(null);
@@ -81,6 +83,8 @@ const draftingIds = ref(new Set<string>());
 const highlightedIds = ref(new Set<string>());
 /** The fields of each tool for which a "Generate" call runs. */
 const generating = ref(new Map<string, Set<McpServerToolDraftField>>());
+/** The tool whose remove request is currently in flight. */
+const removingToolId = ref<string | null>(null);
 
 const canUpdate = computed(() => getMcpServerPermissions(props.projectId).canUpdate);
 const canBuildWithAssistant = computed(() => canUpdate.value && !!props.assistantAvailable);
@@ -94,7 +98,7 @@ const orderedCapabilityRows = computed<CapabilityRowKind[]>(() =>
 	}),
 );
 const selectedTool = computed(
-	() => server.value?.tools.find(({ id }) => id === selectedToolId.value) ?? null,
+	() => workflowTools.value.find(({ id }) => id === selectedToolId.value) ?? null,
 );
 /** `?expand=<tool name>` opens that tool in the modal, for old deep links. */
 const expandName = computed(() =>
@@ -102,14 +106,14 @@ const expandName = computed(() =>
 );
 
 watch(
-	[server, expandName],
-	([current, target]) => {
+	[workflowTools, expandName],
+	([tools, target]) => {
 		if (!target) {
 			handledExpand.value = '';
 			return;
 		}
-		if (!current || handledExpand.value === target) return;
-		const match = current.tools.find(({ toolName }) => toolName === target);
+		if (handledExpand.value === target) return;
+		const match = tools.find(({ toolName }) => toolName === target);
 		if (!match) return;
 		handledExpand.value = target;
 		selectedToolId.value = match.id;
@@ -201,6 +205,7 @@ watch(
 async function onDescription(description: string) {
 	const current = server.value;
 	if (!current) return;
+	const isLatest = latestDescriptionSave.next();
 	try {
 		const updated = await updateMcpServer(
 			rootStore.restApiContext,
@@ -208,6 +213,7 @@ async function onDescription(description: string) {
 			props.serverId,
 			{ description },
 		);
+		if (!isLatest()) return;
 		if (server.value && updated.id === server.value.id) {
 			server.value = {
 				...server.value,
@@ -217,6 +223,7 @@ async function onDescription(description: string) {
 		}
 		emit('server-updated', updated);
 	} catch (error) {
+		if (!isLatest()) return;
 		descriptionRevision.value++;
 		toast.showError(error, i18n.baseText('mcpServers.server.description.error'));
 	}
@@ -343,6 +350,8 @@ async function onUpdate(tool: McpServerToolResponse, changes: UpdateMcpServerToo
 }
 
 async function onRemove(tool: McpServerToolResponse) {
+	if (removingToolId.value === tool.id) return;
+	removingToolId.value = tool.id;
 	try {
 		await removeTool(rootStore.restApiContext, props.projectId, props.serverId, tool.id);
 		if (server.value) server.value.tools = server.value.tools.filter(({ id }) => id !== tool.id);
@@ -355,6 +364,8 @@ async function onRemove(tool: McpServerToolResponse) {
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('mcpServers.tools.removeError'));
+	} finally {
+		if (removingToolId.value === tool.id) removingToolId.value = null;
 	}
 }
 
@@ -444,6 +455,7 @@ onMounted(load);
 				:can-update="canUpdate"
 				:can-generate="canGenerate"
 				:drafting="selectedTool ? draftingIds.has(selectedTool.id) : false"
+				:removing="selectedTool ? removingToolId === selectedTool.id : false"
 				:generating="selectedTool ? generatingFields(selectedTool.id) : []"
 				:workflow-href="selectedTool?.targetId ? workflowHref(selectedTool.targetId) : null"
 				@close="selectedToolId = null"
