@@ -2,14 +2,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 
-import type { ChaosOptions } from '../chaos/run';
+import type { ChaosOptions, EngineMode } from '../chaos/run';
 import type { FaultKind } from '../chaos/schedule';
 
 export const USAGE = `Usage: TEST_IMAGE_N8N=n8nio/n8n:<tag> pnpm chaos [--seed N] [--faults N] [--duration S]
-       [--rate N] [--workers N] [--kinds kill,stop,freeze,delay,cut,hook] [--settle S]
-       [--shrink] [--repeats N] [--min-failures N] [--budget S] [--out DIR]`;
+       [--rate N] [--workers N | --engine in-process|remote] [--kinds kill,stop,freeze,delay,cut,hook]
+       [--settle S] [--shrink] [--repeats N] [--min-failures N] [--budget S] [--out DIR]`;
 
 const KINDS: FaultKind[] = ['kill', 'stop', 'freeze', 'delay', 'cut', 'hook'];
+
+const ENGINES: Record<string, EngineMode> = { 'in-process': 'in-process', remote: 'container' };
 
 export interface ChaosArgs extends ChaosOptions {
 	shrink: boolean;
@@ -52,9 +54,10 @@ export function parseChaosArgs(argv: string[], random = Math.random): ChaosArgs 
 			faults: { type: 'string', default: '4' },
 			duration: { type: 'string', default: '40' },
 			rate: { type: 'string', default: '4' },
-			workers: { type: 'string', default: '2' },
+			workers: { type: 'string' },
+			engine: { type: 'string' },
 			kinds: { type: 'string', default: KINDS.join(',') },
-			settle: { type: 'string', default: '120' },
+			settle: { type: 'string' },
 			shrink: { type: 'boolean', default: false },
 			repeats: { type: 'string', default: '3' },
 			'min-failures': { type: 'string', default: '2' },
@@ -70,6 +73,14 @@ export function parseChaosArgs(argv: string[], random = Math.random): ChaosArgs 
 	const repeats = count('repeats', values.repeats);
 	const minFailures = count('min-failures', values['min-failures']);
 	if (minFailures > repeats) throw new Error(`--min-failures cannot exceed --repeats\n${USAGE}`);
+	const engine =
+		values.engine !== undefined && Object.hasOwn(ENGINES, values.engine)
+			? ENGINES[values.engine]
+			: undefined;
+	if (values.engine !== undefined && !engine)
+		throw new Error(`--engine must be in-process or remote\n${USAGE}`);
+	if (engine && values.workers !== undefined)
+		throw new Error(`--engine runs a single main with no workers\n${USAGE}`);
 	const perSecond = positive('rate', values.rate);
 	timer('rate', 1000 / perSecond);
 	return {
@@ -78,9 +89,11 @@ export function parseChaosArgs(argv: string[], random = Math.random): ChaosArgs 
 		faults: count('faults', values.faults),
 		durationMs: timer('duration', positive('duration', values.duration) * 1000),
 		perSecond,
-		workers: count('workers', values.workers),
+		workers: engine ? 0 : count('workers', values.workers ?? '2'),
+		engine,
 		kinds,
-		settleMs: positive('settle', values.settle) * 1000,
+		// The engine profile shortens the engine timers: a crashed running step is repaired after about 22 s.
+		settleMs: positive('settle', values.settle ?? (engine ? '60' : '120')) * 1000,
 		shrink: values.shrink,
 		repeats,
 		minFailures,

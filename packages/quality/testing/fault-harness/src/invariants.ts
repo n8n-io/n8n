@@ -1,5 +1,5 @@
 import type { BullState } from './probes';
-import { FINAL_STATUSES } from './probes';
+import { ENGINE_FINAL_STATUSES, FINAL_STATUSES } from './probes';
 import type { Effect, WorkloadRequest } from './workload';
 
 export interface Violation {
@@ -49,7 +49,7 @@ export function noAcceptedRequestLost({ requests, executions, effects }: RunReco
 }
 
 /** No request and no execution wrote its effect more than once. */
-export function noRepeatedEffects({ effects }: RunRecord): Violation[] {
+export function noRepeatedEffects({ effects }: Pick<RunRecord, 'effects'>): Violation[] {
 	const requests = repeated(effects.map((e) => e.requestId));
 	const executions = repeated(effects.map((e) => e.executionId));
 	return requests.length || executions.length
@@ -83,6 +83,80 @@ const WORKLOAD_INVARIANTS = [
 
 export function checkWorkload(record: RunRecord): Violation[] {
 	return WORKLOAD_INVARIANTS.flatMap((invariant) => invariant(record));
+}
+
+export interface EngineExecution {
+	id: string;
+	status: string;
+	/** The `requestId` of the webhook body that started it, or '' when its trigger output has none. */
+	requestId: string;
+	/** Steps in `queued`, `running` or `waiting`. */
+	liveSteps: number;
+}
+
+export interface EngineRunRecord {
+	requests: WorkloadRequest[];
+	/** Every engine v2 execution of the workload workflow. */
+	executions: EngineExecution[];
+	effects: Effect[];
+}
+
+/** Every accepted request started exactly one engine execution, the one its response named. */
+export function everyAcceptedRequestHasOneExecution({
+	requests,
+	executions,
+}: EngineRunRecord): Violation[] {
+	const byRequest = new Map<string, string[]>();
+	for (const { id, requestId } of executions)
+		byRequest.set(requestId, [...(byRequest.get(requestId) ?? []), id]);
+	const wrong = requests
+		.filter((r) => r.accepted)
+		.map((r) => ({
+			requestId: r.requestId,
+			answered: r.executionId,
+			found: byRequest.get(r.requestId) ?? [],
+		}))
+		.filter(
+			({ answered, found }) =>
+				found.length !== 1 || (answered !== undefined && found[0] !== answered),
+		);
+	return wrong.length
+		? [{ invariant: 'every accepted request has one execution', detail: wrong }]
+		: [];
+}
+
+/** Every engine execution reached a final status. */
+export function everyEngineExecutionFinished({ executions }: EngineRunRecord): Violation[] {
+	const pending = executions.filter((e) => !ENGINE_FINAL_STATUSES.includes(e.status));
+	return pending.length
+		? [
+				{
+					invariant: 'every execution finished',
+					detail: Object.fromEntries(pending.map((e) => [e.id, e.status])),
+				},
+			]
+		: [];
+}
+
+/** No execution is `running` with no step left that could move it on. */
+export function noRunningExecutionWithoutLiveStep({ executions }: EngineRunRecord): Violation[] {
+	const stranded = executions
+		.filter((e) => e.status === 'running' && e.liveSteps === 0)
+		.map((e) => e.id);
+	return stranded.length
+		? [{ invariant: 'no running execution without a live step', detail: stranded }]
+		: [];
+}
+
+const ENGINE_INVARIANTS = [
+	everyAcceptedRequestHasOneExecution,
+	everyEngineExecutionFinished,
+	noRunningExecutionWithoutLiveStep,
+	noRepeatedEffects,
+];
+
+export function checkEngineWorkload(record: EngineRunRecord): Violation[] {
+	return ENGINE_INVARIANTS.flatMap((invariant) => invariant(record));
 }
 
 export interface LeadershipEvent {

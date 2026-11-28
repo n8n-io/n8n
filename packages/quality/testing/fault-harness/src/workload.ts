@@ -1,8 +1,8 @@
 import { sleep } from '@n8n/utils/sleep';
 import { nanoid } from 'nanoid';
 
-import type { RunRecord } from './invariants';
-import { FINAL_STATUSES, lines } from './probes';
+import type { EngineRunRecord, RunRecord } from './invariants';
+import { ENGINE_FINAL_STATUSES, FINAL_STATUSES, lines } from './probes';
 import type { HarnessStack } from './stack';
 import { chain, nodes, webhookPath } from './workflows';
 
@@ -34,6 +34,8 @@ export function readResponse(
 	return { accepted, executionId: accepted && body ? body : undefined };
 }
 
+type WorkloadHarness = Pick<HarnessStack, 'api' | 'db' | 'redis' | 'engineDb'>;
+
 /**
  * Steady webhook traffic against one workflow that writes a row per run, so
  * invariants can tell lost, stuck and repeated work apart.
@@ -46,13 +48,16 @@ export class Workload {
 	private timer?: NodeJS.Timeout;
 
 	private constructor(
-		private readonly harness: Pick<HarnessStack, 'api' | 'db' | 'redis'>,
+		private readonly harness: WorkloadHarness,
 		readonly workflowId: string,
 		readonly path: string,
 	) {}
 
-	/** Creates the effects table, a Postgres credential and the workload workflow. */
-	static async setup(harness: Pick<HarnessStack, 'api' | 'db' | 'redis'>): Promise<Workload> {
+	/** Creates the effects table, a Postgres credential and the workload workflow with `settings`. */
+	static async setup(
+		harness: WorkloadHarness,
+		settings: Record<string, unknown> = {},
+	): Promise<Workload> {
 		await harness.db.sql(
 			`create table if not exists ${TABLE} (request_id text not null, execution_id text not null, at timestamptz not null default now())`,
 		);
@@ -73,7 +78,9 @@ export class Workload {
 			'={{ [$execution.id, $json.body.requestId] }}',
 			{ id: credentialId, name: 'fault-harness postgres' },
 		);
-		const workflowId = await harness.api.createWorkflow(chain('workload', [webhook, record]));
+		const workflowId = await harness.api.createWorkflow(
+			chain('workload', [webhook, record], settings),
+		);
 		await harness.api.waitForWebhook(path);
 		return new Workload(harness, workflowId, path);
 	}
@@ -131,6 +138,29 @@ export class Workload {
 				Object.values(executions).every((status) => FINAL_STATUSES.includes(status));
 			if (settled || Date.now() > deadline) {
 				return { requests, executions, effects: await this.effects(), bull: { wait, active } };
+			}
+			await sleep(500);
+		}
+	}
+
+	/** Waits until every engine v2 execution is final, or the timeout passes, then reads the run. */
+	async recordEngine(
+		requests: WorkloadRequest[],
+		settleTimeoutMs: number,
+	): Promise<EngineRunRecord> {
+		const deadline = Date.now() + settleTimeoutMs;
+		for (;;) {
+			const executions = lines(
+				await this.harness.engineDb.sql(
+					`select e.id, e.status, coalesce(jsonb_path_query_first(e.trigger_outputs, '$.**.requestId') #>> '{}', ''), (select count(*) from workflow_step_execution s where s.execution_id = e.id and s.status in ('queued', 'running', 'waiting')) from workflow_execution e where e.workflow_id = '${this.workflowId}' order by e.created_at`,
+				),
+			).map((row) => {
+				const [id, status, requestId, liveSteps] = row.split('|');
+				return { id, status, requestId, liveSteps: Number(liveSteps) };
+			});
+			const settled = executions.every((e) => ENGINE_FINAL_STATUSES.includes(e.status));
+			if (settled || Date.now() > deadline) {
+				return { requests, executions, effects: await this.effects() };
 			}
 			await sleep(500);
 		}
