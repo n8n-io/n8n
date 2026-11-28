@@ -19,12 +19,14 @@ export type ChatMessageBody = {
 
 const MAX_ENVELOPE_BYTES = 102400;
 
-const UNSUPPORTED_ACTIONS = new Set(['Action.Submit', 'Action.ShowCard', 'Action.Execute']);
+function isUnsupportedActionType(type: string): boolean {
+	return type.startsWith('Action.') && type !== 'Action.OpenUrl';
+}
 
 /**
- * Graph messages can run only `Action.OpenUrl`. Other interactive actions need a bot, so a card
- * that carries one either fails or renders a button that does nothing. Walk `actions` arrays only,
- * so a payload in an action's `data` is not mistaken for an action.
+ * Graph messages can run only `Action.OpenUrl`. Other actions need a bot, so a card that carries
+ * one either fails or renders a control that does nothing. Check `actions` arrays and
+ * `selectAction`, and skip an action's `data` payload so it is not mistaken for an action.
  */
 function findUnsupportedAction(value: unknown): string | undefined {
 	if (Array.isArray(value)) {
@@ -42,15 +44,23 @@ function findUnsupportedAction(value: unknown): string | undefined {
 			if (
 				isRecord(action) &&
 				typeof action.type === 'string' &&
-				UNSUPPORTED_ACTIONS.has(action.type)
+				isUnsupportedActionType(action.type)
 			) {
 				return action.type;
 			}
 		}
 	}
 
+	if (
+		isRecord(value.selectAction) &&
+		typeof value.selectAction.type === 'string' &&
+		isUnsupportedActionType(value.selectAction.type)
+	) {
+		return value.selectAction.type;
+	}
+
 	for (const [key, child] of Object.entries(value)) {
-		if (key === 'data') continue;
+		if (key === 'data' || key === 'selectAction') continue;
 		const found = findUnsupportedAction(child);
 		if (found !== undefined) return found;
 	}
@@ -105,7 +115,7 @@ export function buildAdaptiveCardMessage(
 			{
 				itemIndex,
 				description:
-					'Microsoft Graph messages support only Action.OpenUrl. Use a bot to handle Action.Submit, Action.ShowCard or Action.Execute.',
+					'Microsoft Graph messages support only Action.OpenUrl. Use a bot to handle other actions.',
 			},
 		);
 	}

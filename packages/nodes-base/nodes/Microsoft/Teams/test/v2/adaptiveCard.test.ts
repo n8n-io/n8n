@@ -73,7 +73,7 @@ describe('Test MicrosoftTeamsV2, buildAdaptiveCardMessage', () => {
 		);
 	});
 
-	it.each(['Action.Submit', 'Action.ShowCard', 'Action.Execute'])(
+	it.each(['Action.Submit', 'Action.ShowCard', 'Action.Execute', 'Action.ToggleVisibility'])(
 		'rejects the unsupported action %s',
 		(actionType) => {
 			const card = { type: 'AdaptiveCard', actions: [{ type: actionType }] };
@@ -95,9 +95,36 @@ describe('Test MicrosoftTeamsV2, buildAdaptiveCardMessage', () => {
 		);
 	});
 
+	it.each(['Action.Submit', 'Action.ShowCard', 'Action.ToggleVisibility'])(
+		'rejects the unsupported selectAction %s',
+		(actionType) => {
+			const card = {
+				type: 'AdaptiveCard',
+				body: [
+					{
+						type: 'Image',
+						url: 'https://example.com/image.png',
+						selectAction: { type: actionType },
+					},
+				],
+			};
+
+			expect(() => buildAdaptiveCardMessage.call(ctx, card, 0)).toThrow(
+				`The adaptive card contains an unsupported action: ${actionType}`,
+			);
+		},
+	);
+
 	it('allows Action.OpenUrl and ignores an action payload in data', () => {
 		const card = {
 			type: 'AdaptiveCard',
+			body: [
+				{
+					type: 'Image',
+					url: 'https://example.com/image.png',
+					selectAction: { type: 'Action.OpenUrl', url: 'https://example.com' },
+				},
+			],
 			actions: [
 				{
 					type: 'Action.OpenUrl',
