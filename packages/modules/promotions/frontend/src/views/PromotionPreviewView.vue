@@ -12,6 +12,7 @@ import {
 	N8nResizeWrapper,
 	N8nTabs,
 	N8nText,
+	N8nTooltip,
 	useResizablePanel,
 } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
@@ -20,7 +21,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, nextTick, ref, toRef, watch } from 'vue';
+import { computed, nextTick, ref, toRef, useId, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
@@ -44,6 +45,7 @@ import {
 	touchesDestructiveChange,
 } from '../promotionOperation';
 import {
+	availableKeys,
 	includedChangeCount,
 	resolveInclusion,
 	selectableKeys,
@@ -267,6 +269,36 @@ const actionableChanges = computed(() => {
 	);
 	return includedChangeCount(graph.value, resolveInclusion(graph.value, actionable));
 });
+const availableChanges = computed(() => {
+	if (!graph.value || scopedCheck.value?.movedFolders.length) return 0;
+	if (isInstance.value) return totalChanges.value;
+	const available = new Set(availableKeys(graph.value, blockers.value.blocked));
+	return includedChangeCount(graph.value, resolveInclusion(graph.value, available));
+});
+// The tooltip repeats the reason in short form. The callout below keeps the full text visible.
+const submitBlockedReasonId = useId();
+// Omit aria-describedby when no callout shows so N8nTooltip's as-child trigger keeps its own link.
+const submitDescribedByAttrs = computed(() =>
+	submitBlockedReason.value && !operation.error.value
+		? { 'aria-describedby': submitBlockedReasonId }
+		: {},
+);
+const submitTooltip = computed(() => {
+	if (!submitBlockedReason.value) {
+		// A ready preview with no actionable changes has no callout, so the tooltip is the only hint.
+		if (state.value !== 'ready' || actionableChanges.value !== 0) return undefined;
+		if (isInstance.value || totalChanges.value === 0) {
+			return i18n.baseText(`promotions.preview.badge.empty.${props.direction}`);
+		}
+		if (availableChanges.value === 0) {
+			return i18n.baseText(`promotions.preview.submit.blockedTooltip.${props.direction}`);
+		}
+		return i18n.baseText(`promotions.preview.submit.selectTooltip.${props.direction}`);
+	}
+	return props.direction === 'apply' && !scopedCheck.value?.movedFolders.length
+		? i18n.baseText('promotions.preview.submit.blockedTooltip.apply')
+		: submitBlockedReason.value;
+});
 const canSubmit = computed(
 	() =>
 		state.value === 'ready' &&
@@ -384,16 +416,22 @@ const treeResizer = useResizablePanel({
 					>
 						{{ i18n.baseText('promotions.preview.refresh') }}
 					</N8nButton>
-					<N8nButton
-						:variant="isDestructive ? 'destructive' : 'brand'"
-						size="small"
-						:disabled="!canSubmit"
-						:loading="operation.isRunning.value"
-						data-test-id="promotion-preview-submit"
-						@click="onSubmit"
-					>
-						{{ submitLabel }}
-					</N8nButton>
+					<N8nTooltip :disabled="!submitTooltip" placement="bottom" as-child>
+						<!-- Plain text in the slot: reka-ui reads slot text for its aria-describedby target, and folder names are not HTML. -->
+						<template #content>{{ submitTooltip }}</template>
+						<N8nButton
+							v-bind="submitDescribedByAttrs"
+							:variant="isDestructive ? 'destructive' : 'brand'"
+							size="small"
+							:disabled="!canSubmit"
+							:focusable-when-disabled="!!submitTooltip"
+							:loading="operation.isRunning.value"
+							data-test-id="promotion-preview-submit"
+							@click="onSubmit"
+						>
+							{{ submitLabel }}
+						</N8nButton>
+					</N8nTooltip>
 				</div>
 			</div>
 			<div :class="$style.tabRow">
@@ -496,6 +534,7 @@ const treeResizer = useResizablePanel({
 					<!-- A disabled button cannot explain itself to keyboard users, so the reason shows here. -->
 					<N8nCallout
 						v-if="submitBlockedReason && !operation.error.value"
+						:id="submitBlockedReasonId"
 						theme="warning"
 						slim
 						data-test-id="promotion-preview-submit-blocked"

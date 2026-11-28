@@ -222,7 +222,7 @@ describe('PromotionPreviewView', () => {
 				),
 				dependencies: [],
 			});
-			const { getByTestId, getAllByTestId } = await render(
+			const { getByTestId, getAllByTestId, findByRole } = await render(
 				`/projects/p1/promotions/${direction}`,
 				direction,
 			);
@@ -237,9 +237,71 @@ describe('PromotionPreviewView', () => {
 
 			await userEvent.click(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox'));
 			expect(submit).toHaveTextContent(`${action} changes`);
-			expect(submit).toBeDisabled();
+			expect(submit).toHaveAttribute('aria-disabled', 'true');
+
+			await userEvent.hover(submit);
+			const tooltip = await findByRole('tooltip', { hidden: true });
+			expect(tooltip).toHaveTextContent(`Select at least one change to ${action.toLowerCase()}.`);
+			expect(submit).toHaveAttribute('aria-describedby', tooltip.id);
+			expect(submit).toHaveAccessibleDescription(
+				`Select at least one change to ${action.toLowerCase()}.`,
+			);
 		},
 	);
+
+	it('explains blockers instead of asking to select a change when every Apply change is blocked', async () => {
+		const preview = previewWithCheck(
+			check({ missingBindings: [{ ...variable, consumers: consumers('w1', 'w3') }] }),
+		);
+		vi.mocked(api.getPromotionPreview).mockResolvedValue({
+			...preview,
+			resources: [
+				{ ...billingResources.reconciliation, parentKey: null },
+				{ ...billingResources.kpiReport, parentKey: null },
+			],
+			dependencies: [],
+		});
+
+		const { getByTestId, findByRole, queryByTestId, queryByText } = await renderApply();
+		const submit = getByTestId('promotion-preview-submit');
+		expect(submit).toHaveAttribute('aria-disabled', 'true');
+		expect(queryByTestId('promotion-preview-submit-blocked')).not.toBeInTheDocument();
+
+		await userEvent.hover(submit);
+		const tooltip = await findByRole('tooltip', { hidden: true });
+		expect(tooltip).toHaveTextContent('Resolve the blockers to apply the changes.');
+		expect(submit).toHaveAttribute('aria-describedby', tooltip.id);
+		expect(submit).toHaveAccessibleDescription('Resolve the blockers to apply the changes.');
+		expect(queryByText('Select at least one change to apply.')).not.toBeInTheDocument();
+	});
+
+	it('explains moved workflows instead of asking to select a change when every Promote change moved projects', async () => {
+		const preview = billingPreview();
+		vi.mocked(api.getPromotionPreview).mockResolvedValue({
+			...preview,
+			resources: [
+				{
+					...billingResources.reconciliation,
+					parentKey: null,
+					change: 'deleted',
+					movedToProject: { id: 'p2', name: 'Ops' },
+				},
+			],
+			dependencies: [],
+		});
+
+		const { getByTestId, findByRole, queryByTestId, queryByText } = await render();
+		const submit = getByTestId('promotion-preview-submit');
+		expect(submit).toHaveAttribute('aria-disabled', 'true');
+		expect(queryByTestId('promotion-preview-submit-blocked')).not.toBeInTheDocument();
+
+		await userEvent.hover(submit);
+		const tooltip = await findByRole('tooltip', { hidden: true });
+		expect(tooltip).toHaveTextContent('Resolve the blockers to promote the changes.');
+		expect(submit).toHaveAttribute('aria-describedby', tooltip.id);
+		expect(submit).toHaveAccessibleDescription('Resolve the blockers to promote the changes.');
+		expect(queryByText('Select at least one change to promote.')).not.toBeInTheDocument();
+	});
 
 	it('omits the count and disables Apply when a refresh blocks every selected workflow', async () => {
 		// Two changed workflows cover this refresh without mounting unrelated cards.
@@ -268,7 +330,7 @@ describe('PromotionPreviewView', () => {
 		await waitAllPromises();
 
 		expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/^Apply changes$/);
-		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+		expect(getByTestId('promotion-preview-submit')).toHaveAttribute('aria-disabled', 'true');
 		for (const key of ['workflow:w1', 'workflow:w3']) {
 			const row = treeRow(getAllByTestId, key);
 			expect(row.getByRole('checkbox')).toBeChecked();
@@ -1011,7 +1073,7 @@ describe('PromotionPreviewView', () => {
 
 		const { getByTestId } = await renderApply();
 
-		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+		expect(getByTestId('promotion-preview-submit')).toHaveAttribute('aria-disabled', 'true');
 		expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/^Apply changes$/);
 		expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
 			'Apply is disabled. The branch and this instance hold the folder "Payments" in different projects',
@@ -1220,10 +1282,49 @@ describe('PromotionPreviewView', () => {
 
 			const { getByTestId } = await renderInstance();
 
-			expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+			expect(getByTestId('promotion-preview-submit')).toHaveAttribute('aria-disabled', 'true');
+			expect(getByTestId('promotion-preview-submit')).toHaveAttribute(
+				'aria-describedby',
+				getByTestId('promotion-preview-submit-blocked').id,
+			);
 			expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
 				'Some changes have blockers',
 			);
+		});
+
+		it('should explain the disabled Apply in a tooltip on the button', async () => {
+			const missing = { ...variable, name: 'API_URL', consumers: consumers('w-unchanged') };
+			vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue(
+				instancePreview({ missingBindings: [missing] }),
+			);
+
+			const { getByTestId, findAllByText } = await renderInstance();
+			await userEvent.hover(getByTestId('promotion-preview-submit'));
+
+			expect(
+				(await findAllByText('Resolve the blockers to apply the changes.')).length,
+			).toBeGreaterThan(0);
+		});
+
+		it('should say there are no changes to apply when an instance preview has no changes', async () => {
+			vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue({
+				...instancePreview(),
+				resources: [
+					resource({ key: 'project:p1', name: 'Billing', change: 'unchanged', selectable: false }),
+				],
+				dependencies: [],
+			});
+
+			const { getByTestId, findByRole, queryByText } = await renderInstance();
+			const submit = getByTestId('promotion-preview-submit');
+			expect(submit).toHaveAttribute('aria-disabled', 'true');
+
+			await userEvent.hover(submit);
+			const tooltip = await findByRole('tooltip', { hidden: true });
+			expect(tooltip).toHaveTextContent('No changes to apply');
+			expect(submit).toHaveAttribute('aria-describedby', tooltip.id);
+			expect(submit).toHaveAccessibleDescription('No changes to apply');
+			expect(queryByText('Select at least one change to apply.')).not.toBeInTheDocument();
 		});
 
 		it.each([false, true])(
