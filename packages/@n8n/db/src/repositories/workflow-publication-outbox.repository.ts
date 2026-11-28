@@ -178,24 +178,50 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 	 * their canonical `activeVersionId`; unpublished (including archived) ones get
 	 * an unpublish record that clears their stale trigger-status rows. Idempotent
 	 * via the same partial-unique-index upsert as {@link enqueue}.
+	 *
+	 * A transfer skips an unpublished workflow and, like a user publish, clears the retry note.
 	 */
 	async enqueueByWorkflowIds(
 		workflowIds: string[],
 		reason: WorkflowPublicationReason,
+		ctx: OperationContext = {},
 	): Promise<void> {
 		if (workflowIds.length === 0) return;
 
-		if (this.globalConfig.database.type === 'postgresdb') {
-			await this.enqueueByWorkflowIdsWithPostgresUpsert(workflowIds, reason);
-			return;
+		if (reason === WorkflowPublicationReason.Transfer) {
+			await this.runInTransaction(ctx, async (manager) => {
+				for (const chunk of chunkIds(workflowIds)) {
+					await manager.delete(WorkflowPublicationRetryState, { workflowId: In(chunk) });
+				}
+				await this.upsertByWorkflowIds(workflowIds, reason, manager);
+			});
+		} else {
+			await this.upsertByWorkflowIds(workflowIds, reason, this.managerFor(ctx));
 		}
+	}
 
-		await this.enqueueByWorkflowIdsWithSqliteUpsert(workflowIds, reason);
+	private async upsertByWorkflowIds(
+		workflowIds: string[],
+		reason: WorkflowPublicationReason,
+		manager: EntityManager,
+	): Promise<void> {
+		if (this.globalConfig.database.type === 'postgresdb') {
+			await this.enqueueByWorkflowIdsWithPostgresUpsert(workflowIds, reason, manager);
+		} else {
+			await this.enqueueByWorkflowIdsWithSqliteUpsert(workflowIds, reason, manager);
+		}
+	}
+
+	private publishedOnlyFilter(reason: WorkflowPublicationReason): string {
+		return reason === WorkflowPublicationReason.Transfer
+			? 'AND w."activeVersionId" IS NOT NULL'
+			: '';
 	}
 
 	private async enqueueByWorkflowIdsWithPostgresUpsert(
 		workflowIds: string[],
 		reason: WorkflowPublicationReason,
+		manager: EntityManager,
 	): Promise<void> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
@@ -217,11 +243,11 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 				? `DO UPDATE SET "reason" = EXCLUDED."reason", "updatedAt" = CURRENT_TIMESTAMP(3)
 				   WHERE ${outboxTableName}."reason" IN ${REASONS_A_TRANSFER_REPLACES_SQL}`
 				: 'DO NOTHING';
-		await this.query(
+		await manager.query(
 			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status", "reason")
 			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}', $2
 			 FROM ${workflowTableName} w
-			 WHERE w."id" = ANY($1)
+			 WHERE w."id" = ANY($1) ${this.publishedOnlyFilter(reason)}
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 ${onConflict}`,
 			[workflowIds, reason],
@@ -231,6 +257,7 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 	private async enqueueByWorkflowIdsWithSqliteUpsert(
 		workflowIds: string[],
 		reason: WorkflowPublicationReason,
+		manager: EntityManager,
 	): Promise<void> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
@@ -248,11 +275,11 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 			const chunk = workflowIds.slice(i, i + SQLITE_ENQUEUE_CHUNK_SIZE);
 			const placeholders = chunk.map(() => '?').join(', ');
 
-			await this.query(
+			await manager.query(
 				`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status", "reason")
 				 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}', ?
 				 FROM ${workflowTableName} w
-				 WHERE w."id" IN (${placeholders})
+				 WHERE w."id" IN (${placeholders}) ${this.publishedOnlyFilter(reason)}
 				 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
 				 ${onConflict}`,
 				[reason, ...chunk],
