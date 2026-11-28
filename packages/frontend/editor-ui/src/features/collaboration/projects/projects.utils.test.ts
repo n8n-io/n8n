@@ -164,7 +164,7 @@ describe('isSelfHealingEnabled', () => {
 		setActivePinia(createPinia());
 	});
 
-	it.each([
+	const cases = [
 		{ setting: false, cloudManaged: false, flag: true, plan: 'Community', expected: false },
 		{ setting: false, cloudManaged: false, flag: true, plan: 'Enterprise', expected: false },
 		{ setting: false, cloudManaged: true, flag: true, plan: 'Community', expected: false },
@@ -178,12 +178,43 @@ describe('isSelfHealingEnabled', () => {
 		{ setting: true, cloudManaged: true, flag: false, plan: 'Enterprise', expected: false },
 		{ setting: true, cloudManaged: true, flag: undefined, plan: 'Enterprise', expected: false },
 		{ setting: true, cloudManaged: true, flag: true, plan: 'Enterprise', expected: true },
-	])(
-		'returns $expected for setting $setting, Cloud $cloudManaged, flag $flag, plan $plan',
-		({ setting, cloudManaged, flag, plan, expected }) => {
+		{
+			setting: true,
+			cloudManaged: false,
+			flag: false,
+			plan: 'Community',
+			assistantEnabled: false,
+			expected: true,
+		},
+		{
+			setting: true,
+			cloudManaged: false,
+			flag: false,
+			plan: 'Community',
+			setupCompleted: false,
+			expected: true,
+		},
+		{
+			setting: true,
+			cloudManaged: true,
+			flag: true,
+			plan: 'Community',
+			assistantEnabled: false,
+			expected: true,
+		},
+	] as const;
+
+	it.each(cases.map((testCase) => ({ assistantEnabled: true, setupCompleted: true, ...testCase })))(
+		'returns $expected for setting $setting, assistant $assistantEnabled, setup $setupCompleted, Cloud $cloudManaged, flag $flag, plan $plan',
+		({ setting, assistantEnabled, setupCompleted, cloudManaged, flag, plan, expected }) => {
 			const settingsStore = useSettingsStore();
 			settingsStore.moduleSettings = {
-				'instance-ai': { workflowSuggestionsEnabled: setting, cloudManaged },
+				'instance-ai': {
+					workflowSuggestionsEnabled: setting,
+					enabled: assistantEnabled,
+					setupCompleted,
+					cloudManaged,
+				},
 			} as typeof settingsStore.moduleSettings;
 			settingsStore.settings.license = { planName: plan } as typeof settingsStore.settings.license;
 			// An undefined flag means that PostHog gave no answer.

@@ -4,6 +4,7 @@ import type {
 	SelfHealingConfigurationOptions,
 	UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -69,6 +70,12 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 		configurations.value[projectId] = (configurations.value[projectId] ?? []).filter(
 			(row) => row.id !== id,
 		);
+		// The delete also removes the configuration's results, which can hide the Inbox.
+		try {
+			await useSettingsStore().refreshInboxSettings();
+		} catch {
+			// The delete succeeded. The next settings load corrects the Inbox.
+		}
 	}
 
 	return { configurations, options, load, save, setEnabled, remove };

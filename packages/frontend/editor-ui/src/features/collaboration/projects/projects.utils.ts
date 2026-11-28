@@ -104,7 +104,10 @@ export const enum ResourceType {
 	DataTable = 'dataTable',
 }
 
-/** Tells whether users can set up self-healing now. */
+/**
+ * Tells whether the self-healing settings are shown. Creating or enabling a
+ * configuration also needs the n8n Assistant, which the backend checks.
+ */
 export function isSelfHealingEnabled(): boolean {
 	const settingsStore = useSettingsStore();
 	const settings = settingsStore.moduleSettings['instance-ai'];

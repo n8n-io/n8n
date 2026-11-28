@@ -79,7 +79,7 @@ export class InstanceAiModule implements ModuleInterface {
 			const results = Container.get(SelfHealingResultService);
 			Container.get(InboxSourceRegistry).register({
 				type: 'self_healing_result',
-				isEnabled: async () => Container.get(InstanceAiConfig).workflowSuggestionsEnabled,
+				isEnabled: async () => await results.isInboxAvailable(),
 				list: async (user, query) => await results.listForInbox(user, query),
 				count: async (user) => await results.countForInbox(user),
 			});
@@ -217,7 +217,8 @@ export class InstanceAiModule implements ModuleInterface {
 		const mcpConnectionsAvailable = service.areMcpConnectionsAvailable();
 		const browserUseEnabled = settingsService.isBrowserUseEnabled();
 		const sandboxStatus = settingsService.getSandboxStatus();
-		const setupCompleted = await settingsService.isSetupCompleted();
+		const { setupCompleted, modelAndSandboxConfigured } =
+			await settingsService.getPublicSetupState();
 		return {
 			enabled,
 			mcpConnectionsAvailable,
@@ -225,6 +226,7 @@ export class InstanceAiModule implements ModuleInterface {
 			proxyEnabled: service.isProxyEnabled(),
 			cloudManaged: globalConfig.deployment.type === 'cloud',
 			setupCompleted,
+			modelAndSandboxConfigured,
 			sandboxEnabled: sandboxStatus.enabled,
 			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,

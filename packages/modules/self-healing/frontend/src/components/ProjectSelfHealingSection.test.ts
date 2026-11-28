@@ -3,6 +3,7 @@ import {
 	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
 	SELF_HEALING_CONFIGURATION_VIEW,
 } from '@n8n/frontend-constants/self-healing';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
@@ -65,6 +66,17 @@ it('shows the Preview and enterprise readiness badges next to the heading', asyn
 	const { view } = await renderSection();
 	expect(view.getByTestId('self-healing-preview-badge')).toBeInTheDocument();
 	expect(view.getByTestId('self-healing-enterprise-readiness-badge')).toBeInTheDocument();
+});
+
+// Only the configuration page shows the Assistant notice.
+it('does not show the Assistant notice in the configuration list', async () => {
+	const settingsStore = useSettingsStore();
+	settingsStore.moduleSettings = {
+		'instance-ai': { enabled: false, modelAndSandboxConfigured: false },
+	} as typeof settingsStore.moduleSettings;
+
+	const { view } = await renderSection();
+	expect(view.queryByTestId('self-healing-assistant-notice')).not.toBeInTheDocument();
 });
 
 it('keeps the active switch unchanged when saving fails and allows another attempt', async () => {

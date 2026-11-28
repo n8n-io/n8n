@@ -447,17 +447,29 @@ The `instance-ai` module must be loaded. Entities and migrations do not depend o
 Saved review services do not require Assistant model availability. Recovery of existing
 investigations remains available when the flag is off.
 
+Self-healing requires the n8n Assistant to be enabled, with a model and a sandbox. When the
+Assistant is disabled, no new investigation starts. The model and sandbox check reads the Assistant
+setup from the database, so it runs only for a failure in a watched workflow, and when a user
+creates or enables a configuration. A run does not need web search, so self-healing does not wait
+for the web search choice that the Assistant setup asks for. On Cloud and proxy-managed instances, the model and the sandbox count as configured.
 Self-healing is off on self-hosted Enterprise instances even when the environment variable is on.
 Every Cloud plan requires both `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` and the PostHog
 instance flag `150_self_healing`.
 `SelfHealingConfigurationService.isEnabled()` gives the combined decision.
-The editor gets the PostHog flag with its other feature flags and applies the same rule.
+The editor gets the PostHog flag with its other feature flags. It applies the rollout flag,
+PostHog flag, and self-hosted Enterprise conditions, but not the n8n Assistant conditions.
 The editor reads the PostHog flag at page load only.
 Self-hosted instances have no PostHog flag.
-When self-hosted Enterprise is blocked, the PostHog flag is off, or PostHog gives no answer on
-Cloud, no new investigation starts and the editor hides the self-healing setup.
-`GET /self-healing/status` then returns `enabled: false` and no `setupProjectId`, so the Inbox
-does not offer the setup. Investigations in progress finish, and results stay available for review.
+When the availability check returns false, no new investigation starts.
+The editor hides the self-healing setup when self-healing is off by rollout flag, PostHog flag, or
+self-hosted Enterprise license. When n8n Assistant is disabled or its setup is incomplete, the
+self-healing settings UI remains accessible with a notice, while creating or enabling a
+configuration returns a `BadRequestError`.
+When the availability check returns false, `GET /self-healing/status` returns `enabled: false`
+and no `setupProjectId`, so the Inbox does not offer the setup. The `self_healing_result` Inbox
+source is then disabled unless saved results exist, so Inbox stays hidden when self-healing is its
+only source and has no results. The availability check reads no database, so the settings and
+each failed execution can call it. Investigations in progress finish, and existing results stay available for review.
 PostHog decisions are cached for 10 minutes. A change needs no restart.
 
 The shared Inbox reads result rows through `SelfHealingResultService.listForInbox()`.

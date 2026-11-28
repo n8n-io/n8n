@@ -108,6 +108,9 @@ beforeAll(async () => {
 beforeEach(() => {
 	Container.get(GlobalConfig).workflows.useWorkflowPublicationService = true;
 	Container.get(GlobalConfig).instanceAi.workflowSuggestionsEnabled = true;
+	const instanceAiSettings = Container.get(InstanceAiSettingsService);
+	vi.spyOn(instanceAiSettings, 'isInstanceAiEnabled').mockReturnValue(true);
+	vi.spyOn(instanceAiSettings, 'isModelAndSandboxConfigured').mockResolvedValue(true);
 	runtime.startSelfHealingRun.mockReset();
 	runtime.routeCancelRun.mockReset();
 	validation.validateTriggerNodeIds.mockReturnValue({ isValid: true });
@@ -2134,7 +2137,6 @@ it.each([
 	'lets a project viewer who edits through a share continue $reviewState',
 	async ({ outcome, action, reviewState }) => {
 		testServer.license.enable('feat:advancedPermissions');
-		vi.spyOn(Container.get(InstanceAiSettingsService), 'isInstanceAiEnabled').mockReturnValue(true);
 		const { user, original, project, result, url } = await fixture(
 			outcome,
 			outcome === 'fix_ready',
@@ -2245,6 +2247,32 @@ it('returns report details without changing the result or workflow', async () =>
 });
 
 describe('Inbox source reads', () => {
+	it('skips the self-healing check when saved results exist', async () => {
+		const isEnabled = vi
+			.spyOn(Container.get(SelfHealingConfigurationService), 'isEnabled')
+			.mockRejectedValue(new Error('PostHog unavailable'));
+
+		await fixture('needs_you', false);
+		await expect(service.isInboxAvailable()).resolves.toBe(true);
+		expect(isEnabled).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['enabled', true],
+		['disabled', false],
+	])('follows self-healing when %s and no results are saved', async (_, enabled) => {
+		vi.spyOn(Container.get(SelfHealingConfigurationService), 'isEnabled').mockResolvedValue(
+			enabled,
+		);
+		await expect(service.isInboxAvailable()).resolves.toBe(enabled);
+	});
+
+	it('reports a failed self-healing check when no results are saved', async () => {
+		const error = new Error('PostHog unavailable');
+		vi.spyOn(Container.get(SelfHealingConfigurationService), 'isEnabled').mockRejectedValue(error);
+		await expect(service.isInboxAvailable()).rejects.toBe(error);
+	});
+
 	async function addResult({
 		original,
 		baseline,

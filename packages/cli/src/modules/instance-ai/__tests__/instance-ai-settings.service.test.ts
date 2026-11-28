@@ -2382,6 +2382,41 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
+	describe('isModelAndSandboxConfigured', () => {
+		it('is configured on managed deployments', async () => {
+			globalConfig.deployment.type = 'cloud';
+			await expect(service.isModelAndSandboxConfigured()).resolves.toBe(true);
+		});
+
+		it('needs a model and a sandbox but no web search decision', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			persistedSettingsValue = JSON.stringify({ modelName: 'gpt-5.4' });
+			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) =>
+				policy.id === INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id ? 'model-credential' : null,
+			);
+			await service.reloadFromDb();
+
+			await expect(service.isModelAndSandboxConfigured()).resolves.toBe(false);
+
+			persistedSettingsValue = JSON.stringify({
+				modelName: 'gpt-5.4',
+				sandboxEnabled: true,
+				sandboxProvider: 'n8n-sandbox',
+			});
+			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) => {
+				if (policy.id === INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id) return 'model-credential';
+				if (policy.id === INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id) {
+					return 'sandbox-credential';
+				}
+				return null;
+			});
+			await service.reloadFromDb();
+
+			await expect(service.isModelAndSandboxConfigured()).resolves.toBe(true);
+			await expect(service.isSetupCompleted()).resolves.toBe(false);
+		});
+	});
+
 	describe('isModelConfigured', () => {
 		it('has a model on managed deployments', async () => {
 			globalConfig.deployment.type = 'cloud';

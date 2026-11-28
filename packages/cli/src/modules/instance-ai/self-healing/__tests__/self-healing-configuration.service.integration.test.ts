@@ -54,6 +54,7 @@ import {
 import { setupTestServer } from '@test-integration/utils';
 
 import { runInTransaction } from '../../after-commit';
+import { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import { InstanceAiService } from '../../instance-ai.service';
 import { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
 import { SelfHealingConfigurationReviewer } from '../database/self-healing-configuration-reviewer.entity';
@@ -84,10 +85,14 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+	const instanceAiSettings = Container.get(InstanceAiSettingsService);
+	vi.spyOn(instanceAiSettings, 'isInstanceAiEnabled').mockReturnValue(true);
+	vi.spyOn(instanceAiSettings, 'isModelAndSandboxConfigured').mockResolvedValue(true);
 	runtime.routeCancelRun.mockReset();
 });
 
 afterEach(async () => {
+	vi.restoreAllMocks();
 	await Container.get(DataSource)
 		.getRepository(SelfHealingInvestigation)
 		.createQueryBuilder()
@@ -493,7 +498,8 @@ it('reports whether a configuration sends results to the current user', async ()
 	expect(await status(member)).toMatchObject({ isReviewer: false });
 });
 
-it.each([
+const eligible = { setting: true, flag: true, enterprise: false } as const;
+const cases = [
 	{ setting: false, type: 'default', flag: true, enterprise: false, expected: false },
 	{ setting: false, type: 'default', flag: true, enterprise: true, expected: false },
 	{ setting: false, type: 'cloud', flag: true, enterprise: false, expected: false },
@@ -507,12 +513,17 @@ it.each([
 	{ setting: true, type: 'cloud', flag: true, enterprise: true, expected: true },
 	{ setting: true, type: 'cloud', flag: false, enterprise: true, expected: false },
 	{ setting: true, type: 'cloud', flag: undefined, enterprise: true, expected: false },
-] as const)(
-	'reports enabled $expected for setting $setting, deployment $type, flag $flag, Enterprise $enterprise',
-	async ({ setting, type, flag, enterprise, expected }) => {
+	{ ...eligible, type: 'default', assistantEnabled: false, expected: false },
+	{ ...eligible, type: 'cloud', assistantEnabled: false, expected: false },
+] as const;
+
+it.each(cases.map((testCase) => ({ assistantEnabled: true, ...testCase })))(
+	'reports enabled $expected for setting $setting, assistant $assistantEnabled, deployment $type, flag $flag, Enterprise $enterprise',
+	async ({ setting, assistantEnabled, type, flag, enterprise, expected }) => {
 		const user = await createUser();
 		const personalProjectId = (await getPersonalProject(user)).id;
 		const globalConfig = Container.get(GlobalConfig);
+		const instanceAiSettings = Container.get(InstanceAiSettingsService);
 		const previous = {
 			setting: globalConfig.instanceAi.workflowSuggestionsEnabled,
 			type: globalConfig.deployment.type,
@@ -523,7 +534,10 @@ it.each([
 			.spyOn(Container.get(PostHogClient), 'getFeatureFlagForInstance')
 			// Only the self-healing flag has an answer.
 			.mockImplementation(async (name) => (name === SELF_HEALING_FLAG ? flag : undefined));
-		const plan = vi.spyOn(Container.get(License), 'isEnterprisePlan').mockReturnValue(enterprise);
+		vi.spyOn(Container.get(License), 'isEnterprisePlan').mockReturnValue(enterprise);
+		vi.spyOn(instanceAiSettings, 'isInstanceAiEnabled').mockReturnValue(assistantEnabled);
+		// The availability check reads no database, so it does not read the Assistant setup.
+		const assistantSetup = vi.spyOn(instanceAiSettings, 'isModelAndSandboxConfigured');
 
 		try {
 			expect(await configurations.isEnabled()).toBe(expected);
@@ -531,17 +545,53 @@ it.each([
 				enabled: expected,
 				setupProjectId: expected ? personalProjectId : null,
 			});
-			if (type !== 'cloud' || !setting) {
+			expect(assistantSetup).not.toHaveBeenCalled();
+			if (type !== 'cloud' || !setting || !assistantEnabled) {
 				expect(postHog).not.toHaveBeenCalled();
 			} else {
 				expect(postHog).toHaveBeenCalledWith(SELF_HEALING_FLAG);
 			}
 		} finally {
-			postHog.mockRestore();
-			plan.mockRestore();
 			globalConfig.instanceAi.workflowSuggestionsEnabled = previous.setting;
 			globalConfig.deployment.type = previous.type;
 		}
+	},
+);
+
+it.each([
+	{
+		assistantEnabled: false,
+		setupCompleted: true,
+		message: "The n8n Assistant is disabled, so self-healing can't run.",
+	},
+	{
+		assistantEnabled: true,
+		setupCompleted: false,
+		message: "The n8n Assistant isn't set up, so self-healing can't run.",
+	},
+])(
+	'rejects creating or enabling a configuration when assistantEnabled=$assistantEnabled and setupCompleted=$setupCompleted, while keeping edits, pause, and delete available',
+	async ({ assistantEnabled, setupCompleted, message }) => {
+		const { user, url, input } = await fixture();
+		const agent = server.authAgentFor(user);
+		const created = (await agent.post(url).send(input).expect(200)).body.data;
+		const instanceAiSettings = Container.get(InstanceAiSettingsService);
+		vi.spyOn(instanceAiSettings, 'isInstanceAiEnabled').mockReturnValue(assistantEnabled);
+		vi.spyOn(instanceAiSettings, 'isModelAndSandboxConfigured').mockResolvedValue(setupCompleted);
+
+		const createRes = await agent.post(url).send(input).expect(400);
+		expect(createRes.body.message).toBe(message);
+
+		const enableRes = await agent
+			.patch(`${url}/${created.id}/enabled`)
+			.send({ enabled: true })
+			.expect(400);
+		expect(enableRes.body.message).toBe(message);
+
+		await agent.get(url).expect(200);
+		await agent.patch(`${url}/${created.id}`).send(input).expect(200);
+		await agent.patch(`${url}/${created.id}/enabled`).send({ enabled: false }).expect(200);
+		await agent.delete(`${url}/${created.id}`).expect(200);
 	},
 );
 

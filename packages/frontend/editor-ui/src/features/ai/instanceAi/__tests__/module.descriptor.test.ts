@@ -89,6 +89,7 @@ const instanceAiModuleSettings: NonNullable<FrontendModuleSettings['instance-ai'
 	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
+	setupCompleted: true,
 	sandboxEnabled: true,
 	workflowBuilderAvailable: true,
 	sandboxUnavailableReason: null,
@@ -299,6 +300,32 @@ describe.each(['initial navigation', 'from another page'])('self-healing access 
 			(await open('/projects/project/settings/self-healing/new')).currentRoute.value.name,
 		).toBe(VIEWS.HOMEPAGE);
 	});
+
+	it.each([
+		{ enabled: false, setupCompleted: true },
+		{ enabled: true, setupCompleted: false },
+	])(
+		'keeps self-healing settings accessible when Assistant enabled=$enabled and setupCompleted=$setupCompleted',
+		async ({ enabled, setupCompleted }) => {
+			useSettingsStore().moduleSettings = {
+				'instance-ai': {
+					...instanceAiModuleSettings,
+					workflowSuggestionsEnabled: true,
+					enabled,
+					setupCompleted,
+				},
+			};
+			mockProject({
+				type: 'personal',
+				relations: [{ id: 'user', role: 'project:personalOwner' }] as Project['relations'],
+				scopes: ['project:read'],
+			});
+
+			expect((await open('/projects/project/self-healing')).currentRoute.value.name).toBe(
+				PERSONAL_SELF_HEALING_VIEW,
+			);
+		},
+	);
 });
 
 describe('InstanceAiModule settings page access', () => {

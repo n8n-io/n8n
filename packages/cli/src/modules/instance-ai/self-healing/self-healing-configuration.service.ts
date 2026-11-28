@@ -28,6 +28,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { afterCommit, runInTransaction } from '../after-commit';
+import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { SelfHealingConfiguration } from './database/self-healing-configuration.entity';
 import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
@@ -41,6 +42,8 @@ type ConfigurationChange = InferTelemetryProps<
 
 const NO_ELIGIBLE_REVIEWER =
 	'No reviewer can edit these workflows. Add a reviewer who can edit them, or give a reviewer edit access.';
+const ASSISTANT_DISABLED = "The n8n Assistant is disabled, so self-healing can't run.";
+const ASSISTANT_SETUP_INCOMPLETE = "The n8n Assistant isn't set up, so self-healing can't run.";
 
 @Service()
 export class SelfHealingConfigurationService {
@@ -60,11 +63,16 @@ export class SelfHealingConfigurationService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly postHogClient: PostHogClient,
 		private readonly license: License,
+		private readonly instanceAiSettings: InstanceAiSettingsService,
 	) {}
 
 	/** Tells whether new self-healing work can start now. */
 	async isEnabled(): Promise<boolean> {
 		if (!this.globalConfig.instanceAi.workflowSuggestionsEnabled) return false;
+		// Self-healing runs through the n8n Assistant. This check reads no database, so the
+		// settings and each failed execution can call it. Creating or enabling a
+		// configuration also checks the Assistant setup.
+		if (!this.instanceAiSettings.isInstanceAiEnabled()) return false;
 		if (this.globalConfig.deployment.type !== 'cloud') {
 			// Self-healing is not available on self-hosted Enterprise yet.
 			// Other self-hosted instances have no PostHog flag and use the env setting only.
@@ -74,6 +82,24 @@ export class SelfHealingConfigurationService {
 		// Every Cloud plan requires both the env setting and the PostHog instance flag.
 		// No answer from PostHog means off.
 		return (await this.postHogClient.getFeatureFlagForInstance(SELF_HEALING_FLAG)) === true;
+	}
+
+	/**
+	 * Tells whether the n8n Assistant has a model and a sandbox for a run. A run does not
+	 * need web search. This reads the Assistant setup from the database, so call it only when
+	 * a run is about to start or a user saves a configuration.
+	 */
+	async hasAssistantSetup(): Promise<boolean> {
+		return await this.instanceAiSettings.isModelAndSandboxConfigured();
+	}
+
+	private async requireAssistantReady(): Promise<void> {
+		if (!this.instanceAiSettings.isInstanceAiEnabled()) {
+			throw new BadRequestError(ASSISTANT_DISABLED);
+		}
+		if (!(await this.hasAssistantSetup())) {
+			throw new BadRequestError(ASSISTANT_SETUP_INCOMPLETE);
+		}
 	}
 
 	private trackChange(
@@ -173,6 +199,9 @@ export class SelfHealingConfigurationService {
 		input: SaveSelfHealingConfigurationDto | UpdateSelfHealingConfigurationDto,
 		id?: number,
 	) {
+		if (id === undefined) {
+			await this.requireAssistantReady();
+		}
 		await this.validateSelections(projectId, input);
 
 		let canEnable = false;
@@ -216,6 +245,7 @@ export class SelfHealingConfigurationService {
 	async setEnabled(user: User, projectId: string, id: number, enabled: boolean) {
 		let canEnable = false;
 		if (enabled) {
+			await this.requireAssistantReady();
 			canEnable = await this.canEnable(user, projectId);
 		}
 

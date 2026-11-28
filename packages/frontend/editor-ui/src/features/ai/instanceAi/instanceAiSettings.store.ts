@@ -20,6 +20,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { createBrowserLink, disconnectBrowserSession, getBrowserStatus } from './instanceAi.api';
 import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	deriveInstanceAiSetupState,
 	type FrontendModuleSettings,
 	type InstanceAiAdminSettingsResponse,
 	type InstanceAiApprovalMode,
@@ -36,7 +37,6 @@ import {
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
-import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
 import { isBrowserUseSupportedOnDevice } from './utils/browserUseSupport';
 import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 import {
@@ -114,16 +114,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	);
 	const { isEnabled: isInstanceAiSetupPanelEnabled } = useInstanceAiSetupPanelExperiment();
 
-	function syncInstanceAiFlagIntoGlobalModuleSettings(
-		adminRes: InstanceAiAdminSettingsResponse,
-	): void {
+	async function refreshSettingsAfterSave(adminRes: InstanceAiAdminSettingsResponse) {
 		const ms = settingsStore.moduleSettings;
 		const prev = ms['instance-ai'];
-		const configuration = deriveInstanceAiConfiguration(
-			adminRes,
-			instanceModelCredentials.value,
-			serviceCredentials.value,
-		);
+		const isManaged = isCloudManaged.value || isProxyEnabled.value;
+		const setupState = deriveInstanceAiSetupState(adminRes);
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
 			mcpConnectionsAvailable:
@@ -131,7 +126,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			browserUseEnabled: adminRes.browserUseEnabled ?? prev?.browserUseEnabled ?? true,
 			proxyEnabled: prev?.proxyEnabled ?? false,
 			cloudManaged: prev?.cloudManaged ?? false,
-			setupCompleted: configuration.setupCompleted,
+			setupCompleted: isManaged || setupState.setupCompleted,
+			modelAndSandboxConfigured: isManaged || setupState.modelAndSandboxConfigured,
 			sandboxEnabled: adminRes.sandboxEnabled,
 			workflowBuilderAvailable: adminRes.sandboxEnabled
 				? (prev?.workflowBuilderAvailable ?? true)
@@ -147,6 +143,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			...ms,
 			'instance-ai': merged,
 		};
+		// Turning the Assistant on or off can show or hide self-healing in the Inbox.
+		// The save does not wait for it.
+		if (prev?.enabled !== merged.enabled) {
+			void settingsStore.refreshInboxSettings().catch(() => {});
+		}
+		await settingsStore.getModuleSettings().catch(() => {});
 	}
 	const canManage = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } }),
@@ -204,8 +206,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 					type: 'success',
 				});
 			}
-			syncInstanceAiFlagIntoGlobalModuleSettings(result);
-			await settingsStore.getModuleSettings().catch(() => {});
+			await refreshSettingsAfterSave(result);
 			return true;
 		} catch (error) {
 			clearDraft();
@@ -223,8 +224,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			const result = await updateSettings(rootStore.restApiContext, { enabled: value });
 			settings.value = result;
 			delete draft.enabled;
-			syncInstanceAiFlagIntoGlobalModuleSettings(result);
-			await settingsStore.getModuleSettings().catch(() => {});
+			await refreshSettingsAfterSave(result);
 			if (showToast) {
 				toast.showMessage({
 					title: i18n.baseText('settings.n8nAgent.toast.saved'),

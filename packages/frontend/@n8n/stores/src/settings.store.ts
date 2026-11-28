@@ -414,6 +414,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		}
 	};
 
+	const refreshInboxSettings = async () => {
+		const { inbox } = await settingsApi.getSettings(useRootStore().restApiContext);
+		settings.value.inbox = inbox;
+	};
+
 	const getSettings = async () => {
 		applySettings(await settingsApi.getSettings(useRootStore().restApiContext));
 		showInsecureConnectionWarningIfNeeded();
@@ -592,6 +597,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		disableTemplates,
 		stopShowingSetupPage,
 		getSettings,
+		refreshInboxSettings,
 		applyEmbeddedSettings,
 		setSettings,
 		setWorkflowReviewsPolicy,

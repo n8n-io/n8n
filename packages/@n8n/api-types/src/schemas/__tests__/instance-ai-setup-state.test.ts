@@ -22,6 +22,7 @@ describe('deriveInstanceAiSetupState', () => {
 			sandboxType: null,
 			sandboxCredentialId: null,
 			webSearchSource: 'none',
+			modelAndSandboxConfigured: false,
 			setupCompleted: false,
 		});
 	});
@@ -43,6 +44,7 @@ describe('deriveInstanceAiSetupState', () => {
 			sandboxType: 'daytona',
 			sandboxCredentialId: 'day-cred',
 			webSearchSource: 'ui',
+			modelAndSandboxConfigured: true,
 			setupCompleted: true,
 		});
 	});
@@ -62,6 +64,7 @@ describe('deriveInstanceAiSetupState', () => {
 			sandboxType: 'n8n-sandbox',
 			sandboxCredentialId: null,
 			webSearchSource: 'env',
+			modelAndSandboxConfigured: true,
 			setupCompleted: true,
 		});
 	});
@@ -111,5 +114,17 @@ describe('deriveInstanceAiSetupState', () => {
 
 		expect(state.webSearchSource).toBe('disabled');
 		expect(state.setupCompleted).toBe(true);
+	});
+
+	it('reports a model and a sandbox without a web search decision', () => {
+		const state = deriveInstanceAiSetupState({
+			...unconfigured,
+			modelEnvConfigured: true,
+			sandboxEnabled: true,
+			sandboxEnvConfigured: true,
+		});
+
+		expect(state.modelAndSandboxConfigured).toBe(true);
+		expect(state.setupCompleted).toBe(false);
 	});
 });

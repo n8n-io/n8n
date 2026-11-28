@@ -12229,5 +12229,11 @@
 	"selfHealing.config.subWorkflows.tooltip": "Sub-workflows this workflow calls",
 	"selfHealing.config.subWorkflows.count": "{count} sub-workflow | {count} sub-workflows",
 	"selfHealing.config.subWorkflows.external": "Other project",
-	"selfHealing.config.subWorkflows.notCovered": "Not covered"
+	"selfHealing.config.subWorkflows.notCovered": "Not covered",
+	"selfHealing.config.assistantDisabledNotice": "The n8n Assistant is disabled, so self-healing can't run.",
+	"selfHealing.config.assistantDisabledNotice.askAdmin": "Ask an instance owner or admin to turn it on.",
+	"selfHealing.config.assistantDisabledNotice.link": "Turn it on",
+	"selfHealing.config.assistantSetupIncompleteNotice": "The n8n Assistant isn't set up, so self-healing can't run.",
+	"selfHealing.config.assistantSetupIncompleteNotice.askAdmin": "Ask an instance owner or admin to finish the setup.",
+	"selfHealing.config.assistantSetupIncompleteNotice.link": "Finish the setup"
 }

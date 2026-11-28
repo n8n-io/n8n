@@ -98,6 +98,7 @@ describe('SelfHealingInvestigationService', () => {
 		vi.resetAllMocks();
 		config.workflowSuggestionsEnabled = true;
 		configurationService.isEnabled.mockResolvedValue(true);
+		configurationService.hasAssistantSetup.mockResolvedValue(true);
 		configuration.includeSubWorkflows = false;
 		configurations.findForWorkflow.mockResolvedValue(configuration);
 		configurations.findForUpdate.mockResolvedValue(configuration);
@@ -169,7 +170,7 @@ describe('SelfHealingInvestigationService', () => {
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
 	});
 
-	it('does not admit an investigation when the instance flag is off', async () => {
+	it('does not admit an investigation when self-healing is off', async () => {
 		configurationService.isEnabled.mockResolvedValue(false);
 
 		expect(await service.start(input)).toBeNull();
@@ -177,6 +178,23 @@ describe('SelfHealingInvestigationService', () => {
 		expect(investigations.createInvestigation).not.toHaveBeenCalled();
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
 		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
+	it('does not admit an investigation when the Assistant has no model or sandbox', async () => {
+		configurationService.hasAssistantSetup.mockResolvedValue(false);
+
+		expect(await service.start(input)).toBeNull();
+		expect(configurations.findForWorkflow).toHaveBeenCalled();
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
+	it('does not read the Assistant setup for a workflow without a configuration', async () => {
+		configurations.findForWorkflow.mockResolvedValue(null);
+
+		expect(await service.start(input)).toBeNull();
+		expect(configurationService.hasAssistantSetup).not.toHaveBeenCalled();
 	});
 
 	it('uses server references and saves the result directly', async () => {
