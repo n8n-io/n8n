@@ -165,6 +165,66 @@ describe('AssistantUsageService', () => {
 		});
 	});
 
+	describe('getUsage', () => {
+		it('returns every day of the range in the time zone, with zeros for days without usage', async () => {
+			const { repository, service } = setup();
+			repository.summarize.mockResolvedValue({
+				conversations: 1,
+				messages: 2,
+				activeUsers: 1,
+				workflowsCreated: 1,
+				agentsCreated: 0,
+				dataTablesCreated: 0,
+			});
+			repository.countByDay.mockResolvedValue([
+				{
+					date: '2026-11-11',
+					conversations: 1,
+					messages: 2,
+					workflowsCreated: 1,
+					agentsCreated: 0,
+					dataTablesCreated: 0,
+					inputTokens: 1200,
+					outputTokens: 80,
+				},
+			]);
+
+			const usage = await service.getUsage({
+				// 23:00 UTC on the 9th is the 10th in Berlin.
+				startDate: new Date('2026-11-09T23:00:00.000Z'),
+				endDate: new Date('2026-11-12T10:00:00.000Z'),
+				timeZone: 'Europe/Berlin',
+			});
+
+			expect(usage.byDay.map((day) => [day.date, day.messages, day.inputTokens])).toEqual([
+				['2026-11-10', 0, 0],
+				['2026-11-11', 2, 1200],
+				['2026-11-12', 0, 0],
+			]);
+			expect(repository.countByDay).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: undefined }),
+				'Europe/Berlin',
+				{},
+			);
+		});
+	});
+
+	describe('getUsers', () => {
+		it('sorts by messages when no sort is given', async () => {
+			const { repository, service } = setup();
+			repository.countByUser.mockResolvedValue({ count: 0, data: [] });
+			const query = { startDate: new Date(), endDate: new Date(), skip: 20, take: 10 };
+
+			await service.getUsers(query);
+
+			expect(repository.countByUser).toHaveBeenCalledWith(
+				expect.anything(),
+				{ skip: 20, take: 10, sortBy: 'messages:desc' },
+				{},
+			);
+		});
+	});
+
 	describe('pruneOldEvents', () => {
 		it('deletes the events past the retention period', async () => {
 			const { repository, service } = setup({ usageMaxAgeDays: 30 });

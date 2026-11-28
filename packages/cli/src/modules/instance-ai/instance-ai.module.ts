@@ -157,6 +157,8 @@ export class InstanceAiModule implements ModuleInterface {
 		);
 		// Its routes depend on the agents module, so they load only with the agent.
 		await import('./assistant-agent/assistant-agent.controller.js');
+		// Only the agent records usage, so the usage page has nothing to show without it.
+		await import('./assistant-usage/assistant-usage.controller.js');
 		const { InstanceAiConfig } = await import('@n8n/config');
 		if (Container.get(InstanceAiConfig).evalInstance) {
 			await import('./eval/assistant-agent-eval.controller.js');
