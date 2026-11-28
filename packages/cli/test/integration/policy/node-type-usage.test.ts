@@ -134,6 +134,7 @@ describe('GET /node-type-policies/usage', () => {
 		await Container.get(WorkflowDependencyRepository).updateDependenciesForWorkflow(
 			workflow.id,
 			dependencies,
+			{},
 		);
 
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);

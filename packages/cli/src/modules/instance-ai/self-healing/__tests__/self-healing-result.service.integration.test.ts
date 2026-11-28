@@ -1835,6 +1835,7 @@ describe('call hierarchy', () => {
 		await Container.get(WorkflowDependencyRepository).updateDependenciesForWorkflow(
 			workflow.id,
 			dependencies,
+			{},
 		);
 	}
 
@@ -1934,7 +1935,10 @@ describe('call hierarchy', () => {
 
 	it('uses the current calls of an unchanged workflow', async () => {
 		const { original, chain, getDetail, unchanged, changedLeaf } = await hierarchyFixture();
-		await Container.get(WorkflowDependencyRepository).removeDependenciesForWorkflow(chain[0].id);
+		await Container.get(WorkflowDependencyRepository).removeDependenciesForWorkflow(
+			chain[0].id,
+			{},
+		);
 
 		expect(await getDetail()).toMatchObject({
 			workflows: [unchanged(original), changedLeaf],

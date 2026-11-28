@@ -67,6 +67,7 @@ async function populateWorkflowDependencies(workflow: IWorkflowDb) {
 		await Container.get(WorkflowDependencyRepository).updateDependenciesForWorkflow(
 			workflow.id,
 			dependencies,
+			{},
 		);
 	}
 }

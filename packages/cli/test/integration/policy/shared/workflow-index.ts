@@ -32,6 +32,7 @@ export async function indexVersion(
 	await Container.get(WorkflowDependencyRepository).updateDependenciesForWorkflow(
 		workflow.id,
 		dependencies,
+		{},
 	);
 }
 

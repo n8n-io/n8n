@@ -92,7 +92,7 @@ export class WorkflowIndexService {
 				);
 
 				const unpublishedWorkflowIds =
-					await this.dependencyRepository.findUnpublishedWorkflowIdsWithPublishedDependencies();
+					await this.dependencyRepository.findUnpublishedWorkflowIdsWithPublishedDependencies({});
 				for (const workflowId of unpublishedWorkflowIds) {
 					await this.removePublishedDependenciesForWorkflow(workflowId);
 				}
@@ -193,7 +193,7 @@ export class WorkflowIndexService {
 				attributes: this.tracing.pickWorkflowAttributes({ id: workflowId }),
 			},
 			async (span) => {
-				await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
+				await this.dependencyRepository.removeDependenciesForWorkflow(workflowId, {});
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
@@ -201,7 +201,10 @@ export class WorkflowIndexService {
 
 	async removePublishedDependenciesForWorkflow(workflowId: string) {
 		try {
-			await this.dependencyRepository.removePublishedDependenciesForUnpublishedWorkflow(workflowId);
+			await this.dependencyRepository.removePublishedDependenciesForUnpublishedWorkflow(
+				workflowId,
+				{},
+			);
 		} catch (e) {
 			const error = ensureError(e);
 			this.logger.error(
@@ -269,6 +272,7 @@ export class WorkflowIndexService {
 					updated = await this.dependencyRepository.updateDependenciesForWorkflow(
 						workflowId,
 						dependencyUpdates,
+						{},
 					);
 				} catch (e) {
 					const error = ensureError(e);

@@ -8,9 +8,14 @@ import {
 } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
-import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
+import {
+	DataSource,
+	WorkflowDependency,
+	WorkflowDependencyRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
-import { IsNull, Not } from '@n8n/typeorm';
+import { IsNull, Not, type Repository } from '@n8n/typeorm';
 import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -24,6 +29,7 @@ let workflowIndexService: WorkflowIndexService;
 let eventService: EventService;
 let workflowRepository: WorkflowRepository;
 let workflowDependencyRepository: WorkflowDependencyRepository;
+let workflowDependencyRawRepo: Repository<WorkflowDependency>;
 
 beforeAll(async () => {
 	await testDb.init();
@@ -31,6 +37,7 @@ beforeAll(async () => {
 	// Get real instances from the container
 	workflowRepository = Container.get(WorkflowRepository);
 	workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+	workflowDependencyRawRepo = Container.get(DataSource).getRepository(WorkflowDependency);
 	eventService = Container.get(EventService);
 
 	// Create the WorkflowIndexService with real dependencies
@@ -97,7 +104,7 @@ describe('WorkflowIndexService Integration', () => {
 		});
 
 		await retryUntil(async () => {
-			const deps = await workflowDependencyRepository.find({
+			const deps = await workflowDependencyRawRepo.find({
 				where: { workflowId: draftWorkflow.id },
 			});
 			expect(deps).toHaveLength(1);
@@ -139,7 +146,7 @@ describe('WorkflowIndexService Integration', () => {
 
 		// Wait for both draft and published entries to be indexed with their expected content
 		await retryUntil(async () => {
-			const deps = await workflowDependencyRepository.find({
+			const deps = await workflowDependencyRawRepo.find({
 				where: { workflowId: savedWorkflow.id },
 			});
 			expect(deps).toHaveLength(2);
@@ -195,7 +202,7 @@ describe('WorkflowIndexService Integration', () => {
 			});
 
 			await retryUntil(async () => {
-				const dependencies = await workflowDependencyRepository.find({
+				const dependencies = await workflowDependencyRawRepo.find({
 					where: { workflowId },
 				});
 
@@ -221,7 +228,7 @@ describe('WorkflowIndexService Integration', () => {
 			const { workflow, publishedVersionId } = await createAndIndexDraftAndPublishedWorkflow(owner);
 
 			await retryUntil(async () => {
-				const allDependencies = await workflowDependencyRepository.find({
+				const allDependencies = await workflowDependencyRawRepo.find({
 					where: { workflowId: workflow.id },
 					order: { publishedVersionId: 'ASC' },
 				});
@@ -308,7 +315,7 @@ describe('WorkflowIndexService Integration', () => {
 			await workflowIndexService.buildIndex();
 
 			// 4. Verify the published index was built from published nodes, not draft
-			const allDeps = await workflowDependencyRepository.find({
+			const allDeps = await workflowDependencyRawRepo.find({
 				where: { workflowId: workflow.id },
 				order: { dependencyType: 'ASC', dependencyKey: 'ASC' },
 			});
@@ -341,19 +348,19 @@ describe('WorkflowIndexService Integration', () => {
 			await workflowIndexService.buildIndex();
 
 			expect(
-				await workflowDependencyRepository.existsBy({
+				await workflowDependencyRawRepo.existsBy({
 					workflowId: unpublishedWorkflow.id,
 					publishedVersionId: Not(IsNull()),
 				}),
 			).toBe(false);
 			expect(
-				await workflowDependencyRepository.existsBy({
+				await workflowDependencyRawRepo.existsBy({
 					workflowId: unpublishedWorkflow.id,
 					publishedVersionId: IsNull(),
 				}),
 			).toBe(true);
 			expect(
-				await workflowDependencyRepository.existsBy({
+				await workflowDependencyRawRepo.existsBy({
 					workflowId: publishedWorkflow.id,
 					publishedVersionId: publishedWorkflow.versionId,
 				}),
@@ -370,7 +377,7 @@ describe('WorkflowIndexService Integration', () => {
 
 			await workflowIndexService.buildIndex();
 
-			const draftDeps = await workflowDependencyRepository.find({
+			const draftDeps = await workflowDependencyRawRepo.find({
 				where: { workflowId: workflow.id, publishedVersionId: IsNull() },
 			});
 			expect(getDependencyKeys(draftDeps, 'errorWorkflow')).toEqual(['error-workflow-1']);
@@ -386,7 +393,7 @@ describe('WorkflowIndexService Integration', () => {
 
 			await workflowIndexService.buildIndex();
 
-			const publishedDeps = await workflowDependencyRepository.find({
+			const publishedDeps = await workflowDependencyRawRepo.find({
 				where: { workflowId: workflow.id, publishedVersionId: Not(IsNull()) },
 			});
 			expect(getDependencyKeys(publishedDeps, 'errorWorkflow')).toEqual(['error-workflow-1']);
@@ -405,7 +412,7 @@ describe('WorkflowIndexService Integration', () => {
 		});
 
 		const credentialKeys = async (workflowId: string) => {
-			const deps = await workflowDependencyRepository.find({ where: { workflowId } });
+			const deps = await workflowDependencyRawRepo.find({ where: { workflowId } });
 			return deps
 				.filter((d) => d.dependencyType === 'credentialId')
 				.map((d) => d.dependencyKey)
@@ -418,7 +425,7 @@ describe('WorkflowIndexService Integration', () => {
 			const newCredentialId = 'new-credential-y';
 
 			const workflow = await createWorkflow({ nodes: [nodeWithCredential(oldCredentialId)] });
-			await workflowDependencyRepository.removeDependenciesForWorkflow(workflow.id);
+			await workflowDependencyRepository.removeDependenciesForWorkflow(workflow.id, {});
 			eventService.emit('workflow-created', {
 				user: createUserPayload(owner),
 				workflow,
@@ -441,7 +448,7 @@ describe('WorkflowIndexService Integration', () => {
 				publicApi: false,
 			});
 			await retryUntil(async () => {
-				const deps = await workflowDependencyRepository.find({
+				const deps = await workflowDependencyRawRepo.find({
 					where: { workflowId: workflow.id, publishedVersionId },
 				});
 				expect(deps.some((d) => d.dependencyKey === oldCredentialId)).toBe(true);
@@ -489,7 +496,7 @@ describe('WorkflowIndexService Integration', () => {
 
 			// Verify all entries are removed
 			await retryUntil(async () => {
-				const remainingDeps = await workflowDependencyRepository.find({
+				const remainingDeps = await workflowDependencyRawRepo.find({
 					where: { workflowId: workflow.id },
 				});
 				expect(remainingDeps).toHaveLength(0);

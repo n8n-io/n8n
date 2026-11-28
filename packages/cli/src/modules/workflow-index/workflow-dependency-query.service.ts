@@ -116,6 +116,7 @@ export class WorkflowDependencyQueryService {
 				user,
 				scope,
 				options.limit ?? DEFAULT_NODE_USAGE_TYPE_LIMIT,
+				{},
 			);
 		}
 
@@ -127,8 +128,9 @@ export class WorkflowDependencyQueryService {
 				scope,
 				options.nodeType,
 				limit + 1,
+				{},
 			),
-			this.dependencyRepository.countWorkflowsInScope(user, scope),
+			this.dependencyRepository.countWorkflowsInScope(user, scope, {}),
 		]);
 
 		return {
@@ -369,6 +371,7 @@ export class WorkflowDependencyQueryService {
 				accessibleInputIds,
 				RESOURCE_DEPENDENCY_TYPES[resourceType],
 				resourceType === 'workflow',
+				{},
 			),
 			this.loadAgentDeps(resourceType, accessibleInputIds),
 		]);

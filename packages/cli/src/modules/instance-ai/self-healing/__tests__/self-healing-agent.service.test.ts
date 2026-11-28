@@ -966,9 +966,11 @@ describe('SelfHealingAgentService', () => {
 				nodes: [expect.objectContaining({ id: 'sub-node-id' })],
 			});
 			expect(await workflows.get(subWorkflow.workflowId)).toEqual(detail);
-			expect(dependencies.isCalledBy).toHaveBeenCalledExactlyOnceWith(subWorkflow.workflowId, [
-				'v1',
-			]);
+			expect(dependencies.isCalledBy).toHaveBeenCalledExactlyOnceWith(
+				subWorkflow.workflowId,
+				['v1'],
+				{},
+			);
 			expect(suggestions.getPendingResultId).toHaveBeenCalledWith(subWorkflow.workflowId);
 			expect(configurations.canActOn).toHaveBeenCalledWith(user, subWorkflow.workflowId);
 			expect(configurations.hasReviewerWhoCanEditAll).toHaveBeenCalledExactlyOnceWith(

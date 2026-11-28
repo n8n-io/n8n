@@ -1,6 +1,6 @@
 import { createWorkflow, randomCredentialPayload, testDb } from '@n8n/backend-test-utils';
-import type { User, WorkflowDependency } from '@n8n/db';
-import { ProjectRepository, WorkflowDependencyRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { DataSource, ProjectRepository, WorkflowDependency } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { saveCredential } from '../shared/db/credentials';
@@ -43,7 +43,7 @@ async function seedDependency(
 	dependencyType: WorkflowDependency['dependencyType'],
 	dependencyKey: string,
 ) {
-	const repository = Container.get(WorkflowDependencyRepository);
+	const repository = Container.get(DataSource).getRepository(WorkflowDependency);
 	await repository.save(
 		repository.create({
 			workflowId,
