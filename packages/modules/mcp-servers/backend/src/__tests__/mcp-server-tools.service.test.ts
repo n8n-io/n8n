@@ -254,12 +254,26 @@ describe('McpServerToolsService.draftTool saves a drafted name', () => {
 
 	it('tries again when another draft took the name first', async () => {
 		const { draft, tools, tool } = setupDraft();
+		const competing = mock<McpServerTool>({ id: 'other-tool', toolName: 'get_campaign' });
+		tools.listByServer.mockResolvedValueOnce([]).mockResolvedValueOnce([tool, competing]);
 		tools.updateInServer
 			.mockRejectedValueOnce(new McpServerToolNameTakenError())
 			.mockResolvedValueOnce(tool);
 
 		await expect(draft()).resolves.toMatchObject({ status: 'drafted' });
 		expect(tools.updateInServer).toHaveBeenCalledTimes(2);
+		expect(tools.updateInServer).toHaveBeenNthCalledWith(
+			1,
+			SERVER_ID,
+			TOOL_ID,
+			expect.objectContaining({ toolName: 'get_campaign' }),
+		);
+		expect(tools.updateInServer).toHaveBeenNthCalledWith(
+			2,
+			SERVER_ID,
+			TOOL_ID,
+			expect.objectContaining({ toolName: 'get_campaign_2' }),
+		);
 	});
 
 	it('does not try again on another conflict', async () => {
