@@ -455,7 +455,8 @@ export class AgentTestRunService {
 		}: DraftRunConsumptionOptions & {
 			simulation?: () => SimulationSession | undefined;
 			turnAdmitted?: () => boolean;
-			run: DraftRunIds;
+			/** Absent for runs outside the test chat, e.g. the public API. */
+			run?: DraftRunIds;
 		},
 	): Promise<PreparedDraftRunResult> {
 		const state: DraftRunState = {
@@ -477,7 +478,7 @@ export class AgentTestRunService {
 		} finally {
 			const session = simulation?.();
 			// A turn that fails before admission never ran, so it has no event.
-			if (session && turnAdmitted?.()) this.trackTestRunTurn(session, run, state, status);
+			if (session && turnAdmitted?.() && run) this.trackTestRunTurn(session, run, state, status);
 		}
 	}
 
