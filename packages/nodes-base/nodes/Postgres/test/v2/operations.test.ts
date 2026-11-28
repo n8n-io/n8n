@@ -12,10 +12,13 @@ import pgPromise from 'pg-promise';
 import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
 import * as insert from '../../v2/actions/database/insert.operation';
+import * as listSchemas from '../../v2/actions/database/listSchemas.operation';
+import * as listTables from '../../v2/actions/database/listTables.operation';
 import * as select from '../../v2/actions/database/select.operation';
 import * as update from '../../v2/actions/database/update.operation';
 import * as upsert from '../../v2/actions/database/upsert.operation';
 import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
+import { LIST_SCHEMAS_QUERY, LIST_TABLES_QUERY } from '../../v2/helpers/queries';
 import * as utils from '../../v2/helpers/utils';
 
 const { copyRows } = vi.hoisted(() => ({ copyRows: vi.fn() }));
@@ -2143,6 +2146,90 @@ describe('Test PostgresV2, select operation with Start After', () => {
 			100,
 		]);
 		expect(oneOrNone).not.toHaveBeenCalled();
+	});
+});
+
+describe('Test PostgresV2, listSchemas operation', () => {
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should run the picker query once for each input item', async () => {
+		const nodeParameters = { operation: 'listSchemas', options: {} };
+
+		await listSchemas.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			[{ json: {} }, { json: {} }],
+			nodeParameters.options,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[{ query: LIST_SCHEMAS_QUERY }, { query: LIST_SCHEMAS_QUERY }],
+			{},
+		);
+	});
+
+	it('should send no values, so the query needs no parameters', async () => {
+		const nodeParameters = { operation: 'listSchemas', options: {} };
+
+		await listSchemas.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeParameters.options,
+		);
+
+		expect(LIST_SCHEMAS_QUERY).not.toContain('$1');
+		expect(vi.mocked(runQueries).mock.calls[0][0][0].values).toBeUndefined();
+	});
+});
+
+describe('Test PostgresV2, listTables operation', () => {
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should pass the schema of the item as the only value', async () => {
+		const nodeParameters = {
+			operation: 'listTables',
+			schema: { __rl: true, mode: 'list', value: 'public' },
+			options: {},
+		};
+
+		await listTables.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeParameters.options,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith([{ query: LIST_TABLES_QUERY, values: ['public'] }], {});
+	});
+
+	// information_schema.tables also holds views and foreign tables, so each row has to say which
+	// it is
+	it('should ask the catalog for the type of each table', () => {
+		expect(LIST_TABLES_QUERY).toContain('SELECT table_name, table_type FROM');
+	});
+
+	it('should read the schema again for each item, so an expression can vary it', async () => {
+		const schemas = ['public', 'billing', 'public'];
+		const context = createMockExecuteFunction({ operation: 'listTables', options: {} });
+		context.getNodeParameter = ((name: string, itemIndex: number) =>
+			name === 'schema' ? schemas[itemIndex] : undefined) as IExecuteFunctions['getNodeParameter'];
+
+		await listTables.execute.call(
+			context,
+			runQueries,
+			[{ json: {} }, { json: {} }, { json: {} }],
+			{},
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			schemas.map((schema) => ({ query: LIST_TABLES_QUERY, values: [schema] })),
+			{},
+		);
 	});
 });
 

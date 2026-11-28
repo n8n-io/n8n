@@ -1,7 +1,15 @@
 import type { AllEntities, Entity } from 'n8n-workflow';
 
 type PostgresMap = {
-	database: 'deleteTable' | 'executeQuery' | 'insert' | 'select' | 'update' | 'upsert';
+	database:
+		| 'deleteTable'
+		| 'executeQuery'
+		| 'insert'
+		| 'listSchemas'
+		| 'listTables'
+		| 'select'
+		| 'update'
+		| 'upsert';
 };
 
 export type PostgresType = AllEntities<PostgresMap>;
