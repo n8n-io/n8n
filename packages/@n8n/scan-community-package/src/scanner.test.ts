@@ -9,10 +9,12 @@ import {
 	lintDirectory,
 	toJsonReport,
 	buildScanConfig,
+	checkSourcePackageLayout,
 	EXIT_CODES,
 	findPackageRoot,
 	formatPackageSpec,
 	getExitCode,
+	isExistingPackageInMonorepoGracePeriod,
 	isLocalPath,
 	isSourceUnavailable,
 	parseSourceRepo,
@@ -257,6 +259,128 @@ describe('findPackageRoot', () => {
 	});
 });
 
+describe('checkSourcePackageLayout', () => {
+	let fixtureDir: string | undefined;
+
+	afterEach(() => {
+		if (fixtureDir) fs.rmSync(fixtureDir, { recursive: true, force: true });
+	});
+
+	it('rejects a nested package without repository.directory', () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': { name: 'workspace-root', private: true },
+			'packages/foo/package.json': {
+				name: 'n8n-nodes-foo',
+				version: '1.0.0',
+			},
+		});
+
+		expect(checkSourcePackageLayout(fixtureDir, 'n8n-nodes-foo')).toEqual({
+			passed: false,
+			message: expect.stringMatching(/single-package repository|monorepo/i),
+		});
+	});
+
+	it('accepts an existing nested package during the grace period', () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': { name: 'workspace-root', private: true },
+			'packages/foo/package.json': { name: 'n8n-nodes-foo', version: '1.0.0' },
+		});
+
+		expect(checkSourcePackageLayout(fixtureDir, 'n8n-nodes-foo', true)).toEqual({
+			passed: true,
+			packageDir: path.join(fixtureDir, 'packages', 'foo'),
+			isNested: true,
+		});
+	});
+
+	it('accepts a dedicated repository with its only manifest below the root', () => {
+		fixtureDir = makeFixturePackage({
+			'package/package.json': { name: 'n8n-nodes-foo', version: '1.0.0' },
+		});
+
+		expect(checkSourcePackageLayout(fixtureDir, 'n8n-nodes-foo')).toEqual({
+			passed: true,
+			packageDir: path.join(fixtureDir, 'package'),
+			isNested: true,
+		});
+	});
+
+	it('accepts a package at the repository root', () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': { name: 'n8n-nodes-foo', version: '1.0.0' },
+		});
+
+		expect(checkSourcePackageLayout(fixtureDir, 'n8n-nodes-foo')).toEqual({
+			passed: true,
+			packageDir: fixtureDir,
+			isNested: false,
+		});
+	});
+
+	it.each(['{ invalid JSON', 'null', '[]', {}, { name: '' }, { name: 123 }])(
+		'ignores a fixture manifest with contents %j',
+		(contents) => {
+			fixtureDir = makeFixturePackage({
+				'package/package.json': { name: 'n8n-nodes-foo', version: '1.0.0' },
+				'fixtures/package.json': contents,
+				'node_modules/dependency/package.json': { name: 'dependency' },
+			});
+
+			expect(checkSourcePackageLayout(fixtureDir, 'n8n-nodes-foo')).toEqual({
+				passed: true,
+				packageDir: path.join(fixtureDir, 'package'),
+				isNested: true,
+			});
+		},
+	);
+
+	it('rejects an unnamed workspace root', () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': { private: true, workspaces: ['packages/*'] },
+			'packages/foo/package.json': { name: 'n8n-nodes-foo', version: '1.0.0' },
+		});
+
+		expect(checkSourcePackageLayout(fixtureDir, 'n8n-nodes-foo')).toEqual({
+			passed: false,
+			message: expect.stringMatching(/single-package repository|monorepo/i),
+		});
+	});
+
+	it('rejects a root package when the repository contains another package', () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': { name: 'n8n-nodes-foo', version: '1.0.0' },
+			'packages/bar/package.json': { name: 'n8n-nodes-bar', version: '1.0.0' },
+		});
+
+		expect(checkSourcePackageLayout(fixtureDir, 'n8n-nodes-foo')).toEqual({
+			passed: false,
+			message: expect.stringMatching(/single-package repository|monorepo/i),
+		});
+	});
+});
+
+describe('isExistingPackageInMonorepoGracePeriod', () => {
+	it('allows existing packages until the grace period ends', () => {
+		const metadata = { time: { created: '2026-09-23T12:00:00Z' } };
+
+		expect(
+			isExistingPackageInMonorepoGracePeriod(metadata, Date.parse('2027-03-23T23:59:59Z')),
+		).toBe(true);
+		expect(
+			isExistingPackageInMonorepoGracePeriod(metadata, Date.parse('2027-03-24T00:00:00Z')),
+		).toBe(false);
+	});
+
+	it('rejects newly published packages and packages without a known publication date', () => {
+		const now = Date.parse('2026-10-01T00:00:00Z');
+		expect(
+			isExistingPackageInMonorepoGracePeriod({ time: { created: '2026-09-24T00:00:00Z' } }, now),
+		).toBe(false);
+		expect(isExistingPackageInMonorepoGracePeriod({}, now)).toBe(false);
+	});
+});
+
 describe('lintDirectory', () => {
 	let fixtureDir: string | undefined;
 
@@ -303,6 +427,31 @@ describe('lintDirectory', () => {
 		const result = await lintDirectory(fixtureDir);
 
 		expect(result.passed).toBe(true);
+	});
+
+	it('can disable the metadata rule after source layout validation', async () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': {
+				name: 'n8n-nodes-fixture',
+				version: '1.0.0',
+				description: 'A fixture community node package',
+				license: 'MIT',
+				author: { name: 'Test Author', email: 'test@example.com' },
+				keywords: ['n8n-community-node-package'],
+				peerDependencies: { 'n8n-workflow': '*' },
+				repository: {
+					type: 'git',
+					url: 'https://github.com/example/packages.git',
+					directory: 'packages/foo',
+				},
+				n8n: { n8nNodesApiVersion: 1, nodes: ['dist/nodes/Foo/Foo.node.js'] },
+			},
+		});
+
+		expect((await lintDirectory(fixtureDir, SOURCE_FILE_PATTERNS)).details).toContain(
+			'no-monorepo',
+		);
+		expect((await lintDirectory(fixtureDir, SOURCE_FILE_PATTERNS, true)).passed).toBe(true);
 	});
 
 	it('flags forbidden lifecycle scripts in package.json', async () => {
