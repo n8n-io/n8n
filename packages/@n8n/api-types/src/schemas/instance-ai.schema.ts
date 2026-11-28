@@ -928,12 +928,6 @@ export const appBlueprintResumeSchema = z.object({
 });
 export type AppBlueprintResume = z.infer<typeof appBlueprintResumeSchema>;
 
-/** Field problems that reopen the blueprint card instead of creating the app. */
-export const appBlueprintErrorsSchema = z.object({
-	namespace: z.enum(['taken']).optional(),
-});
-export type AppBlueprintErrors = z.infer<typeof appBlueprintErrorsSchema>;
-
 export const instanceAiTargetApprovalSchema = z.object({
 	toolName: z.string(),
 	displayName: z.string().optional(),
@@ -1073,9 +1067,6 @@ export const confirmationRequestPayloadSchema = z.object({
 	appBlueprint: appBlueprintSchema
 		.optional()
 		.describe('Proposed app for the editable blueprint card (inputType=app-blueprint)'),
-	appBlueprintErrors: appBlueprintErrorsSchema
-		.optional()
-		.describe('Field errors from a rejected blueprint, shown on the reopened card'),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -1767,8 +1758,26 @@ export type InstanceAiAppSubject = z.infer<typeof instanceAiAppSubjectSchema>;
 export const instanceAiAgentSubjectSchema = instanceAiAgentAttachmentSchema;
 export type InstanceAiAgentSubject = z.infer<typeof instanceAiAgentSubjectSchema>;
 
+export const INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY = 'instanceAiMcpServerTarget';
+
+export const instanceAiMcpServerTargetSchema = z.object({
+	serverId: z.string().uuid(),
+	projectId: z.string().min(1),
+	name: z.string().max(255).optional(),
+});
+export type InstanceAiMcpServerTarget = z.infer<typeof instanceAiMcpServerTargetSchema>;
+
+/** A custom MCP server that its page hands off to a thread. A thread works on one server. */
+export const instanceAiMcpServerSubjectSchema = z.object({
+	type: z.literal('mcpServer'),
+	id: z.string().uuid(),
+	projectId: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+});
+export type InstanceAiMcpServerSubject = z.infer<typeof instanceAiMcpServerSubjectSchema>;
+
 /**
- * The resource of the page that opened a thread: an agent or an app. The
+ * The resource of the page that opened a thread: an agent, an app, or a custom MCP server. The
  * Assistant agent binds it in the thread metadata, so its tools work on that
  * resource and the page finds the thread again. Only the subject binds a thread:
  * an attached or mentioned resource is a reference for one turn. Add a
@@ -1777,6 +1786,7 @@ export type InstanceAiAgentSubject = z.infer<typeof instanceAiAgentSubjectSchema
 export const instanceAiThreadSubjectSchema = z.discriminatedUnion('type', [
 	instanceAiAgentSubjectSchema,
 	instanceAiAppSubjectSchema,
+	instanceAiMcpServerSubjectSchema,
 ]);
 export type InstanceAiThreadSubject = z.infer<typeof instanceAiThreadSubjectSchema>;
 
@@ -2024,6 +2034,7 @@ export class InstanceAiCloudBrowserReturnControlRequest extends Z.class({
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
  * - `app_builder_page` — Instance AI hand-off from the app builder
+ * - `mcp_server_page` — the Assistant panel or hand-off of a custom MCP server page
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `self_healing_result` — continue from a saved Assistant report in the Inbox
  * - `migration_report`: fix one finding of the major-version migration report
@@ -2047,6 +2058,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'credentials_list',
 	'agent_builder_page',
 	'app_builder_page',
+	'mcp_server_page',
 	'agent_preview',
 	'self_healing_result',
 	'migration_report',
@@ -2120,6 +2132,8 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'workflow_attachment_opener',
 	'contextual_followup',
 	'preferences_suggestion', // Experiment cleanup (127_preferences_empty_state)
+	'mcp_server_build_prompt',
+	'mcp_server_suggestion',
 ] as const;
 export type InstanceAiPrefillType = (typeof INSTANCE_AI_PREFILL_TYPES)[number];
 
@@ -2598,6 +2612,7 @@ const instanceAiPermissionsSchema = z.object({
 	createSkill: instanceAiPermissionModeSchema,
 	updateSkill: instanceAiPermissionModeSchema,
 	deleteSkill: instanceAiPermissionModeSchema,
+	deleteMcpServer: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -2632,6 +2647,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	createSkill: 'require_approval',
 	updateSkill: 'require_approval',
 	deleteSkill: 'require_approval',
+	deleteMcpServer: 'require_approval',
 };
 
 /**
@@ -2666,6 +2682,8 @@ const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions
 	'createSkill',
 	'updateSkill',
 	'deleteSkill',
+	// Source control does not carry custom MCP servers.
+	'deleteMcpServer',
 ]);
 
 /** Returns a copy of permissions with all write operations set to 'blocked',
@@ -3076,9 +3094,6 @@ export const CONFIG_EVALUATIONS_FLAG = '088_config_evaluations';
 /** Enabled arm of `CONFIG_EVALUATIONS_FLAG` (matches the editor-ui experiment). */
 export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 
-/** Enables adding selected canvas nodes as chat context in the n8n Assistant */
-export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
-
 /** Enables workflow, node, and canvas group mentions in the n8n Assistant */
 export const AI_ASSISTANT_AT_MENTIONS_FLAG = '116_at_mentions_enabled';
 
@@ -3116,27 +3131,8 @@ export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
  *  action and the `nodeTypes` filter on `list_workflows`. */
 export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
 
-/**
- * Rollout flag for folder exploration in Instance AI: folder attribution on
- * `list_workflows` rows plus `folderPath` / `folderId` / `recursive`
- * on that action. Off by default. PostHog owns cohort rollout;
- * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
- */
-export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
-
-/** Instance rollout gate for shared activity recording and retrieval. */
-export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
-
 /** Rollout gate for cloud browser use in the n8n Assistant. */
 export const INSTANCE_AI_CLOUD_BROWSER_FLAG = '129_instance_ai_cloud_browser';
-
-/**
- * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a
- * variant string, not a boolean. The flag names its on-arm `test` rather than
- * the `variant` the other Instance AI experiments use, so this constant tracks
- * the flag's own spelling.
- */
-export const INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT = 'test';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire

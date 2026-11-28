@@ -1,6 +1,7 @@
 import { loadReplayedMessages, type AgentDbMessage, type BuiltMemory } from '@n8n/agents';
 import {
 	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
+	INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY,
 	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 } from '@n8n/api-types';
 import { AI_PREFERENCES_CLEARED_BLOCK, renderAiPreferencesBlock } from '@n8n/backend-services';
@@ -10,6 +11,7 @@ import type { Mock } from 'vitest';
 import {
 	APPROVAL_MODE_OPEN_TAG,
 	buildAppTargetsBlock,
+	buildMcpServerTargetBlock,
 	buildThreadArtifactsBlock,
 	buildThreadContextBlock,
 } from '../../internal-messages';
@@ -272,6 +274,66 @@ describe('AssistantTurnInputBuilder — resolveAppTargetsBlock', () => {
 		const block = await builder.resolveAppTargetsBlock({ appService: { getApp } }, metadata);
 
 		expect(block).toBe(buildAppTargetsBlock([{ id: first, name: 'Orders' }], true));
+	});
+});
+
+describe('AssistantTurnInputBuilder — resolveMcpServerTargetBlock', () => {
+	type Internals = {
+		resolveMcpServerTargetBlock: (
+			context: { customMcpServerService?: { getServer: Mock } },
+			metadata: Record<string, unknown>,
+		) => Promise<string>;
+	};
+
+	const builder = Object.create(AssistantTurnInputBuilder.prototype) as unknown as Internals & {
+		logger: { warn: Mock };
+	};
+	builder.logger = { warn: vi.fn() };
+	const serverId = '00000000-0000-4000-8000-000000000011';
+	const metadata = {
+		[INSTANCE_AI_MCP_SERVER_TARGET_METADATA_KEY]: {
+			serverId,
+			projectId: 'project-1',
+			name: 'Old name',
+		},
+	};
+
+	it('sends nothing when the thread works on no server', async () => {
+		const getServer = vi.fn();
+
+		expect(
+			await builder.resolveMcpServerTargetBlock({ customMcpServerService: { getServer } }, {}),
+		).toBe('');
+		expect(getServer).not.toHaveBeenCalled();
+	});
+
+	it('names the server with its current name', async () => {
+		const getServer = vi
+			.fn()
+			.mockResolvedValue({ id: serverId, projectId: 'project-1', name: 'Docs' });
+
+		const block = await builder.resolveMcpServerTargetBlock(
+			{ customMcpServerService: { getServer } },
+			metadata,
+		);
+
+		expect(getServer).toHaveBeenCalledWith({ serverId, projectId: 'project-1' });
+		expect(block).toBe(
+			buildMcpServerTargetBlock({ id: serverId, projectId: 'project-1', name: 'Docs' }),
+		);
+	});
+
+	it('sends nothing when the server is gone or the service is off', async () => {
+		const getServer = vi.fn().mockRejectedValue(new Error('Not found'));
+
+		expect(
+			await builder.resolveMcpServerTargetBlock(
+				{ customMcpServerService: { getServer } },
+				metadata,
+			),
+		).toBe('');
+		expect(await builder.resolveMcpServerTargetBlock({}, metadata)).toBe('');
+		expect(builder.logger.warn).toHaveBeenCalledTimes(1);
 	});
 });
 

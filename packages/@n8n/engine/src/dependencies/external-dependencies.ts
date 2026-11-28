@@ -166,6 +166,9 @@ export interface ExecutionLocation {
  */
 export type ExecutionFilesDeleter = (execution: ExecutionLocation) => Promise<void>;
 
+/** File deleter for a host that writes no binary files. */
+export const noopExecutionFilesDeleter: ExecutionFilesDeleter = async () => {};
+
 export interface ExternalDependencies {
 	/** Executes `v1-node` steps — supplied by the host in integrated mode. */
 	v1StepExecutor?: IStepExecutor;
@@ -173,8 +176,8 @@ export interface ExternalDependencies {
 	lifecycleEventCallback?: LifecycleEventCallback;
 	/**
 	 * Deletes the binary files of a pruned execution. The engine has no store of
-	 * its own, so the host that owns the store deletes them. A host that runs no
-	 * `v1-node` steps writes no files and can omit it.
+	 * its own, so the host that owns the store deletes them. Required when
+	 * retention is on. A host that writes no files passes `noopExecutionFilesDeleter`.
 	 */
 	deleteExecutionFiles?: ExecutionFilesDeleter;
 }

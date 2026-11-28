@@ -105,7 +105,11 @@ export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
 	 * Find the role of a user in a project.
 	 */
 	async findProjectRole({ userId, projectId }: { userId: string; projectId: string }) {
-		const relation = await this.findOneBy({ projectId, userId });
+		// `role` is a relation with no plain column, so it loads only when asked for.
+		const relation = await this.findOne({
+			where: { projectId, userId },
+			relations: { role: true },
+		});
 
 		return relation?.role ?? null;
 	}

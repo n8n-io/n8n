@@ -22,6 +22,8 @@ export const executionIdParamSchema = numericIdParamSchema('The ID of the execut
 
 export const workflowIdParamSchema = stringIdParamSchema('The ID of the workflow');
 export const agentIdParamSchema = stringIdParamSchema('The ID of the agent.');
+export const agentExecutionIdParamSchema = stringIdParamSchema('The ID of the agent execution.');
+export const agentVersionIdParamSchema = stringIdParamSchema('The ID of the agent version.');
 export const workflowVersionIdParamSchema = stringIdParamSchema('The ID of the workflow version');
 export const testRunIdParamSchema = stringIdParamSchema('The ID of the test run.');
 export const projectIdParamSchema = stringIdParamSchema('The ID of the project.');
@@ -48,6 +50,10 @@ export const promotionEnvironmentIdParamSchema = z
 	.string()
 	.refine((value) => validator.isUUID(value), { message: 'must be a valid ID' })
 	.openapi({ format: 'uuid', param: { description: 'The ID of the promotion environment.' } });
+export const promotionReviewIdParamSchema = z
+	.string()
+	.refine((value) => validator.isUUID(value), { message: 'must be a valid ID' })
+	.openapi({ format: 'uuid', param: { description: 'The ID of the promotion review.' } });
 export const promotionProviderIdParamSchema = stringIdParamSchema(
 	'The ID of the promotion provider.',
 );

@@ -64,15 +64,11 @@ import type {
 } from 'n8n-workflow';
 import {
 	AI_GATEWAY_MANAGED_TAG,
-	AI_ASSISTANT_AT_MENTIONS_FLAG,
-	CANVAS_NODE_CONTEXT_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
 	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
-	INSTANCE_ACTIVITY_CONTEXT_FLAG,
-	ASSISTANT_SKILLS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
 	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
@@ -81,10 +77,10 @@ import {
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
-	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
-	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+	type AppResponse,
 } from '@n8n/api-types';
 
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -131,9 +127,11 @@ function globalConfigStub(
 		queueMode?: boolean;
 		maxExecutionTimeout?: number;
 		diagnosticsEnabled?: boolean;
+		activityLogEnabled?: boolean;
 	} = {},
 ): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
 	return {
+		activityLog: { enabled: overrides.activityLogEnabled ?? true },
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
 		diagnostics: { enabled: overrides.diagnosticsEnabled ?? false },
 		executions: {
@@ -1935,6 +1933,12 @@ vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
 
+vi.mock('@n8n/backend-module-mcp-servers', () => ({
+	CustomMcpServersFlagGate: class {},
+	McpServersService: class {},
+	McpServerToolsService: class {},
+}));
+
 vi.mock('@n8n/backend-module-apps', () => ({
 	AppsService: class {},
 	AppSourceArchiveService: class {},
@@ -1960,6 +1964,7 @@ import {
 	AiPreferenceScopeFullError,
 	type AiPreferenceService,
 	ExecutionRedactionServiceProxy,
+	WorkflowPublishGuardProxy,
 	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
@@ -1997,7 +2002,7 @@ import type {
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
-import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
+import { SkillsGate, SkillSyncFlagGate, WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
@@ -2013,6 +2018,13 @@ import {
 	AppSourceArchiveService,
 	renderBindingTypes,
 } from '@n8n/backend-module-apps';
+
+import {
+	CustomMcpServersFlagGate,
+	McpServersService,
+	McpServerToolsService,
+} from '@n8n/backend-module-mcp-servers';
+import { InstanceAiCustomMcpServersAdapterService } from '../instance-ai-custom-mcp-servers.adapter';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
 
@@ -2582,6 +2594,7 @@ function createDataTableAdapterForTests(overrides?: {
 	branchReadOnly?: boolean;
 	projectId?: string;
 	threadId?: string;
+	customMcpServersEnabled?: boolean;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -2666,6 +2679,7 @@ function createDataTableAdapterForTests(overrides?: {
 	const context = service.createContext(mockUser, {
 		projectId: overrides?.projectId,
 		threadId: overrides?.threadId,
+		customMcpServersEnabled: overrides?.customMcpServersEnabled,
 	});
 	const adapter = context.dataTableService;
 
@@ -5344,6 +5358,69 @@ describe('createWorkflowAdapter', () => {
 		});
 	});
 
+	describe('getPublishReviewBlock', () => {
+		let guardSpy: MockInstance | undefined;
+
+		afterEach(() => {
+			guardSpy?.mockRestore();
+			guardSpy = undefined;
+		});
+
+		it('returns the reason when the review rules refuse the draft', async () => {
+			guardSpy = vi
+				.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish')
+				.mockRejectedValue(
+					new WorkflowPublishBlockedError({ reason: 'review_required', versionId: 'version-id' }),
+				);
+			const { adapter } = createWorkflowAdapterForTests();
+
+			await expect(adapter.getPublishReviewBlock?.('wf-new')).resolves.toBe('review_required');
+			expect(guardSpy).toHaveBeenCalledWith('wf-new', { versionId: 'version-id' });
+		});
+
+		it('returns undefined when the review rules allow the version', async () => {
+			guardSpy = vi
+				.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish')
+				.mockResolvedValue(undefined);
+			const { adapter } = createWorkflowAdapterForTests();
+
+			await expect(adapter.getPublishReviewBlock?.('wf-new', 'v-2')).resolves.toBeUndefined();
+			expect(guardSpy).toHaveBeenCalledWith('wf-new', { versionId: 'v-2' });
+		});
+
+		it('does not check the version that is already live, as the publish does not', async () => {
+			guardSpy = vi
+				.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish')
+				.mockRejectedValue(
+					new WorkflowPublishBlockedError({ reason: 'review_required', versionId: 'version-id' }),
+				);
+			const { adapter, mockWorkflowFinderService, savedWorkflow } = createWorkflowAdapterForTests();
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+				...savedWorkflow,
+				activeVersionId: 'version-id',
+			});
+
+			await expect(adapter.getPublishReviewBlock?.('wf-new')).resolves.toBeUndefined();
+			expect(guardSpy).not.toHaveBeenCalled();
+		});
+
+		it('does not check an archived workflow, so the publish returns its archive error', async () => {
+			guardSpy = vi
+				.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish')
+				.mockRejectedValue(
+					new WorkflowPublishBlockedError({ reason: 'review_required', versionId: 'version-id' }),
+				);
+			const { adapter, mockWorkflowFinderService, savedWorkflow } = createWorkflowAdapterForTests();
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+				...savedWorkflow,
+				isArchived: true,
+			});
+
+			await expect(adapter.getPublishReviewBlock?.('wf-new')).resolves.toBeUndefined();
+			expect(guardSpy).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('notifying open editors', () => {
 		it('notifies after publishing', async () => {
 			const { adapter, mockCollaborationService } = createWorkflowAdapterForTests();
@@ -6862,6 +6939,7 @@ function createAdapterWithGatewayMock(
 		aiPreferenceService?: unknown;
 		logger?: unknown;
 		diagnosticsEnabled?: boolean;
+		activityLogEnabled?: boolean;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -6881,7 +6959,10 @@ function createAdapterWithGatewayMock(
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
 	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-	args[1] = globalConfigStub({ diagnosticsEnabled: overrides?.diagnosticsEnabled });
+	args[1] = globalConfigStub({
+		diagnosticsEnabled: overrides?.diagnosticsEnabled,
+		activityLogEnabled: overrides?.activityLogEnabled,
+	});
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -8548,13 +8629,21 @@ describe('createNodeAdapter — n8n Connect annotations', () => {
 
 describe('resolveExperimentGates', () => {
 	const user = { id: 'user-1', createdAt: new Date() } as unknown as User;
-	const secondUser = mock<User>({ id: 'user-2', createdAt: new Date() });
 	const getFeatureFlagForInstance = vi.fn();
 
-	function stubContainer(flags: Record<string, string | boolean>, instanceFlag = false) {
+	function stubContainer(
+		flags: Record<string, string | boolean>,
+		{ customMcpServers = false }: { customMcpServers?: boolean } = {},
+	) {
 		const getFeatureFlags = vi.fn().mockResolvedValue(flags);
-		getFeatureFlagForInstance.mockReset().mockResolvedValue(instanceFlag);
-		vi.spyOn(Container, 'get').mockReturnValue({ getFeatureFlags, getFeatureFlagForInstance });
+		getFeatureFlagForInstance.mockReset();
+		// One stub for every token: the PostHog client, the module registry, and the flag gate.
+		vi.spyOn(Container, 'get').mockReturnValue({
+			getFeatureFlags,
+			getFeatureFlagForInstance,
+			isActive: () => true,
+			isEnabled: vi.fn().mockResolvedValue(customMcpServers),
+		});
 		return getFeatureFlags;
 	}
 
@@ -8569,8 +8658,6 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_CONCISE_STYLE_FLAG]: INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
-		[AI_ASSISTANT_AT_MENTIONS_FLAG]: true,
-		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 		[INSTANCE_AI_APPROVAL_MODES_FLAG]: true,
 	};
 
@@ -8589,56 +8676,13 @@ describe('resolveExperimentGates', () => {
 			nodeContextEnabled: true,
 			folderExplorationEnabled: true,
 			approvalModesEnabled: true,
-			instanceContextEnabled: false,
-			assistantSkillsEnabled: false,
+			instanceContextEnabled: true,
+			assistantSkillsEnabled: true,
+			customMcpServersEnabled: false,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
-	});
-
-	it.each([true, false])(
-		'returns instance activity %s for users with different user flags',
-		async (instanceFlag) => {
-			const getFeatureFlags = stubContainer({}, instanceFlag);
-			getFeatureFlags
-				.mockResolvedValueOnce({
-					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
-					[INSTANCE_AI_NODE_USAGE_FLAG]: true,
-				})
-				.mockResolvedValueOnce({
-					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: false,
-					[INSTANCE_AI_NODE_USAGE_FLAG]: false,
-				});
-			const adapter = createAdapter();
-
-			const [first, second] = await Promise.all([
-				adapter.resolveExperimentGates(user),
-				adapter.resolveExperimentGates(secondUser),
-			]);
-
-			expect(first.instanceContextEnabled).toBe(instanceFlag);
-			expect(second.instanceContextEnabled).toBe(instanceFlag);
-			expect(first.nodeUsageEnabled).toBe(true);
-			expect(second.nodeUsageEnabled).toBe(false);
-			expect(getFeatureFlagForInstance.mock.calls).toEqual([
-				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
-				[ASSISTANT_SKILLS_FLAG],
-				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
-				[ASSISTANT_SKILLS_FLAG],
-			]);
-		},
-	);
-
-	it.each([true, false])('reads Assistant skills %s from its instance flag', async (enabled) => {
-		stubContainer({});
-		getFeatureFlagForInstance.mockImplementation(
-			async (flag: string) => flag === ASSISTANT_SKILLS_FLAG && enabled,
-		);
-
-		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
-			assistantSkillsEnabled: enabled,
-			instanceContextEnabled: false,
-		});
+		expect(getFeatureFlagForInstance).not.toHaveBeenCalled();
 	});
 
 	it.each([true, false])(
@@ -8662,24 +8706,31 @@ describe('resolveExperimentGates', () => {
 		},
 	);
 
-	it('keeps instance activity off when its evaluation fails', async () => {
-		stubContainer(allEnabled, true);
-		getFeatureFlagForInstance.mockRejectedValue(new Error('PostHog failed'));
+	it.each([true, false])('reads workflows in skills %s from its flag gate', async (enabled) => {
+		const getFeatureFlags = vi.fn().mockResolvedValue({});
+		getFeatureFlagForInstance.mockReset().mockResolvedValue(false);
+		const isEnabled = vi.fn().mockResolvedValue(enabled);
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) =>
+			token === WorkflowsInSkillsFlagGate
+				? { isEnabled }
+				: { getFeatureFlags, getFeatureFlagForInstance, isEnabledForFlags: () => false },
+		);
 
-		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
-			instanceContextEnabled: false,
-			nodeUsageEnabled: true,
-		});
+		const gates = await createAdapter().resolveExperimentGates(user);
+
+		expect(gates.workflowsInSkillsEnabled).toBe(enabled ? true : undefined);
 	});
 
-	it('keeps the instance answer when user flag evaluation fails', async () => {
-		const getFeatureFlags = stubContainer(allEnabled, true);
+	it('keeps the shipped surfaces on when user flag evaluation fails', async () => {
+		const getFeatureFlags = stubContainer(allEnabled);
 		getFeatureFlags.mockRejectedValue(new Error('PostHog failed'));
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
 			instanceContextEnabled: true,
 			nodeUsageEnabled: false,
-			nodeContextEnabled: false,
+			nodeContextEnabled: true,
+			folderExplorationEnabled: true,
+			assistantSkillsEnabled: true,
 		});
 	});
 
@@ -8691,17 +8742,6 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
-	it.each([CANVAS_NODE_CONTEXT_FLAG, AI_ASSISTANT_AT_MENTIONS_FLAG])(
-		'enables node context with %s',
-		async (flag) => {
-			stubContainer({ [flag]: true });
-
-			await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
-				nodeContextEnabled: true,
-			});
-		},
-	);
-
 	it('disables experiment gates for control variants', async () => {
 		stubContainer({
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
@@ -8710,9 +8750,6 @@ describe('resolveExperimentGates', () => {
 			[INSTANCE_AI_CONCISE_STYLE_FLAG]: 'control',
 			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
-			[CANVAS_NODE_CONTEXT_FLAG]: false,
-			[AI_ASSISTANT_AT_MENTIONS_FLAG]: false,
-			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -8724,11 +8761,12 @@ describe('resolveExperimentGates', () => {
 			setupPanelEnabled: false,
 			setupPanelVariant: 'control',
 			nodeUsageEnabled: false,
-			nodeContextEnabled: false,
-			folderExplorationEnabled: false,
+			nodeContextEnabled: true,
+			folderExplorationEnabled: true,
 			approvalModesEnabled: false,
-			instanceContextEnabled: false,
-			assistantSkillsEnabled: false,
+			instanceContextEnabled: true,
+			assistantSkillsEnabled: true,
+			customMcpServersEnabled: false,
 		});
 	});
 
@@ -8747,19 +8785,35 @@ describe('resolveExperimentGates', () => {
 	// Regression guard for the shipped bug: the flag is multivariate, so a
 	// boolean `true` is not a value PostHog can return for it. Reading it as one
 	// left the gate shut at every rollout percentage.
-	it('does not open the folder-exploration gate on a boolean true', async () => {
-		stubContainer({ ...allEnabled, [INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: true });
-
-		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
-			folderExplorationEnabled: false,
-		});
-	});
-
 	it('does not open the concise style gate on a boolean true', async () => {
 		stubContainer({ ...allEnabled, [INSTANCE_AI_CONCISE_STYLE_FLAG]: true });
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
 			conciseStyleEnabled: false,
+		});
+	});
+
+	it.each([
+		[true, true],
+		[false, false],
+	])(
+		'reads the custom MCP servers gate for the instance, as the server routes do (%s)',
+		async (instanceOn, enabled) => {
+			stubContainer(allEnabled, { customMcpServers: instanceOn });
+
+			await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+				customMcpServersEnabled: enabled,
+			});
+		},
+	);
+
+	it('closes the instance context gate while the activity log is off', async () => {
+		stubContainer(allEnabled);
+
+		const adapter = createAdapterWithGatewayMock(vi.fn(), { activityLogEnabled: false });
+
+		await expect(adapter.resolveExperimentGates(user)).resolves.toMatchObject({
+			instanceContextEnabled: false,
 		});
 	});
 
@@ -8782,11 +8836,12 @@ describe('resolveExperimentGates', () => {
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
-			nodeContextEnabled: false,
-			folderExplorationEnabled: false,
+			nodeContextEnabled: true,
+			folderExplorationEnabled: true,
 			approvalModesEnabled: false,
-			instanceContextEnabled: false,
-			assistantSkillsEnabled: false,
+			instanceContextEnabled: true,
+			assistantSkillsEnabled: true,
+			customMcpServersEnabled: false,
 		});
 	});
 
@@ -8802,11 +8857,12 @@ describe('resolveExperimentGates', () => {
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
-			nodeContextEnabled: false,
-			folderExplorationEnabled: false,
+			nodeContextEnabled: true,
+			folderExplorationEnabled: true,
 			approvalModesEnabled: false,
-			instanceContextEnabled: false,
-			assistantSkillsEnabled: false,
+			instanceContextEnabled: true,
+			assistantSkillsEnabled: true,
+			customMcpServersEnabled: false,
 		});
 	});
 });
@@ -10072,11 +10128,16 @@ describe('createContext — skill service wiring', () => {
 
 			service.createContext(mockUser, { threadId: 'thread-1', assistantSkillsEnabled });
 
-			expect(createService).toHaveBeenCalledWith(mockUser, assistantSkillsEnabled, undefined);
+			expect(createService).toHaveBeenCalledWith(
+				mockUser,
+				assistantSkillsEnabled,
+				undefined,
+				undefined,
+			);
 		},
 	);
 
-	it('passes skill sources on to the skills adapter', () => {
+	it('passes skill sources and workflows in skills on to the skills adapter', () => {
 		const createService = vi.fn().mockReturnValue(mock<InstanceAiSkillService>());
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === ModuleRegistry) {
@@ -10093,9 +10154,148 @@ describe('createContext — skill service wiring', () => {
 		});
 		const service = createAdapterWithGatewayMock(vi.fn());
 
-		service.createContext(mockUser, { threadId: 'thread-1', skillSourcesEnabled: true });
+		service.createContext(mockUser, {
+			threadId: 'thread-1',
+			skillSourcesEnabled: true,
+			workflowsInSkillsEnabled: true,
+		});
 
-		expect(createService).toHaveBeenCalledWith(mockUser, false, true);
+		expect(createService).toHaveBeenCalledWith(mockUser, false, true, true);
+	});
+});
+
+describe('createContext: customMcpServerService', () => {
+	function mockMcpServersModule(active: boolean) {
+		const servers = mock<McpServersService>();
+		const tools = mock<McpServerToolsService>();
+		const registry = { isActive: (name: string) => active && name === 'mcp-servers' };
+		const get = Container.get.bind(Container);
+		vi.spyOn(Container, 'get').mockImplementation(((token: Parameters<typeof get>[0]) => {
+			if (token === InstanceAiCustomMcpServersAdapterService) {
+				return new InstanceAiCustomMcpServersAdapterService(registry as unknown as ModuleRegistry);
+			}
+			if (token === McpServersService) return servers;
+			if (token === McpServerToolsService) return tools;
+			if (token === CustomMcpServersFlagGate) return { assertEnabled: async () => {} };
+			return get(token);
+		}) as typeof get);
+		return { servers, tools };
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockedUserHasScopes.mockResolvedValue(true);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it.each([
+		{ name: 'the flag is off', enabled: false, active: true },
+		{ name: 'the module is inactive', enabled: true, active: false },
+	])('omits the service when $name', ({ enabled, active }) => {
+		mockMcpServersModule(active);
+
+		const { context } = createDataTableAdapterForTests({
+			projectId: 'project-1',
+			customMcpServersEnabled: enabled,
+		});
+
+		expect(context.customMcpServerService).toBeUndefined();
+	});
+
+	it('creates a server in the bound project with the create scope and the Assistant source', async () => {
+		const { servers } = mockMcpServersModule(true);
+		const { context, mockUser } = createDataTableAdapterForTests({
+			projectId: 'project-1',
+			threadId: 'thread-1',
+			customMcpServersEnabled: true,
+		});
+
+		await context.customMcpServerService?.create({ name: 'Marketing Tools' });
+
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['mcpServer:create'], false, {
+			projectId: 'project-1',
+		});
+		expect(servers.create).toHaveBeenCalledWith(
+			'project-1',
+			{ name: 'Marketing Tools', slug: 'marketing-tools', description: '' },
+			{ userId: 'user-1', source: 'assistant', threadId: 'thread-1' },
+		);
+	});
+
+	it('refuses a write to another project of a bound conversation', async () => {
+		const { servers } = mockMcpServersModule(true);
+		const { context } = createDataTableAdapterForTests({
+			projectId: 'project-1',
+			customMcpServersEnabled: true,
+		});
+
+		await expect(
+			context.customMcpServerService?.create({ projectId: 'project-2', name: 'Marketing Tools' }),
+		).rejects.toThrow();
+		expect(servers.create).not.toHaveBeenCalled();
+	});
+
+	describe('without a bound project', () => {
+		const SERVER_ID = '7b0c2a52-3c1f-4f53-9a51-0c0d8c3a0a01';
+		const PERMISSION_ERROR = 'User does not have the required permissions in this project';
+
+		function createService() {
+			const { context, mockUser } = createDataTableAdapterForTests({
+				customMcpServersEnabled: true,
+			});
+			const service = context.customMcpServerService;
+			if (!service) throw new Error('The service must be wired while the flag is on.');
+			return { service, mockUser };
+		}
+
+		it('refuses each action in a project where the user has no mcpServer scope', async () => {
+			const { servers, tools } = mockMcpServersModule(true);
+			mockedUserHasScopes.mockResolvedValue(false);
+			const { service } = createService();
+			const ref = { serverId: SERVER_ID, projectId: 'project-2' };
+
+			await expect(service.get(ref)).rejects.toThrow(PERMISSION_ERROR);
+			await expect(service.delete(ref)).rejects.toThrow(PERMISSION_ERROR);
+			await expect(service.addTools(ref, ['workflow-1'])).rejects.toThrow(PERMISSION_ERROR);
+			await expect(service.assertCanWrite('project-2', 'update')).rejects.toThrow(PERMISSION_ERROR);
+
+			expect(servers.get).not.toHaveBeenCalled();
+			expect(servers.delete).not.toHaveBeenCalled();
+			expect(tools.addWorkflowTools).not.toHaveBeenCalled();
+		});
+
+		it('checks the scope in each project on its own', async () => {
+			const { servers } = mockMcpServersModule(true);
+			servers.list.mockResolvedValue([]);
+			mockedUserHasScopes.mockImplementation(
+				async (_user, _scopes, _global, options) => options?.projectId === 'project-1',
+			);
+			const { service } = createService();
+
+			await expect(service.list('project-2')).rejects.toThrow(PERMISSION_ERROR);
+			await expect(service.list('project-1')).resolves.toEqual([]);
+			expect(servers.list).toHaveBeenCalledTimes(1);
+			expect(servers.list).toHaveBeenCalledWith('project-1');
+		});
+
+		it('creates a server in the personal project when no project is given', async () => {
+			const { servers } = mockMcpServersModule(true);
+			const { service, mockUser } = createService();
+
+			await service.create({ name: 'Marketing Tools' });
+
+			expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['mcpServer:create'], false, {
+				projectId: 'personal-project-id',
+			});
+			expect(servers.create).toHaveBeenCalledWith(
+				'personal-project-id',
+				expect.anything(),
+				expect.anything(),
+			);
+		});
 	});
 });
 
@@ -10161,17 +10361,52 @@ describe('createContext: appService', () => {
 		);
 	});
 
-	it('reports a namespace conflict as a taken namespace', async () => {
+	it('creates the app with the next numbered namespace when the namespace is taken', async () => {
 		const { apps } = mockAppsModule(true);
-		apps.createApp.mockRejectedValue(
-			new ConflictError('An app already uses this namespace. Choose another namespace.'),
-		);
+		const created = mock<AppResponse>({ id: APP_ID, namespace: 'todos-3' });
+		apps.createApp
+			.mockRejectedValueOnce(new ConflictError('An app already uses this namespace.'))
+			.mockRejectedValueOnce(new ConflictError('An app already uses this namespace.'))
+			.mockResolvedValueOnce(created);
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await expect(
+			context.appService?.createApp({ name: 'Todos', namespace: 'todos' }),
+		).resolves.toBe(created);
+
+		expect(apps.createApp.mock.calls.map(([, dto]) => dto.namespace)).toEqual([
+			'todos',
+			'todos-2',
+			'todos-3',
+		]);
+	});
+
+	it('keeps numbered namespaces within the namespace length limit of the instance', async () => {
+		const { apps } = mockAppsModule(true);
+		apps.maxNamespaceLength.mockReturnValue(9);
+		apps.createApp
+			.mockRejectedValueOnce(new ConflictError('An app already uses this namespace.'))
+			.mockResolvedValueOnce(mock<AppResponse>({ id: APP_ID }));
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await context.appService?.createApp({ name: 'Todo list', namespace: 'todo-list' });
+
+		expect(apps.createApp.mock.calls.map(([, dto]) => dto.namespace)).toEqual([
+			'todo-list',
+			'todo-li-2',
+		]);
+	});
+
+	it('reports a taken namespace when every numbered namespace is taken too', async () => {
+		const { apps } = mockAppsModule(true);
+		apps.createApp.mockRejectedValue(new ConflictError('An app already uses this namespace.'));
 		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
 
 		const created = context.appService?.createApp({ name: 'Todos', namespace: 'todos' });
 
 		await expect(created).rejects.toBeInstanceOf(AppNamespaceTakenError);
 		await expect(created).rejects.toThrow('An app already uses the namespace "todos".');
+		expect(apps.createApp).toHaveBeenCalledTimes(21);
 	});
 
 	it('passes other create failures through unchanged', async () => {

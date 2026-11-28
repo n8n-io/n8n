@@ -122,6 +122,7 @@ packages/cli/src/security-audit/                        @n8n-io/core-application
 packages/cli/src/modules/workflow-index/                @n8n-io/core-application
 packages/cli/src/modules/breaking-changes/              @n8n-io/core-application
 packages/cli/src/workflows/publication/                 @n8n-io/core-application required
+packages/modules/durable-leases/                        @n8n-io/core-application required
 
 packages/cli/src/scaling/                               @n8n-io/core-execution
 packages/cli/src/concurrency/                           @n8n-io/core-execution
@@ -152,6 +153,7 @@ packages/cli/src/modules/sso-saml/                      @n8n-io/iam
 packages/cli/src/modules/provisioning.ee/               @n8n-io/iam
 packages/cli/src/modules/dynamic-credentials.ee/        @n8n-io/iam
 packages/cli/src/modules/redaction/                     @n8n-io/iam
+packages/modules/roles/                                 @n8n-io/iam
 packages/cli/src/modules/instance-registry/             @n8n-io/iam
 packages/cli/src/modules/token-exchange/                @n8n-io/iam
 
@@ -176,11 +178,13 @@ packages/cli/src/tool-generation/                       @n8n-io/ai
 packages/modules/workflow-builder/                     @n8n-io/ai-assistant
 packages/cli/src/modules/mcp/                           @n8n-io/context
 packages/cli/src/modules/skills/                        @n8n-io/context
+packages/modules/mcp-servers/                          @n8n-io/context
 packages/cli/src/modules/chat-hub/                      @n8n-io/ai-assistant
 packages/cli/src/modules/instance-ai/                   @n8n-io/ai-assistant
 packages/modules/self-healing/                         @n8n-io/ai-assistant
 packages/modules/inbox/                                @n8n-io/ligo
 packages/modules/promotions/                           @n8n-io/ligo
+packages/modules/api-keys/                             @n8n-io/frontend
 
 # CLI controllers
 packages/cli/src/controllers/auth.controller.ts         						@n8n-io/iam

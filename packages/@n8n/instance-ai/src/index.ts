@@ -303,7 +303,6 @@ export {
 	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
-	threadTargetsAgent,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
 export type {
@@ -316,6 +315,7 @@ export type {
 } from './tools/orchestration/start-cloud-browser-task.tool';
 export { parseAppTargets, parsePendingAppTarget } from './tools/apps/app-target-binding';
 export { withThreadSubject } from './tools/thread-subject-binding';
+export { parseMcpServerTarget } from './tools/custom-mcp-server-target-binding';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
@@ -779,6 +779,10 @@ export type {
 	InstanceAiCredentialService,
 	InstanceAiNodeService,
 	InstanceAiAppService,
+	CustomMcpServerCandidatePage,
+	CustomMcpServerCandidateQuery,
+	CustomMcpServerRef,
+	InstanceAiCustomMcpServerService,
 	InstanceAiDataTableService,
 	DataTableSummary,
 	DataTableColumnInfo,

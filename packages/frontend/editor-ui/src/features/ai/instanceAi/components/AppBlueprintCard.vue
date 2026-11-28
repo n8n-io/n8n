@@ -1,16 +1,10 @@
 <script setup lang="ts">
+import { appNameSchema, type AppBlueprint, type InstanceAiConfirmRequest } from '@n8n/api-types';
 import {
-	appNameSchema,
-	appNamespaceSchema,
-	type AppBlueprint,
-	type AppBlueprintErrors,
-	type InstanceAiConfirmRequest,
-} from '@n8n/api-types';
-import {
+	N8nBadge,
 	N8nButton,
+	N8nIcon,
 	N8nInput,
-	N8nOption,
-	N8nSelect,
 	N8nTag,
 	N8nText,
 	type IconName,
@@ -25,8 +19,6 @@ type AppBlueprintBinding = NonNullable<AppBlueprint['bindings']>[number];
 const props = defineProps<{
 	blueprint: AppBlueprint;
 	readOnly?: boolean;
-	/** Field errors from the previous attempt. The card reopens with them. */
-	errors?: AppBlueprintErrors;
 	/** n8n tried to create the app after approval and failed. */
 	failed?: boolean;
 }>();
@@ -35,9 +27,6 @@ const emit = defineEmits<{ submit: [body: InstanceAiConfirmRequest] }>();
 
 const i18n = useI18n();
 const name = ref(props.blueprint.name);
-const namespace = ref(props.blueprint.namespace);
-const visibility = ref(props.blueprint.visibility);
-const theme = ref(props.blueprint.theme);
 const additionalInstructions = ref(props.blueprint.additionalInstructions ?? '');
 
 const bindingIcons: Record<AppBlueprintBinding['kind'], IconName> = {
@@ -46,38 +35,22 @@ const bindingIcons: Record<AppBlueprintBinding['kind'], IconName> = {
 	agent: 'robot',
 };
 
-const visibilityOptions = ['project', 'instance'] as const;
-const themeOptions = computed(() =>
-	(['light', 'dark', 'both'] as const).map((value) => ({
-		value,
-		label: i18n.baseText(`instanceAi.appBlueprint.theme.${value}`),
-	})),
-);
+// The user only edits the title. The server makes the namespace unique,
+// and apps are only available in their project.
 const editedBlueprint = computed<AppBlueprint>(() => ({
 	name: name.value.trim(),
-	namespace: namespace.value.trim(),
-	visibility: visibility.value,
+	namespace: props.blueprint.namespace,
+	visibility: 'project',
 	description: props.blueprint.description,
-	theme: theme.value,
+	theme: props.blueprint.theme,
 	...(props.blueprint.bindings ? { bindings: props.blueprint.bindings } : {}),
 	...(additionalInstructions.value.trim()
 		? { additionalInstructions: additionalInstructions.value.trim() }
 		: {}),
 }));
-// The error applies to the rejected namespace only. It clears when the user edits it.
-// A resolved card shows the approved blueprint, so the error no longer applies.
-const namespaceError = computed(() =>
-	!props.readOnly &&
-	props.errors?.namespace === 'taken' &&
-	editedBlueprint.value.namespace === props.blueprint.namespace
-		? i18n.baseText('instanceAi.appBlueprint.namespace.taken')
-		: undefined,
-);
 const isValid = computed(
 	() =>
 		appNameSchema.safeParse(editedBlueprint.value.name).success &&
-		appNamespaceSchema.safeParse(editedBlueprint.value.namespace).success &&
-		!namespaceError.value &&
 		editedBlueprint.value.description.length > 0,
 );
 
@@ -105,10 +78,14 @@ function cancel() {
 		:class="[$style.card, !readOnly && $style.awaitingInput]"
 		data-test-id="instance-ai-app-blueprint"
 	>
-		<div :class="$style.content">
+		<header :class="$style.header">
+			<N8nIcon icon="layout-template" size="medium" />
 			<N8nText size="medium" color="text-dark" bold>
 				{{ i18n.baseText('instanceAi.appBlueprint.title') }}
 			</N8nText>
+		</header>
+
+		<div :class="$style.content">
 			<N8nText
 				size="medium"
 				color="text-base"
@@ -118,77 +95,17 @@ function cancel() {
 				{{ blueprint.description }}
 			</N8nText>
 
-			<div :class="$style.fields">
-				<label :class="$style.field">
-					<N8nText size="medium" color="text-dark">{{
-						i18n.baseText('instanceAi.appBlueprint.name')
-					}}</N8nText>
-					<N8nInput
-						v-model="name"
-						size="medium"
-						:disabled="readOnly"
-						data-test-id="instance-ai-app-blueprint-name"
-					/>
-				</label>
-				<label :class="$style.field">
-					<N8nText size="medium" color="text-dark">{{
-						i18n.baseText('instanceAi.appBlueprint.namespace')
-					}}</N8nText>
-					<N8nInput
-						v-model="namespace"
-						size="medium"
-						:disabled="readOnly"
-						:class="namespaceError && $style.fieldInvalid"
-						:aria-invalid="namespaceError ? 'true' : undefined"
-						data-test-id="instance-ai-app-blueprint-namespace"
-					/>
-					<N8nText
-						v-if="namespaceError"
-						size="small"
-						color="danger"
-						role="alert"
-						data-test-id="instance-ai-app-blueprint-namespace-error"
-					>
-						{{ namespaceError }}
-					</N8nText>
-				</label>
-				<label :class="$style.field">
-					<N8nText size="medium" color="text-dark">{{
-						i18n.baseText('instanceAi.appBlueprint.visibility')
-					}}</N8nText>
-					<N8nSelect
-						v-model="visibility"
-						size="medium"
-						:disabled="readOnly"
-						data-test-id="instance-ai-app-blueprint-visibility"
-					>
-						<N8nOption
-							v-for="option in visibilityOptions"
-							:key="option"
-							:value="option"
-							:label="i18n.baseText(`instanceAi.appBlueprint.visibility.${option}`)"
-						/>
-					</N8nSelect>
-				</label>
-				<label :class="$style.field">
-					<N8nText size="medium" color="text-dark">{{
-						i18n.baseText('instanceAi.appBlueprint.theme')
-					}}</N8nText>
-					<N8nSelect
-						v-model="theme"
-						size="medium"
-						:disabled="readOnly"
-						data-test-id="instance-ai-app-blueprint-theme"
-					>
-						<N8nOption
-							v-for="option in themeOptions"
-							:key="option.value"
-							:value="option.value"
-							:label="option.label"
-						/>
-					</N8nSelect>
-				</label>
-			</div>
+			<label :class="$style.field">
+				<N8nText size="medium" color="text-dark">{{
+					i18n.baseText('instanceAi.appBlueprint.name')
+				}}</N8nText>
+				<N8nInput
+					v-model="name"
+					size="medium"
+					:disabled="readOnly"
+					data-test-id="instance-ai-app-blueprint-name"
+				/>
+			</label>
 
 			<div v-if="blueprint.bindings?.length" :class="$style.bindings">
 				<N8nText size="medium" color="text-dark" bold>
@@ -211,9 +128,19 @@ function cancel() {
 					<div :class="$style.bindingLabels">
 						<div :class="$style.bindingTitle">
 							<N8nText size="medium" color="text-dark">{{ binding.name }}</N8nText>
+							<N8nBadge
+								v-if="binding.status === 'new'"
+								variant="secondary"
+								size="xxsmall"
+								data-test-id="instance-ai-app-blueprint-binding-status"
+							>
+								{{ i18n.baseText('instanceAi.appBlueprint.bindings.new') }}
+							</N8nBadge>
 							<N8nTag
-								:text="i18n.baseText(`instanceAi.appBlueprint.bindings.${binding.status}`)"
+								v-else
+								:text="i18n.baseText('instanceAi.appBlueprint.bindings.existing')"
 								:clickable="false"
+								data-test-id="instance-ai-app-blueprint-binding-status"
 							/>
 						</div>
 						<N8nText size="small" color="text-light">{{ binding.description }}</N8nText>
@@ -244,32 +171,31 @@ function cancel() {
 				:placeholder="i18n.baseText('instanceAi.appBlueprint.instructionsPlaceholder')"
 				data-test-id="instance-ai-app-blueprint-instructions"
 			/>
-			<div v-if="!readOnly" :class="$style.actions">
-				<N8nButton
-					variant="outline"
-					size="medium"
-					data-test-id="instance-ai-app-blueprint-cancel"
-					@click="cancel"
-				>
-					{{ i18n.baseText('generic.cancel') }}
-				</N8nButton>
-				<N8nButton
-					variant="solid"
-					size="medium"
-					:disabled="!isValid"
-					data-test-id="instance-ai-app-blueprint-start"
-					@click="startBuilding"
-				>
-					{{ i18n.baseText('instanceAi.appBlueprint.approve') }}
-				</N8nButton>
-			</div>
+		</div>
+
+		<div v-if="!readOnly" :class="$style.actions">
+			<N8nButton
+				variant="outline"
+				size="medium"
+				data-test-id="instance-ai-app-blueprint-cancel"
+				@click="cancel"
+			>
+				{{ i18n.baseText('generic.cancel') }}
+			</N8nButton>
+			<N8nButton
+				variant="solid"
+				size="medium"
+				:disabled="!isValid"
+				data-test-id="instance-ai-app-blueprint-start"
+				@click="startBuilding"
+			>
+				{{ i18n.baseText('instanceAi.appBlueprint.approve') }}
+			</N8nButton>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/breakpoints';
-
 .card {
 	max-width: 90%;
 	border: var(--border);
@@ -283,6 +209,15 @@ function cancel() {
 	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
+/* Same header as InstanceAiMcpConnectCard. */
+.header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-bottom: var(--border);
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -294,22 +229,12 @@ function cancel() {
 	white-space: pre-wrap;
 }
 
-.fields {
-	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: var(--spacing--sm);
-	margin-top: var(--spacing--xs);
-
-	@include breakpoints.breakpoint('xs-only') {
-		grid-template-columns: 1fr;
-	}
-}
-
 .field {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+	margin-top: var(--spacing--xs);
 }
 
 .bindings {
@@ -317,8 +242,6 @@ function cancel() {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--xs);
-	padding-top: var(--spacing--sm);
-	border-top: var(--border);
 }
 
 .binding {
@@ -350,13 +273,6 @@ function cancel() {
 	border-top: var(--border);
 }
 
-/* The input declares its own border variable, so set it on the input element itself. */
-.fieldInvalid:global(.n8n-input) {
-	--input--border-color: var(--color--danger);
-	--input--border-color--hover: var(--color--danger);
-	--input--border-color--focus: var(--color--danger);
-}
-
 .failed {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-top: var(--border);
@@ -366,5 +282,7 @@ function cancel() {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-top: var(--border);
 }
 </style>

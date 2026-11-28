@@ -12,6 +12,7 @@ export type DialogSize =
 	| 'large'
 	| 'xlarge'
 	| '2xlarge'
+	| '3xlarge'
 	| 'fit'
 	| 'full'
 	| 'cover';

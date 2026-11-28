@@ -1,8 +1,9 @@
-import type {
-	ExecutionLedgerBlockedBy,
-	ExecutionLedgerEntityType,
-	ExecutionLedgerEvent,
-	ExecutionLedgerOutcome,
+import {
+	StatisticsNames,
+	type ExecutionLedgerBlockedBy,
+	type ExecutionLedgerEntityType,
+	type ExecutionLedgerEvent,
+	type ExecutionLedgerOutcome,
 } from '@n8n/db';
 import {
 	isExecutionBlockedReason,
@@ -139,8 +140,9 @@ const timeSaved = {
 } satisfies CountingRule;
 
 // A run counts once, at its start. A blocked run gives its slot back: see executionLimitDelta.
+// V1 does not limit agents.
 const executionLimit = {
-	entityType: { workflow: true, agent: true },
+	entityType: { workflow: true, agent: false },
 	event: { started: true, ended: false },
 	outcome: {
 		none: true,
@@ -158,12 +160,43 @@ const executionLimit = {
 		trigger: true,
 		webhook: true,
 		evaluation: true,
-		agent: true,
 
 		integrated: false,
 		error: false,
 		internal: false,
 		manual: false,
+		chat: false,
+		agent: false,
+	},
+} satisfies CountingRule;
+
+// Every finished run that did work, except chat and cancels. `isBillableExecution` decides the root count.
+const workflowStatistics = {
+	entityType: { workflow: true, agent: false },
+	event: { started: false, ended: true },
+	outcome: {
+		success: true,
+		error: true,
+		crashed: true,
+
+		// A blocked run did no work, so it is not a production error.
+		blocked: false,
+		canceled: false,
+		none: false,
+	},
+	source: { none: true, user: true, instance_ai: true },
+	mode: {
+		cli: true,
+		retry: true,
+		trigger: true,
+		webhook: true,
+		evaluation: true,
+		integrated: true,
+		error: true,
+		internal: true,
+		manual: true,
+		agent: true,
+
 		chat: false,
 	},
 } satisfies CountingRule;
@@ -252,6 +285,32 @@ export function isInsightsProduction(
 	source?: WorkflowExecutionSource,
 ): boolean {
 	return matches(insightsProduction, isFact(input) ? input : toLedgerFact(input, source));
+}
+
+/** The `workflow_statistics` counter a run adds to, and whether it adds to the root count. */
+export type WorkflowStatisticsCount = { name: StatisticsNames; isRoot: boolean };
+
+export function toWorkflowStatisticsCount(fact: LedgerFact): WorkflowStatisticsCount | null;
+export function toWorkflowStatisticsCount(
+	run: CompletedRun,
+	source?: WorkflowExecutionSource,
+): WorkflowStatisticsCount | null;
+export function toWorkflowStatisticsCount(
+	input: LedgerFact | CompletedRun,
+	source?: WorkflowExecutionSource,
+): WorkflowStatisticsCount | null {
+	const fact = isFact(input) ? input : toLedgerFact(input, source);
+	if (!matches(workflowStatistics, fact)) return null;
+
+	// An Instance AI run copies the trigger mode, but it is a test run for the user.
+	const isManual = fact.mode === 'manual' || fact.source === 'instance_ai';
+	const isSuccess = fact.outcome === 'success';
+	const manual = isSuccess ? StatisticsNames.manualSuccess : StatisticsNames.manualError;
+	const production = isSuccess
+		? StatisticsNames.productionSuccess
+		: StatisticsNames.productionError;
+
+	return { name: isManual ? manual : production, isRoot: matches(billable, fact) };
 }
 
 export function savesTime(fact: LedgerFact): boolean {

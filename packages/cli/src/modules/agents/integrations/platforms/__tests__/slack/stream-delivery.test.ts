@@ -14,13 +14,18 @@ import {
 	SLACK_STREAMING_OPTIONS,
 } from '../../slack/slack-bridge-behavior';
 import { SlackIntegration } from '../../slack/slack-integration';
+import { createSlackSourceAdapter } from '../../slack/slack-adapter';
+
+vi.mock('../../../esm-loader', () => ({
+	loadSlackAdapter: async () => await import('@chat-adapter/slack'),
+	loadChatSdk: async () => await import('chat'),
+}));
 
 async function makeSlackContext(topLevel: boolean, resume = false) {
 	const threadTs = topLevel ? '1719000001.000100' : '1719000000.000100';
-	const { createSlackAdapter } = await import('@chat-adapter/slack');
 	const { createMemoryState } = await import('@chat-adapter/state-memory');
 	const { ThreadImpl } = await import('chat');
-	const adapter = createSlackAdapter({
+	const adapter = await createSlackSourceAdapter({
 		botToken: 'xoxb-test-token',
 		botUserId: 'U_BOT',
 		signingSecret: 'test-signing-secret',
@@ -64,6 +69,76 @@ async function makeSlackContext(topLevel: boolean, resume = false) {
 
 describe('Slack stream delivery', () => {
 	afterEach(() => nock.cleanAll());
+
+	// AGENT-1629: Slack rewrites bullets when it renders markdown_text.
+	it.each([false, true])(
+		'preserves literal Slack text when the bullet arrives late: %s',
+		async (lateBullet) => {
+			const plain = '*This* is math: 𝑎*b*c and `a*b*c`.';
+			const literal = ': a*b*c • <!channel> & List<String> ';
+			const code = '  a*b*c • y < z\n  ```';
+			const list = '- Check the example\n- Review the result';
+			const url = 'https://example.com/?a=1&b=2';
+			const markdown = [
+				list,
+				'',
+				`**Math**${literal}[docs](${url}) and ` + '``a`b • c``',
+				'',
+				'````lean',
+				code,
+				'````',
+			].join('\n');
+			const bodies: Record<string, unknown>[] = [];
+			const ts = '1719000999.000100';
+			nock('https://slack.com')
+				.persist()
+				.post(/\/api\/.+/)
+				.reply(200, (uri, body: string | Record<string, unknown>) => {
+					if (uri === '/api/chat.postMessage' || uri === '/api/chat.update') {
+						bodies.push(
+							typeof body === 'string' ? Object.fromEntries(new URLSearchParams(body)) : body,
+						);
+					}
+					return { ok: true, ts, message: { ts } };
+				});
+			const { thread } = await makeSlackContext(false);
+			const reply = await thread.post({ markdown: lateBullet ? plain : markdown });
+			await reply.edit({ markdown });
+
+			expect(bodies).toHaveLength(2);
+			expect(bodies[0]).toHaveProperty('thread_ts', '1719000000.000100');
+			expect(bodies[1]).toHaveProperty('ts', ts);
+			if (lateBullet) {
+				expect(bodies[0]).toHaveProperty('markdown_text', '*This* is math: 𝑎\\*b\\*c and `a*b*c`.');
+				expect(bodies[0]).not.toHaveProperty('blocks');
+			}
+			for (const body of bodies.slice(lateBullet ? 1 : 0)) {
+				expect(body).not.toHaveProperty('markdown_text');
+				expect(body.text).toContain('&lt;!channel&gt; &amp; List&lt;String&gt;');
+				expect(body.text).toContain('docs (https://example.com/?a=1&amp;b=2)');
+				const blocks = typeof body.blocks === 'string' ? JSON.parse(body.blocks) : body.blocks;
+				expect(blocks).toEqual([
+					{ type: 'markdown', text: list },
+					{
+						type: 'rich_text',
+						elements: [
+							{
+								type: 'rich_text_section',
+								elements: [
+									{ type: 'text', text: 'Math', style: { bold: true } },
+									{ type: 'text', text: literal },
+									{ type: 'link', text: 'docs', url },
+									{ type: 'text', text: ' and ' },
+									{ type: 'text', text: 'a`b • c', style: { code: true } },
+								],
+							},
+							{ type: 'rich_text_preformatted', elements: [{ type: 'text', text: code }] },
+						],
+					},
+				]);
+			}
+		},
+	);
 
 	it.each([
 		{ name: 'threaded stream', topLevel: false, textEnd: true, ending: 'reply' },
@@ -282,7 +357,7 @@ describe('Slack stream delivery', () => {
 		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
 		const consumer = new AgentChatStreamConsumer({
 			disableStreaming: false,
-			maxMessageLength: new SlackIntegration(mock()).maxMessageLength,
+			maxMessageLength: new SlackIntegration(mock(), mock()).maxMessageLength,
 			logger,
 			postErrorToThread,
 			handleSuspension: vi.fn().mockResolvedValue('skipped'),

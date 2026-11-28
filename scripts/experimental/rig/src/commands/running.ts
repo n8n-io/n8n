@@ -1,17 +1,16 @@
 import { defineCommand } from 'citty';
 import pc from 'picocolors';
 
-import { describeTopology, requiredServices } from '../config/env-yaml';
+import { requiredServices } from '../config/env-yaml';
 import { RigError } from '../errors';
-import { isReady, readinessProbe } from '../runtime/health';
 import { LogFollower, tailLines } from '../runtime/logs';
 import { preflight } from '../runtime/preflight';
 import { type DependencyMode, Session } from '../runtime/session';
-import { openSplit, splitPanes } from '../runtime/split';
-import { liveState } from '../runtime/state';
+import { openSplit, splitPanes, splitPlan } from '../runtime/split';
+import { collectStatus, type EnvStatus } from '../runtime/status';
 import { type InspectMode, Supervisor } from '../runtime/supervisor';
-import { serviceAddress, servicesDown, servicesStatus, servicesUp } from '../services/compose';
-import { type Component, portsOf } from '../topology/components';
+import { serviceAddress, servicesDown, servicesUp } from '../services/compose';
+import type { Component } from '../topology/components';
 import { validateTopology } from '../topology/validate';
 import { PrefixPrinter, table, ui } from '../ui/output';
 import { openUrl } from '../integrations/browser';
@@ -41,6 +40,18 @@ function inspectOption(
 	return { mode, components: new Set(components.map((c) => c.name)) };
 }
 
+/** The `rig run` flags of each pane that `--split` and `rig panes` pass on. */
+function paneArgs(args: {
+	'auto-restart'?: boolean;
+	inspect?: boolean;
+	'inspect-brk'?: boolean;
+}): string[] {
+	return [
+		...(args['auto-restart'] ? ['--auto-restart'] : []),
+		...(args['inspect-brk'] ? ['--inspect-brk'] : args.inspect ? ['--inspect'] : []),
+	];
+}
+
 export const upCommand = defineCommand({
 	meta: { name: 'up', description: 'Start the services and all components, and show their logs' },
 	args: {
@@ -64,11 +75,7 @@ export const upCommand = defineCommand({
 		const targets = env.components();
 		await preflight(env, targets);
 		if (args.split) {
-			const extra = [
-				...(args['auto-restart'] ? ['--auto-restart'] : []),
-				...(args['inspect-brk'] ? ['--inspect-brk'] : args.inspect ? ['--inspect'] : []),
-			];
-			openSplit(env, splitPanes(env, extra));
+			openSplit(env, splitPanes(env, paneArgs(args)));
 			return;
 		}
 		const printer = new PrefixPrinter();
@@ -225,6 +232,42 @@ export const restartCommand = defineCommand({
 	},
 });
 
+export const panesCommand = defineCommand({
+	meta: {
+		name: 'panes',
+		description:
+			'Print the panes of `rig up --split`, so another terminal multiplexer can open them',
+	},
+	args: {
+		...envArg,
+		format: { type: 'string', description: 'json or shell', default: 'json' },
+		'auto-restart': { type: 'boolean', description: 'Restart components when their env changes' },
+		inspect: {
+			type: 'boolean',
+			description: 'Start the n8n processes with the Node inspector (port block +5)',
+		},
+		'inspect-brk': {
+			type: 'boolean',
+			description: 'Like --inspect, and wait for a debugger before the first line',
+		},
+	},
+	run({ args }) {
+		const env = loadEnv(args.env);
+		const plan = splitPlan(env, paneArgs(args));
+		switch (args.format) {
+			case 'json':
+				console.log(JSON.stringify(plan, null, 2));
+				return;
+			case 'shell':
+				if (plan.prepare) console.log(plan.prepare.command);
+				for (const pane of plan.panes) console.log(pane.command);
+				return;
+			default:
+				throw new RigError(`Unknown format "${args.format}". Use json or shell.`);
+		}
+	},
+});
+
 export const servicesCommand = defineCommand({
 	meta: { name: 'services', description: 'Start or stop only the service containers' },
 	subCommands: {
@@ -261,93 +304,88 @@ function uptime(startedAt: string): string {
 
 export const statusCommand = defineCommand({
 	meta: { name: 'status', description: 'Show services and components' },
-	args: { ...envArg },
+	args: {
+		...envArg,
+		format: {
+			type: 'string',
+			description: 'text, or json for scripts and editor integrations',
+			default: 'text',
+		},
+	},
 	async run({ args }) {
-		const env = loadEnv(args.env);
-		const supervisor = newSupervisor(env);
-		ui.header(`${env.name} · ${describeTopology(env.topology)}`);
-
-		const needed = requiredServices(env.topology);
-		if (needed.length > 0) {
-			const statuses = servicesStatus(env.name, env.topology);
-			const rows = [[pc.dim('SERVICE'), pc.dim('STATE'), pc.dim('ADDRESS')]];
-			for (const name of needed) {
-				const status = statuses.find((s) => s.name === name);
-				const state = status
-					? `${status.state}${status.health ? ` (${status.health})` : ''}`
-					: 'stopped';
-				rows.push([
-					name,
-					status?.state !== 'running'
-						? pc.dim(state)
-						: status.health === 'unhealthy'
-							? pc.red(state)
-							: status.health === '' || status.health === 'healthy'
-								? pc.green(state)
-								: pc.yellow(state),
-					serviceAddress(env.topology, env.paths, name),
-				]);
-			}
-			console.log(`\n${table(rows)}`);
+		if (args.format !== 'text' && args.format !== 'json') {
+			throw new RigError(`Unknown format "${args.format}". Use text or json.`);
 		}
+		const env = loadEnv(args.env);
+		const status = await collectStatus(env, newSupervisor(env));
+		if (args.format === 'json') {
+			console.log(JSON.stringify(status, null, 2));
+			return;
+		}
+		printStatus(status);
+	},
+});
 
-		const rows = [
-			[
-				pc.dim('COMPONENT'),
-				pc.dim('STATE'),
-				pc.dim('PID'),
-				pc.dim('PORTS'),
-				pc.dim('UPTIME'),
-				pc.dim('OWNER'),
-				pc.dim('DRIFT'),
-			],
-		];
-		const components = env.components();
-		const checks = await Promise.all(
-			components.map(async (component: Component) => {
-				const state = liveState(env.paths, component.name);
-				if (!state) return { component, state, ready: false, drift: false };
-				const { env: resolved } = env.resolve(component);
-				const ready = await isReady(readinessProbe(component, resolved));
-				let drift = false;
-				try {
-					drift = supervisor.hash(component) !== state.envHash;
-				} catch {
-					drift = false;
-				}
-				return { component, state, ready, drift };
-			}),
-		);
-		for (const { component, state, ready, drift } of checks) {
-			const ports = portsOf(component, env.topology).join(',');
-			if (!state) {
-				rows.push([component.name, pc.dim('stopped'), '', pc.dim(ports), '', '', '']);
-				continue;
-			}
+function printStatus(status: EnvStatus): void {
+	ui.header(`${status.env} · ${status.topology}`);
+
+	if (status.services.length > 0) {
+		const rows = [[pc.dim('SERVICE'), pc.dim('STATE'), pc.dim('ADDRESS')]];
+		for (const service of status.services) {
+			const state = `${service.state}${service.health ? ` (${service.health})` : ''}`;
 			rows.push([
-				component.name,
-				ready ? pc.green('ready') : pc.yellow('starting'),
-				String(state.pid),
-				state.inspect && component.kind === 'process'
-					? `${ports} ${pc.cyan(`debug:${component.ports.inspect}`)}`
-					: ports,
-				uptime(state.startedAt),
-				state.ownerPid === null
-					? pc.dim('background')
-					: (state.ownerTty ?? `pid ${state.ownerPid}`),
-				drift ? pc.yellow('yes') : pc.dim('no'),
+				service.name,
+				service.state !== 'running'
+					? pc.dim(state)
+					: service.health === 'unhealthy'
+						? pc.red(state)
+						: service.health === null || service.health === 'healthy'
+							? pc.green(state)
+							: pc.yellow(state),
+				service.address,
 			]);
 		}
 		console.log(`\n${table(rows)}`);
-		if (checks.some((c) => c.drift)) {
-			console.log(
-				pc.dim(`\nDrift: the env changed after the start. Run \`${RIG} restart <component>\`.`),
-			);
+	}
+
+	const rows = [
+		[
+			pc.dim('COMPONENT'),
+			pc.dim('STATE'),
+			pc.dim('PID'),
+			pc.dim('PORTS'),
+			pc.dim('UPTIME'),
+			pc.dim('OWNER'),
+			pc.dim('DRIFT'),
+		],
+	];
+	for (const component of status.components) {
+		const ports = component.ports.join(',');
+		if (component.state === 'stopped' || !component.startedAt) {
+			rows.push([component.name, pc.dim('stopped'), '', pc.dim(ports), '', '', '']);
+			continue;
 		}
-		const sources = new Set(checks.map((c) => c.state?.source).filter(Boolean));
-		if (sources.size > 0) console.log(pc.dim(`\nSource: ${[...sources].join(', ')}`));
-	},
-});
+		rows.push([
+			component.name,
+			component.state === 'ready' ? pc.green('ready') : pc.yellow('starting'),
+			String(component.pid),
+			component.inspectPort ? `${ports} ${pc.cyan(`debug:${component.inspectPort}`)}` : ports,
+			uptime(component.startedAt),
+			component.owner === null
+				? pc.dim('background')
+				: (component.owner.tty ?? `pid ${component.owner.pid}`),
+			component.drift ? pc.yellow('yes') : pc.dim('no'),
+		]);
+	}
+	console.log(`\n${table(rows)}`);
+	if (status.components.some((c) => c.drift)) {
+		console.log(
+			pc.dim(`\nDrift: the env changed after the start. Run \`${RIG} restart <component>\`.`),
+		);
+	}
+	const sources = new Set(status.components.map((c) => c.source).filter(Boolean));
+	if (sources.size > 0) console.log(pc.dim(`\nSource: ${[...sources].join(', ')}`));
+}
 
 export const logsCommand = defineCommand({
 	meta: { name: 'logs', description: 'Show the logs of components. Without a target, show all' },

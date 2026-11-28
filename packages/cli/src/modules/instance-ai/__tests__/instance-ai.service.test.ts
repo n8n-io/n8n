@@ -17,7 +17,6 @@ vi.mock('@n8n/instance-ai', async () => {
 		resolvePromptProfile: profiles.resolvePromptProfile,
 		MAX_STEPS: profiles.MAX_STEPS,
 		createThreadApprovalContext: profiles.createThreadApprovalContext,
-		threadTargetsAgent: profiles.threadTargetsAgent,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		SELF_HEALING_PROFILE_VERSION: profiles.SELF_HEALING_PROFILE_VERSION,
@@ -38,6 +37,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		threadProvenanceMetadata: vi.fn(() => ({ thread_source: 'evals' })),
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 		deriveInstanceContextReach: profiles.deriveInstanceContextReach,
+		parseMcpServerTarget: profiles.parseMcpServerTarget,
 		WorkSummaryAccumulator: profiles.WorkSummaryAccumulator,
 		mergeInstanceContextReach: profiles.mergeInstanceContextReach,
 		suspendedInstanceContextSchema: profiles.suspendedInstanceContextSchema,
@@ -7237,7 +7237,7 @@ describe('getThreadMemory', () => {
 			cursor: { lastObservedMessageId: 'm137', lastObservedAt: '2020-01-01T00:00:00.000Z' },
 		});
 		expect(service.observationRepo.findActiveForThread).toHaveBeenCalledWith('thread-1');
-		expect(service.observationCursorRepo.findForThread).toHaveBeenCalledWith('thread-1');
+		expect(service.observationCursorRepo.findForThread).toHaveBeenCalledWith('thread-1', {});
 	});
 
 	it('returns a null cursor and no rows when the observer never ran', async () => {

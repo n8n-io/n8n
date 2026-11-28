@@ -64,6 +64,26 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 
 		return await Milvus.fromExistingCollection(embeddings, config);
 	},
+	async beforeInsert(context, _embeddings, itemIndex): Promise<void> {
+		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			clearCollection?: boolean;
+		};
+		if (!options.clearCollection) return;
+
+		const collection = context.getNodeParameter('milvusCollection', itemIndex, '', {
+			extractValue: true,
+		}) as string;
+		const credentials = await context.getCredentials<{
+			baseUrl: string;
+			username: string;
+			password: string;
+		}>('milvusApi');
+		const client = new MilvusClient({
+			address: credentials.baseUrl,
+			token: `${credentials.username}:${credentials.password}`,
+		});
+		await client.dropCollection({ collection_name: collection });
+	},
 	async populateVectorStore(context, embeddings, documents, itemIndex): Promise<void> {
 		const collection = context.getNodeParameter('milvusCollection', itemIndex, '', {
 			extractValue: true,
@@ -83,7 +103,8 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			collectionName: collection,
 		};
 
-		if (options.clearCollection) {
+		// Version 1.1+ clears once in beforeInsert, before the batches.
+		if (options.clearCollection && context.getNode().typeVersion < 1.1) {
 			const client = new MilvusClient({
 				address: credentials.baseUrl,
 				token: `${credentials.username}:${credentials.password}`,

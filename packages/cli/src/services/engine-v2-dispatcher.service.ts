@@ -7,6 +7,7 @@ import {
 	UnexpectedError,
 	UserError,
 } from '@n8n/errors';
+import { stringify } from 'flatted';
 import type {
 	INode,
 	INodeExecutionData,
@@ -260,7 +261,7 @@ export class EngineV2Dispatcher {
 		// run here, so the data plane reads them where every other file of the run is.
 		await this.payloadFiles.claimForExecution(trigger.outputs, executionId);
 		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.
-		this.registerPushSession(executionId, data, trigger);
+		this.registerPushSession(executionId, data, trigger, plan);
 
 		return {
 			executionId,
@@ -287,16 +288,26 @@ export class EngineV2Dispatcher {
 
 	/**
 	 * Lifecycle events carry no session id, so the push ref is recorded here,
-	 * keyed by execution id.
+	 * keyed by execution id. The `executionStarted` message is prepared here
+	 * too: the run data is gone by the time the relay needs it.
 	 */
 	private registerPushSession(
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
 		trigger: FiredTrigger,
+		plan?: ManualRunPlan,
 	): void {
 		const { pushRef, workflowData } = data;
 		// No push ref means nothing is watching this run.
 		if (!pushRef) return;
+
+		const runData = plan?.runData ?? {};
+		// A trigger taken from the run data does not run again, and the editor
+		// shows its run from `flattedRunData`. v1 reports no run of it either.
+		const reusedTrigger =
+			trigger.name !== undefined &&
+			Object.hasOwn(runData, trigger.name) &&
+			data.triggerToStartFrom?.data === undefined;
 
 		this.pushRegistry.register(executionId, {
 			pushRef,
@@ -304,9 +315,16 @@ export class EngineV2Dispatcher {
 			workflowId: workflowData.id,
 			// The engine never announces the trigger, so save its outputs for the relay.
 			trigger:
-				trigger.name === undefined
+				trigger.name === undefined || reusedTrigger
 					? undefined
 					: { nodeName: trigger.name, outputs: trigger.outputs },
+			start: {
+				mode: data.executionMode,
+				// Not redacted: the run data came from the editor's own request.
+				flattedRunData: stringify(runData),
+				source: data.source,
+				workflowName: workflowData.name,
+			},
 		});
 	}
 
@@ -329,7 +347,7 @@ export class EngineV2Dispatcher {
 
 		// Lazily imported: the subscriptions belong to the engine-v2 module.
 		const { EngineV2LifecycleSubscriptions } = await import(
-			'@/modules/engine-v2/engine-lifecycle-event-subscriptions.js'
+			'@/modules/engine-v2/lifecycle-events/engine-lifecycle-event-subscriptions.js'
 		);
 		await Container.get(EngineV2LifecycleSubscriptions).subscribe(executionId);
 	}

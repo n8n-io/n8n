@@ -33,6 +33,7 @@ import type {
 	CoreColumn,
 	CoreOptions,
 	DeepKeys,
+	HeaderContext,
 	PaginationState,
 	Row,
 	RowSelectionState,
@@ -49,7 +50,7 @@ import { ElSkeletonItem } from 'element-plus';
 import get from 'lodash/get.js';
 import { computed, h, shallowRef, useSlots, useTemplateRef, watch } from 'vue';
 
-import { useHorizontalScrollEdges } from '../../composables/useHorizontalScrollEdges';
+import { useScrollEdges } from '../../composables/useScrollEdges';
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nPagination, { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 
@@ -135,6 +136,8 @@ const props = withDefaults(
 const slots = useSlots();
 defineSlots<{
 	[key: `item.${string}`]: (props: { value: unknown; item: T }) => void;
+	/** The content of a column header, in place of its title. */
+	[key: `header.${string}`]: () => void;
 	item: (props: { item: T; cells: Array<Cell<T, unknown>> }) => void;
 	cover?: () => void;
 	/** One cell of a group row. `item` is the first row of the group, or undefined for an extra group. */
@@ -215,6 +218,14 @@ function itemKeySlot(info: CellContext<T, unknown>) {
 		: info.getValue();
 }
 
+/** Renders the `header.<column>` slot when the page gives one, or else the title. */
+function headerSlot(column: TableHeader<T>) {
+	return (context: HeaderContext<T, unknown>) => {
+		const slot = slots[`header.${context.column.id}`];
+		return slot ? slot() : getHeaderTitle(column);
+	};
+}
+
 function isValueAccessor(column: TableHeader<T>): column is Required<TableHeader<T>> {
 	return !!column.value;
 }
@@ -255,7 +266,7 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 		return columnHelper.accessor(column.value, {
 			id: column.key,
 			cell: itemKeySlot,
-			header: () => getHeaderTitle(column),
+			header: headerSlot(column),
 			enableSorting: !column.disableSort,
 			enableResizing: column.resize ?? true,
 			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
@@ -270,7 +281,7 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 		return columnHelper.accessor(column.value, {
 			id: column.key ?? column.value,
 			cell: itemKeySlot,
-			header: () => getHeaderTitle(column),
+			header: headerSlot(column),
 			enableSorting: !column.disableSort,
 			enableResizing: column.resize ?? true,
 			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
@@ -296,7 +307,7 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 			return columnHelper.accessor(column.key, {
 				id: accessor,
 				cell: itemKeySlot,
-				header: () => getHeaderTitle(column),
+				header: headerSlot(column),
 				enableSorting: !column.disableSort,
 				enableResizing: column.resize ?? true,
 				minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
@@ -311,7 +322,7 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 
 		return columnHelper.display({
 			id: `display_column_${index}`,
-			header: () => getHeaderTitle(column),
+			header: headerSlot(column),
 			size: column.width,
 			meta: {
 				cellProps: {
@@ -339,6 +350,13 @@ const columnPinning = computed<ColumnPinningState>(() => {
 	return { left, right };
 });
 
+// Only the sorted header gets aria-sort, as in the WAI-ARIA sortable table pattern.
+function getAriaSort(column: Column<T, unknown>) {
+	const direction = column.getIsSorted();
+	if (!direction) return undefined;
+	return direction === 'asc' ? 'ascending' : 'descending';
+}
+
 function getPinnedCellBindings(column: Column<T, unknown>) {
 	const side = column.getIsPinned();
 	if (!side) return undefined;
@@ -357,7 +375,50 @@ function getPinnedCellBindings(column: Column<T, unknown>) {
 
 const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
 const tableElement = useTemplateRef<HTMLTableElement>('tableElement');
-const { canScrollLeft, canScrollRight } = useHorizontalScrollEdges(scrollContainer, tableElement);
+const { canScrollLeft, canScrollRight } = useScrollEdges(scrollContainer, {
+	axis: 'horizontal',
+	content: tableElement,
+});
+
+// The browser scrolls a focused element into view only when it is fully hidden, and it counts a
+// cell under the sticky header or a pinned column as visible. So keyboard focus moves the cell
+// clear of them here. A scroll padding would also make a focused header or pinned cell scroll
+// the table away. A pointer focus does not scroll: the table would move under the pointer.
+let isPointerFocus = false;
+
+// The browser moves the focus in the same task as pointerdown, so the flag covers only that focus.
+function markPointerFocus() {
+	isPointerFocus = true;
+	setTimeout(() => (isPointerFocus = false));
+}
+
+function revealKeyboardFocus(event: FocusEvent) {
+	const container = scrollContainer.value;
+	if (isPointerFocus || !container || !(event.target instanceof Element)) return;
+	event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+
+	const cell = event.target.closest('td, th');
+	if (!cell || !container.contains(cell)) return;
+	const cellRect = cell.getBoundingClientRect();
+
+	if (!cell.classList.contains('is-pinned')) {
+		const viewLeft = container.getBoundingClientRect().left + container.clientLeft;
+		const clearLeft = viewLeft + table.getLeftTotalSize();
+		const clearRight = viewLeft + container.clientWidth - table.getRightTotalSize();
+		if (cellRect.left < clearLeft) {
+			container.scrollLeft -= clearLeft - cellRect.left;
+		} else if (cellRect.right > clearRight) {
+			// A cell wider than the clear area keeps its start in view.
+			container.scrollLeft += Math.min(cellRect.right - clearRight, cellRect.left - clearLeft);
+		}
+	}
+
+	const header = tableElement.value?.tHead;
+	if (header && !header.contains(cell)) {
+		const covered = header.getBoundingClientRect().bottom - cellRect.top;
+		if (covered > 0) container.scrollTop -= covered;
+	}
+}
 
 const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
@@ -556,7 +617,12 @@ const table = useVueTable({
 				'has-pinned-end': pinEndColumns > 0,
 			}"
 		>
-			<div ref="scrollContainer" class="table-scroll">
+			<div
+				ref="scrollContainer"
+				class="table-scroll"
+				@focusin="revealKeyboardFocus"
+				@pointerdown.capture="markPointerFocus"
+			>
 				<table
 					ref="tableElement"
 					class="n8n-data-table-server"
@@ -574,7 +640,6 @@ const table = useVueTable({
 								<th
 									v-bind="getPinnedCellBindings(header.column)"
 									:style="{
-										cursor: header.column.getCanSort() ? 'pointer' : undefined,
 										width: `${header.getSize()}px`,
 										maxWidth: `${header.getSize()}px`,
 									}"
@@ -582,20 +647,35 @@ const table = useVueTable({
 										'cell-select': header.column.id === SELECT_COLUMN_ID,
 										[`cell-align--${getColumnMeta(header.column).cellProps.align}`]: true,
 									}"
-									@mousedown="header.column.getToggleSortingHandler()?.($event)"
+									:aria-sort="getAriaSort(header.column)"
 								>
 									<div class="cell-content">
+										<!-- A resize drag that ends on the title sends its click to the th, so it does not sort. -->
+										<button
+											v-if="header.column.getCanSort()"
+											type="button"
+											class="sort-button"
+											@click="header.column.getToggleSortingHandler()?.($event)"
+										>
+											<FlexRender
+												v-if="!header.isPlaceholder"
+												:render="header.column.columnDef.header"
+												:props="header.getContext()"
+											/>
+											<!-- aria-sort on the th already tells the direction. -->
+											<span
+												v-if="header.column.getIsSorted()"
+												class="sort-indicator"
+												aria-hidden="true"
+											>
+												{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
+											</span>
+										</button>
 										<FlexRender
-											v-if="!header.isPlaceholder"
+											v-else-if="!header.isPlaceholder"
 											:render="header.column.columnDef.header"
 											:props="header.getContext()"
 										/>
-										<span
-											v-if="header.column.getCanSort() && header.column.getIsSorted()"
-											class="sort-indicator"
-										>
-											{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
-										</span>
 									</div>
 
 									<div
@@ -721,6 +801,7 @@ const table = useVueTable({
 
 <style lang="scss" scoped>
 @use '../../css/mixins/motion';
+@use '../../css/mixins/focus';
 
 .n8n-data-table-server {
 	height: 100%;
@@ -728,6 +809,41 @@ const table = useVueTable({
 
 	.sort-indicator {
 		margin-inline-start: var(--spacing--4xs);
+	}
+
+	.sort-button {
+		/* A button is an atomic inline box, so it truncates the title itself. */
+		display: block;
+		width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		padding: 0;
+		border: none;
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: inherit;
+		cursor: pointer;
+
+		/* Clicks anywhere in the header cell sort, as before the button. The resizer stays on top. */
+		&::after {
+			content: '';
+			position: absolute;
+			inset: 0;
+			border-radius: var(--radius);
+		}
+
+		/* The ring outlines the whole cell, which is the click target. */
+		&:focus-visible {
+			outline: none;
+		}
+
+		&:focus-visible::after {
+			@include focus.focus-ring;
+			/* Inset, so a neighbouring sticky cell cannot cover the ring. */
+			outline-offset: calc(-1 * var(--focus--border-width));
+		}
 	}
 
 	table {
@@ -794,8 +910,10 @@ const table = useVueTable({
 	tbody tr {
 		background-color: var(--color--background--light-3);
 		border-bottom: 1px solid var(--color--foreground);
+		// No border at all: a transparent one still takes 1px and shows the darker
+		// background behind the table in dark mode.
 		&:last-child {
-			border-color: transparent;
+			border-bottom: none;
 		}
 	}
 

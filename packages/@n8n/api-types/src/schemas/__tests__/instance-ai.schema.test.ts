@@ -547,6 +547,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.createSkill).toBe('require_approval');
 		expect(result.updateSkill).toBe('require_approval');
 		expect(result.deleteSkill).toBe('require_approval');
+		expect(result.deleteMcpServer).toBe('require_approval');
 
 		// These should all be blocked
 		expect(result.createWorkflow).toBe('blocked');

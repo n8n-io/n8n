@@ -17,7 +17,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Logger } from '@n8n/backend-common';
 
-import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/engine-lifecycle-event-subscriptions';
+import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/lifecycle-events/engine-lifecycle-event-subscriptions';
 import { createInMemoryExecutionChannel } from '@/modules/engine-v2/execution-channel/in-memory-execution-channel';
 import { ExecutionChannelReceiver } from '@/modules/engine-v2/execution-channel/execution-channel-receiver';
 import { createLifecycleEventCodec } from '@/modules/engine-v2/execution-channel/lifecycle-event-frame';
@@ -165,6 +165,20 @@ describe('lifecycle events of engine v2 runs', () => {
 		const { workflow, executionId } = await manualRun('push-1');
 
 		expect(sentMessages()).toEqual([
+			{
+				message: expect.objectContaining({
+					type: 'executionStarted',
+					data: expect.objectContaining({
+						executionId,
+						workflowId: workflow.id,
+						mode: 'manual',
+						workflowName: workflow.name,
+						// A full run starts from no run data.
+						flattedRunData: '[{}]',
+					}),
+				}),
+				pushRef: 'push-1',
+			},
 			{
 				message: expect.objectContaining({
 					type: 'nodeExecuteBefore',

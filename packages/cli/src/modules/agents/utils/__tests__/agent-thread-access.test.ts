@@ -1,5 +1,6 @@
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import {
+	canContinuePublicApiThread,
 	canContinueThreadOnSurface,
 	chatSurfaceForKind,
 	N8N_CHAT_PRODUCTION_SOURCE,
@@ -50,6 +51,12 @@ describe('canContinueThreadOnSurface', () => {
 		);
 	});
 
+	it('does not let Preview continue a Public API session', () => {
+		expect(canContinueThreadOnSurface('preview', thread, 'user-1', 'public_api', false)).toBe(
+			false,
+		);
+	});
+
 	describe('system threads', () => {
 		it('lets the owner continue a system thread before its first execution', () => {
 			expect(canContinueThreadOnSurface('system', thread, 'user-1', undefined, true)).toBe(true);
@@ -78,5 +85,24 @@ describe('canContinueThreadOnSurface', () => {
 				expect(canContinueThreadOnSurface(surface, thread, 'user-1', source, true)).toBe(false);
 			},
 		);
+	});
+});
+
+describe('canContinuePublicApiThread', () => {
+	it('lets the owner continue their own Public API session', () => {
+		expect(canContinuePublicApiThread(thread, 'user-1', 'public_api', false)).toBe(true);
+	});
+
+	it.each([['chat'], [N8N_CHAT_PRODUCTION_SOURCE], ['']])(
+		'refuses a session that started on another surface (%s)',
+		(source) => {
+			expect(canContinuePublicApiThread(thread, 'user-1', source, false)).toBe(false);
+		},
+	);
+
+	it('refuses another user, a system agent, and a session without a source', () => {
+		expect(canContinuePublicApiThread(thread, 'user-2', 'public_api', false)).toBe(false);
+		expect(canContinuePublicApiThread(thread, 'user-1', 'public_api', true)).toBe(false);
+		expect(canContinuePublicApiThread(thread, 'user-1', undefined, false)).toBe(false);
 	});
 });

@@ -29,6 +29,7 @@ import { useDynamicCredentials } from '@/features/resolvers/composables/useDynam
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { PROMOTIONS_SETTINGS_VIEW } from '@n8n/frontend-module-promotions';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import {
 	canManageInstanceAi,
 	canMessageInstanceAi,
@@ -63,8 +64,6 @@ const SettingsUsersView = async () =>
 const SettingsResolversView = async () => await import('@/features/resolvers/ResolversView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
-const SettingsApiView = async () =>
-	await import('@/features/settings/apiKeys/views/SettingsApiView.vue');
 const SetupView = async () => await import('@/features/core/auth/views/SetupView.vue');
 const SigninView = async () => await import('@/features/core/auth/views/SigninView.vue');
 const SignupView = async () => await import('@/features/core/auth/views/SignupView.vue');
@@ -122,6 +121,8 @@ const ResourceCenterView = async () =>
 
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
+const WorkflowReviewInstanceSettingsView = async () =>
+	await import('@/features/settings/security/WorkflowReviewInstanceSettingsView.vue');
 
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
@@ -717,6 +718,34 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'security/workflow-reviews/project-requirements',
+				name: VIEWS.SECURITY_WORKFLOW_REVIEW_INSTANCE_SETTINGS,
+				component: WorkflowReviewInstanceSettingsView,
+				beforeEnter: () =>
+					useWorkflowReviewsFeature().isWorkflowReviewsEnabled.value || {
+						name: VIEWS.SECURITY_SETTINGS,
+					},
+				meta: {
+					middleware: ['authenticated', 'enterprise', 'rbac'],
+					middlewareOptions: {
+						enterprise: {
+							feature: EnterpriseEditionFeature.WorkflowReviews,
+						},
+						rbac: {
+							scope: ['securitySettings:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'security',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'users',
 				name: VIEWS.USERS_SETTINGS,
 				component: SettingsUsersView,
@@ -817,153 +846,6 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'resolvers',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'project-roles/view/:roleSlug',
-				name: VIEWS.PROJECT_ROLE_VIEW,
-				component: async () => await import('@/features/roles/project/ProjectRoleView.vue'),
-				props: true,
-				meta: {
-					middleware: ['authenticated', 'enterprise'],
-					middlewareOptions: {
-						enterprise: {
-							feature: EnterpriseEditionFeature.CustomRoles,
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'project-roles',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'roles',
-				name: VIEWS.ROLES_SETTINGS,
-				component: async () => await import('@/features/roles/RolesView.vue'),
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: ['role:manage', 'role:manageProject'],
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'roles',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'instance-roles',
-				component: RouterView,
-				children: [
-					{
-						path: '',
-						// Instance roles are listed inside the tabbed Roles shell; the bare
-						// path has no standalone page, so redirect it to the instance tab.
-						redirect: () => ({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'instance' } }),
-					},
-					{
-						path: 'new',
-						name: VIEWS.INSTANCE_NEW_ROLE,
-						component: async () => await import('@/features/roles/instance/InstanceRoleView.vue'),
-					},
-					{
-						path: 'edit/:roleSlug',
-						name: VIEWS.INSTANCE_ROLE_SETTINGS,
-						component: async () => await import('@/features/roles/instance/InstanceRoleView.vue'),
-						props: true,
-					},
-					{
-						path: 'view/:roleSlug',
-						name: VIEWS.INSTANCE_ROLE_VIEW,
-						component: async () => await import('@/features/roles/instance/InstanceRoleView.vue'),
-						props: true,
-					},
-				],
-				meta: {
-					middleware: ['authenticated', 'enterprise', 'rbac'],
-					middlewareOptions: {
-						enterprise: {
-							feature: EnterpriseEditionFeature.CustomRoles,
-						},
-						rbac: {
-							scope: ['role:manage'],
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'roles',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'project-roles',
-				component: RouterView,
-				children: [
-					{
-						path: '',
-						name: VIEWS.PROJECT_ROLES_SETTINGS,
-						// The standalone project-roles page is superseded by the tabbed Roles shell;
-						// redirect old deep links to the project tab there.
-						redirect: () => ({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'project' } }),
-					},
-					{
-						path: 'new',
-						name: VIEWS.PROJECT_NEW_ROLE,
-						component: async () => await import('@/features/roles/project/ProjectRoleView.vue'),
-					},
-					{
-						path: 'edit/:roleSlug',
-						name: VIEWS.PROJECT_ROLE_SETTINGS,
-						component: async () => await import('@/features/roles/project/ProjectRoleView.vue'),
-						props: true,
-					},
-				],
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: ['role:manage', 'role:manageProject'],
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'project-roles',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'api',
-				name: VIEWS.API_SETTINGS,
-				component: SettingsApiView,
-				meta: {
-					middleware: ['authenticated'],
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'api',
 							};
 						},
 					},

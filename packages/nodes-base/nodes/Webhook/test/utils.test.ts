@@ -11,6 +11,7 @@ import {
 } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 
+import { WebhookAuthorizationError } from '../error';
 import type { WebhookParameters } from '../utils';
 import {
 	checkResponseModeConfiguration,
@@ -775,6 +776,51 @@ describe('Webhook Utils', () => {
 			expect(result).toEqual(decodedPayload);
 		});
 
+		// CAP-729
+		it.each(['unsupportedMode', 'BasicAuth'])(
+			'should reject unsupported authentication mode "%s" with a 500 error',
+			async (authentication) => {
+				const ctx: Partial<IWebhookFunctions> = {
+					getNodeParameter: vi.fn().mockReturnValue(authentication),
+					getCredentials: vi.fn().mockResolvedValue({
+						user: 'admin',
+						password: 'password',
+					}),
+					getRequestObject: vi.fn().mockReturnValue({
+						headers: {},
+					}),
+					getHeaderData: vi.fn().mockReturnValue({}),
+				};
+
+				const authCheck = validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication');
+
+				await expect(authCheck).rejects.toBeInstanceOf(WebhookAuthorizationError);
+				await expect(authCheck).rejects.toMatchObject({ responseCode: 500 });
+			},
+		);
+
+		it.each([
+			['empty string', ''],
+			['null', null],
+			['undefined', undefined],
+		])(
+			'should reject non-matching authentication value (%s) with a 500 error',
+			async (_label, authentication) => {
+				const ctx: Partial<IWebhookFunctions> = {
+					getNodeParameter: vi.fn().mockReturnValue(authentication),
+					getRequestObject: vi.fn().mockReturnValue({
+						headers: {},
+					}),
+					getHeaderData: vi.fn().mockReturnValue({}),
+				};
+
+				const authCheck = validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication');
+
+				await expect(authCheck).rejects.toBeInstanceOf(WebhookAuthorizationError);
+				await expect(authCheck).rejects.toMatchObject({ responseCode: 500 });
+			},
+		);
+
 		describe('records the headers it authenticated with', () => {
 			const setup = (
 				authentication: string,
@@ -928,6 +974,7 @@ describe('Webhook Utils', () => {
 					},
 				}),
 				getNodeParameter: vi.fn().mockReturnValue(options),
+				getNode: vi.fn().mockReturnValue({ type: 'n8n-nodes-base.webhook', typeVersion: 2.2 }),
 				nodeHelpers: {
 					copyBinaryFile: mockCopyBinaryFile,
 				},

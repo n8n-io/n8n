@@ -32,7 +32,7 @@ export class InstancePolicyPage extends BasePage {
 
 	/** Sets the access of a type from the Access menu of its row, found by its display name. */
 	async setRowAccess(displayName: string, access: AccessLabel) {
-		await this.page.getByRole('button', { name: `Access of ${displayName}` }).click();
+		await this.getRowAccess(displayName).click();
 		await this.page
 			.getByRole('menuitemcheckbox', { name: access, exact: true })
 			.or(this.page.getByRole('menuitem', { name: access, exact: true }))
@@ -62,8 +62,9 @@ export class InstancePolicyPage extends BasePage {
 	async holdPolicySaves(kind: TypeKind): Promise<() => void> {
 		let release = () => {};
 		const released = new Promise<void>((resolve) => (release = resolve));
-		await this.page.route(`**/rest/${kind}-type-policies/instance`, async (route) => {
-			if (route.request().method() === 'PUT') await released;
+		// The access read uses the same path, so only the write waits.
+		await this.page.route(`**/rest/${kind}-type-policies/instance/access`, async (route) => {
+			if (route.request().method() === 'PATCH') await released;
 			await route.fallback();
 		});
 		return release;
@@ -71,5 +72,48 @@ export class InstancePolicyPage extends BasePage {
 
 	getDoneButton(kind: TypeKind): Locator {
 		return this.page.getByTestId(`${kind}-type-access-done`);
+	}
+
+	/** The Access button of a row, which shows the current access of the type. */
+	getRowAccess(displayName: string): Locator {
+		return this.page.getByRole('button', { name: `Access of ${displayName}` });
+	}
+
+	/** The select checkbox of a row, found by the display name of its type. */
+	getRowCheckbox(displayName: string): Locator {
+		return this.page.getByRole('checkbox', { name: `Select ${displayName}` });
+	}
+
+	/** Selects the rows of the current page. */
+	getSelectAllCheckbox(): Locator {
+		return this.page.getByRole('checkbox', { name: 'Select all rows on this page' });
+	}
+
+	/** The bar that shows the count of the selected rows and the bulk actions. */
+	getSelectionBar(): Locator {
+		return this.page.getByRole('group', { name: 'Actions for the selected rows' });
+	}
+
+	/** The live region that announces the count of the selected rows. */
+	getSelectionStatus(): Locator {
+		return this.page.getByTestId('policy-bulk-status');
+	}
+
+	getBulkButton(access: AccessLabel): Locator {
+		return this.page.getByTestId(
+			access === 'Allowed' ? 'policy-bulk-allow' : 'policy-bulk-restrict',
+		);
+	}
+
+	/** The review that asks before the admin restricts types that workflows use. */
+	getRestrictReview(): Locator {
+		return this.page
+			.getByRole('dialog')
+			.filter({ has: this.page.getByTestId('restrict-review-dialog') });
+	}
+
+	/** A button of the restrict review, such as `Cancel` or `Restrict 2`. */
+	getRestrictReviewButton(name: string): Locator {
+		return this.getRestrictReview().getByRole('button', { name, exact: true });
 	}
 }

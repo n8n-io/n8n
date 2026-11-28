@@ -32,60 +32,60 @@ and release branches. On a branch without a bake file, the pin PR edits the
 |---|---|
 | `RUNTIME_IMAGE` | `n8nio/base:<version>-<commit>` |
 | `DEBIAN_RUNTIME_IMAGE` | `n8nio/base:<version>-debian-<commit>` |
-| `N8N_RUNTIME_IMAGE` | `n8nio/node-patched:<version>-<commit>` |
 | `N8N_BUILDER_IMAGE` | `n8nio/node-patched:<version>-<commit>-dev` |
-| `PC_RUNTIME_IMAGE` | `n8nio/node-pc:<version>-<commit>` |
 | `PC_BUILDER_IMAGE` | `n8nio/node-pc:<version>-<commit>-dev` |
-| `NODE_24_RUNTIME_IMAGE` | `n8nio/base:<Node 24 version>-<commit>` |
-| `RUNTIME_IMAGE` (`1.x` Dockerfile, after the switch) | `n8nio/node-patched:<Node 24 version>-<commit>` |
-| `BUILDER_IMAGE` (`1.x` Dockerfile, after the switch) | `n8nio/node-patched:<Node 24 version>-<commit>-dev` |
-| `RUNTIME_IMAGE` (Node 26 release branch) | `n8nio/node-patched:<version>-<commit>` |
-| `BUILDER_IMAGE` (Node 26 release branch) | `n8nio/node-patched:<version>-<commit>-dev` |
+| `RUNTIME_IMAGE` (`1.x` Dockerfile) | `n8nio/base:<Node 24 version>-<commit>` |
+| `BUILDER_IMAGE` (`1.x` Dockerfile) | `n8nio/node-patched:<Node 24 version>-<commit>-dev` |
 
-Before the switch, the `1.x` Dockerfile pins `RUNTIME_IMAGE` to `n8nio/base`
-and `BUILDER_IMAGE` to the official `node` image. After master publishes the
-patched Node 24 images, change both pins to `n8nio/node-patched`. Keep
-`NODE_24_RUNTIME_IMAGE` on the master-published `n8nio/base` Node 24 image.
-Do not copy the new `1.x` runtime pin into this input.
+The `n8n` and `n8n-pc` Dockerfiles build on `RUNTIME_IMAGE` (`n8nio/base`) and
+copy the compiled Node binaries from their `*-dev` builder image. OS base
+refreshes therefore pin `RUNTIME_IMAGE` only and do not recompile Node.
 
 | Image | Inputs (PR 1) | Pins (PR 2) |
 |---|---|---|
 | `n8nio/base` | `DHI_REF`, `n8n-base/Dockerfile` | `RUNTIME_IMAGE` |
 | `n8nio/base:*-debian` | `DEBIAN_DHI_REF`, `ALPINE_IMAGE`, `n8n-base/Dockerfile.debian` | `DEBIAN_RUNTIME_IMAGE` |
-| `n8nio/node-pc` | `NODE_VERSION`, `RUNTIME_IMAGE`, `ALPINE_IMAGE`, `node-pc/Dockerfile`, `node-pc/patches/*`, `node-pc/check-v8-patches.js` | `PC_BUILDER_IMAGE`, `PC_RUNTIME_IMAGE` |
-| `n8nio/node-patched` (Node 24) | `NODE_24_VERSION`, `NODE_24_RUNTIME_IMAGE`, `ALPINE_IMAGE`, and the `node-pc` files | `BUILDER_IMAGE`, `RUNTIME_IMAGE` in `docker/images/n8n/Dockerfile` on the `1.x` branch |
-| `n8nio/node-patched` (Node 26) | `NODE_VERSION`, `RUNTIME_IMAGE`, `ALPINE_IMAGE`, and the `node-pc` files | `BUILDER_IMAGE`, `RUNTIME_IMAGE` on the Node 26 release branches |
+| `n8nio/node-pc` | `NODE_VERSION`, `ALPINE_IMAGE`, `node-pc/Dockerfile`, `node-pc/patches/*`, `node-pc/check-v8-patches.js` | `PC_BUILDER_IMAGE` |
+| `n8nio/node-patched` (Node 24) | `NODE_24_VERSION`, `ALPINE_IMAGE`, and the `node-pc` files | `BUILDER_IMAGE` in `docker/images/n8n/Dockerfile` on the `1.x` branch |
+| `n8nio/node-patched` (Node 26) | `NODE_VERSION`, `ALPINE_IMAGE`, and the `node-pc` files | `N8N_BUILDER_IMAGE` |
 
 - A push to master publishes an image only when its inputs changed. A pin PR
   changes no input of the image that it pins, so the tag stays on the pin.
-- `RUNTIME_IMAGE` is an input of `n8nio/node-pc`. So the pin PR of a new base
-  is the inputs PR of node-pc, and the `-pc` images need a third PR.
+- `n8nio/node-pc` and `n8nio/node-patched` do not depend on `RUNTIME_IMAGE`.
+  A base image refresh takes two PRs (`DHI_REF` → `RUNTIME_IMAGE`) and does
+  not trigger `build-node-pc-image.yml`.
 - Only master publishes. The workflows stop a dispatch with `push` on another
   branch.
 - A dispatch on master with `push` always publishes. Use it when a publish run
   failed, when only the workflow changed, or to get patched OS packages. Then
-  pin the new digest.
+  pin the new digest. Set `targets` to build only some bases, so the tags of
+  the other bases stay on their digests.
+- `sec-base-image-refresh.yml` dispatches `build-base-image.yml` for a base
+  when a package that the base installs has a fix. If the rebuilt base has
+  fewer findings, it pins the base 24 hours later (a manual run does not
+  wait). Otherwise, it sends an alert.
 
-The `node-patched-26` target uses the same Node version and runtime base as
-`node-pc`, with pointer compression off. The workflow publishes runtime and
-`-dev` tags for Node 24 and Node 26. It builds each variant on native amd64
-and arm64 runners and creates a multi-arch manifest for each tag. After master
-publishes, pin the Node 26 runtime and `-dev` digests on the branches selected
-for stable and beta releases.
+The `node-patched-26` target uses the same Node version as `node-pc`, with
+pointer compression off. The workflow publishes `-dev` tags for Node 24 and
+Node 26. It builds each variant on native amd64 and arm64 runners and creates
+a multi-arch manifest for each tag.
 
 ### Example: a new Node version
 
-1. Change `DHI_REF` and `DEBIAN_DHI_REF`. Master publishes the new bases.
-2. Change `NODE_VERSION`, `BUILDER_IMAGE` and `DEBIAN_BUILDER_IMAGE`. Pin
-   `RUNTIME_IMAGE` and `DEBIAN_RUNTIME_IMAGE`. Master publishes `node-pc`
-   and `node-patched-26` from these inputs.
-3. Pin `PC_BUILDER_IMAGE` and `PC_RUNTIME_IMAGE`. Pin the Node 26
-   `n8nio/node-patched` runtime and `-dev` digests in the release branches.
+1. Change `DHI_REF`, `DEBIAN_DHI_REF`, `NODE_VERSION`, `BUILDER_IMAGE`, and
+   `DEBIAN_BUILDER_IMAGE`. Master publishes the new bases (`n8nio/base`),
+   `n8nio/node-pc:*-dev`, and `n8nio/node-patched:*-dev`. CI reads
+   `NODE_VERSION`, so no workflow changes. For a newer patch of the same
+   minor, `sec-base-image-refresh.yml` opens this PR
+   (`build: Update Node to <version>`) when every pin publishes the patch.
+2. Pin `RUNTIME_IMAGE`, `DEBIAN_RUNTIME_IMAGE`, `N8N_BUILDER_IMAGE`, and
+   `PC_BUILDER_IMAGE` in one PR, so the Alpine and the Debian images move to
+   the new Node together. After the merge of the Node PR, the chain job of
+   `sec-base-image-refresh.yml` opens this PR when both workflows published.
 
-For a Node 24 update, change `NODE_24_DHI_REF` first. After master publishes
-the base, pin it in `NODE_24_RUNTIME_IMAGE` and change `NODE_24_VERSION`.
-After master publishes `node-patched-24`, pin its runtime and `-dev` digests
-in the `1.x` Dockerfile.
+For a Node 24 update, change `NODE_24_DHI_REF` and `NODE_24_VERSION`. After
+master publishes `n8nio/base` and `n8nio/node-patched:*-dev`, pin
+`RUNTIME_IMAGE` and `BUILDER_IMAGE` in the `1.x` Dockerfile.
 
 Other third-party pins (`node`, `python`, `alpine`, distroless) change in one
 PR.

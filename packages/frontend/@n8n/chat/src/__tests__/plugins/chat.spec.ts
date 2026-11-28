@@ -303,6 +303,56 @@ describe('ChatPlugin', () => {
 			expect(chatStore.currentSessionId.value).toBe(mockSessionId);
 		});
 
+		it.each([false, true])(
+			'loads JSON history with streaming set to %s',
+			async (enableStreaming) => {
+				const actualApi = await vi.importActual<typeof api>('@n8n/chat/api');
+				vi.mocked(api.loadPreviousSession).mockImplementationOnce(actualApi.loadPreviousSession);
+				mockOptions.enableStreaming = enableStreaming;
+				mockOptions.sessionId = 's1';
+				mockOptions.webhookConfig = { method: 'POST' };
+				chatStore = setupChatStore(mockOptions);
+				const history: LoadPreviousSessionResponse = {
+					data: [
+						{
+							lc: 1,
+							type: 'constructor',
+							id: ['langchain_core', 'messages', 'HumanMessage'],
+							kwargs: { content: 'Earlier question', additional_kwargs: {} },
+						},
+						{
+							lc: 1,
+							type: 'constructor',
+							id: ['langchain_core', 'messages', 'AIMessage'],
+							kwargs: { content: 'Earlier reply', additional_kwargs: {} },
+						},
+					],
+				};
+				const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+					new Response(JSON.stringify(history), {
+						headers: { 'Content-Type': 'application/json' },
+					}),
+				);
+				try {
+					await expect(chatStore.loadPreviousSession?.()).resolves.toBe('s1');
+
+					expect(fetchSpy).toHaveBeenCalledWith(
+						mockOptions.webhookUrl,
+						expect.objectContaining({
+							method: 'POST',
+							body: JSON.stringify({ action: 'loadPreviousSession', sessionId: 's1' }),
+						}),
+					);
+					expect(chatStore.messages.value).toEqual([
+						{ id: '0', text: 'Earlier question', sender: 'user' },
+						{ id: '1', text: 'Earlier reply', sender: 'bot' },
+					]);
+				} finally {
+					fetchSpy.mockRestore();
+				}
+			},
+		);
+
 		it('should create new session if no previous session exists', async () => {
 			(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValueOnce(null);
 			vi.mocked(api.loadPreviousSession).mockResolvedValueOnce({ data: [] });

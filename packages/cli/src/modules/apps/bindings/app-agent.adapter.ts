@@ -1,5 +1,7 @@
 import type {
 	AgentChatMessagesResponse,
+	AgentPersistedMessageContentPart,
+	AgentPersistedMessageDto,
 	AgentSseEvent,
 	AppAgentBinding,
 	AppAgentChatRequest,
@@ -16,6 +18,7 @@ import {
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -24,6 +27,15 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 export const APP_AGENT_INTEGRATION_TYPE = 'app';
 
 const VISITOR_ERROR_MESSAGE = 'The agent could not answer.';
+const VISITOR_TOOL_ERROR_MESSAGE = 'Tool execution failed.';
+
+const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
+
+function isFailedDelegation(toolName: string | undefined, output: unknown): boolean {
+	return (
+		toolName === DELEGATE_SUB_AGENT_TOOL_NAME && isRecord(output) && output.status === 'failed'
+	);
+}
 
 interface BoundAgent {
 	agentId: string;
@@ -34,6 +46,7 @@ interface BoundAgent {
 /** Lazy, so the agents module loads only when it is active. */
 async function agentServices() {
 	const [
+		{ redactDeep },
 		{ AgentsService },
 		{ AgentExecutionOrchestratorService },
 		{ N8NCheckpointStorage },
@@ -41,6 +54,7 @@ async function agentServices() {
 		{ emitChunkEvents },
 		{ withOpenSuspensions },
 	] = await Promise.all([
+		import('@n8n/agents'),
 		import('@/modules/agents/agents.service.js'),
 		import('@/modules/agents/agent-execution-orchestrator.service.js'),
 		import('@/modules/agents/integrations/n8n-checkpoint-storage.js'),
@@ -48,13 +62,131 @@ async function agentServices() {
 		import('@/modules/agents/agent-sse-stream.js'),
 		import('@/modules/agents/utils/messages-envelope.js'),
 	]);
+	const redactPayload = (payload: unknown): unknown =>
+		payload === undefined ? undefined : redactDeep(payload, { redactSensitiveKeys: true }).value;
 	return {
 		agents: Container.get(AgentsService),
 		orchestrator: Container.get(AgentExecutionOrchestratorService),
 		checkpoints: Container.get(N8NCheckpointStorage),
 		hashAgentSandboxPrincipal,
 		emitChunkEvents,
+		redactPayload,
 		withOpenSuspensions,
+	};
+}
+
+function toVisitorEvent(
+	event: AgentSseEvent,
+	redactPayload: (payload: unknown) => unknown,
+): AgentSseEvent | null {
+	switch (event.type) {
+		case 'start-step':
+		case 'finish-step':
+		case 'text-start':
+		case 'text-delta':
+		case 'text-end':
+		case 'tool-input-start':
+		case 'tool-execution-start':
+		case 'tool-execution-end':
+			return event;
+		case 'tool-call':
+			return { type: 'tool-call', toolCallId: event.toolCallId, toolName: event.toolName };
+		case 'tool-result': {
+			const { toolCallId, toolName, canceled } = event;
+			const isError = isFailedDelegation(toolName, event.output) || event.isError;
+			return {
+				type: 'tool-result',
+				toolCallId,
+				toolName,
+				...(isError && { output: VISITOR_TOOL_ERROR_MESSAGE }),
+				...(isError !== undefined && { isError }),
+				...(canceled !== undefined && { canceled }),
+			};
+		}
+		case 'tool-call-suspended':
+			return {
+				type: 'tool-call-suspended',
+				payload: { ...event.payload, input: redactPayload(event.payload.input) },
+			};
+		case 'message': {
+			const content = event.message.content.filter((part) => part.type === 'text');
+			return content.length > 0
+				? { type: 'message', message: { role: event.message.role, content } }
+				: null;
+		}
+		case 'finish':
+			return {
+				type: 'finish',
+				finishReason: event.finishReason,
+				...(event.guardrail && { guardrail: event.guardrail }),
+			};
+		default:
+			return null;
+	}
+}
+
+function toVisitorPart(
+	part: AgentPersistedMessageContentPart,
+	redactPayload: (payload: unknown) => unknown,
+): AgentPersistedMessageContentPart | null {
+	if (part.type === 'text' && typeof part.text === 'string') {
+		return { type: 'text', text: part.text };
+	}
+	if (part.type !== 'tool-call') return null;
+	const { toolName, toolCallId, canceled, startTime, endTime, suspendPayload } = part;
+	const failedDelegation = isFailedDelegation(toolName, part.output);
+	const state = failedDelegation ? 'rejected' : part.state;
+	const error = failedDelegation ? VISITOR_TOOL_ERROR_MESSAGE : part.error;
+	return {
+		type: 'tool-call',
+		...(toolName !== undefined && { toolName }),
+		...(toolCallId !== undefined && { toolCallId }),
+		...(state !== undefined && { state }),
+		...(canceled !== undefined && { canceled }),
+		...(startTime !== undefined && { startTime }),
+		...(endTime !== undefined && { endTime }),
+		...(suspendPayload !== undefined && { suspendPayload: redactPayload(suspendPayload) }),
+		...(error !== undefined && { error: VISITOR_TOOL_ERROR_MESSAGE }),
+	};
+}
+
+function toVisitorMessages(
+	response: Pick<AgentChatMessagesResponse, 'messages' | 'openSuspensions'>,
+	redactPayload: (payload: unknown) => unknown,
+): AgentChatMessagesResponse {
+	const messages: AgentPersistedMessageDto[] = [];
+	for (const message of response.messages) {
+		const content = message.content
+			.map((part) => toVisitorPart(part, redactPayload))
+			.filter((part): part is AgentPersistedMessageContentPart => part !== null);
+		const executionError = message.executionError !== undefined ? VISITOR_ERROR_MESSAGE : undefined;
+		if (
+			content.length === 0 &&
+			executionError === undefined &&
+			!message.stopReport &&
+			message.executionStatus !== 'cancelled'
+		) {
+			continue;
+		}
+		const { id, role, stopReport, executionId, executionStatus, createdAt } = message;
+		messages.push({
+			id,
+			role,
+			content,
+			...(stopReport && { stopReport: true }),
+			...(executionId !== undefined && { executionId }),
+			...(executionStatus !== undefined && { executionStatus }),
+			...(executionError !== undefined && { executionError }),
+			...(createdAt !== undefined && { createdAt }),
+		});
+	}
+	return {
+		messages,
+		openSuspensions: response.openSuspensions.map(({ toolCallId, runId, suspendPayload }) => ({
+			toolCallId,
+			runId,
+			...(suspendPayload !== undefined && { suspendPayload: redactPayload(suspendPayload) }),
+		})),
 	};
 }
 
@@ -166,7 +298,14 @@ export class AppAgentAdapter extends AppAgentPort {
 			}),
 			abortSignal: signal,
 		});
-		return { events: this.toEvents(stream, request.sessionId, services.emitChunkEvents) };
+		return {
+			events: this.toEvents(
+				stream,
+				request.sessionId,
+				services.emitChunkEvents,
+				services.redactPayload,
+			),
+		};
 	}
 
 	/** `expectedMemory` stops a visitor from resuming a run on another thread. */
@@ -194,7 +333,14 @@ export class AppAgentAdapter extends AppAgentPort {
 			source: APP_AGENT_INTEGRATION_TYPE,
 			abortSignal: signal,
 		});
-		return { events: this.toEvents(stream, request.sessionId, services.emitChunkEvents) };
+		return {
+			events: this.toEvents(
+				stream,
+				request.sessionId,
+				services.emitChunkEvents,
+				services.redactPayload,
+			),
+		};
 	}
 
 	/** An unknown session reads as empty, so the app cannot learn which sessions exist. */
@@ -213,9 +359,12 @@ export class AppAgentAdapter extends AppAgentPort {
 			userId: resourceId,
 		});
 		const checkpoint = await services.checkpoints.findSuspendedForThread(bound.agentId, threadId);
-		return services.withOpenSuspensions(history?.messages ?? [], checkpoint, {
-			appendInactiveCheckpointMessages: false,
-		});
+		return toVisitorMessages(
+			services.withOpenSuspensions(history?.messages ?? [], checkpoint, {
+				appendInactiveCheckpointMessages: false,
+			}),
+			services.redactPayload,
+		);
 	}
 
 	private async resolve(ctx: AppCallContext, agentId: string): Promise<BoundAgent> {
@@ -260,18 +409,21 @@ export class AppAgentAdapter extends AppAgentPort {
 			chunk: AgentExecutionStreamChunk,
 			send: (event: AgentSseEvent) => void,
 		) => void,
+		redactPayload: (payload: unknown) => unknown,
 	): AsyncGenerator<AgentSseEvent> {
 		const pending: AgentSseEvent[] = [];
-		const push = (event: AgentSseEvent) => pending.push(event);
+		const push = (event: AgentSseEvent) => {
+			const projected = toVisitorEvent(event, redactPayload);
+			if (projected) pending.push(projected);
+		};
 		let suspended = false;
 		try {
 			for await (const chunk of stream) {
-				emitChunkEvents(
-					chunk.type === 'error'
-						? { type: 'error', error: new Error(this.messageForVisitor(chunk.error)) }
-						: chunk,
-					push,
-				);
+				if (chunk.type === 'error') {
+					yield { type: 'error', message: this.messageForVisitor(chunk.error) };
+					continue;
+				}
+				emitChunkEvents(chunk, push);
 				suspended ||= chunk.type === 'tool-call-suspended';
 				yield* pending.splice(0);
 			}

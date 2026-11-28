@@ -9,6 +9,7 @@ import type {
 import type { IWorkflowSettings, ModalKey } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useModalPrefetch } from '@/app/composables/usePrefetchModals';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	createWorkflowDocumentId,
@@ -28,10 +29,12 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import { useSelfHealingChatHandoff } from '@/features/ai/instanceAi/composables/useSelfHealingChatHandoff';
 import { useAppAssistantHandoff } from '@/features/ai/instanceAi/composables/useAppAssistantHandoff';
+import { useMcpServerAssistantHandoff } from '@/features/ai/instanceAi/composables/useMcpServerAssistantHandoff';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 import { mcpDiscoverySettings } from '@/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscoverySettings';
 // EOF Experiment cleanup
 import { mcpPreferencesEntryPoints } from '@/experiments/mcpPreferencesEntryPoints/mcpPreferencesEntryPoints';
+import { customMcpServersEnabled } from '@/experiments/customMcpServers/customMcpServersEnabled';
 
 /**
  * Shell actions that a module calls but cannot import — the counterpart to
@@ -45,6 +48,10 @@ const modalOpeners = {
 	openModal: (name: ModalKey) => useUIStore().openModal(name),
 	openModalWithData: (payload: { name: ModalKey; data: Record<string, unknown> }) =>
 		useUIStore().openModalWithData(payload),
+};
+
+const modalCloser = {
+	closeModal: (name: ModalKey) => useUIStore().closeModal(name),
 };
 
 const syncWorkflowMcpAccess = (workflowIds: string[], availableInMCP: boolean) => {
@@ -199,6 +206,8 @@ const typeDescriptions = {
 
 export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.modalOpeners, modalOpeners);
+	capabilityRegistry.provide(capabilities.modalCloser, modalCloser);
+	capabilityRegistry.provide(capabilities.modalPrefetch, useModalPrefetch);
 	capabilityRegistry.provide(capabilities.projectPermissions, projectPermissions);
 	capabilityRegistry.provide(capabilities.workflowMcpAccessSync, syncWorkflowMcpAccess);
 	capabilityRegistry.provide(capabilities.mcpExposeAllOffer, mcpExposeAllOffer);
@@ -209,7 +218,12 @@ export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.tagNames, tagNames);
 	capabilityRegistry.provide(capabilities.typeDescriptions, typeDescriptions);
 	capabilityRegistry.provide(capabilities.createAppAssistantHandoff, useAppAssistantHandoff);
+	capabilityRegistry.provide(
+		capabilities.createMcpServerAssistantHandoff,
+		useMcpServerAssistantHandoff,
+	);
 	capabilityRegistry.provide(capabilities.appsFeedbackFormUrl, appsFeedbackFormUrl);
+	capabilityRegistry.provide(capabilities.customMcpServersEnabled, customMcpServersEnabled);
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	capabilityRegistry.provide(capabilities.mcpDiscoverySettings, mcpDiscoverySettings);
 	// EOF Experiment cleanup

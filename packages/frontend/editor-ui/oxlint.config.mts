@@ -34,7 +34,26 @@ const extractedFeatures = [
 		message:
 			'mcpAccess is the @n8n/frontend-module-mcp package. The shell registers a module through src/app/modules.manifest.ts.',
 	},
+	{
+		group: ['@/features/settings/apiKeys', '@/features/settings/apiKeys/*'],
+		message:
+			'apiKeys is the @n8n/frontend-module-api-keys package. The shell registers a module through src/app/modules.manifest.ts.',
+	},
+	{
+		group: ['@/features/roles', '@/features/roles/*'],
+		message:
+			'roles is the @n8n/frontend-module-roles package. The shell registers a module through src/app/modules.manifest.ts.',
+	},
 ];
+
+/**
+ * The scopes selector moved out of the shell with the API keys feature. It is not a
+ * feature, so it is not in `extractedFeatures`. Spread it beside `extractedFeatures`.
+ */
+const scopesSelectorImport = {
+	group: ['@/app/components/scopes', '@/app/components/scopes/*'],
+	message: 'ScopesSelector and the scope utils are exported by @n8n/frontend-module-api-keys.',
+};
 
 const prettierImport = {
 	group: ['prettier', 'prettier/*'],
@@ -75,7 +94,10 @@ export default defineConfig({
 		'typescript/no-base-to-string': 'warn',
 		'typescript/restrict-template-expressions': 'warn',
 
-		'no-restricted-imports': ['error', { patterns: [...extractedFeatures, prettierImport] }],
+		'no-restricted-imports': [
+			'error',
+			{ patterns: [...extractedFeatures, scopesSelectorImport, prettierImport] },
+		],
 
 		// Vite bundles everything this package imports and nothing resolves it from
 		// node_modules at runtime, so every dependency is a devDependency. That keeps
@@ -96,6 +118,7 @@ export default defineConfig({
 					{
 						patterns: [
 							...extractedFeatures,
+							scopesSelectorImport,
 							prettierImport,
 							{
 								group: ['**/ndv/runData/components/RunData.vue'],
@@ -116,7 +139,10 @@ export default defineConfig({
 				'src/features/shared/editors/plugins/codemirror/format.test.ts',
 			],
 			rules: {
-				'no-restricted-imports': ['error', { patterns: extractedFeatures }],
+				'no-restricted-imports': [
+					'error',
+					{ patterns: [...extractedFeatures, scopesSelectorImport] },
+				],
 			},
 		},
 		{

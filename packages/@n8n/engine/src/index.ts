@@ -117,6 +117,7 @@ export type {
 	SubExecutionDeclaration,
 	SubExecutionMode,
 } from './dependencies';
+export { noopExecutionFilesDeleter } from './dependencies';
 
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
 export type {
@@ -150,6 +151,7 @@ export type {
 	SubExecutionOutcome,
 	SubExecutionResult,
 	SubExecutionResumeCause,
+	CreateExecutionResult,
 	ExecutionMode,
 	ExecutionViewStore,
 	ExecutionRecord,
@@ -159,6 +161,7 @@ export type {
 	ExecutionView,
 	NewExecutionRecord,
 	NewStepRecord,
+	ErrorSourceLink,
 	ParentLink,
 	InvalidParentLinkReason,
 	StartExecutionRequest,
@@ -181,5 +184,13 @@ export type {
 	WorkflowDocument,
 } from './execution';
 
-export { createDataSource, WorkflowExecution, WorkflowStepExecution } from './database';
+export { retentionPolicyFromHours } from './retention';
+export type { ExecutionRetentionPolicy } from './retention';
+
+export {
+	createDataSource,
+	runMigrations,
+	WorkflowExecution,
+	WorkflowStepExecution,
+} from './database';
 export type { EngineStores } from './database';

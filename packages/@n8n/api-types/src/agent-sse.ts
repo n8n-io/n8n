@@ -26,6 +26,7 @@
  */
 
 import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from './agents';
+import type { ToolCallSimulation } from './schemas/agent-safe-testing.schema';
 
 export interface ToolSuspendedPayload {
 	toolCallId: string;
@@ -107,7 +108,7 @@ export type AgentSseEvent =
 	| { type: 'reasoning-end'; id: string }
 	| { type: 'tool-input-start'; toolCallId: string; toolName: string }
 	| { type: 'tool-input-delta'; toolCallId: string; delta: string }
-	| { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
+	| { type: 'tool-call'; toolCallId: string; toolName: string; input?: unknown }
 	| {
 			/**
 			 * Mid-flight indicator: the LLM has finished emitting the tool call and
@@ -138,9 +139,11 @@ export type AgentSseEvent =
 			type: 'tool-result';
 			toolCallId: string;
 			toolName: string;
-			output: unknown;
+			output?: unknown;
 			isError?: boolean;
 			canceled?: boolean;
+			/** How the call ran. Set only in a test run (safe testing). */
+			simulation?: ToolCallSimulation;
 	  }
 	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
 	| {

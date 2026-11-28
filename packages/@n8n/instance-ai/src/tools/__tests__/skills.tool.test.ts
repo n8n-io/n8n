@@ -61,9 +61,11 @@ const syncedDetail: SkillDetail = {
 	},
 };
 
+type SkillServiceFlags = 'assistantSkillsEnabled' | 'workflowsInSkillsEnabled' | 'sources';
+
 type SkillServiceMock = {
-	[K in Exclude<keyof InstanceAiSkillService, 'assistantSkillsEnabled' | 'sources'>]: Mock;
-} & Pick<InstanceAiSkillService, 'assistantSkillsEnabled' | 'sources'>;
+	[K in Exclude<keyof InstanceAiSkillService, SkillServiceFlags>]: Mock;
+} & Pick<InstanceAiSkillService, SkillServiceFlags>;
 
 function createSkillService(assistantSkillsEnabled = true): SkillServiceMock {
 	return {
@@ -110,6 +112,14 @@ describe('skills tool', () => {
 
 	beforeEach(() => {
 		service = createSkillService();
+	});
+
+	it('prompts the assistant to list and reuse existing skills before creating a new one', () => {
+		const tool = createSkillsTool(createContext(service));
+
+		expect(tool.description).toContain('attachableToAgentId');
+		expect(tool.description).toMatch(/list existing skills/i);
+		expect(tool.description).toMatch(/reuse a matching skill/i);
 	});
 
 	describe('list', () => {
@@ -283,7 +293,7 @@ describe('skills tool', () => {
 			revision: 'commit',
 		};
 		const check = {
-			source: { label: 'acme/skills', ref: 'main', path: 'skills' },
+			source: { label: 'acme/skills / skills', ref: 'main', path: 'skills' },
 			importable: [{ key: 'brand-voice', name: 'Brand voice' }],
 			failed: [],
 		};
@@ -351,7 +361,7 @@ describe('skills tool', () => {
 			});
 			expect(suspend).toHaveBeenCalledWith(
 				expect.objectContaining({
-					resourceName: 'acme/skills · main · skills',
+					resourceName: 'acme/skills / skills · main',
 					message:
 						'Connect this source and import 1 synced skill for every project on this instance: Brand voice.',
 				}),
@@ -474,6 +484,24 @@ describe('skills tool', () => {
 			expect(checkImport).not.toHaveBeenCalled();
 			expect(suspend).not.toHaveBeenCalled();
 			expect(connect).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('workflow mention hint', () => {
+		const hint =
+			'To make a skill run an n8n workflow, link the workflow in the instructions as [Workflow name](n8n://workflow/<workflow-id>).';
+
+		function toolDescription(workflowsInSkillsEnabled: boolean) {
+			const skillService = { ...createSkillService(), workflowsInSkillsEnabled };
+			return createSkillsTool(createContext(skillService)).description;
+		}
+
+		it('tells the assistant how to mention a workflow when the flag is on', () => {
+			expect(toolDescription(true)).toContain(hint);
+		});
+
+		it('says nothing about workflow mentions when the flag is off', () => {
+			expect(toolDescription(false)).not.toContain('n8n://workflow');
 		});
 	});
 

@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 
 import { getBrowserUsePrompt } from './browser-use-prompt';
 import { COMMUNICATION_STYLE_SECTION } from './communication-style.prompt';
-import { ASK_USER_TOOL_ID, ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
+import { ASK_USER_TOOL_ID, DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
 import {
 	SCOPE_GROUNDING_GUARDRAIL,
 	SECRET_ASK_GUARDRAIL,
@@ -39,6 +39,9 @@ interface SystemPromptOptions {
 	/** The send_feedback tool is wired; tell the model when to report a problem. */
 	feedbackToolEnabled?: boolean;
 	skillManagementEnabled?: boolean;
+	/** The custom-mcp-servers tool is wired; its writes stay available on a read-only instance. */
+	customMcpServersEnabled?: boolean;
+	agentArchiveEnabled?: boolean;
 	/** The start-cloud-browser-task tool is wired; tell the model when and how to delegate to it. */
 	cloudBrowserEnabled?: boolean;
 	/** Setup panel v2 flag: `setup_workflow` announces instead of opening a card. */
@@ -174,6 +177,12 @@ A request to build something genuinely new goes straight to the build path — n
 `;
 }
 
+function getAgentArchiveGuidance(): string {
+	return `
+**Archive an Agent**: This is a lifecycle action, not a build. Find the Agent in this project with \`${DOMAIN_TOOL_IDS.AGENT_CONTEXT}\` (\`type: "agents"\`) if you need its ID. If more than one Agent matches, ask the user which one to archive. Use \`${DOMAIN_TOOL_IDS.ARCHIVE_AGENT}\` to request confirmation. Do not report that the Agent is archived until the tool succeeds.
+`;
+}
+
 /**
  * The turn sends the tabs block only when the open tabs change, so the model
  * needs to know what a user message without one means.
@@ -262,7 +271,11 @@ ${licenseHints.map((hint) => `- ${hint}`).join('\n')}
 `;
 }
 
-function getReadOnlySection(branchReadOnly?: boolean, skillManagementEnabled?: boolean): string {
+function getReadOnlySection(
+	branchReadOnly?: boolean,
+	skillManagementEnabled?: boolean,
+	customMcpServersEnabled?: boolean,
+): string {
 	if (!branchReadOnly) return '';
 	return `
 ## Read-Only Instance
@@ -278,11 +291,19 @@ The following operations remain available:
 - Inserting, updating, and deleting data table rows
 - Publishing/unpublishing (activating/deactivating) workflows
 - Setting up, editing, and deleting credentials
-${skillManagementEnabled ? '- Creating, editing, and deleting skills\n' : ''}- Restoring workflow versions
+${skillManagementEnabled ? '- Creating, editing, and deleting skills\n' : ''}${customMcpServersEnabled ? '- Creating, editing, and deleting custom MCP servers and their tools\n' : ''}- Restoring workflow versions
 - Browsing the filesystem, fetching URLs, and searching the web
 
 If the user asks for a blocked operation, explain that the instance is in read-only mode. Suggest they make the changes on a development or writable environment, push to version control, and pull the changes to this instance.
 `;
+}
+
+/**
+ * Without this, a request to build an MCP server falls to the MCP Server Trigger node:
+ * the bullet after it names only the instance-level server and the trigger.
+ */
+function getCustomMcpServersBullet(): string {
+	return '- **To build an MCP server from workflows, use a custom MCP server.** When the user asks to build, create, or change an MCP server, or to serve workflows as tools to AI clients, run `custom-mcp-servers` through `call_tool` (tool group `custom_mcp_servers`). A custom MCP server belongs to a project and serves the workflows that the user chooses as tools, with the n8n sign-in. Do not build an MCP Server Trigger workflow for this unless the user names that node. The next rule about two MCP servers does not cover custom MCP servers: when the user names a custom MCP server, or a URL that ends in `/mcp-servers/<slug>`, use `custom-mcp-servers` to find the server and its URL, and do not ask which of the two servers the user means.\n';
 }
 
 function getLimitedModeSection(parameterValuesHidden?: boolean): string {
@@ -336,6 +357,8 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			preferenceSavingEnabled,
 			feedbackToolEnabled,
 			skillManagementEnabled,
+			customMcpServersEnabled,
+			agentArchiveEnabled,
 			cloudBrowserEnabled,
 			setupPanelEnabled,
 			engineSetup,
@@ -345,7 +368,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot, { fileImportEnabled, fileListingEnabled, fileSharingEnabled, fileViewingEnabled })}` : ''}
 ${getProjectScopeSection(projectId)}
-${getExistingResourcesSection()}
+${getExistingResourcesSection()}${agentArchiveEnabled ? getAgentArchiveGuidance() : ''}
 ${getPreviewTabsSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
@@ -371,7 +394,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 - ${SCOPE_GROUNDING_GUARDRAIL}
 - **Webhook trigger setup is node-defined — inspect the node, and don't trust generic docs for it.** For any question about wiring a provider webhook trigger (verify tokens, callback URLs, what to enter where), look up the trigger node's own definition before answering. Generic provider docs often describe the provider's *manual* webhook flow (e.g. "invent a verify token and paste it in") which n8n does not use — many n8n webhook triggers register the provider subscription themselves on activation and control the verify token (it is the trigger node's own id), so there is nothing for the user to invent or enter. If docs and the node definition disagree, the node definition wins.
 
-- **n8n has two MCP servers. Ask which one the user means before you give a URL, setup steps, or a build.** The instance-level MCP server (Settings > Instance-level MCP, "Enable MCP access") serves the instance's workflows to MCP clients such as Claude's official n8n connector, Claude Code, Cursor, and ChatGPT; its URL ends in \`/mcp-server/http\`. An MCP Server Trigger node is a workflow-level server for one workflow's tools; its URL is \`/mcp/<path>\` and Claude reaches it only through "Add custom connector". When a user wants to connect Claude or another MCP client to n8n and has not said which, reply with one \`ask_user\` question first: Claude's official n8n connector from the Connectors Directory, or a custom connector for a workflow-level MCP server. Do not explain both options, quote an endpoint, or build anything until they answer. For the official connector, direct them to Settings > Instance-level MCP and its \`/mcp-server/http\` URL, never a \`/mcp/...\` workflow URL.
+${customMcpServersEnabled ? getCustomMcpServersBullet() : ''}- **n8n has two MCP servers. Ask which one the user means before you give a URL, setup steps, or a build.** The instance-level MCP server (Settings > Instance-level MCP, "Enable MCP access") serves the instance's workflows to MCP clients such as Claude's official n8n connector, Claude Code, Cursor, and ChatGPT; its URL ends in \`/mcp-server/http\`. An MCP Server Trigger node is a workflow-level server for one workflow's tools; its URL is \`/mcp/<path>\` and Claude reaches it only through "Add custom connector". When a user wants to connect Claude or another MCP client to n8n and has not said which, reply with one \`ask_user\` question first: Claude's official n8n connector from the Connectors Directory, or a custom connector for a workflow-level MCP server. Do not explain both options, quote an endpoint, or build anything until they answer. For the official connector, direct them to Settings > Instance-level MCP and its \`/mcp-server/http\` URL, never a \`/mcp/...\` workflow URL.
 
 ## Safety
 
@@ -385,7 +408,7 @@ ${UNTRUSTED_CONTENT_DOCTRINE}
 ${getBrowserUsePrompt({ state: browserUseState })}
 ${cloudBrowserEnabled ? getCloudBrowserSection(browserUseState) : ''}
 ${getLicenseLimitationsSection(licenseHints)}
-${getReadOnlySection(branchReadOnly, skillManagementEnabled)}
+${getReadOnlySection(branchReadOnly, skillManagementEnabled, customMcpServersEnabled)}
 ${getLimitedModeSection(parameterValuesHidden)}${getWorkflowEngineSection(engineSetup)}
 
 ## Reply language

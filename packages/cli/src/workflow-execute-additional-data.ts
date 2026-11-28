@@ -71,6 +71,7 @@ import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-ex
 import { createWorkflowAgentStreamObserver } from './modules/agents/workflow-agent-stream';
 
 import { ActiveExecutions } from '@/active-executions';
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
@@ -96,6 +97,7 @@ export function getRunData(
 	workflowData: IWorkflowBase,
 	inputData?: INodeExecutionData[],
 	parentExecution?: RelatedExecution,
+	binaryDataAccess?: string[],
 ): IWorkflowExecutionDataProcess {
 	const mode = 'integrated';
 
@@ -120,6 +122,7 @@ export function getRunData(
 	});
 
 	const runExecutionData = createRunExecutionData({
+		binaryDataAccess,
 		executionData: {
 			nodeExecutionStack,
 		},
@@ -127,10 +130,51 @@ export function getRunData(
 	});
 
 	return {
+		binaryDataAccess,
 		executionMode: mode,
 		executionData: runExecutionData,
 		workflowData,
 	};
+}
+
+/**
+ * Validates a workflow ID and converts finite numbers to strings before the database query.
+ * Node expressions can evaluate to empty strings, null, legacy integer IDs, or non-string values.
+ */
+function normalizeWorkflowId(workflowId: unknown, parentWorkflowId: string): string {
+	if (
+		workflowId === null ||
+		workflowId === undefined ||
+		(typeof workflowId === 'string' && workflowId.trim() === '')
+	) {
+		throw new UserError(
+			'Workflow ID is empty. Select a sub-workflow or check the workflow ID expression.',
+			{
+				extra: { workflowId, parentWorkflowId },
+			},
+		);
+	}
+
+	if (typeof workflowId === 'number' && Number.isFinite(workflowId)) {
+		return String(workflowId);
+	}
+
+	if (typeof workflowId !== 'string') {
+		throw new UserError(
+			'Workflow ID is invalid. Select a sub-workflow or check the workflow ID expression.',
+			{
+				extra: {
+					workflowId:
+						typeof workflowId === 'bigint' || typeof workflowId === 'symbol'
+							? String(workflowId)
+							: workflowId,
+					parentWorkflowId,
+				},
+			},
+		);
+	}
+
+	return workflowId;
 }
 
 /**
@@ -143,25 +187,30 @@ async function fetchWorkflowData(
 	parentWorkflowSettings?: IWorkflowSettings,
 ) {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
-		throw new UnexpectedError(
+		throw new UserError(
 			'No information about the workflow to execute found. Please provide either the "id" or "code"!',
+			{
+				extra: { parentWorkflowId },
+			},
 		);
 	}
 
 	if (workflowInfo.id !== undefined) {
+		const workflowId = normalizeWorkflowId(workflowInfo.id, parentWorkflowId);
+
 		const baseRelations = ['activeVersion'];
 		const relations = Container.get(GlobalConfig).tags.disabled
 			? [...baseRelations]
 			: [...baseRelations, 'tags'];
 
 		const workflowFromDb = await Container.get(WorkflowRepository).get(
-			{ id: workflowInfo.id },
+			{ id: workflowId },
 			{ relations },
 		);
 
 		if (workflowFromDb === undefined || workflowFromDb === null) {
-			throw new UnexpectedError('Workflow does not exist.', {
-				extra: { workflowId: workflowInfo.id },
+			throw new UserError(`Workflow "${workflowId}" does not exist.`, {
+				extra: { workflowId, parentWorkflowId },
 			});
 		}
 
@@ -221,12 +270,21 @@ export async function getPublishedWorkflowData(
 		workflowInfo.id !== undefined &&
 		Container.get(WorkflowsConfig).useWorkflowPublicationService
 	) {
+		const workflowId = normalizeWorkflowId(workflowInfo.id, parentWorkflowId);
+
 		const publishedData = await Container.get(
 			WorkflowPublishedDataService,
-		).getPublishedWorkflowData(workflowInfo.id);
+		).getPublishedWorkflowData(workflowId);
 		if (publishedData === null) {
+			const exists = await Container.get(WorkflowRepository).existsBy({ id: workflowId });
+			if (!exists) {
+				throw new UserError(`Workflow "${workflowId}" does not exist.`, {
+					extra: { workflowId, parentWorkflowId },
+				});
+			}
+
 			throw new OperationalError('Workflow is not active and cannot be executed.', {
-				extra: { workflowId: workflowInfo.id, parentWorkflowId },
+				extra: { workflowId, parentWorkflowId },
 			});
 		}
 		return {
@@ -267,7 +325,7 @@ export async function getPublishedWorkflowData(
 	}
 
 	throw new OperationalError('Workflow is not active and cannot be executed.', {
-		extra: { workflowId: workflowInfo.id, parentWorkflowId },
+		extra: { workflowId: workflowData?.id ?? String(workflowInfo.id), parentWorkflowId },
 	});
 }
 
@@ -355,7 +413,8 @@ export async function executeWorkflow(
 				));
 
 	const runData =
-		options.loadedRunData ?? getRunData(workflowData, options.inputData, options.parentExecution);
+		options.loadedRunData ??
+		getRunData(workflowData, options.inputData, options.parentExecution, options.binaryDataAccess);
 
 	if (runData.executionData) {
 		runData.executionData.subWorkflowOutput ??= getSubWorkflowOutputPolicy(
@@ -524,6 +583,24 @@ export async function executeAgent(
 						executionId,
 					}),
 				};
+
+	// A guardrail check execution must not re-enter the agent it guards: the
+	// nested turn would run the same check workflow again before its tool
+	// calls, without bound. Best-effort — an unreadable execution record
+	// allows the call.
+	if (additionalData.getRunExecutionData) {
+		const { GUARDRAIL_CHECK_FOR_KEY } = await import(
+			'@/modules/agents/tools/workflow-guardrail-check.js'
+		);
+		const runData = await Promise.resolve(additionalData.getRunExecutionData(executionId)).catch(
+			() => undefined,
+		);
+		if (runData?.resultData?.metadata?.[GUARDRAIL_CHECK_FOR_KEY] === source.agentId) {
+			throw new UserError(
+				'This agent is already running this workflow as a guardrail check. Remove the "Message an Agent" call to this agent from the guardrail check workflow.',
+			);
+		}
+	}
 
 	const result = await agentWorkflowExecutionService.executeForWorkflow(
 		source.agentId,
@@ -1025,8 +1102,23 @@ export async function getBase({
 	const variables = await WorkflowHelpers.getVariables(workflowId, projectId);
 
 	const eventService = Container.get(EventService);
+	const grantedBinaryDataIds = new Set<string>();
 
 	const additionalData: IWorkflowExecuteAdditionalData = {
+		binaryDataAccess: {
+			grant: (binaryDataId) => grantedBinaryDataIds.add(binaryDataId),
+			isGranted: (binaryDataId) => grantedBinaryDataIds.has(binaryDataId),
+			async isAllowed(binaryDataId, executingWorkflowId, grantedIds) {
+				if (grantedBinaryDataIds.has(binaryDataId) || grantedIds?.includes(binaryDataId)) {
+					return true;
+				}
+
+				return await Container.get(BinaryDataAccessService).isOwnedByWorkflow(
+					executingWorkflowId,
+					binaryDataId,
+				);
+			},
+		},
 		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,

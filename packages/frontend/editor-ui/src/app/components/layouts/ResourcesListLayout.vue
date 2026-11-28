@@ -88,6 +88,7 @@ const emit = defineEmits<{
 
 const slots = defineSlots<{
 	header(): unknown;
+	unavailable?(): unknown;
 	empty(): unknown;
 	preamble(): unknown;
 	postamble(): unknown;
@@ -292,7 +293,7 @@ onBeforeUnmount(() => {
 
 //methods
 const captureSearchHotKey = (e: KeyboardEvent) => {
-	if (!props.uiConfig.searchEnabled) return;
+	if (slots.unavailable || !props.uiConfig.searchEnabled) return;
 	if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
 		e.preventDefault();
 		focusSearchInput();
@@ -570,7 +571,10 @@ defineExpose({
 		<template #header>
 			<slot name="header" />
 		</template>
-		<ResourcesListSkeleton v-if="showLoadingState" />
+		<div v-if="$slots.unavailable">
+			<slot name="unavailable" />
+		</div>
+		<ResourcesListSkeleton v-else-if="showLoadingState" />
 		<template v-else>
 			<div v-if="showEmptyState">
 				<slot name="empty">

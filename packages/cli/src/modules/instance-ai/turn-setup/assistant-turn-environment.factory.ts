@@ -22,7 +22,6 @@ import {
 	createWorkflowDraftPublisher,
 	isSetupPanelEnabled,
 	orchestratorAgentId,
-	threadTargetsAgent,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
 	type ModelConfig,
@@ -117,8 +116,6 @@ export interface AssistantTurnEnvironmentParams {
 	instanceContextGates?: InstanceContextGates;
 	experimentGates?: InstanceAiFeatureFlags;
 	tracing?: InstanceAiTraceContext;
-	/** The message attaches an agent, as the Agent Builder panel does before it binds its thread. */
-	attachesAgent?: boolean;
 }
 
 export type AssistantProxyRunConfig = Awaited<
@@ -281,6 +278,8 @@ export class AssistantTurnEnvironmentFactory {
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
 
 		const proxyContext = { runId, threadId };
+		const baseModelFetch = this.modelService.getModelFetch();
+		const labeledModelFetch = this.modelService.getLabeledModelFetch(proxyContext);
 		const modelId =
 			proxyBaseUrl && tokenManager
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
@@ -303,7 +302,9 @@ export class AssistantTurnEnvironmentFactory {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			skillSourcesEnabled,
+			workflowsInSkillsEnabled,
 			preferencesNoteVariant,
+			customMcpServersEnabled,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
 		// Resumed segments use the gates bound to the original turn.
@@ -348,10 +349,13 @@ export class AssistantTurnEnvironmentFactory {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			skillSourcesEnabled,
+			customMcpServersEnabled,
+			workflowsInSkillsEnabled,
 			modelId,
 			utilityModelId,
 			onHelperUsage: this.creditService.helperUsageClaimer(user, threadId, runId),
-			modelFetch: this.modelService.getModelFetch(),
+			modelFetch: labeledModelFetch,
+			catalogFetch: baseModelFetch,
 			allowSendingParameterValues,
 			temporaryWorkflowMarkers: runtime.temporaryWorkflowMarkers,
 		});
@@ -374,12 +378,7 @@ export class AssistantTurnEnvironmentFactory {
 		// Auto mode reviews an approval before its card shows. Manual mode keeps every card,
 		// and keeps a user's MCP settings as they are. In Auto, a user's MCP settings can only
 		// make the admin's stricter, so an admin's Ask first still reaches the review.
-		// Auto mode is not part of the Agent Builder: a thread that builds or edits an agent
-		// keeps every card.
-		const buildsAgent = params.attachesAgent === true || threadTargetsAgent(thread?.metadata);
-		const approvalMode = buildsAgent
-			? 'manual'
-			: this.approvalModeService.resolveMode(user, gates.approvalModesEnabled);
+		const approvalMode = this.approvalModeService.resolveMode(user, gates.approvalModesEnabled);
 		if (gates.approvalModesEnabled) context.approvalMode = approvalMode;
 		context.enforceAdminMcpPermissions = approvalMode === 'auto';
 		if (approvalMode === 'auto') {
@@ -397,7 +396,8 @@ export class AssistantTurnEnvironmentFactory {
 						tokenManager,
 						proxyContext,
 					}),
-				modelFetch: this.modelService.getModelFetch(),
+				modelFetch: labeledModelFetch,
+				requestLabels: this.instanceAiConfig.modelRequestLabels,
 				getTracing: () => orchestrationContext.tracing,
 			});
 		}
@@ -567,7 +567,7 @@ export class AssistantTurnEnvironmentFactory {
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
 			...(tracing ? { tracing } : {}),
-			modelFetch: this.modelService.getModelFetch(),
+			modelFetch: labeledModelFetch,
 			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
 			eventBus: runtime.eventBus,
 			logger: this.logger,

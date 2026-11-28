@@ -565,7 +565,7 @@ const modelToolGuardrailShape = {
 /**
  * A guardrail running before or after the referenced tools. Pattern kinds
  * run locally; model kinds call a model with an optional prompt and
- * threshold.
+ * threshold; the workflow kind runs a check workflow before the call.
  */
 export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 	z.object({
@@ -603,15 +603,37 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 		...toolGuardrailBaseShape,
 		...modelToolGuardrailShape,
 	}),
+	z.object({
+		kind: z.literal('workflow'),
+		...toolGuardrailBaseShape,
+		/** The check workflow, run before each covered call. */
+		workflowId: z.string().min(1),
+	}),
 ]);
+
+export const AGENT_SANDBOX_EGRESS_POLICIES = ['disabled', 'opt-in', 'opt-out'] as const;
+export type AgentSandboxEgressPolicy = (typeof AGENT_SANDBOX_EGRESS_POLICIES)[number];
+
+/**
+ * Resolves whether outbound internet access is enabled for an Agent sandbox.
+ * The instance policy acts as a hard ceiling when set to `disabled`.
+ */
+export function resolveAgentSandboxEgressEnabled(
+	policy: AgentSandboxEgressPolicy,
+	agentSetting?: boolean,
+): boolean {
+	if (policy === 'disabled') return false;
+	if (policy === 'opt-in') return agentSetting === true;
+	return agentSetting !== false;
+}
+
+export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
 
 /**
  * Unrefined agent config object shape. Use for schema derivation only
  * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
  * {@link AgentJsonConfigSchema} instead.
  */
-export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
-
 export const AgentJsonConfigBaseSchema = z.object({
 	hitlConfigurations: z
 		.array(AgentHitlConfigurationSchema)
@@ -702,6 +724,12 @@ export const AgentJsonConfigBaseSchema = z.object({
 				.describe(
 					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
 				),
+			sandboxEgress: z
+				.boolean()
+				.optional()
+				.describe(
+					'Whether the agent sandbox can access the public internet. Do not set unless the user explicitly asks.',
+				),
 			guardrails: z
 				.object({
 					budget: BudgetGuardrailConfigSchema.optional(),
@@ -728,6 +756,16 @@ export const AgentJsonConfigBaseSchema = z.object({
 										code: z.ZodIssueCode.custom,
 										path: [index, 'entities'],
 										message: 'Select at least one PII entity or set type to "all"',
+									});
+								}
+								// The workflow kind registers before-only, so an
+								// after-stage check workflow cannot run: reject the
+								// config instead of silently dropping the hook.
+								if (guardrail.kind === 'workflow' && guardrail.stage === 'after') {
+									ctx.addIssue({
+										code: z.ZodIssueCode.custom,
+										path: [index, 'stage'],
+										message: 'A workflow guardrail cannot run after a tool call',
 									});
 								}
 							}

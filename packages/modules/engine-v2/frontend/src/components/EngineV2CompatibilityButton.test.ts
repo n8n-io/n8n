@@ -1,67 +1,74 @@
-import { useI18n } from '@n8n/i18n';
-import { fireEvent, render, screen, waitFor } from '@testing-library/vue';
+import { fireEvent, render, screen } from '@testing-library/vue';
 
+import { useEngineV2FindingsDialog } from '../composables/useEngineV2FindingsDialog';
 import type { EngineCompatibilityReason } from '../engineV2Check';
+import { groupEngineV2Reasons } from '../engineV2Findings';
 import EngineV2CompatibilityButton from './EngineV2CompatibilityButton.vue';
 
-function reason(severity: EngineCompatibilityReason['severity']): EngineCompatibilityReason {
-	return { code: 'ERROR_WORKFLOW', kind: 'temporary', severity, message: 'Package message.' };
+function reason(
+	severity: EngineCompatibilityReason['severity'],
+	nodeId?: string,
+): EngineCompatibilityReason {
+	return {
+		code: 'RETRY_ON_FAIL',
+		kind: 'temporary',
+		severity,
+		nodeId,
+		nodeName: nodeId,
+		message: 'Package message.',
+	};
 }
 
-function buttonIcon() {
-	return screen
-		.getByTestId('engine-v2-compatibility-button')
-		.querySelector('[data-icon]')
-		?.getAttribute('data-icon');
+function renderButton(reasons: EngineCompatibilityReason[]) {
+	return render(EngineV2CompatibilityButton, {
+		props: { groups: groupEngineV2Reasons(reasons) },
+	});
 }
+
+const button = () => screen.getByTestId('engine-v2-compatibility-button');
+const badge = () => screen.getByTestId('engine-v2-compatibility-button-count');
+const label = () => screen.getByTestId('engine-v2-compatibility-button-label');
 
 describe('EngineV2CompatibilityButton', () => {
-	const i18n = useI18n();
+	afterEach(() => useEngineV2FindingsDialog().close());
 
-	it('shows the blocking icon when a reason blocks', () => {
-		render(EngineV2CompatibilityButton, {
-			props: { reasons: [reason('warning'), reason('blocking')] },
-		});
+	it('counts nodes, not reasons: three reasons on two nodes are two issues', () => {
+		renderButton([reason('blocking', 'a'), reason('blocking', 'a'), reason('warning', 'b')]);
 
-		expect(buttonIcon()).toBe('circle-x');
+		expect(button()).toHaveAccessibleName('2 compatibility issues');
+		expect(label()).toHaveTextContent(/^Compatibility issues$/);
+		expect(badge()).toHaveTextContent('2');
 	});
 
-	it('shows the warning icon when every reason is a warning', () => {
-		render(EngineV2CompatibilityButton, {
-			props: { reasons: [reason('warning'), reason('warning')] },
-		});
+	it('uses the singular for one issue', () => {
+		renderButton([reason('blocking', 'a')]);
 
-		expect(buttonIcon()).toBe('triangle-alert');
+		expect(button()).toHaveAccessibleName('1 compatibility issue');
+		expect(label()).toHaveTextContent(/^Compatibility issue$/);
+		expect(badge()).toHaveTextContent('1');
 	});
 
-	it.each([
-		[1, '1 Engine v2 issue'],
-		[3, '3 Engine v2 issues'],
-	])('counts %i reasons', (count, label) => {
-		render(EngineV2CompatibilityButton, {
-			props: { reasons: Array.from({ length: count }, () => reason('blocking')) },
-		});
+	it('shows a danger badge and the blocking icon when an issue blocks', () => {
+		renderButton([reason('warning', 'a'), reason('blocking', 'b')]);
 
-		expect(screen.getByTestId('engine-v2-compatibility-button')).toHaveTextContent(label);
+		expect(badge().className).toMatch(/danger/);
+		expect(button().querySelector('[data-icon]')?.getAttribute('data-icon')).toBe('circle-x');
 	});
 
-	it('opens the dialog with every reason, and keeps the button when the dialog closes', async () => {
-		render(EngineV2CompatibilityButton, {
-			props: { reasons: [reason('blocking'), reason('warning')] },
-		});
-		expect(screen.queryByTestId('engine-v2-compatibility-dialog')).not.toBeInTheDocument();
+	it('shows a warning badge and the warning icon when every issue is a warning', () => {
+		renderButton([reason('warning', 'a'), reason('warning', 'b')]);
 
-		await fireEvent.click(screen.getByTestId('engine-v2-compatibility-button'));
+		expect(badge().className).toMatch(/warning/);
+		expect(button().querySelector('[data-icon]')?.getAttribute('data-icon')).toBe('triangle-alert');
+	});
 
-		const dialog = await screen.findByTestId('engine-v2-compatibility-dialog');
-		expect(dialog).toHaveTextContent(i18n.baseText('engineV2Compatibility.dialog.title'));
-		expect(screen.getAllByTestId('engine-v2-compatibility-reason')).toHaveLength(2);
+	it('opens the shared findings dialog', async () => {
+		const { isOpen } = useEngineV2FindingsDialog();
+		renderButton([reason('blocking', 'a')]);
+		expect(isOpen.value).toBe(false);
 
-		await fireEvent.keyDown(dialog, { key: 'Escape' });
+		await fireEvent.click(button());
 
-		await waitFor(() =>
-			expect(screen.queryByTestId('engine-v2-compatibility-dialog')).not.toBeInTheDocument(),
-		);
-		expect(screen.getByTestId('engine-v2-compatibility-button')).toBeInTheDocument();
+		expect(isOpen.value).toBe(true);
 	});
 });

@@ -1,6 +1,7 @@
 import type { AgentTaskCancellationState } from '@n8n/api-types';
 import type {
 	AgentPlanSnapshotDto,
+	AgentKnowledgeCollectionDto,
 	AgentApproval,
 	AgentBudgetSpend,
 	AgentBackgroundJobsResponse,
@@ -9,6 +10,8 @@ import type {
 	AgentChatListResponse,
 	AgentChatMessagesResponse,
 	AgentSessionFilesResponse,
+	GenerateAgentTestScenariosDto,
+	GenerateAgentTestScenariosResponse,
 	SystemAgentThreadSummary,
 	SystemAgentThreadsResponse,
 	AgentChatQueueResponse,
@@ -24,6 +27,7 @@ import type {
 	AgentMemorySourceFacetsDto,
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
+	AgentIntegrationAccountResponse,
 	AgentWebhookUrlResponse,
 	AgentWhatsAppVerifyTokenResponse,
 	AgentJsonVectorStoreConfig,
@@ -34,6 +38,7 @@ import type {
 	AgentSkillAvailability,
 	AgentsSettingsDto,
 	AgentSkillMutationResponse,
+	AgentSkillWorkflowAccessResponse,
 	AgentTaskConfig,
 	AgentTaskDto,
 	AgentIntegrationSettings,
@@ -200,7 +205,7 @@ export const listN8nChatAgents = async (
 	});
 };
 
-/** Options for {@link listN8nChatThreads}. `cursor` is a thread's `updatedAt` ISO string. */
+/** Options for {@link listN8nChatThreads}. Pass the previous page's `nextCursor` unchanged. */
 export type ListN8nChatThreadsOptions = {
 	limit: number;
 	cursor?: string;
@@ -500,6 +505,19 @@ export const getIntegrationStatus = async (
 	);
 };
 
+export const getIntegrationAccount = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	type: string,
+): Promise<AgentIntegrationAccountResponse> => {
+	return await makeRestApiRequest<AgentIntegrationAccountResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/${encodeURIComponent(type)}/account`,
+	);
+};
+
 export const getAgentWebhookUrl = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -588,6 +606,45 @@ export const runAgentTask = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}/run`,
+	);
+};
+
+/** The collections that the agent's project can use, each marked as added to this agent or not. */
+export const listAgentKnowledgeCollections = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentKnowledgeCollectionDto[]> => {
+	return await makeRestApiRequest<AgentKnowledgeCollectionDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/knowledge-collections`,
+	);
+};
+
+export const addAgentKnowledgeCollection = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	collectionId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'PUT',
+		`/projects/${projectId}/agents/v2/${agentId}/knowledge-collections/${collectionId}`,
+	);
+};
+
+export const removeAgentKnowledgeCollection = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	collectionId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/knowledge-collections/${collectionId}`,
 	);
 };
 
@@ -840,6 +897,19 @@ export const createAgentSkill = async (
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/skills`,
 		{ ...skill, ...(availableTo ? { availableTo } : {}), ...(method ? { method } : {}) },
+	);
+};
+
+export const getAgentSkillWorkflowAccess = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	skillId: string,
+): Promise<AgentSkillWorkflowAccessResponse> => {
+	return await makeRestApiRequest<AgentSkillWorkflowAccessResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/skill-workflow-access/${skillId}`,
 	);
 };
 
@@ -1169,6 +1239,20 @@ export const clearTestChatMessages = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+	);
+};
+
+export const generateAgentTestScenarios = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: Partial<GenerateAgentTestScenariosDto> = {},
+): Promise<GenerateAgentTestScenariosResponse> => {
+	return await makeRestApiRequest<GenerateAgentTestScenariosResponse>(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/test-scenarios`,
+		payload,
 	);
 };
 

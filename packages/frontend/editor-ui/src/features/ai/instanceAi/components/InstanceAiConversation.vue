@@ -80,14 +80,14 @@ import InstanceAiMessage from './InstanceAiMessage.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
-import InstanceAiStatusBar from './InstanceAiStatusBar.vue';
+import InstanceAiRunActivity from './InstanceAiRunActivity.vue';
 import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import WorkflowBuilderUnavailableNotice from './WorkflowBuilderUnavailableNotice.vue';
 import LimitedModeNotice from './LimitedModeNotice.vue';
 import AgentSection from './AgentSection.vue';
 import { useStopBrowserTasksPrompt } from '../composables/useStopBrowserTasksPrompt';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from '../builderAgents';
-import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
+import { AiActivityThinkingStep } from '../../shared/components/AiActivityTrace';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 
 const props = withDefaults(
@@ -521,7 +521,11 @@ watch(
 
 watch([chatInputRef, pendingComposerDraft], ([input, draft]) => {
 	if (!input || !draft) return;
-	input.setPrefill({ text: draft.text, prefillType: draft.prefillType });
+	input.setPrefill({
+		text: draft.text,
+		prefillType: draft.prefillType,
+		...(draft.prefillId ? { prefillId: draft.prefillId } : {}),
+	});
 	generatedComposerDraft.value = draft.text;
 	pendingComposerDraft.value = null;
 	void nextTick(focusChatInputIfFocusIsIdle);
@@ -970,7 +974,7 @@ defineExpose({
 						role="assistant"
 						data-test-id="instance-ai-onboarding-thinking"
 					>
-						<AiThinkingBlock
+						<AiActivityThinkingStep
 							:segments="[]"
 							:active="true"
 							:activity-label="
@@ -1005,7 +1009,7 @@ defineExpose({
 						 conversation flow — below any pending questions/confirmations
 						 and not pinned above the input — so it trails the active
 						 content and scrolls away when reading back. -->
-				<InstanceAiStatusBar />
+				<InstanceAiRunActivity />
 			</div>
 
 			<!-- Extra scroll space for a host panel that overlays the messages above the input. -->

@@ -241,6 +241,7 @@ export class AgentPublishService {
 			targetHistory,
 			agent.integrations ?? [],
 			credentialProvider,
+			user,
 		);
 
 		requireValidValidation(validation);

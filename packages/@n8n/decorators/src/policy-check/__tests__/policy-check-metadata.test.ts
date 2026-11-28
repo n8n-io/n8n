@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 
 import {
 	pointsImplementedBy,
+	type ExecutionAdmissionContext,
 	type PolicyCheckResult,
 	type RegisteredPolicyCheck,
 	type WorkflowSaveContext,
@@ -123,6 +124,18 @@ describe('@PolicyCheck decorator', () => {
 		expect(metadata.getClasses()).toHaveLength(0);
 	});
 
+	it('should accept an onExecutionAdmission method as an enforcement point', () => {
+		@PolicyCheck()
+		class AdmissionCheck implements RegisteredPolicyCheck {
+			id = 'execution.admission';
+			async onExecutionAdmission(_ctx: ExecutionAdmissionContext) {
+				return await noViolations();
+			}
+		}
+
+		expect(metadata.getClasses()).toEqual([AdmissionCheck]);
+	});
+
 	it('should not treat non-point methods as enforcement points', () => {
 		@PolicyCheck()
 		class CheckWithHelpers implements RegisteredPolicyCheck {
@@ -148,5 +161,14 @@ describe('pointsImplementedBy', () => {
 		};
 
 		expect(pointsImplementedBy(check)).toEqual(['workflowSave', 'credentialDecrypt']);
+	});
+
+	it('should derive the executionAdmission point from onExecutionAdmission', () => {
+		const check: RegisteredPolicyCheck = {
+			id: 'admission.check',
+			onExecutionAdmission: noViolations,
+		};
+
+		expect(pointsImplementedBy(check)).toEqual(['executionAdmission']);
 	});
 });

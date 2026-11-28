@@ -22,6 +22,7 @@ import type { RouteRecordName } from 'vue-router';
 import type { MockInstance } from 'vitest';
 import * as init from '@/app/init';
 import { middleware } from '@/app/utils/rbac/middleware';
+import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
 
 const App = {
 	template: '<div />',
@@ -165,6 +166,30 @@ describe('router', () => {
 
 			await router.push(path);
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		20000,
+	);
+
+	test.each<[string, boolean, Scope[], RouteRecordName]>([
+		['without permission', true, [], VIEWS.WORKFLOWS],
+		['with reviews off', false, ['securitySettings:manage'], VIEWS.SECURITY_SETTINGS],
+		[
+			'with reviews on',
+			true,
+			['securitySettings:manage'],
+			VIEWS.SECURITY_WORKFLOW_REVIEW_INSTANCE_SETTINGS,
+		],
+	])(
+		'should resolve the workflow review project settings %s',
+		async (_case, reviewsEnabled, scopes, name) => {
+			const rbacStore = useRBACStore();
+
+			settingsStore.settings.enterprise.workflowReviews = true;
+			settingsStore.setWorkflowReviewsPolicy({ enabled: reviewsEnabled, alwaysRequired: false });
+			rbacStore.setGlobalScopes(scopes);
+
+			await router.push('/settings/security/workflow-reviews/project-requirements');
 			expect(router.currentRoute.value.name).toBe(name);
 		},
 		20000,
@@ -368,6 +393,11 @@ describe('router', () => {
 	});
 
 	describe('roles settings', () => {
+		// The roles routes come from the roles module, as in `main.ts`.
+		beforeAll(() => {
+			registerModuleRoutes(router);
+		});
+
 		beforeEach(async () => {
 			useRBACStore().setGlobalScopes(['role:manage']);
 			// Reset to a neutral route so each push re-triggers the guard.
@@ -387,18 +417,6 @@ describe('router', () => {
 			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
 			expect(router.currentRoute.value.query.tab).toBe('instance');
 		});
-	});
-
-	test('should set props: true for PROJECT_ROLE_SETTINGS route', () => {
-		const settingsRoute = routes.find((route) => route.path === '/settings');
-		const projectRolesRoute = settingsRoute?.children?.find(
-			(child) => child.path === 'project-roles',
-		);
-		const editRoleRoute = projectRolesRoute?.children?.find(
-			(child) => child.name === VIEWS.PROJECT_ROLE_SETTINGS,
-		);
-		expect(editRoleRoute?.props).toBe(true);
-		expect(editRoleRoute?.path).toBe('edit/:roleSlug');
 	});
 
 	describe('environments settings while the instance uses v2', () => {

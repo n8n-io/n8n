@@ -47,6 +47,7 @@ import {
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
 import { SkillSyncedError } from '../errors/skill-synced.error';
 import { SkillSourceClientRegistry } from '../sources/skill-source-client-registry.service';
+import { skillSourceRepositoryKey } from '../sources/skill-source-client';
 import {
 	isSameSkillTarget,
 	skillScopeOf,
@@ -67,13 +68,15 @@ import {
 	type SkillUpdate,
 } from '../utils/skill-content';
 import { compareSkillFilePaths, skillContentHash } from '../utils/skill-content-hash';
-import { skillGroupPage } from '../utils/skill-group-page';
+import { skillGroupPage, type SkillSourceGroup } from '../utils/skill-group-page';
 import { getSkillHash } from '../utils/skill-hash';
 import { withUnsentSkillFiles } from '../utils/skill-model-update';
-import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
+import { withSkillWorkflowMentionHint } from '../utils/skill-workflow-mention-hint';
+import { addedWorkflowMentionIds } from '../utils/skill-workflow-mentions';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
+import { WorkflowsInSkillsFlagGate } from './workflows-in-skills-flag-gate';
 import { SkillSyncedFromService } from './skill-synced-from.service';
 import {
 	blocksDelete,
@@ -141,6 +144,9 @@ function toVersionSummary(
 	};
 }
 
+const STALE_SKILL_MESSAGE =
+	'The skill was changed somewhere else. Reload to get the latest version.';
+
 /**
  * User actions on skills and the rules of every write: list, read, create, save, move and
  * delete. REST, MCP tools, n8n Assistant tools and the agent builder call the same
@@ -160,11 +166,11 @@ export class SkillService {
 		private readonly skillAccess: SkillAccessService,
 		private readonly skillRuntime: SkillRuntimeService,
 		private readonly skillsTelemetry: SkillsTelemetry,
-		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 		private readonly syncedFrom: SkillSyncedFromService,
 		private readonly sourceRepository: SkillSourceRepository,
 		private readonly skillSyncFlagGate: SkillSyncFlagGate,
 		private readonly sourceClients: SkillSourceClientRegistry,
+		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 	) {}
 
 	// ---------------------------------------------------------------- user actions
@@ -237,15 +243,14 @@ export class SkillService {
 			!match.usedBySkillIds &&
 			!match.attachableToProjectId &&
 			(Boolean(match.search || match.sourceIds) || (!match.scope && !match.projectId));
-		const sources =
-			match.search || includeEmptySources
-				? (await this.sourceRepository.findVisibleSources(visibility.projectIds)).filter(
-						(source) =>
-							(!match.sourceIds || match.sourceIds.includes(source.id)) &&
-							(!match.projectId || source.projectId === match.projectId) &&
-							(!match.scope || skillScopeOf(source) === match.scope),
-					)
-				: [];
+		const sources = (
+			await this.sourceRepository.findVisibleSourcesForGrouping(visibility.projectIds)
+		).filter(
+			(source) =>
+				(!match.sourceIds || match.sourceIds.includes(source.id)) &&
+				(!match.projectId || source.projectId === match.projectId) &&
+				(!match.scope || skillScopeOf(source) === match.scope),
+		);
 		const search = match.search?.toLowerCase();
 		const searchSourceIds = search
 			? sources
@@ -259,18 +264,35 @@ export class SkillService {
 					.map((source) => source.id)
 			: undefined;
 		const groupedMatch = { ...match, searchSourceIds };
-		let groups = await this.skillRepository.findSourceGroupSizes(visibility, groupedMatch);
-		if (includeEmptySources) {
-			const counts = new Map(groups.map((group) => [group.sourceId, group.count]));
-			groups = sources
-				.filter(
-					(source) => counts.has(source.id) || !search || searchSourceIds?.includes(source.id),
-				)
-				.sort((a, b) => a.identityKey.localeCompare(b.identityKey) || a.id.localeCompare(b.id))
-				.map((source) => ({ sourceId: source.id, count: counts.get(source.id) ?? 0 }));
-			const localCount = counts.get(null);
-			if (localCount) groups.push({ sourceId: null, count: localCount });
-		}
+		const counts = new Map(
+			(await this.skillRepository.findSourceGroupSizes(visibility, groupedMatch)).map((group) => [
+				group.sourceId,
+				group.count,
+			]),
+		);
+		const groups: SkillSourceGroup[] = sources
+			.filter(
+				(source) =>
+					counts.has(source.id) ||
+					(includeEmptySources && (!search || searchSourceIds?.includes(source.id))),
+			)
+			.map((source) => {
+				const identity = this.sourceClients.get(source.type)?.identity(source.locator);
+				return {
+					id: source.id,
+					repository: identity ? skillSourceRepositoryKey(identity) : source.type,
+					path: identity?.path ?? '',
+				};
+			})
+			.sort(
+				(a, b) =>
+					a.repository.localeCompare(b.repository) ||
+					a.path.localeCompare(b.path) ||
+					a.id.localeCompare(b.id),
+			)
+			.map(({ id }) => ({ sourceId: id, count: counts.get(id) ?? 0 }));
+		const localCount = counts.get(null);
+		if (localCount) groups.push({ sourceId: null, count: localCount });
 		const page = skillGroupPage(groups, pageIndex, take, focusSourceId);
 		const openGroups = page.groups.filter(
 			(group) => group.take > 0 && !collapsed.has(group.sourceId),
@@ -356,13 +378,20 @@ export class SkillService {
 		const rows = await this.skillRepository.findVersionsByIds(
 			[...versionIds.values()].filter((versionId) => !isKnown(versionId)),
 		);
+		const hintsWorkflowMentions = await this.workflowsInSkillsFlagGate.isEnabled();
+		const contents = new Map(
+			[...rows].map(
+				([versionId, row]) =>
+					[versionId, withMentionHint(toMcpSkillContent(row), hintsWorkflowMentions)] as const,
+			),
+		);
 		return {
 			count: page.count,
 			skills: page.skills.flatMap((skill) => {
 				const versionId = versionIds.get(skill.id);
 				if (!versionId) return [];
-				const row = rows.get(versionId);
-				return [{ id: skill.id, versionId, ...(row ? { content: toMcpSkillContent(row) } : {}) }];
+				const content = contents.get(versionId);
+				return [{ id: skill.id, versionId, ...(content ? { content } : {}) }];
 			}),
 		};
 	}
@@ -377,7 +406,10 @@ export class SkillService {
 		) {
 			return null;
 		}
-		return { ...toMcpSkillContent(row), ...(await this.mcpOriginOf(skillId)) };
+		return {
+			...withMentionHint(toMcpSkillContent(row), await this.workflowsInSkillsFlagGate.isEnabled()),
+			...(await this.mcpOriginOf(skillId)),
+		};
 	}
 
 	/**
@@ -439,13 +471,8 @@ export class SkillService {
 		payload: CreateSkillDto,
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillDetail> {
-		if (
-			payload.availableToAssistant !== undefined &&
-			!(await this.assistantSkillsFlagGate.isEnabled())
-		) {
-			throw new UserError("The n8n Assistant can't use skills on this instance.");
-		}
 		const target = await this.skillAccess.resolveCreateTarget(user, payload);
+		await this.skillAccess.assertCanReadMentionedWorkflows(user, payload.skill);
 		const input = {
 			checkNameTaken: true,
 			target,
@@ -492,12 +519,6 @@ export class SkillService {
 			keepUnnamedBinaryFiles?: boolean;
 		} = {},
 	): Promise<SkillSaveResponse> {
-		if (
-			payload.availableToAssistant !== undefined &&
-			!(await this.assistantSkillsFlagGate.isEnabled())
-		) {
-			throw new NotFoundError('Skill not found');
-		}
 		const skill = await this.skillAccess.requireAccess(user, skillId, 'update');
 		const { scope, projectId, availableToAssistant, availableToMCP, ...update } = payload;
 		if (options.keepUnnamedBinaryFiles && update.references) {
@@ -514,6 +535,28 @@ export class SkillService {
 		const moves = target !== undefined && target.projectId !== skill.projectId;
 
 		const checkedSource = moves ? await this.skillAccess.assertCanMove(user, skillId) : undefined;
+
+		if (
+			addedWorkflowMentionIds({
+				instructions: update.instructions ?? '',
+				references: update.references,
+			}).length > 0
+		) {
+			const latest = (await this.findLatest([skillId])).get(skillId);
+			if (latest) {
+				if (getSkillHash(latest.skill) !== update.baseSkillHash) {
+					throw new ConflictError(STALE_SKILL_MESSAGE);
+				}
+				await this.skillAccess.assertCanReadMentionedWorkflows(
+					user,
+					{
+						instructions: update.instructions ?? latest.skill.instructions,
+						references: update.references ?? latest.skill.references,
+					},
+					latest.skill,
+				);
+			}
+		}
 
 		if (!moves && availableToAssistant === undefined && availableToMCP === undefined) {
 			const { followingAgentIds: _following, ...saved } = await this.saveTrusted(
@@ -705,9 +748,7 @@ export class SkillService {
 			// Only a new name is trimmed, so a save never renames a skill it did not rename.
 			if (changes.name !== undefined) changes.name = trimmedName(changes.name);
 			if (baseSkillHash !== getSkillHash(current)) {
-				throw new ConflictError(
-					'The skill was changed somewhere else. Reload to get the latest version.',
-				);
+				throw new ConflictError(STALE_SKILL_MESSAGE);
 			}
 			const skill: AgentSkill = { ...current, ...changes };
 			// Reads return files sorted by path. Sort here too, so the returned skill hashes the same
@@ -1127,4 +1168,12 @@ function sourceLabelOf(source: SkillSource): string {
  */
 function visibilityOf(projectIds: string[] | null): SkillVisibility {
 	return { projectIds: projectIds ?? 'all' };
+}
+
+function withMentionHint(
+	content: McpSkillContent,
+	hintsWorkflowMentions: boolean,
+): McpSkillContent {
+	if (!hintsWorkflowMentions) return content;
+	return { ...content, skill: withSkillWorkflowMentionHint(content.skill) };
 }

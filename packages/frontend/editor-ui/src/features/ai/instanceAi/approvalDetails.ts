@@ -114,6 +114,10 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 					interpolate: { filter: filterText(details.filter) },
 				},
 			);
+		case 'archive-agent':
+			return t('instanceAi.approval.archiveAgent', {
+				interpolate: { name: details.name, id: details.id },
+			});
 		case 'archive-workflow':
 			return t('instanceAi.approval.archiveWorkflow', {
 				interpolate: { name: details.name, id: details.id },
@@ -241,9 +245,7 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 type PublishAgentDetails = Extract<InstanceAiApprovalDetails, { action: 'publish-agent' }>;
 
 /**
- * The go live confirmation: what goes live, then what might get sent for real, as the panel lists it.
- * The list copy (`agents.testRun.mode.confirm.*`) is shared with the panel's go live confirmation on
- * purpose, so both say the same thing. Change it in one place for both.
+ * The go live confirmation: what goes live, then what might get sent for real.
  */
 function formatPublishAgent(details: PublishAgentDetails, t: Translate): string {
 	const lines = [
@@ -458,6 +460,8 @@ function formatDataTableChangesTitle(changes: DataTableChanges): string {
 const approvalTitleKeys = new Map<string, BaseTextKey>(
 	(
 		[
+			'instanceAi.tools.archive_agent.imperative',
+			'instanceAi.tools.archive_agent.imperativeWithResource',
 			'instanceAi.tools.archive_workflow.imperative',
 			'instanceAi.tools.archive_workflow.imperativeWithResource',
 			'instanceAi.tools.unarchive_workflow.imperative',
@@ -502,6 +506,20 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
 			'instanceAi.tools.skills.delete.imperativeWithResource',
 			'instanceAi.tools.skills.import-from-source.imperative',
 			'instanceAi.tools.skills.import-from-source.imperativeWithResource',
+			'instanceAi.tools.custom-mcp-servers.create.imperative',
+			'instanceAi.tools.custom-mcp-servers.create.imperativeWithResource',
+			'instanceAi.tools.custom-mcp-servers.update.imperative',
+			'instanceAi.tools.custom-mcp-servers.update.imperativeWithResource',
+			'instanceAi.tools.custom-mcp-servers.delete.imperative',
+			'instanceAi.tools.custom-mcp-servers.delete.imperativeWithResource',
+			'instanceAi.tools.custom-mcp-servers.add-tools.imperative',
+			'instanceAi.tools.custom-mcp-servers.add-tools.imperativeWithResource',
+			'instanceAi.tools.custom-mcp-servers.update-tool.imperative',
+			'instanceAi.tools.custom-mcp-servers.update-tool.imperativeWithResource',
+			'instanceAi.tools.custom-mcp-servers.generate.imperative',
+			'instanceAi.tools.custom-mcp-servers.generate.imperativeWithResource',
+			'instanceAi.tools.custom-mcp-servers.remove-tool.imperative',
+			'instanceAi.tools.custom-mcp-servers.remove-tool.imperativeWithResource',
 			'instanceAi.tools.workspace.tag-workflow.imperative',
 			'instanceAi.tools.workspace.cleanup-test-executions.imperative',
 			'instanceAi.tools.workspace.create-folder.imperative',

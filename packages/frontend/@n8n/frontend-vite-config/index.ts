@@ -44,6 +44,10 @@ export const sourcePackages = [
  * The module tsconfig base holds that boundary.
  */
 export const modulePackages: Array<{ name: string; dir: string; entry?: boolean }> = [
+	{ name: '@n8n/frontend-module-roles', dir: 'modules/roles/frontend' },
+	{ name: '@n8n/frontend-module-api-keys', dir: 'modules/api-keys/frontend' },
+	{ name: '@n8n/frontend-module-html-display-mode', dir: 'modules/html-display-mode/frontend' },
+	{ name: '@n8n/frontend-module-mcp-servers', dir: 'modules/mcp-servers/frontend' },
 	{ name: '@n8n/frontend-module-engine-v2', dir: 'modules/engine-v2/frontend' },
 	{ name: '@n8n/frontend-module-promotions', dir: 'modules/promotions/frontend' },
 	{ name: '@n8n/frontend-module-apps', dir: 'modules/apps/frontend' },

@@ -67,7 +67,10 @@ export const DOMAIN_TOOL_IDS = {
 	SHARE_FILES: 'share-files',
 	VIEW_FILE: 'view-file',
 	AGENT_CONTEXT: 'agent-context',
+	ARCHIVE_AGENT: 'archive_agent',
 	MCP_SERVERS: 'mcp-servers',
+	// Builds the custom MCP servers of a project. `mcp-servers` connects third-party servers.
+	CUSTOM_MCP_SERVERS: 'custom-mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
 	ACTIVITY: 'activity',
 	SAVE_USER_PREFERENCE: 'save_user_preference',
@@ -194,11 +197,13 @@ const TOOL_GROUP_BY_NAME = new Map<string, string>([
 	...CREDENTIAL_TOOL_NAMES.map((name): [string, string] => [name, 'credentials']),
 	...NODE_TOOL_NAMES.map((name): [string, string] => [name, 'nodes']),
 	...Object.values(AGENT_BUILDER_TOOL_NAMES).map((name): [string, string] => [name, 'agents']),
+	[DOMAIN_TOOL_IDS.ARCHIVE_AGENT, 'agents'],
 	...Object.values(INSTANCE_TOOL_NAME_BY_ACTION).map((name): [string, string] => [
 		name,
 		'instance',
 	]),
 	...APP_TOOL_NAMES.map((name): [string, string] => [name, 'apps']),
+	[DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS, 'custom_mcp_servers'],
 ]);
 
 /** One line on what each n8n tool group holds, shown next to its tool names. */
@@ -208,10 +213,13 @@ const TOOL_GROUP_DESCRIPTIONS: Readonly<Record<string, string>> = {
 	data_tables: 'create, read and change data tables and their rows',
 	credentials: 'set up, test and manage credentials',
 	nodes: 'search node types and read their parameter definitions',
-	agents: 'build and configure standalone n8n Agents',
+	agents: 'manage standalone n8n Agents',
 	instance:
 		'list projects and tags, manage folders, tag workflows and clean up test executions in this n8n instance',
 	apps: 'create, open, change, save and bind n8n Apps',
+	// Without this line the model reads "MCP server" as an MCP Server Trigger workflow.
+	custom_mcp_servers:
+		'build and change custom MCP servers: a project server that serves chosen workflows as tools to AI clients, with the n8n sign-in. Not an MCP Server Trigger workflow',
 };
 
 /** Returns the description of a tool group, or undefined when it has none. */

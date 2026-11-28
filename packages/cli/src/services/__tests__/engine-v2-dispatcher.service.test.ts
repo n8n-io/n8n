@@ -5,6 +5,7 @@ import type {
 	INode,
 	INodeExecutionData,
 	IPinData,
+	IRunData,
 	ITaskData,
 	ITaskDataConnections,
 	IWorkflowBase,
@@ -13,11 +14,12 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
+import { stringify } from 'flatted';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
-import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/engine-lifecycle-event-subscriptions';
+import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/lifecycle-events/engine-lifecycle-event-subscriptions';
 import {
 	EngineDidNotAdmitError,
 	type EngineDataPlaneProxyService,
@@ -698,6 +700,7 @@ describe('EngineV2Dispatcher', () => {
 				seeded: [
 					{ nodeId: SET_NODE.id, iteration: 0, outputs: [[{ json: { reused: true } }], []] },
 				],
+				runData: {},
 			};
 
 			beforeEach(() => {
@@ -880,6 +883,77 @@ describe('EngineV2Dispatcher', () => {
 					pushRef: 'push-1',
 					workflowId: 'wf-1',
 					trigger: { nodeName: MANUAL_TRIGGER.name, outputs: [[{ json: {} }]] },
+					// A full run starts from no run data.
+					start: { mode: 'manual', flattedRunData: stringify({}), workflowName: 'My workflow' },
+				});
+			});
+
+			it('prepares executionStarted for a run the editor did not start over REST', async () => {
+				await dispatcher.start(
+					webhookRunData(undefined, { pushRef: 'push-1', source: 'instance_ai' }),
+				);
+
+				expect(pushRegistry.register.mock.calls[0][1].start).toEqual({
+					mode: 'webhook',
+					source: 'instance_ai',
+					flattedRunData: stringify({}),
+					workflowName: 'My workflow',
+				});
+			});
+
+			describe('of a planned run', () => {
+				const reused = { [SET_NODE.name]: [taskData([[{ json: { reused: true } }]])] };
+
+				const planWith = (runData: IRunData): ManualRunPlan => ({
+					workflow: workflow(),
+					triggerName: MANUAL_TRIGGER.name,
+					triggerOutputs: [[{ json: {} }]],
+					seeded: [],
+					runData,
+				});
+
+				beforeEach(() => {
+					manualRunPlanner.applies.mockReturnValue(true);
+				});
+
+				it('prepares executionStarted with the run data the run starts from', async () => {
+					manualRunPlanner.plan.mockReturnValue(planWith(reused));
+
+					await dispatcher.start(runData({ pushRef: 'push-1' }));
+
+					const { start, trigger } = pushRegistry.register.mock.calls[0][1];
+					expect(start?.flattedRunData).toBe(stringify(reused));
+					expect(trigger).toEqual({ nodeName: MANUAL_TRIGGER.name, outputs: [[{ json: {} }]] });
+				});
+
+				it('reports no run of a trigger the plan takes from the run data', async () => {
+					// The editor shows the trigger's earlier run from the run data; a
+					// second run would duplicate it. v1 reports none either.
+					manualRunPlanner.plan.mockReturnValue(
+						planWith({ ...reused, [MANUAL_TRIGGER.name]: [taskData([[{ json: {} }]])] }),
+					);
+
+					await dispatcher.start(runData({ pushRef: 'push-1' }));
+
+					expect(pushRegistry.register.mock.calls[0][1].trigger).toBeUndefined();
+				});
+
+				it('reports the trigger run when a fresh payload came with the run data', async () => {
+					// v1 runs the trigger from the payload, so it reports that run.
+					manualRunPlanner.plan.mockReturnValue(
+						planWith({ ...reused, [MANUAL_TRIGGER.name]: [taskData([[{ json: {} }]])] }),
+					);
+					const data = runData({
+						pushRef: 'push-1',
+						triggerToStartFrom: {
+							name: MANUAL_TRIGGER.name,
+							data: taskData([[{ json: { fresh: true } }]]),
+						},
+					});
+
+					await dispatcher.start(data);
+
+					expect(pushRegistry.register.mock.calls[0][1].trigger).toBeDefined();
 				});
 			});
 
@@ -1053,6 +1127,7 @@ describe('EngineV2Dispatcher', () => {
 					triggerName: SET_NODE.name,
 					triggerOutputs: [[{ json: { from: 'runData' } }]],
 					seeded: [],
+					runData: {},
 				});
 				payloadFiles.claimForExecution.mockRejectedValueOnce(new Error('disk gone'));
 				const data = runData({

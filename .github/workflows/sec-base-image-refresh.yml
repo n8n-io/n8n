@@ -1,0 +1,506 @@
+name: 'Security: Base Image Refresh'
+
+# Finds the base image digests that remove fixable OS findings from the release
+# images, and opens the pin PRs. See .github/scripts/docker/base-image-candidates.mjs.
+
+on:
+  # Monday to Friday, so no PR or alert waits over the weekend.
+  schedule:
+    - cron: '0 2 * * 1-5'
+  # Master published our own images, so the next pin PR of a chain is due.
+  workflow_run:
+    workflows: ['Build: Base Image', 'Build: Node PC Image']
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      preview:
+        description: 'Show the pin PRs in the job summary, and open no PR'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  # Labels for the pin PRs, comma-separated. For example, add `Backport to Beta`
+  # to send a fix to the release branches. The PRs merge only on master today.
+  PR_LABELS: ''
+
+concurrency:
+  group: sec-base-image-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh base image pins
+    if: github.repository == 'n8n-io/n8n' && github.event_name != 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      preview: ${{ steps.mode.outputs.preview }}
+    # The alerts read the state artifact, the refresh PRs and their checks.
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      checks: read
+      statuses: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Trivy reads the registry logins from the Docker config. The Docker Hub
+      # login also raises the pull rate limit.
+      - name: Login to Docker registries
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'false'
+          login-dockerhub: 'true'
+          login-dhi: 'true'
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.76.2
+          cache: true
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+        with:
+          cosign-release: v3.1.4
+
+      # A manual run skips the 24-hour gate. A digest that it lets through gets no auto-merge.
+      - name: Find candidate digests
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          args=(--out base-image-candidates.json)
+          if [ "$EVENT" = workflow_dispatch ]; then args+=(--skip-gate); fi
+          node .github/scripts/docker/base-image-candidates.mjs "${args[@]}"
+
+      # A preview, or a run off master, only shows the PRs that it would open.
+      - name: Decide whether to open the PRs
+        id: mode
+        env:
+          REF: ${{ github.ref }}
+          PREVIEW_INPUT: ${{ inputs.preview }}
+        run: |
+          preview=false
+          if [ "$REF" != refs/heads/master ] || [ "$PREVIEW_INPUT" = true ]; then
+            preview=true
+          fi
+          echo "preview=$preview" >> "$GITHUB_OUTPUT"
+
+      # A PR that GITHUB_TOKEN opens does not start CI, so the app token opens them.
+      - name: Generate GitHub App token
+        id: app-token
+        if: steps.mode.outputs.preview == 'false'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Prepare the daily PR
+        id: daily
+        run: |
+          node .github/scripts/docker/base-image-pin-pr.mjs --candidates base-image-candidates.json \
+            --group daily --body daily-pr.md
+
+      - name: Open the daily PR
+        if: steps.daily.outputs.changed == 'true' && steps.mode.outputs.preview == 'false'
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          add-paths: docker/docker-bake.hcl
+          commit-message: 'build: Update base image digests with fewer OS findings'
+          title: 'build: Update base image digests with fewer OS findings'
+          body-path: daily-pr.md
+          branch: base-image-refresh/daily
+          base: master
+          labels: ${{ env.PR_LABELS }}
+          delete-branch: true
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
+      - name: Reset the bake file
+        run: git checkout -- docker/docker-bake.hcl
+
+      # Digests that add a package get their own PR without auto-merge.
+      - name: Prepare the review PR
+        id: review
+        run: |
+          node .github/scripts/docker/base-image-pin-pr.mjs --candidates base-image-candidates.json \
+            --group review --body review-pr.md
+
+      - name: Open the review PR
+        if: steps.review.outputs.changed == 'true' && steps.mode.outputs.preview == 'false'
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          add-paths: docker/docker-bake.hcl
+          commit-message: 'build: Update base image digests that need a review'
+          title: 'build: Update base image digests that need a review'
+          body-path: review-pr.md
+          branch: base-image-refresh/review
+          base: master
+          labels: ${{ env.PR_LABELS }}
+          delete-branch: true
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
+      - name: Reset the bake file again
+        run: git checkout -- docker/docker-bake.hcl
+
+      # A newer Node patch changes NODE_VERSION and all Node pins in one PR, so
+      # the Alpine and the Debian images stay aligned. CI reads NODE_VERSION.
+      - name: Prepare the Node PR
+        id: node
+        run: |
+          node .github/scripts/docker/base-image-pin-pr.mjs --candidates base-image-candidates.json \
+            --group node --body node-pr.md
+
+      - name: Open the Node PR
+        if: steps.node.outputs.changed == 'true' && steps.mode.outputs.preview == 'false'
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          add-paths: docker/docker-bake.hcl
+          commit-message: ${{ steps.node.outputs.title }}
+          title: ${{ steps.node.outputs.title }}
+          body-path: node-pr.md
+          branch: base-image-refresh/node
+          base: master
+          labels: ${{ env.PR_LABELS }}
+          delete-branch: true
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
+      - name: Upload candidates
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: base-image-candidates
+          path: |
+            base-image-candidates.json
+            daily-pr.md
+            review-pr.md
+            node-pr.md
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # The alerts keep their state from run to run in an artifact of the last run on master.
+      - name: Download the alert state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=base-image-refresh-state&per_page=20" \
+            --jq '[.artifacts[] | select((.expired | not) and .workflow_run.head_branch == "master")][0].id // empty')
+          if [ -n "$id" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > state.zip
+            unzip -o -q state.zip -d previous-state
+            echo "Read the alert state from artifact $id."
+          else
+            echo "Found no alert state. Each alert starts as new."
+          fi
+
+      - name: Plan the alerts
+        id: alerts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          ACTOR: ${{ github.triggering_actor }}
+        run: |
+          args=(--candidates base-image-candidates.json --state previous-state/base-image-refresh-state.json
+            --state-out base-image-refresh-state.json --text alerts.txt --actor "$ACTOR")
+          if [ "$EVENT" = workflow_dispatch ]; then args+=(--manual); fi
+          node .github/scripts/docker/base-image-alerts.mjs "${args[@]}"
+
+      - name: Send the alerts
+        if: steps.alerts.outputs.alert == 'true' && steps.mode.outputs.preview == 'false'
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: node .github/scripts/slack/notify.mjs --channel '#updates-security' --text "$(cat alerts.txt)"
+
+      # A preview sends no alert, so it keeps no state.
+      - name: Upload the alert state
+        if: steps.mode.outputs.preview == 'false'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: base-image-refresh-state
+          path: base-image-refresh-state.json
+          retention-days: 30
+          # A re-run of the job uploads the state again.
+          overwrite: true
+
+      - name: Alert on failure
+        if: failure() && github.ref == 'refs/heads/master'
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node .github/scripts/slack/notify.mjs --channel '#updates-security' \
+            --text "<${RUN_URL}|Base image refresh failed>. Check which steps of the run completed."
+
+  # The repository is public, so anyone signed in to GitHub can download the report.
+  report:
+    name: Publish the Trivy report of the released images
+    needs: refresh
+    # A failed PR or alert step of the refresh must not stop the report.
+    if: ${{ !cancelled() && needs.refresh.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      checks: read
+      statuses: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The Docker Hub login raises the pull rate limit for the scans.
+      - name: Login to Docker Hub
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'false'
+          login-dockerhub: 'true'
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.76.2
+          cache: true
+
+      - name: Download candidates
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: base-image-candidates
+
+      - name: Scan the released images
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/docker/base-image-report.mjs --candidates base-image-candidates.json --out report
+
+      # A skipped line fails the scan step, but the reports of the other lines are complete.
+      - name: Upload the report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: base-image-report
+          path: report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Alert on failure
+        if: failure() && github.ref == 'refs/heads/master'
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node .github/scripts/slack/notify.mjs --channel '#updates-security' \
+            --text "<${RUN_URL}|The Trivy report of the released images failed>. Check which steps of the run completed."
+
+  # Builds n8nio/base again when a package that it installs has a fix in the DHI repository.
+  rebuild:
+    name: Rebuild the base images for patched packages
+    needs: refresh
+    # The mode step runs right after the candidate scan, so its output tells that the candidates exist.
+    if: ${{ !cancelled() && needs.refresh.outputs.preview != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Only this job dispatches build-base-image.yml. It also reads the build runs,
+    # the state artifact and the rebuild PR.
+    permissions:
+      contents: read
+      actions: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The package check runs the DHI images, and Trivy scans the bases.
+      - name: Login to Docker registries
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'false'
+          login-dockerhub: 'true'
+          login-dhi: 'true'
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # The package check runs the arm64 DHI images too.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.76.2
+          cache: true
+
+      - name: Download candidates
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: base-image-candidates
+
+      # The rebuild keeps its state from run to run in an artifact of the last run on master.
+      - name: Download the rebuild state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=base-image-rebuild-state&per_page=20" \
+            --jq '[.artifacts[] | select((.expired | not) and .workflow_run.head_branch == "master")][0].id // empty')
+          if [ -n "$id" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > state.zip
+            unzip -o -q state.zip -d previous-state
+            echo "Read the rebuild state from artifact $id."
+          else
+            echo "Found no rebuild state."
+          fi
+
+      # A preview dispatches no rebuild. A manual run skips the 24-hour gate of a rebuilt base.
+      - name: Plan the rebuild
+        id: rebuild
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PREVIEW: ${{ needs.refresh.outputs.preview }}
+        run: |
+          args=(--candidates base-image-candidates.json --state previous-state/base-image-rebuild-state.json
+            --state-out base-image-rebuild-state.json --body rebuild-pr.md --text rebuild-alerts.txt)
+          if [ "$PREVIEW" = false ]; then args+=(--dispatch); fi
+          if [ "$EVENT" = workflow_dispatch ]; then args+=(--skip-gate); fi
+          node .github/scripts/docker/base-image-rebuild.mjs "${args[@]}"
+
+      - name: Generate GitHub App token
+        id: app-token
+        if: steps.rebuild.outputs.changed == 'true' && needs.refresh.outputs.preview == 'false'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Open the rebuild PR
+        if: steps.rebuild.outputs.changed == 'true' && needs.refresh.outputs.preview == 'false'
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          add-paths: docker/docker-bake.hcl
+          commit-message: 'build: Pin the rebuilt base images with fewer OS findings'
+          title: 'build: Pin the rebuilt base images with fewer OS findings'
+          body-path: rebuild-pr.md
+          branch: base-image-refresh/rebuild
+          base: master
+          labels: ${{ env.PR_LABELS }}
+          delete-branch: true
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
+      - name: Send the alerts
+        if: steps.rebuild.outputs.alert == 'true' && needs.refresh.outputs.preview == 'false'
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: node .github/scripts/slack/notify.mjs --channel '#updates-security' --text "$(cat rebuild-alerts.txt)"
+
+      # A preview dispatches nothing, so it keeps no state. A failed PR or alert step must not lose a dispatch.
+      - name: Upload the rebuild state
+        if: ${{ !cancelled() && needs.refresh.outputs.preview == 'false' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: base-image-rebuild-state
+          path: base-image-rebuild-state.json
+          retention-days: 30
+          overwrite: true
+
+      - name: Alert on failure
+        if: failure() && github.ref == 'refs/heads/master'
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node .github/scripts/slack/notify.mjs --channel '#updates-security' \
+            --text "<${RUN_URL}|The rebuild of the base images failed>. Check which steps of the run completed."
+
+  chain:
+    name: Pin the images that master published
+    if: >-
+      github.repository == 'n8n-io/n8n' && (
+        (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.conclusion == 'success') ||
+        (github.event_name == 'workflow_dispatch' && inputs.preview))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prepare the chain PR
+        id: chain
+        if: github.event_name == 'workflow_run'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RUN_PATH: ${{ github.event.workflow_run.path }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
+        run: |
+          node .github/scripts/docker/base-image-chain-pr.mjs --workflow "$(basename "$RUN_PATH")" \
+            --sha "$RUN_SHA" --subject="${RUN_MESSAGE%%$'\n'*}" --run-url "$RUN_URL" --body chain-pr.md
+
+      # A preview shows the chain PR for the last publish of the base, and opens none.
+      - name: Preview the chain PR
+        if: github.event_name != 'workflow_run'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run=$(gh run list --workflow build-base-image.yml --branch master --event push --status success \
+            --limit 1 --json headSha,url --jq '.[0]')
+          node .github/scripts/docker/base-image-chain-pr.mjs --workflow build-base-image.yml \
+            --sha "$(jq -r .headSha <<<"$run")" --run-url "$(jq -r .url <<<"$run")" \
+            --body chain-pr.md --any-commit
+          git checkout -- docker/docker-bake.hcl
+
+      - name: Generate GitHub App token
+        id: app-token
+        if: steps.chain.outputs.changed == 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Open the chain PR
+        if: steps.chain.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          add-paths: docker/docker-bake.hcl
+          commit-message: ${{ steps.chain.outputs.title }}
+          title: ${{ steps.chain.outputs.title }}
+          body-path: chain-pr.md
+          branch: ${{ steps.chain.outputs.branch }}
+          base: master
+          labels: ${{ env.PR_LABELS }}
+          delete-branch: true
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>

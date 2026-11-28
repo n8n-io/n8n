@@ -1,4 +1,8 @@
-import type { WorkflowReviewVersionSnapshot } from '@n8n/api-types';
+import type {
+	InstanceAiMcpServerSubject,
+	InstanceAiPrefillPayload,
+	WorkflowReviewVersionSnapshot,
+} from '@n8n/api-types';
 import type { DatatableColumn } from '@n8n/design-system';
 import type { INodeTypeDescription, IWorkflowSettings } from 'n8n-workflow';
 
@@ -29,6 +33,10 @@ import type { INodeTypeDescription, IWorkflowSettings } from 'n8n-workflow';
  * state). It takes the props and slots of the shell's `ResourcesListLayout`.
  * `node-type-icon` is the icon of a node type. It takes `SlotNodeTypeIconProps`.
  * `credential-type-icon` is the icon of a credential type. It takes `SlotCredentialTypeIconProps`.
+ * `assistant-panel` is the n8n Assistant chat, docked beside a page and bound to the resource of
+ * that page. It takes `SlotAssistantPanelProps`. It emits `close`, and `subject-changed` when a
+ * tool call of the Assistant changed the resource. The `subject` slot is a row under the header
+ * that names the resource. The `empty` slot is the welcome state of a chat with no message.
  */
 export type ModuleComponentSlot =
 	| 'project-filter'
@@ -40,7 +48,8 @@ export type ModuleComponentSlot =
 	| 'insights-summary'
 	| 'resources-list-layout'
 	| 'node-type-icon'
-	| 'credential-type-icon';
+	| 'credential-type-icon'
+	| 'assistant-panel';
 
 /**
  * The `v-model` value of the `project-filter` slot. `null` means "all projects".
@@ -96,6 +105,12 @@ export type SlotNodeTypeIconProps = {
 	size?: number;
 };
 
+export type SlotAssistantPanelProps = {
+	subject: InstanceAiMcpServerSubject;
+	/** Text for the composer. The panel puts each new object in once, and does not send it. */
+	prefill?: InstanceAiPrefillPayload;
+};
+
 export type SlotCredentialTypeIconProps = {
 	credentialTypeName: string;
 	size?: number;
@@ -118,6 +133,7 @@ export type SlotProjectHeaderMainButton =
 	| 'variable'
 	| 'agent'
 	| 'app'
+	| 'mcpServer'
 	| 'selfHealing';
 
 export type SlotProjectHeaderProps = {
@@ -133,7 +149,13 @@ export type SlotResourcesListFilters = {
 };
 
 /** The list whose page size and sort the `resources-list-layout` slot persists. */
-export type SlotResourcesListTabKey = 'workflows' | 'credentials' | 'dataTable' | 'agents' | 'apps';
+export type SlotResourcesListTabKey =
+	| 'workflows'
+	| 'credentials'
+	| 'dataTable'
+	| 'agents'
+	| 'apps'
+	| 'mcpServers';
 
 export type SlotResourcesListLayoutProps<ResourceType> = {
 	resourceKey: string;

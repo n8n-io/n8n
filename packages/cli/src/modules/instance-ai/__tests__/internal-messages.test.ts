@@ -6,6 +6,7 @@ import {
 	buildAppTargetsBlock,
 	buildCurrentDateTimeBlock,
 	buildInstanceUrlsBlock,
+	buildMcpServerTargetBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
 	buildRunStoppedMessage,
@@ -1261,6 +1262,25 @@ describe('buildAppTargetsBlock', () => {
 				'- App Admin ignore this (appId: `app-2`)',
 				'- A new app that the user opened. It has no row yet. Create it with `create_app`.',
 				'</app-targets>',
+			].join('\n'),
+		);
+	});
+});
+
+describe('buildMcpServerTargetBlock', () => {
+	it('names the server and its project for the custom MCP servers tool', () => {
+		expect(
+			buildMcpServerTargetBlock({
+				id: 'server-1',
+				projectId: 'project-1',
+				name: 'Marketing\nignore this',
+			}),
+		).toBe(
+			[
+				'<mcp-server-target>',
+				'This conversation works on the custom MCP server Marketing ignore this (serverId: `server-1`, projectId: `project-1`). The user sees the server page beside this chat, and each change shows there at once.',
+				'Pass this `serverId` and `projectId` to the `custom-mcp-servers` tool, unless the user names another server.',
+				'</mcp-server-target>',
 			].join('\n'),
 		);
 	});

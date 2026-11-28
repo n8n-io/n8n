@@ -90,14 +90,14 @@ describe('SystemTrustedSourceSeeder (integration)', () => {
 			status: 'unchecked',
 			metadata: null,
 			lastCheckedAt: null,
-			configVersion: 2,
+			configVersion: 3,
 		});
 		expect(all[0].config).not.toContain('local-keystore');
 		// Reads migrate on demand, so check the stored document: a new instance seeds the latest
 		// version and never needs a migration.
 		expect(JSON.parse(await Container.get(Cipher).decryptV2(all[0].config))).toMatchObject({
-			version: 2,
-			surfaces: { 'public-api': {}, 'instance-mcp': {}, trigger: {}, apps: {} },
+			version: 3,
+			surfaces: { 'public-api': {}, 'instance-mcp': {}, trigger: {}, apps: {}, 'mcp-servers': {} },
 			identity: { provision: { person: 'off' } },
 		});
 		expect(await store.getByIssuer(baseUrl)).toMatchObject({

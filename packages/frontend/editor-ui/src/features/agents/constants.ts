@@ -23,9 +23,9 @@ export const AGENT_N8N_CHAT_VIEW = 'AgentN8nChatView';
 export const AGENT_N8N_CHAT_LIBRARY_VIEW = 'AgentN8nChatLibraryView';
 
 /**
- * n8n Chat agent search cap, shared by the library view and the "Chat with"
- * picker. Matches the backend filter (`agentListFilterSchema.query` `.max(128)`,
- * `@n8n/api-types`), so a longer search term never reaches the API.
+ * n8n Chat agent search cap for the library view. Matches the backend filter
+ * (`agentListFilterSchema.query` `.max(128)`, `@n8n/api-types`), so a longer
+ * search term never reaches the API.
  */
 export const AGENT_N8N_CHAT_SEARCH_MAX_LENGTH = 128;
 
@@ -109,3 +109,6 @@ export const PENDING_AGENT_ID_STATE = 'instanceAiPendingAgentId';
  * pending agent id, and out of the URL, for the same reason.
  */
 export const PENDING_AGENT_STARTER_STATE = 'instanceAiPendingAgentStarter';
+
+/** The channel modal row and view type of scheduled tasks. It is not a channel platform. */
+export const AGENT_SCHEDULE_VIEW_TYPE = 'schedule';

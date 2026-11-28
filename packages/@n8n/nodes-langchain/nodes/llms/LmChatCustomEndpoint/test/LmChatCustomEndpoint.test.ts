@@ -1,3 +1,4 @@
+import { openAiTokensUsageParser } from '@n8n/ai-utilities';
 import { ChatOpenAI, ChatOpenAICompletions } from '@langchain/openai';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
@@ -183,7 +184,22 @@ describe('LmChatCustomEndpoint', () => {
 		])('%s', async (_name, params, expected) => {
 			await node.supplyData.call(contextWith(params), 0);
 
-			expect(configOptions().requestHeaders).toEqual(expected);
+			const { contextHeaders, userHeaders } = configOptions();
+			expect({ ...contextHeaders, ...userHeaders }).toEqual(expected);
+		});
+
+		// Only what the user typed is a candidate secret. n8n's own context headers carry the
+		// workflow name and the execution id, which an error is allowed to name.
+		it('marks only the headers the user typed as secret', async () => {
+			await node.supplyData.call(
+				contextWith({
+					sendContextHeaders: true,
+					'headers.header': [{ name: 'x-api-key', value: 'typed-secret' }],
+				}),
+				0,
+			);
+
+			expect(configOptions().userHeaders).toEqual({ 'x-api-key': 'typed-secret' });
 		});
 	});
 
@@ -220,6 +236,15 @@ describe('LmChatCustomEndpoint', () => {
 
 			expect(MockedChatOpenAICompletions).not.toHaveBeenCalled();
 			expect(constructorArgs()).toMatchObject({ useResponsesApi: true });
+		});
+
+		it('uses the OpenAI usage parser so Responses usage is not estimated', async () => {
+			await node.supplyData.call(contextWith(RESPONSES), 0);
+
+			const callbacks = constructorArgs().callbacks as Array<{
+				options?: { tokensUsageParser?: unknown };
+			}>;
+			expect(callbacks[0]?.options?.tokensUsageParser).toBe(openAiTokensUsageParser);
 		});
 
 		it.each([['chatCompletions'], ['responses']])(

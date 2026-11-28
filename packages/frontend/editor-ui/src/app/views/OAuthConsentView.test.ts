@@ -1,6 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useConsentStore } from '@/app/stores/consent.store';
+import type { IUser } from '@n8n/rest-api-client/api/users';
+import { useUsersStore } from '@n8n/stores/users.store';
 import OAuthConsentView from '@/app/views/OAuthConsentView.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -8,6 +10,11 @@ import { within } from '@testing-library/vue';
 import { nextTick } from 'vue';
 
 vi.mock('@n8n/rest-api-client/api/consent');
+
+const mockShowError = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: mockShowError, showMessage: vi.fn() }),
+}));
 
 /** The /authorize redirect puts the pending request's flow id in the page URL. */
 const FLOW_ID = 'ktest00-0123456789abcdef01234567';
@@ -25,6 +32,7 @@ describe('OAuthConsentView', () => {
 	let consentStore: ReturnType<typeof mockedStore<typeof useConsentStore>>;
 
 	beforeEach(() => {
+		mockShowError.mockReset();
 		createTestingPinia({ stubActions: false });
 		consentStore = mockedStore(useConsentStore);
 
@@ -406,6 +414,135 @@ describe('OAuthConsentView', () => {
 			expect(queryByText(/executes its workflow/)).toBeNull();
 			expect(queryByText('Get a list of your workflows')).toBeNull();
 			expect(queryByTestId('consent-redirect-confirm')).toBeNull();
+		});
+	});
+
+	describe('custom MCP server', () => {
+		const serverDetails = {
+			clientName: 'Claude Code',
+			clientId: 'claude-code',
+			redirectUri: 'http://localhost:3000/callback',
+			resourceName: 'Sales tools',
+			scopes: [],
+			uiHints: { icon: 'mcp', consentType: 'mcp-server' },
+		};
+
+		beforeEach(() => {
+			mockedStore(useUsersStore).currentUser = {
+				id: 'u1',
+				firstName: 'Maya',
+				lastName: 'Lopez',
+				fullName: 'Maya Lopez',
+				email: 'maya@example.com',
+			} as IUser;
+			consentStore.consentDetails = serverDetails;
+			consentStore.fetchConsentDetails.mockResolvedValue(serverDetails);
+		});
+
+		it('uses the wording for a server and names the account that signed in', async () => {
+			const { getByRole, getByText, queryByText } = renderComponent();
+			await waitAllPromises();
+
+			expect(
+				getByRole('heading', { name: 'Claude Code wants to connect to Sales tools' }),
+			).toBeVisible();
+			expect(
+				getByText('Claude Code can see the tools of this MCP server and use them on your behalf.'),
+			).toBeVisible();
+			expect(getByText('Signed in as Maya Lopez (maya@example.com)')).toBeVisible();
+			expect(queryByText(/requests access to workflow/)).toBeNull();
+			expect(getByRole('button', { name: 'Cancel' })).toBeVisible();
+			expect(getByRole('button', { name: 'Allow' })).toBeVisible();
+		});
+
+		it('names the account by its email when the person has no name', async () => {
+			mockedStore(useUsersStore).currentUser = {
+				id: 'u1',
+				email: 'maya@example.com',
+			} as IUser;
+
+			const { getByText } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByText('Signed in as maya@example.com')).toBeVisible();
+		});
+
+		it.each([
+			[
+				'not_member',
+				'You cannot connect to Sales tools',
+				'Only members of the Sales project can connect to this MCP server. Ask an admin of the project to add you, then connect again.',
+			],
+			[
+				'no_connect_scope',
+				'You cannot connect to Sales tools',
+				'Your role in the Sales project cannot connect to this MCP server. Ask an admin of the project for a role that can connect.',
+			],
+			[
+				'blocked',
+				'Your access to Sales tools is blocked',
+				'A builder of the Sales project blocked your access to this MCP server. Ask an admin of the project to restore it.',
+			],
+		])('shows the refusal screen for the reason %s', async (reason, heading, description) => {
+			consentStore.error = 'You do not have sufficient permissions to authorize this request';
+			consentStore.errorCode = 'forbidden';
+			consentStore.refusal = {
+				reason,
+				projectName: 'Sales',
+				resourceName: 'Sales tools',
+				uiHints: { icon: 'mcp', consentType: 'mcp-server' },
+			};
+
+			const { getByRole, getByText, getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByRole('heading', { name: heading })).toBeVisible();
+			expect(getByText(description)).toBeVisible();
+			expect(getByText('Signed in as Maya Lopez (maya@example.com)')).toBeVisible();
+			expect(getByTestId('consent-close-button')).toHaveTextContent('Go to n8n');
+			expect(queryByTestId('consent-error-notice')).toBeNull();
+			expect(queryByTestId('consent-allow-button')).toBeNull();
+		});
+
+		it('shows no project name for a server in a personal project', async () => {
+			consentStore.error = 'You do not have sufficient permissions to authorize this request';
+			consentStore.errorCode = 'forbidden';
+			consentStore.refusal = {
+				reason: 'not_member',
+				resourceName: 'Sales tools',
+				uiHints: { icon: 'mcp', consentType: 'mcp-server' },
+			};
+
+			const { getByText } = renderComponent();
+			await waitAllPromises();
+
+			expect(
+				getByText(
+					'This MCP server is in a personal project. Only the owner of the project can connect to it.',
+				),
+			).toBeVisible();
+		});
+
+		it('shows no toast and no spinner on the refusal screen', async () => {
+			const refusal = {
+				reason: 'not_member',
+				projectName: 'Sales',
+				resourceName: 'Sales tools',
+				uiHints: { icon: 'mcp', consentType: 'mcp-server' },
+			};
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.error = 'You do not have sufficient permissions to authorize this request';
+				consentStore.errorCode = 'forbidden';
+				consentStore.refusal = refusal;
+				throw new Error('You do not have sufficient permissions to authorize this request');
+			});
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('consent-refusal')).toBeVisible();
+			expect(mockShowError).not.toHaveBeenCalled();
+			expect(queryByTestId('consent-connector-spinner')).toBeNull();
 		});
 	});
 

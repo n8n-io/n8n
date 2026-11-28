@@ -2,14 +2,32 @@ import { ApplyPackageResultDto, type ContinueApplyPackageDto } from '@n8n/api-ty
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { OutboundHttp, SsrfProtectionService, type DnsResolver } from '@n8n/backend-network';
-import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getPersonalProject,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { GLOBAL_MEMBER_ROLE, ProjectRepository, TransactionRunner, UserRepository } from '@n8n/db';
+import {
+	GLOBAL_MEMBER_ROLE,
+	ProjectRepository,
+	RoleRepository,
+	SettingsRepository,
+	TransactionRunner,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { onTestFinished } from 'vitest';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { ApiKeyScope } from '@n8n/permissions';
+import {
+	OWNER_API_KEY_SCOPES,
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
+	type ApiKeyScope,
+	type PromotionProjectAccessSettings,
+} from '@n8n/permissions';
 import { Cipher } from 'n8n-core';
 import nock from 'nock';
 import { randomUUID } from 'node:crypto';
@@ -26,7 +44,12 @@ import { PromotionEnvironmentLockService } from '@/modules/promotions.ee/promoti
 import { PromotionEnvironmentResolver } from '@/modules/promotions.ee/promotion-environment.resolver';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsGitService } from '@/modules/promotions.ee/promotions-git.service';
+import { PromotionSettingsService } from '@/modules/promotions.ee/promotion-settings.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { resolvePublicApiRoutes } from '@/public-api/public-api-route-resolver';
+import { PromotionsPublicController } from '@/public-api/v1/controllers/promotions.public.controller';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import {
 	createAdminWithApiKey,
 	createMember,
@@ -38,7 +61,7 @@ import { setupTestServer } from '@test-integration/utils';
 describe('Promotions in Public API', () => {
 	const testServer = setupTestServer({
 		reuseServer: true,
-		endpointGroups: ['publicApi'],
+		endpointGroups: ['publicApi', 'apiKeys'],
 		enabledFeatures: ['feat:promotions'],
 		modules: ['promotions'],
 	});
@@ -92,8 +115,24 @@ describe('Promotions in Public API', () => {
 		return clone;
 	}
 
+	/** The settings change the system project roles, which every test in this file shares. */
+	async function setPromotionSettings(settings: Partial<PromotionProjectAccessSettings> = {}) {
+		await Container.get(PromotionSettingsService).update(owner, {
+			whoCanPromote: 'instanceAdmins',
+			whoCanApprove: 'instanceAdmins',
+			whoCanApply: 'instanceAdmins',
+			...settings,
+		});
+		// No stored row, as on an instance that upgrades to this version.
+		await Container.get(SettingsRepository).delete({ key: 'promotions.requireApproval' });
+	}
+
 	beforeAll(async () => {
 		await testDb.init();
+		// Promotion reviews need environments v2, the version of a new instance.
+		Container.get(SourceControlPreferencesService).sourceControlPreferences = {
+			environmentsVersion: 'v2',
+		};
 	});
 
 	beforeEach(async () => {
@@ -208,6 +247,131 @@ describe('Promotions in Public API', () => {
 
 		expect(environment.status).toBe(400);
 		expect(missingProjects.status).toBe(400);
+	});
+
+	describe('settings', () => {
+		const scopesOf = async (slug: string) =>
+			(await Container.get(RoleRepository).findBySlug(slug))?.scopes.map((s) => s.slug) ?? [];
+
+		afterEach(async () => await setPromotionSettings());
+
+		it('changing the settings updates the project admin and editor roles and leaves custom project roles alone', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const customRole = await createCustomRoleWithScopeSlugs([
+				'promotions:promote',
+				'promotions:apply',
+				'workflow:read',
+			]);
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
+			onTestFinished(() => emit.mockRestore());
+
+			const widened = await agent.patch('/promotions/settings').send({
+				whoCanPromote: 'projectAdminsAndEditors',
+				whoCanApprove: 'projectAdminsAndEditors',
+				whoCanApply: 'projectAdminsAndEditors',
+			});
+			expect(widened.status, JSON.stringify(widened.body)).toBe(200);
+			// Nothing stored yet, so the default applies.
+			expect(widened.body.requireApproval).toBe('whenConfigured');
+			expect(await scopesOf(PROJECT_EDITOR_ROLE_SLUG)).toEqual(
+				expect.arrayContaining(['promotions:promote', 'promotions:apply']),
+			);
+			emit.mockClear();
+
+			// whoCanApprove is left out, so it keeps its value.
+			const narrowed = await agent.patch('/promotions/settings').send({
+				whoCanPromote: 'projectAdmins',
+				whoCanApply: 'instanceAdmins',
+				requireApproval: 'alwaysRequired',
+			});
+			expect(narrowed.status, JSON.stringify(narrowed.body)).toBe(200);
+
+			const adminScopes = await scopesOf(PROJECT_ADMIN_ROLE_SLUG);
+			const editorScopes = await scopesOf(PROJECT_EDITOR_ROLE_SLUG);
+			expect(adminScopes).not.toContain('promotions:apply');
+			expect(editorScopes).not.toContain('promotions:apply');
+			expect(adminScopes).toEqual(
+				expect.arrayContaining([
+					'promotions:promote',
+					'promotions:readReviews',
+					'promotions:approveReviews',
+				]),
+			);
+			// Approve still gives editors readReviews after Promote no longer does.
+			expect(editorScopes).toEqual(
+				expect.arrayContaining(['promotions:readReviews', 'promotions:approveReviews']),
+			);
+			expect(editorScopes).not.toContain('promotions:promote');
+			expect(await scopesOf(customRole.slug)).toEqual(
+				expect.arrayContaining(['promotions:promote', 'promotions:apply', 'workflow:read']),
+			);
+
+			const read = await agent.get('/promotions/settings');
+			expect(read.body).toEqual({
+				whoCanPromote: 'projectAdmins',
+				whoCanApprove: 'projectAdminsAndEditors',
+				whoCanApply: 'instanceAdmins',
+				requireApproval: 'alwaysRequired',
+			});
+
+			const user = expect.objectContaining({ id: owner.id });
+			expect(emit).toHaveBeenCalledWith('promotion-settings-updated', {
+				user,
+				before: {
+					whoCanPromote: 'projectAdminsAndEditors',
+					whoCanApply: 'projectAdminsAndEditors',
+					requireApproval: 'whenConfigured',
+				},
+				after: {
+					whoCanPromote: 'projectAdmins',
+					whoCanApply: 'instanceAdmins',
+					requireApproval: 'alwaysRequired',
+				},
+			});
+			expect(emit).toHaveBeenCalledWith('instance-policies-updated', {
+				user,
+				settingName: 'promotions_who_can_promote',
+				value: 'projectAdmins',
+			});
+			expect(emit).toHaveBeenCalledWith('instance-policies-updated', {
+				user,
+				settingName: 'promotions_who_can_apply',
+				value: 'instanceAdmins',
+			});
+			expect(emit).toHaveBeenCalledWith('instance-policies-updated', {
+				user,
+				settingName: 'promotions_require_approval',
+				value: 'alwaysRequired',
+			});
+		});
+
+		it('rejects a change without securitySettings:manage on the role or the key, or with an unknown option', async () => {
+			// The member's key holds the scope, so the role check must reject it.
+			const member = await createMemberWithApiKey({ scopes: ['securitySettings:manage'] });
+			// The owner's role holds the scope, so the key check must reject it.
+			const promotionsOnlyOwner = await createOwnerWithApiKey({ scopes: ['promotions:promote'] });
+			const owners = testServer.publicApiAgentFor(owner);
+			const before = (await owners.get('/promotions/settings')).body;
+			const widened = {
+				whoCanPromote: 'projectAdminsAndEditors',
+				whoCanApprove: 'projectAdminsAndEditors',
+				whoCanApply: 'projectAdminsAndEditors',
+			};
+
+			for (const caller of [member, promotionsOnlyOwner]) {
+				const response = await testServer
+					.publicApiAgentFor(caller)
+					.patch('/promotions/settings')
+					.send(widened);
+				expect(response.status).toBe(403);
+			}
+			const unknownOption = await owners
+				.patch('/promotions/settings')
+				.send({ ...widened, whoCanApply: 'everyone' });
+			expect(unknownOption.status).toBe(400);
+
+			expect((await owners.get('/promotions/settings')).body).toEqual(before);
+		});
 	});
 
 	describe('GitLab provider validation', () => {
@@ -1799,11 +1963,15 @@ describe('Promotions in Public API', () => {
 		const missingProjects = await agent.get(
 			`/promotions/environments/${randomUUID()}/missing-projects`,
 		);
+		const reviews = await agent.get('/promotions/reviews');
+		const review = await agent.get(`/promotions/reviews/${randomUUID()}`);
 
 		expect(list.status).toBe(403);
 		expect(createProvider.status).toBe(403);
 		expect(apply.status).toBe(403);
 		expect(missingProjects.status).toBe(403);
+		expect(reviews.status).toBe(403);
+		expect(review.status).toBe(403);
 	});
 
 	it('rejects every request when the feature is not licensed', async () => {
@@ -2351,9 +2519,6 @@ describe('Promotions in Public API', () => {
 					.post('/promotions/projects/proj1/changes/apply/details')
 					.send({ commitSha: null, keys: ['workflow:wf1'] });
 				expect(details.status).toBe(403);
-				// The UI session of a member has no promotion scope, so it sees no preview.
-				const member = testServer.publicApiAgentWithCookie(await createMember());
-				expect((await member.get('/promotions/projects/proj1/changes/promote')).status).toBe(403);
 
 				const apply = await pullOnly.get('/promotions/projects/proj1/changes/apply');
 				expect(apply.status, JSON.stringify(apply.body)).toBe(200);
@@ -2399,14 +2564,40 @@ describe('Promotions in Public API', () => {
 			expect(response.status).toBe(403);
 		});
 
-		it('rejects a user without the promote grant', async () => {
-			// The key carries the promote scope, but a member's role does not grant it.
-			const member = await createMemberWithApiKey({ scopes: ['promotions:promote'] });
-			const response = await testServer
-				.publicApiAgentFor(member)
-				.post('/promotions/projects/proj1/promote')
-				.send({ workflowIds: ['w1'] });
-			expect(response.status).toBe(403);
+		it('lets a member key promote only where the project role allows it', async () => {
+			const member = await createMember();
+			// The member makes the key in the UI before they join the project.
+			const created = await testServer
+				.authAgentFor(member)
+				.post('/api-keys')
+				.send({ label: 'Promote', expiresAt: null, scopes: ['promotions:promote'] });
+			expect(created.status, JSON.stringify(created.body)).toBe(200);
+			const key = testServer.publicApiAgentWithApiKey(created.body.data.rawApiKey as string);
+			const project = await createTeamProject('Billing', owner);
+			await linkUserToProject(member, project, PROJECT_ADMIN_ROLE_SLUG);
+			const promote = vi
+				.spyOn(Container.get(PromotionsService), 'promoteProjectSelection')
+				.mockResolvedValue(promoteResult);
+			onTestFinished(async () => {
+				promote.mockRestore();
+				await setPromotionSettings();
+			});
+			const promoteBilling = async () =>
+				(await key.post(`/promotions/projects/${project.id}/promote`).send({ workflowIds: ['w1'] }))
+					.status;
+
+			expect(await promoteBilling()).toBe(403);
+
+			await setPromotionSettings({ whoCanPromote: 'projectAdmins' });
+			expect(await promoteBilling()).toBe(200);
+			expect(promote).toHaveBeenCalledWith(project.id, expect.objectContaining({ id: member.id }), {
+				workflowIds: ['w1'],
+			});
+
+			// Revoking the setting stops the existing key.
+			await setPromotionSettings();
+			expect(await promoteBilling()).toBe(403);
+			expect(promote).toHaveBeenCalledTimes(1);
 		});
 
 		it('requires a licensed and active module', async () => {
@@ -2490,6 +2681,82 @@ describe('Promotions in Public API', () => {
 				.post(`/promotions/projects/${project.id}/promote`)
 				.send({ workflowIds: ['w1'] });
 			expect(response.status).toBe(404);
+		});
+	});
+
+	describe('role check of each route', () => {
+		it('refuses every route to a member whose role in the target project cannot use it', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const providerId = await createProvider(agent);
+			const environmentId = await createEnvironment(agent, { providerId, ...promoteEnvironment });
+			const ownProject = await createTeamProject('Billing', owner);
+			const otherProject = await createTeamProject('Support', owner);
+			// The key holds every scope, so only the role can refuse a request.
+			const member = await createMemberWithApiKey({ scopes: OWNER_API_KEY_SCOPES });
+			// The member holds every promotion scope in Billing and none in Support.
+			await linkUserToProject(member, ownProject, PROJECT_ADMIN_ROLE_SLUG);
+			await linkUserToProject(member, otherProject, PROJECT_EDITOR_ROLE_SLUG);
+			onTestFinished(async () => await setPromotionSettings());
+			await setPromotionSettings({
+				whoCanPromote: 'projectAdmins',
+				whoCanApprove: 'projectAdmins',
+				whoCanApply: 'projectAdmins',
+			});
+
+			// Only these routes accept a project role, so they go to Support. Every other route goes to
+			// Billing, where the member holds every promotion scope, and still needs the instance role.
+			const projectRoleRoutes = [
+				'GET /promotions/projects/:projectId/changes/:direction (promote)',
+				'POST /promotions/projects/:projectId/changes/:direction/details (promote)',
+				'POST /promotions/projects/:projectId/promote',
+			];
+			// A new route joins this list on its own. A new path param needs a value below.
+			const requests = resolvePublicApiRoutes()
+				.filter((route) => route.controllerClass === PromotionsPublicController)
+				.flatMap(({ method, path }) =>
+					(path.includes(':direction') ? ['promote', 'apply'] : [undefined]).map((direction) => {
+						const name = `${method.toUpperCase()} ${path}${direction ? ` (${direction})` : ''}`;
+						const params: Record<string, string | undefined> = {
+							promotionProviderId: providerId,
+							promotionEnvironmentId: environmentId,
+							repositoryId: '42',
+							promotionReviewId: randomUUID(),
+							projectId: projectRoleRoutes.includes(name) ? otherProject.id : ownProject.id,
+							direction,
+						};
+						const url = path.replace(/:(\w+)/g, (_, param: string) => {
+							const value = params[param];
+							if (value === undefined) throw new Error(`Add a value for :${param}`);
+							return value;
+						});
+						return { method, name, url };
+					}),
+				);
+			expect(requests.map(({ name }) => name)).toEqual(
+				expect.arrayContaining([
+					...projectRoleRoutes,
+					'POST /promotions/environments/:promotionEnvironmentId/promote',
+				]),
+			);
+
+			// The review routes hide what the Inbox of the member hides, instead of refusing it.
+			const hidingRoutes: Record<string, number> = {
+				'GET /promotions/reviews': 200,
+				'GET /promotions/reviews/:promotionReviewId': 404,
+			};
+			const memberAgent = testServer.publicApiAgentFor(member);
+			const notRefused: string[] = [];
+			for (const { method, name, url } of requests) {
+				const request = memberAgent[method as 'get' | 'post' | 'put' | 'patch' | 'delete'](url);
+				// Change details checks the role after it parses the body, so the body must be valid.
+				const response = ['post', 'put', 'patch'].includes(method)
+					? await request.send({ commitSha: null, keys: ['workflow:w1'] })
+					: await request;
+				if (response.status !== (hidingRoutes[name] ?? 403)) {
+					notRefused.push(`${name}: ${response.status}`);
+				}
+			}
+			expect(notRefused).toEqual([]);
 		});
 	});
 

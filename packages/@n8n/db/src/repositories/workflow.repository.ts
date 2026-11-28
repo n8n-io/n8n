@@ -15,7 +15,7 @@ import type {
 	EntityManager,
 } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { PROJECT_ROOT } from 'n8n-workflow';
+import { PROJECT_ROOT, type IWorkflowSettings } from 'n8n-workflow';
 import { UnexpectedError, UserError } from '@n8n/errors';
 
 import type { ActivityProjectScope } from './activity-event.repository';
@@ -31,6 +31,7 @@ import {
 	WorkflowDependency,
 	WORKFLOW_DEPENDENCY_INDEX_VERSION,
 	User,
+	Project,
 } from '../entities';
 import { SharedWorkflow } from '../entities/shared-workflow';
 import type {
@@ -332,6 +333,11 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			select: { isArchived: true },
 			where: { id: workflowId },
 		});
+	}
+
+	async findSettings(workflowId: string): Promise<IWorkflowSettings | undefined> {
+		const workflow = await this.findOne({ select: ['settings'], where: { id: workflowId } });
+		return workflow?.settings;
 	}
 
 	async getAllActiveIds() {
@@ -758,7 +764,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			// it the backend falls back to scanning every enabled node and
 			// disagrees with the frontend picker, which fetches connections.
 			// `activeVersionId` tells the publish check whether the workflow is published.
-			select: ['id', 'name', 'nodes', 'connections', 'activeVersionId'],
+			select: ['id', 'name', 'nodes', 'connections', 'activeVersionId', 'isArchived'],
 		});
 	}
 
@@ -1543,6 +1549,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		this.applyFilters(qb, filtersToApply);
 		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
+		this.applyPersonalProjectsOfOthersFilter(qb, user, options.filter);
 		this.applyWorkflowIdsInFilter(qb, options.workflowIdsIn);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
@@ -1550,6 +1557,28 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		this.applyPagination(qb, options);
 
 		return qb;
+	}
+
+	private applyPersonalProjectsOfOthersFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		user: User,
+		filter: WorkflowListQueryOptions['filter'],
+	): void {
+		if (filter?.excludePersonalProjectsOfOthers !== true) return;
+
+		const homeSubquery = this.manager
+			.createQueryBuilder()
+			.select('homeShare.workflowId')
+			.from(SharedWorkflow, 'homeShare')
+			.innerJoin(Project, 'homeProject', 'homeProject.id = homeShare.projectId')
+			.where('homeShare.role = :homeShareRole')
+			.andWhere('(homeProject.type = :homeTeamType OR homeProject.creatorId = :homeUserId)');
+
+		qb.andWhere(`workflow.id IN (${homeSubquery.getQuery()})`, {
+			homeShareRole: 'workflow:owner',
+			homeTeamType: 'team',
+			homeUserId: user.id,
+		});
 	}
 
 	/**

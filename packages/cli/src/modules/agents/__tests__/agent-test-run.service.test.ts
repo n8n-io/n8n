@@ -5,6 +5,7 @@ import {
 } from '@n8n/agents';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
+import { toolCallSimulationSchema, type ToolCallSimulation } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -16,6 +17,8 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import type { SimulationSession } from '../simulation/simulation-session';
+import type { SimulationSessionService } from '../simulation/simulation-session.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -72,6 +75,8 @@ function makeService() {
 	const agentValidationService = mock<AgentValidationService>();
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
+	const simulationSessions = mock<SimulationSessionService>();
+	simulationSessions.openForDraftRun.mockResolvedValue(undefined);
 	agentExecutionService.findThreadById.mockResolvedValue(null);
 	agentExecutionService.canUseDraftThread.mockResolvedValue(true);
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
@@ -83,11 +88,13 @@ function makeService() {
 			agentValidationService,
 			agentExecutionOrchestratorService,
 			n8nCheckpointStorage,
+			simulationSessions,
 		),
 		agentExecutionService,
 		agentValidationService,
 		agentExecutionOrchestratorService,
 		n8nCheckpointStorage,
+		simulationSessions,
 	};
 }
 
@@ -272,6 +279,92 @@ describe('AgentTestRunService', () => {
 		);
 	});
 
+	it('continues a public_api session on the published version in the caller scope', async () => {
+		const { service, agentExecutionService, agentExecutionOrchestratorService } = makeService();
+		agentExecutionService.canUsePublicApiThread.mockResolvedValue(true);
+		agentExecutionOrchestratorService.executeForPublicApiPublished.mockImplementation(
+			async function* (config) {
+				yield { type: 'text-delta', id: 'text-1', delta: 'Hello' };
+				config.onExecutionRecorded?.('execution-1');
+			},
+		);
+
+		const result = await service.executePublishedRun({
+			agentId,
+			projectId,
+			message: 'Hi',
+			user,
+			sessionId: 'session-1',
+		});
+
+		expect(agentExecutionService.canUsePublicApiThread).toHaveBeenCalledWith(
+			'session-1',
+			projectId,
+			agentId,
+			user.id,
+			'existing',
+		);
+		expect(agentExecutionOrchestratorService.executeForPublicApiPublished).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentId,
+				projectId,
+				user,
+				memory: { threadId: 'session-1', resourceId: 'public-api:user-1' },
+				sessionMode: 'existing',
+			}),
+		);
+		expect(result).toEqual({
+			status: 'completed',
+			response: 'Hello',
+			sessionId: 'session-1',
+			executionId: 'execution-1',
+		});
+	});
+
+	it('mints a public_api session id when none is given', async () => {
+		const { service, agentExecutionService, agentExecutionOrchestratorService } = makeService();
+		agentExecutionOrchestratorService.executeForPublicApiPublished.mockImplementation(
+			async function* (config) {
+				config.onExecutionRecorded?.('execution-2');
+				yield* [];
+			},
+		);
+
+		const result = await service.executePublishedRun({
+			agentId,
+			projectId,
+			message: 'Hi',
+			user,
+		});
+
+		expect(agentExecutionService.canUsePublicApiThread).not.toHaveBeenCalled();
+		expect(result).toMatchObject({ status: 'completed', executionId: 'execution-2' });
+		if (result.status !== 'completed') throw new Error('Expected a completed run');
+		expect(result.sessionId).toEqual(expect.any(String));
+		expect(agentExecutionOrchestratorService.executeForPublicApiPublished).toHaveBeenCalledWith(
+			expect.objectContaining({
+				memory: { threadId: result.sessionId, resourceId: 'public-api:user-1' },
+				sessionMode: 'new',
+			}),
+		);
+	});
+
+	it('returns session_not_found for a public_api session the caller cannot use', async () => {
+		const { service, agentExecutionService, agentExecutionOrchestratorService } = makeService();
+		agentExecutionService.canUsePublicApiThread.mockResolvedValue(false);
+
+		await expect(
+			service.executePublishedRun({
+				agentId,
+				projectId,
+				message: 'Hi',
+				user,
+				sessionId: 'session-1',
+			}),
+		).resolves.toEqual({ status: 'session_not_found' });
+		expect(agentExecutionOrchestratorService.executeForPublicApiPublished).not.toHaveBeenCalled();
+	});
+
 	it('returns partial text and every suspension for a continued session', async () => {
 		const { service, agentExecutionOrchestratorService } = makeService();
 		const chunks: StreamChunk[] = [
@@ -452,6 +545,25 @@ describe('AgentTestRunService', () => {
 		});
 	});
 
+	it('cancels a suspended run in the memory scope the caller passes', async () => {
+		const { service, agentExecutionOrchestratorService } = makeService();
+		agentExecutionOrchestratorService.cancelChatRun.mockResolvedValue(true);
+
+		await expect(
+			service.cancelSuspendedRuns({
+				agentId,
+				userId: user.id,
+				suspensions: [{ runId: 'run-1' }],
+				resourceId: 'public-api:user-1',
+			}),
+		).resolves.toBe(true);
+		expect(agentExecutionOrchestratorService.cancelChatRun).toHaveBeenCalledWith({
+			agentId,
+			runId: 'run-1',
+			resourceId: 'public-api:user-1',
+		});
+	});
+
 	it('rejects a session owned by another agent without starting a run', async () => {
 		const {
 			service,
@@ -551,5 +663,186 @@ describe('AgentTestRunService', () => {
 				: service.executePreparedDraftRun({ ...preparedDraftRunInput, onChunk: vi.fn() });
 		await expect(execution).rejects.toBe(executionError);
 		expect(settled).toBe(true);
+	});
+
+	describe('test runs (safe testing)', () => {
+		const toolResult = (toolCallId: string): StreamChunk => ({
+			type: 'tool-result',
+			toolCallId,
+			toolName: 'send_slack',
+			output: { ok: true },
+		});
+
+		async function runWithStream(
+			service: AgentTestRunService,
+			orchestrator: ReturnType<typeof makeService>['agentExecutionOrchestratorService'],
+			chunks: StreamChunk[],
+			onChunk = vi.fn(),
+		) {
+			orchestrator.executeForChat.mockImplementation(async function* (config) {
+				await config.simulation?.(config.memory.threadId);
+				yield* chunks;
+				config.onExecutionRecorded?.('execution-1');
+			});
+			return await service.executePreparedDraftRun({ ...preparedDraftRunInput, onChunk });
+		}
+
+		it('leaves a draft run unchanged when there is no test-run session', async () => {
+			const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+			const onChunk = vi.fn();
+
+			const result = await runWithStream(
+				service,
+				agentExecutionOrchestratorService,
+				[toolResult('tc-1')],
+				onChunk,
+			);
+
+			expect(result).toEqual({ status: 'completed', response: '', executionId: 'execution-1' });
+			expect(onChunk).toHaveBeenCalledWith(toolResult('tc-1'));
+			expect(simulationSessions.openForDraftRun).toHaveBeenCalledWith({
+				user,
+				agentId,
+				projectId,
+				testChatId: 'session-1',
+				message: 'Hi',
+				testRunRequested: false,
+			});
+		});
+
+		it.each([
+			{ chatMode: 'test' as const, requested: true },
+			{ chatMode: 'live' as const, requested: false },
+			{ chatMode: undefined, requested: false },
+		])(
+			'asks for a test run only in test mode (mode: $chatMode)',
+			async ({ chatMode, requested }) => {
+				const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+				agentExecutionOrchestratorService.executeForChat.mockImplementation(
+					async function* (config) {
+						await config.simulation?.(config.memory.threadId);
+						yield* [];
+						config.onExecutionRecorded?.('execution-1');
+					},
+				);
+
+				await service.executePreparedDraftRun({
+					...preparedDraftRunInput,
+					...(chatMode ? { chatMode } : {}),
+				});
+
+				expect(simulationSessions.openForDraftRun).toHaveBeenCalledWith(
+					expect.objectContaining({ testRunRequested: requested }),
+				);
+			},
+		);
+
+		it('streams each tool result with its route, marks the execution and saves the world', async () => {
+			const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+			const session = mock<SimulationSession>({ worldId: 'world-1' });
+			session.takeDecision.mockImplementation((toolCallId) =>
+				toolCallId === 'tc-1'
+					? { route: 'simulated_made_up', reason: 'invented_by_llm' }
+					: undefined,
+			);
+			simulationSessions.openForDraftRun.mockResolvedValue(session);
+			const onChunk = vi.fn();
+
+			const result = await runWithStream(
+				service,
+				agentExecutionOrchestratorService,
+				[toolResult('tc-1'), toolResult('tc-local')],
+				onChunk,
+			);
+
+			expect(onChunk).toHaveBeenCalledWith({
+				...toolResult('tc-1'),
+				simulation: { route: 'simulated_made_up', reason: 'invented_by_llm' },
+			});
+			expect(onChunk).toHaveBeenCalledWith(toolResult('tc-local'));
+			expect(result).toMatchObject({
+				status: 'completed',
+				simulation: {
+					worldId: 'world-1',
+					toolCalls: [
+						{
+							toolCallId: 'tc-1',
+							toolName: 'send_slack',
+							route: 'simulated_made_up',
+							reason: 'invented_by_llm',
+						},
+					],
+				},
+			});
+		});
+
+		it('stores the same decision that it streams, with its evidence', async () => {
+			const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+			const session = mock<SimulationSession>({ worldId: 'world-1' });
+			const decisions: Record<string, ToolCallSimulation> = {
+				'tc-1': {
+					route: 'simulated',
+					reason: 'served_from_world',
+					evidence: ['real_read', 'world_write'],
+				},
+				'tc-2': { route: 'simulated', reason: 'served_from_world' },
+			};
+			session.takeDecision.mockImplementation((toolCallId) => decisions[toolCallId]);
+			simulationSessions.openForDraftRun.mockResolvedValue(session);
+			const onChunk = vi.fn();
+
+			const result = await runWithStream(
+				service,
+				agentExecutionOrchestratorService,
+				[toolResult('tc-1'), toolResult('tc-2')],
+				onChunk,
+			);
+
+			expect(onChunk.mock.calls).toEqual([
+				[{ ...toolResult('tc-1'), simulation: decisions['tc-1'] }],
+				[{ ...toolResult('tc-2'), simulation: decisions['tc-2'] }],
+			]);
+			const stored = result.simulation?.toolCalls;
+			expect(stored).toEqual(
+				Object.entries(decisions).map(([toolCallId, decision]) => ({
+					toolCallId,
+					toolName: 'send_slack',
+					...decision,
+				})),
+			);
+			// No evidence key appears for a decision that has none.
+			expect(Object.keys(stored?.[1] ?? {})).not.toContain('evidence');
+			for (const call of stored ?? []) {
+				expect(toolCallSimulationSchema.safeParse(call).success).toBe(true);
+			}
+		});
+
+		it('resolves the session for a resumed draft run too', async () => {
+			const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+			const session = mock<SimulationSession>({ worldId: 'world-1' });
+			session.takeDecision.mockReturnValue({
+				route: 'blocked',
+				reason: 'unsupported_by_simulator',
+			});
+			simulationSessions.openForDraftRun.mockResolvedValue(session);
+			agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
+				await config.simulation?.('session-1');
+				yield toolResult('tc-2');
+				config.onExecutionRecorded?.('execution-2');
+			});
+
+			const result = await service.resumePreparedDraftRun({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-2',
+				resumeData: { approved: true },
+				user,
+			});
+
+			expect(result).toMatchObject({
+				simulation: { toolCalls: [expect.objectContaining({ route: 'blocked' })] },
+			});
+		});
 	});
 });

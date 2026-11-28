@@ -8,7 +8,9 @@ import { createBaseInlineConfig } from '@n8n/vitest-config/node';
 const ENGINE_TESTS = [
 	'test/expression.test.ts',
 	'test/expression-array-proxy-semantics.test.ts',
+	'test/expression-boxed-primitive-engine-parity.test.ts',
 	'test/expression-compatibility.test.ts',
+	'test/expression-cyclic-collections-engine-parity.test.ts',
 	'test/expression-engine-start-failure.test.ts',
 	'test/expression-error-item-engine-parity.test.ts',
 	'test/expression-item-accessor-engine-parity.test.ts',

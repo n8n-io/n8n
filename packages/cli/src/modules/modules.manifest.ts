@@ -28,4 +28,21 @@ export const packagedModules: PackagedModules = {
 	},
 	'execution-limits': async () => await import('@n8n/backend-module-execution-limits/module'),
 	'execution-ledger': async () => await import('@n8n/backend-module-execution-ledger/module'),
+	'mcp-servers': async () => {
+		const { McpServerToolAdapters } = await import('@n8n/backend-module-mcp-servers');
+		const { WorkflowToolAdapter } = await import('./mcp-servers/workflow-tool.adapter.js');
+		const { TextDraftAdapter } = await import('./mcp-servers/text-draft.adapter.js');
+		const { OAuthClientNameAdapter } = await import('./mcp-servers/oauth-client-name.adapter.js');
+		const { RefreshTokenAdapter } = await import('./mcp-servers/refresh-token.adapter.js');
+		Container.set(McpServerToolAdapters, {
+			resolve: () => ({
+				workflows: Container.get(WorkflowToolAdapter),
+				textDrafts: Container.get(TextDraftAdapter),
+				clients: Container.get(OAuthClientNameAdapter),
+				refreshTokens: Container.get(RefreshTokenAdapter),
+			}),
+		});
+		return await import('@n8n/backend-module-mcp-servers/module');
+	},
+	'durable-leases': async () => await import('@n8n/backend-module-durable-leases/module'),
 };

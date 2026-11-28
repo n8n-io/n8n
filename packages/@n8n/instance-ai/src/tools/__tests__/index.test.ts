@@ -6,7 +6,12 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '..';
 import type { InstanceAiContext, InstanceAiListedFile, OrchestrationContext } from '../../types';
-import { ALWAYS_LOADED_TOOL_NAMES, getMcpToolGroup, getToolGroup } from '../tool-ids';
+import {
+	ALWAYS_LOADED_TOOL_NAMES,
+	getMcpToolGroup,
+	getToolGroup,
+	getToolGroupDescription,
+} from '../tool-ids';
 
 vi.mock('../attachments/parse-file.tool', () => ({
 	createParseFileTool: vi.fn(() => ({ id: 'parse-file' })),
@@ -278,6 +283,14 @@ describe('domain tool construction', () => {
 		expect(getToolGroup('ask_user')).toBeUndefined();
 	});
 
+	it('describes the custom MCP servers group, so the model does not build an MCP Server Trigger', () => {
+		expect(getToolGroup('custom-mcp-servers')).toBe('custom_mcp_servers');
+		expect(getToolGroupDescription('custom_mcp_servers')).toContain(
+			'Not an MCP Server Trigger workflow',
+		);
+		expect(getMcpToolGroup('custom_mcp_servers')).toBe('mcp_custom_mcp_servers');
+	});
+
 	it('keeps an MCP server named like an n8n tool group in a group of its own', () => {
 		expect(getMcpToolGroup('linear')).toBe('linear');
 		expect(getMcpToolGroup('credentials')).toBe('mcp_credentials');
@@ -474,6 +487,15 @@ describe('domain tool construction', () => {
 		expect(createOrchestratorDomainTools(enabled).get('skills')).toBeDefined();
 	});
 
+	it('gates the custom MCP servers tool on the host-wired customMcpServerService', () => {
+		expect(createOrchestratorDomainTools(makeContext()).get('custom-mcp-servers')).toBeUndefined();
+
+		const enabled = makeContext({
+			customMcpServerService: {} as InstanceAiContext['customMcpServerService'],
+		});
+		expect(createOrchestratorDomainTools(enabled).get('custom-mcp-servers')).toBeDefined();
+	});
+
 	it.each([
 		['the current Instance AI runtime', {}],
 		['the Assistant agent', { storedFiles: { read: vi.fn() } }],
@@ -571,6 +593,26 @@ describe('domain tool construction', () => {
 		});
 		expect(createOrchestratorDomainTools(enabled).get('agent-context')).toBeDefined();
 		expect(getActiveOrchestratorDomainToolNames(enabled)).toContain('agent-context');
+	});
+
+	it('exposes archive_agent only to the orchestrator on writable turns with an archive service', () => {
+		const agentContextService = { lookup: vi.fn() };
+		const agentArchiveService = { preview: vi.fn(), archive: vi.fn() };
+		const readerOnly = makeContext({ agentContextService });
+		const writable = makeContext({ agentContextService, agentArchiveService });
+		const readOnly = makeContext({
+			agentContextService,
+			agentArchiveService,
+			branchReadOnly: true,
+		});
+
+		expect(createOrchestratorDomainTools(readerOnly).has('archive_agent')).toBe(false);
+		expect(createOrchestratorDomainTools(writable).has('archive_agent')).toBe(true);
+		expect(getActiveOrchestratorDomainToolNames(writable)).toContain('archive_agent');
+		expect(getActiveOrchestratorDomainToolNames(readOnly)).not.toContain('archive_agent');
+		expect(getActiveOrchestratorDomainToolNames(readOnly)).toContain('agent-context');
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('archive_agent')).toBe(false);
+		expect(getToolGroup('archive_agent')).toBe('agents');
 	});
 
 	it('never defers Agent context lookup behind search_tools', () => {

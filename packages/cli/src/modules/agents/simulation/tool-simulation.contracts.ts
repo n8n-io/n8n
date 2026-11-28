@@ -1,4 +1,4 @@
-import type { ToolTestCapability, ToolTestKind } from '@n8n/api-types';
+import type { ToolCallEvidence, ToolTestCapability, ToolTestKind } from '@n8n/api-types';
 
 /**
  * Contract between n8n and a simulation backend. Each test chat gets one world; every request a
@@ -13,11 +13,29 @@ export interface SimulationBackend {
 
 	/** A test chat gets a new world after a restart or an expired cache. */
 	openWorld(input: OpenWorldInput): Promise<SimulationWorld>;
+
+	/**
+	 * Set to `true` when a world depends on the MCP server connections of the draft. Then a test
+	 * chat gets a new world when the saved connections change or its thread is removed. The
+	 * backend never receives the connections. Default: off.
+	 */
+	readonly worldDependsOnDraftConnections?: boolean;
+
+	/**
+	 * Deletes what a world holds, for example data it copied from a real service. n8n calls it
+	 * when it replaces the world, when it finds on the chat's next turn that the thread was
+	 * removed, and when the cached world expires (about 30 minutes after its last turn). It is
+	 * not called at the moment a thread is removed. Best effort: n8n logs a failure and does
+	 * not retry. Optional.
+	 */
+	closeWorld?(worldId: string): Promise<void>;
 }
 
 export type SimulationBackendId = 'llm-mock' | 'shared-simulation-layer';
 
 export interface OpenWorldInput {
+	/** ID of the user who runs the test chat. */
+	ownerId: string;
 	testChatId: string;
 	agent: SimulatedAgent;
 	/** Can seed the world. */
@@ -71,6 +89,8 @@ export type SimulatedReply =
 			outcome: 'served';
 			/** `world_state`: from seeded or earlier state. `made_up`: invented by an LLM. */
 			source: 'world_state' | 'made_up';
+			/** What this request did. Optional: a backend that cannot tell leaves it out. */
+			evidence?: ToolCallEvidence[];
 			status: number;
 			headers?: Record<string, string>;
 			body: unknown;

@@ -1,3 +1,4 @@
+import { DELEGATE_SUB_AGENT_TOOL_NAME } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AppCallContext } from '@n8n/backend-module-apps';
@@ -63,6 +64,7 @@ describe('AppAgentAdapter', () => {
 	// The adapter imports these lazily. The first import of their module graph is slow.
 	beforeAll(async () => {
 		await Promise.all([
+			import('@n8n/agents'),
 			import('@/modules/agents/agent-sandbox-principal.js'),
 			import('@/modules/agents/agent-sse-stream.js'),
 			import('@/modules/agents/utils/messages-envelope.js'),
@@ -270,6 +272,172 @@ describe('AppAgentAdapter', () => {
 				openSuspensions: [],
 			});
 		});
+
+		it('projects history for visitors and drops reasoning, tool payloads, and raw errors', async () => {
+			const { adapter, orchestrator } = setup();
+			orchestrator.getConversationHistory.mockResolvedValue({
+				messages: [
+					{
+						id: 'm1',
+						role: 'assistant',
+						executionId: 'exec-1',
+						createdAt: '2026-11-27T00:00:00.000Z',
+						references: [{ internal: 'ref-secret' }],
+						content: [
+							{ type: 'reasoning', text: 'internal thoughts' },
+							{ type: 'host-event', name: 'internal', payload: { secret: 'nope' } },
+							{
+								type: 'tool-call',
+								toolName: 'lookup',
+								toolCallId: 'tc-1',
+								input: { query: 'SELECT * FROM secrets' },
+								output: { row: 'sensitive-data' },
+								state: 'resolved',
+								startTime: 100,
+								endTime: 200,
+								childTrace: { parts: [{ type: 'text', text: 'subagent output' }] },
+							},
+							{
+								type: 'tool-call',
+								toolName: 'db',
+								toolCallId: 'tc-2',
+								input: { host: 'db-internal:5432' },
+								error: 'ECONNREFUSED db-internal:5432',
+								state: 'rejected',
+								canceled: true,
+							},
+							{
+								type: 'tool-call',
+								toolName: 'send_email',
+								toolCallId: 'tc-3',
+								suspendPayload: {
+									type: 'approval',
+									toolName: 'send_email',
+									description: 'Send email',
+									args: { to: 'ada@example.com', apiKey: 'sk-secret-value' },
+								},
+							},
+							{ type: 'text', text: 'Done.' },
+						],
+					},
+					{
+						id: 'm2',
+						role: 'assistant',
+						content: [{ type: 'reasoning', text: 'only thinking' }],
+					},
+					{
+						id: 'm3',
+						role: 'assistant',
+						content: [],
+						executionStatus: 'error',
+						executionError: 'Credentials could not be decrypted with encryptionKey',
+					},
+					{
+						id: 'm4',
+						role: 'assistant',
+						content: [],
+						stopReport: true,
+						executionStatus: 'cancelled',
+					},
+				],
+			} as never);
+
+			const result = await adapter.messages(userCtx, 'agent-1', SESSION);
+
+			expect(result.messages).toEqual([
+				{
+					id: 'm1',
+					role: 'assistant',
+					executionId: 'exec-1',
+					createdAt: '2026-11-27T00:00:00.000Z',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: 'lookup',
+							toolCallId: 'tc-1',
+							state: 'resolved',
+							startTime: 100,
+							endTime: 200,
+						},
+						{
+							type: 'tool-call',
+							toolName: 'db',
+							toolCallId: 'tc-2',
+							state: 'rejected',
+							canceled: true,
+							error: 'Tool execution failed.',
+						},
+						{
+							type: 'tool-call',
+							toolName: 'send_email',
+							toolCallId: 'tc-3',
+							suspendPayload: {
+								type: 'approval',
+								toolName: 'send_email',
+								description: 'Send email',
+								args: { to: 'ada@example.com', apiKey: '[REDACTED]' },
+							},
+						},
+						{ type: 'text', text: 'Done.' },
+					],
+				},
+				{
+					id: 'm3',
+					role: 'assistant',
+					content: [],
+					executionStatus: 'error',
+					executionError: 'The agent could not answer.',
+				},
+				{
+					id: 'm4',
+					role: 'assistant',
+					content: [],
+					stopReport: true,
+					executionStatus: 'cancelled',
+				},
+			]);
+		});
+
+		it('marks a failed delegation in history without its output', async () => {
+			const { adapter, orchestrator } = setup();
+			const delegation = {
+				type: 'tool-call',
+				toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+				state: 'resolved',
+			};
+			orchestrator.getConversationHistory.mockResolvedValue({
+				messages: [
+					{
+						id: 'm1',
+						role: 'assistant',
+						content: [
+							{
+								...delegation,
+								toolCallId: 'tc-1',
+								output: { status: 'failed', answer: '', error: 'child-secret-error' },
+							},
+							{
+								...delegation,
+								toolCallId: 'tc-2',
+								output: { status: 'completed', answer: 'child-answer' },
+							},
+						],
+					},
+				],
+			} as never);
+
+			const result = await adapter.messages(userCtx, 'agent-1', SESSION);
+
+			expect(result.messages[0].content).toEqual([
+				{
+					...delegation,
+					toolCallId: 'tc-1',
+					state: 'rejected',
+					error: 'Tool execution failed.',
+				},
+				{ ...delegation, toolCallId: 'tc-2' },
+			]);
+		});
 	});
 
 	it('scopes memory to the app and the visitor', async () => {
@@ -337,14 +505,19 @@ describe('AppAgentAdapter', () => {
 
 	it('resumes only on the thread of the visitor', async () => {
 		const { adapter, orchestrator } = setup();
-		orchestrator.resumeForChat.mockImplementation(async function* () {});
+		orchestrator.resumeForChat.mockImplementation(async function* () {
+			yield { type: 'reasoning-delta', id: 'r1', delta: 'private resume reasoning' };
+			yield { type: 'tool-result', toolCallId: 't1', toolName: 'lookup', output: { secret: 1 } };
+			yield { type: 'text-delta', id: '1', delta: 'Approved.' };
+		});
 
-		await adapter.resume(
+		const turn = await adapter.resume(
 			userCtx,
 			'agent-1',
 			{ sessionId: SESSION, runId: 'r1', toolCallId: 't1', resumeData: { approved: true } },
 			new AbortController().signal,
 		);
+		const events = await collect(turn.events);
 
 		expect(orchestrator.resumeForChat).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -353,6 +526,11 @@ describe('AppAgentAdapter', () => {
 				allowBackgroundTasks: false,
 			}),
 		);
+		expect(events).toEqual([
+			{ type: 'tool-result', toolCallId: 't1', toolName: 'lookup' },
+			{ type: 'text-delta', id: '1', delta: 'Approved.' },
+			{ type: 'done', sessionId: SESSION },
+		]);
 	});
 
 	it('streams text, hides internal errors, and ends with done', async () => {
@@ -376,5 +554,211 @@ describe('AppAgentAdapter', () => {
 			expect.objectContaining({ type: 'error', message: 'The agent could not answer.' }),
 		);
 		expect(events.at(-1)).toEqual({ type: 'done', sessionId: SESSION });
+	});
+
+	it('projects stream events for visitors and drops reasoning, usage, warnings, and tool payloads', async () => {
+		const { adapter, orchestrator } = setup();
+		orchestrator.executeForChatPublished.mockImplementation(async function* () {
+			yield { type: 'start-step' };
+			yield { type: 'reasoning-start', id: 'r1' };
+			yield { type: 'reasoning-delta', id: 'r1', delta: 'private thinking' };
+			yield { type: 'reasoning-end', id: 'r1' };
+			yield { type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'lookup' };
+			yield { type: 'tool-input-delta', toolCallId: 'tc-1', delta: '{"secret":"input"}' };
+			yield { type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', input: { secret: 'in' } };
+			yield { type: 'tool-execution-start', toolCallId: 'tc-1', toolName: 'lookup', startTime: 10 };
+			yield {
+				type: 'tool-execution-end',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				isError: false,
+				endTime: 20,
+			};
+			yield {
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				output: { row: 'sensitive-output' },
+				isError: false,
+			};
+			yield {
+				type: 'tool-result',
+				toolCallId: 'tc-2',
+				toolName: 'db',
+				output: 'ECONNREFUSED db-internal:5432',
+				isError: true,
+				canceled: true,
+			};
+			yield {
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-1',
+				taskName: 'child',
+				taskPath: 'child',
+				chunk: { type: 'text-delta', id: 'c1', delta: 'subagent text' },
+			};
+			yield {
+				type: 'warning',
+				message: 'MCP server failed: ECONNREFUSED mcp-internal',
+				source: 'mcp',
+				server: 'mcp-internal',
+			};
+			yield {
+				type: 'usage',
+				model: 'anthropic/claude-sonnet-5-5',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+			};
+			yield {
+				type: 'message',
+				message: {
+					role: 'assistant',
+					content: [{ type: 'reasoning', text: 'reasoning only message' }],
+				},
+			};
+			yield {
+				type: 'message',
+				message: {
+					role: 'assistant',
+					content: [
+						{ type: 'reasoning', text: 'hidden message reasoning' },
+						{ type: 'text', text: 'Visible note' },
+					],
+				},
+			};
+			yield { type: 'text-start', id: 't1' };
+			yield { type: 'text-delta', id: 't1', delta: 'Checked.' };
+			yield { type: 'text-end', id: 't1' };
+			yield { type: 'finish-step' };
+			yield {
+				type: 'finish',
+				finishReason: 'stop',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+				guardrail: { code: 'max_steps' },
+			};
+		});
+
+		const turn = await adapter.chat(
+			userCtx,
+			'agent-1',
+			{ message: 'Hi', sessionId: SESSION },
+			new AbortController().signal,
+		);
+		const events = await collect(turn.events);
+
+		expect(events).toEqual([
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'lookup' },
+			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup' },
+			{ type: 'tool-execution-start', toolCallId: 'tc-1', toolName: 'lookup', startTime: 10 },
+			{
+				type: 'tool-execution-end',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				isError: false,
+				endTime: 20,
+			},
+			{ type: 'tool-result', toolCallId: 'tc-1', toolName: 'lookup', isError: false },
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-2',
+				toolName: 'db',
+				isError: true,
+				canceled: true,
+				output: 'Tool execution failed.',
+			},
+			{
+				type: 'message',
+				message: { role: 'assistant', content: [{ type: 'text', text: 'Visible note' }] },
+			},
+			{ type: 'text-start', id: 't1' },
+			{ type: 'text-delta', id: 't1', delta: 'Checked.' },
+			{ type: 'text-end', id: 't1' },
+			{ type: 'finish-step' },
+			{ type: 'finish', finishReason: 'stop', guardrail: { code: 'max_steps' } },
+			{ type: 'done', sessionId: SESSION },
+		]);
+	});
+
+	it('flags a failed delegation as a tool error without its output', async () => {
+		const { adapter, orchestrator } = setup();
+		const toolName = DELEGATE_SUB_AGENT_TOOL_NAME;
+		orchestrator.executeForChatPublished.mockImplementation(async function* () {
+			yield {
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName,
+				output: { status: 'failed', answer: '', error: 'child-secret-error' },
+				isError: false,
+			};
+			yield {
+				type: 'tool-result',
+				toolCallId: 'tc-2',
+				toolName,
+				output: { status: 'completed', answer: 'child-answer' },
+				isError: false,
+			};
+		});
+
+		const turn = await adapter.chat(
+			userCtx,
+			'agent-1',
+			{ message: 'Hi', sessionId: SESSION },
+			new AbortController().signal,
+		);
+		const events = await collect(turn.events);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName,
+				isError: true,
+				output: 'Tool execution failed.',
+			},
+			{ type: 'tool-result', toolCallId: 'tc-2', toolName, isError: false },
+			{ type: 'done', sessionId: SESSION },
+		]);
+	});
+
+	it('keeps approval suspension payloads and redacts sensitive keys without emitting done', async () => {
+		const { adapter, orchestrator } = setup();
+		orchestrator.executeForChatPublished.mockImplementation(async function* () {
+			yield {
+				type: 'tool-call-suspended',
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				toolName: 'send_email',
+				suspendPayload: {
+					type: 'approval',
+					toolName: 'send_email',
+					description: 'Send email',
+					args: { to: 'ada@example.com', token: 'secret-token' },
+				},
+			};
+		});
+
+		const turn = await adapter.chat(
+			userCtx,
+			'agent-1',
+			{ message: 'Send it', sessionId: SESSION },
+			new AbortController().signal,
+		);
+		const events = await collect(turn.events);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-1',
+					runId: 'run-1',
+					toolName: 'send_email',
+					input: {
+						type: 'approval',
+						toolName: 'send_email',
+						description: 'Send email',
+						args: { to: 'ada@example.com', token: '[REDACTED]' },
+					},
+				},
+			},
+		]);
 	});
 });

@@ -15,7 +15,7 @@ const configFacets = {
 		.describe('Null when the source has no OAuth2 client configured'),
 	// Keep in sync with `SurfaceIdSchema` in @n8n/inbound-auth; the typed `track` call fails otherwise.
 	surfaces: z
-		.array(z.enum(['public-api', 'instance-mcp', 'trigger', 'apps']))
+		.array(z.enum(['public-api', 'instance-mcp', 'trigger', 'apps', 'mcp-servers']))
 		.describe('The surfaces the source may authenticate on'),
 	identity_subject: z
 		.enum(['n8n-user-id', 'binding'])
@@ -75,7 +75,7 @@ export const TRUSTED_SOURCES_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			source_id: z.string(),
 			surface: z
-				.enum(['public-api', 'instance-mcp', 'trigger', 'apps'])
+				.enum(['public-api', 'instance-mcp', 'trigger', 'apps', 'mcp-servers'])
 				.describe('The surface the first authenticated request arrived on'),
 		}),
 	},

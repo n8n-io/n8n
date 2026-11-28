@@ -61,6 +61,7 @@ function createSetupFactory() {
 				nodeUsageEnabled: false,
 				preferencesNoteVariant: undefined as string | undefined,
 				skillSourcesEnabled: undefined as boolean | undefined,
+				workflowsInSkillsEnabled: undefined as boolean | undefined,
 			})),
 		},
 		settingsService: {
@@ -84,6 +85,7 @@ function createSetupFactory() {
 			resolveUtilityModelConfig: vi.fn(async () => undefined),
 			resolveApprovalJudgeModelConfig: vi.fn(async () => 'anthropic/claude-haiku'),
 			getModelFetch: vi.fn(() => undefined),
+			getLabeledModelFetch: vi.fn(() => undefined),
 		},
 		creditService: { claimRunUsage: vi.fn(), helperUsageClaimer: vi.fn(() => vi.fn()) },
 		instanceAiErrorReporter: {
@@ -425,18 +427,19 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			},
 		);
 
-		it('passes the skill sources gate of the turn to the tool context', async () => {
+		it('passes the skill sources and workflows in skills gates of the turn to the tool context', async () => {
 			const { factory, fields } = createSetupFactory();
 			fields.adapterService.resolveExperimentGates.mockResolvedValue({
 				...(await fields.adapterService.resolveExperimentGates()),
 				skillSourcesEnabled: true,
+				workflowsInSkillsEnabled: true,
 			});
 
 			await factory.create(params, createRuntime());
 
 			expect(fields.adapterService.createContext).toHaveBeenCalledWith(
 				user,
-				expect.objectContaining({ skillSourcesEnabled: true }),
+				expect.objectContaining({ skillSourcesEnabled: true, workflowsInSkillsEnabled: true }),
 			);
 		});
 
@@ -500,51 +503,31 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(reviewerParams.getTracing()).toBe(tracing);
 		});
 
-		describe('in the Agent Builder', () => {
-			async function autoModeSetup() {
-				const setup = createSetupFactory();
-				setup.fields.adapterService.resolveExperimentGates.mockResolvedValue({
-					...(await setup.fields.adapterService.resolveExperimentGates()),
-					approvalModesEnabled: true,
-				});
-				setup.fields.approvalModeService.resolveMode.mockReturnValue('auto');
-				return setup;
-			}
-
-			it('keeps every card in a thread that builds an agent', async () => {
-				const { factory, fields } = await autoModeSetup();
-				const runtime = createRuntime({
-					memory: mock<AssistantTurnRuntime['memory']>({
-						getThread: vi.fn(
-							async () =>
-								({
-									resourceId: 'user-1',
-									metadata: {
-										instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' },
-									},
-								}) as never,
-						),
-					}),
-				});
-
-				const { context } = await factory.create(params, runtime);
-
-				expect(context.approvalMode).toBe('manual');
-				expect(context.enforceAdminMcpPermissions).toBe(false);
-				expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
+		it('creates the Auto mode reviewer in a thread that builds an agent', async () => {
+			const { factory, fields } = createSetupFactory();
+			fields.adapterService.resolveExperimentGates.mockResolvedValue({
+				...(await fields.adapterService.resolveExperimentGates()),
+				approvalModesEnabled: true,
+			});
+			fields.approvalModeService.resolveMode.mockReturnValue('auto');
+			const runtime = createRuntime({
+				memory: mock<AssistantTurnRuntime['memory']>({
+					getThread: vi.fn(
+						async () =>
+							({
+								resourceId: 'user-1',
+								metadata: {
+									instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' },
+								},
+							}) as never,
+					),
+				}),
 			});
 
-			it('keeps every card when the message attaches an agent', async () => {
-				const { factory, fields } = await autoModeSetup();
+			const { context } = await factory.create(params, runtime);
 
-				const { context } = await factory.create(
-					{ ...params, attachesAgent: true },
-					createRuntime(),
-				);
-
-				expect(context.enforceAdminMcpPermissions).toBe(false);
-				expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
-			});
+			expect(context.approvalMode).toBe('auto');
+			expect(context.approvalReviewer).toBeDefined();
 		});
 
 		it('refuses a thread that another user owns', async () => {

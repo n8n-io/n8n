@@ -18,6 +18,14 @@ export interface ConsentUiHints {
 	consentType?: string;
 }
 
+/** Why a resource refused a user, for the refusal screen of the consent page. */
+export interface ConsentRefusal {
+	/** A reason the frontend resolves to copy, for the `consentType` of the resource. */
+	reason: string;
+	/** The project that owns the resource, when the refusal is about access to the project. */
+	projectName?: string;
+}
+
 /**
  * Descriptor for an OAuth 2.1 protected resource served by this instance.
  *
@@ -88,11 +96,23 @@ export interface ProtectedResource {
 	/** First-party resources skip the third-party consent treatment. */
 	isFirstParty?: boolean;
 
+	/**
+	 * The instance's own authorization server skips the consent screen for the resource's own
+	 * client. Only for a first-party resource.
+	 */
+	skipConsent?: boolean;
+
 	/** Whether the resource is currently served. Treated as `true` when not implemented. */
 	isAvailable?(): Promise<boolean>;
 
 	/** Whether `user` may access this resource at all. */
 	authorize(user: ResourcePrincipal): Promise<boolean>;
+
+	/**
+	 * Why {@link authorize} refuses `user`, for the consent page. Called only after a refusal.
+	 * Omit it to keep the generic refusal message.
+	 */
+	describeRefusal?(user: ResourceUser): Promise<ConsentRefusal | undefined>;
 
 	/** The grant sealed into a run, so the worker re-takes the same decision without the resource. */
 	getGrant?(): OAuthResourceGrant;

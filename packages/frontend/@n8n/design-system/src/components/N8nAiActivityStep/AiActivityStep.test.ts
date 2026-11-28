@@ -28,6 +28,16 @@ describe('N8nAiActivityStep', () => {
 		expect(getByText('Search nodes')).toBeInTheDocument();
 	});
 
+	it('should show the meta text outside the label', () => {
+		const { getByTestId, getByText } = render(AiActivityStep, {
+			props: { label: 'Planning the reply', meta: '1m 12s', loading: true },
+			global,
+		});
+
+		expect(getByTestId('ai-activity-step-meta')).toHaveTextContent('· 1m 12s');
+		expect(getByText('Planning the reply')).not.toHaveTextContent('1m 12s');
+	});
+
 	it('should show loading affordance when loading', () => {
 		const { getByText } = render(AiActivityStep, {
 			props: { label: 'Search nodes', loading: true },

@@ -98,7 +98,7 @@ A rule of this kind is written on `/credential-type-policies` and
 `/projects/:projectId/credential-type-policies`, behind `credentialTypePolicy:manage` — its
 own permission, because blocking `oAuth2Api` is a wider lever than blocking one node.
 
-It implements all eight points:
+It implements every point except `executionAdmission`:
 
 | Point                    | What it reads                                         |
 | ------------------------ | ----------------------------------------------------- |
@@ -216,7 +216,11 @@ A policy lives in three tables:
 
 `projectId: null` is the instance scope. An unwritten scope has no row: it allows everything and
 reports version `0`, so a first write sends `expectedVersion: 0`. One accepted write moves the
-version by exactly one, whatever it changed.
+version by exactly one, whatever it changed. An access write that changes no rule writes nothing
+(see [Setting the access of a type](#setting-the-access-of-a-type)).
+
+Only a team project can have a scope row. A personal project always follows the instance policy.
+A write for a personal project fails with 400, and a write for an unknown project fails with 404.
 
 Evaluation is `instance ∩ project`, and a project can only restrict further. `delegate` is the
 one exception: an instance `delegate` is satisfied only by an explicit project `allow` rule,
@@ -301,10 +305,103 @@ write between them can return newer rules under the older `version`. A write tha
 `version` back then fails with a conflict, so no change is lost.
 
 The credential route lists the type names of `available-credential-types`. The node route lists
-the type names of `available-types`, but it leaves out a generated tool variant when the same rule,
-or the default action, decides the variant and its base type. Such a variant has the access of its
-base. When a different rule decides the variant, for example an earlier `name` rule for the
-variant (see the rule order above), the variant keeps its row so that the admin can see that rule.
+the type names of `available-types`, and it decides which node types the admin pages list. It
+leaves out two kinds of type:
+
+- A generated tool variant that the same rule, or the default action, decides as its base type.
+  Such a variant has the access of its base. When a different rule decides the variant, for
+  example an earlier `name` rule for the variant (see the rule order above), the variant keeps its
+  row so that the admin can see that rule.
+- A hidden node type, unless an instance `name` rule decides it, for the same reason. The `hidden`
+  flag comes from the static `types/nodes.json`, because a main process releases the node
+  descriptions from memory after startup. The route fails when it cannot read that file.
+
+### The access of each type in one project
+
+`GET /projects/:projectId/node-type-policies/project/access` and
+`GET /projects/:projectId/credential-type-policies/project/access` return, for every listed type,
+the composed verdict (`allow` or `deny`), the scope that decides it, the matched rule and
+`optInAvailable`. They also return `instanceVersion` and `projectVersion`. The project policy page
+uses them for its "Set by" column, and sends `projectVersion` back with a write.
+
+- The routes read both scopes through `getEffectivePolicy`, not the snapshot, for the reason given
+  for the instance access route.
+- The rows are the types that the instance access route lists, plus the types that the same rule
+  lists for the project policy alone. So a project `name` rule on a hidden type, or a project rule
+  that decides a tool variant and not its base, keeps a row, and the project admin can undo it.
+  Each scope is listed with its own rules, because a rule id is unique only in one scope.
+- These extra rows are not in the counts below, so the page can show more rows than the counts.
+- A user with the global scope passes the project check for any id, so the routes return 404 for a
+  project id that does not exist. Other users get 403 from the project check first.
+
+### The policy state of each team project
+
+`GET /project-policies` returns one entry for each team project, for both kinds. A personal project
+has no entry. The route needs `nodeTypePolicy:manage` and `credentialTypePolicy:manage`, so it
+checks the second scope in the handler.
+
+`hasPolicy` is `true` when the project has a scope row of either kind. `updatedAt` is the later
+`updatedAt` of those rows. Every write moves the scope's version, and so its `updatedAt`. No route
+deletes a project scope row, so a project that resets to allow-all keeps `hasPolicy: true`.
+
+The counts are counts of types, not of rules, over the types the instance policy page lists:
+
+- Credential types: every known credential type.
+- Node types: the types that the node access route lists.
+
+Each project's verdicts are compared with the verdicts of a project that has no policy:
+
+- `effective` counts the composed verdicts. An unsatisfied `delegate` counts as restricted, as
+  enforcement treats it. A project with no scope row gets the totals of a project without a
+  policy.
+- `restricted` counts the types that the instance allows and the project blocks.
+- `optedIn` counts the types that the instance delegates and the project allows.
+
+A project rule on a hidden type, or on a tool variant that follows its base, adds nothing to the
+counts. The counts compare each project with the same list of types, type by type.
+
+### Give a team project its own policy
+
+`POST /project-policies` with the body `{ projectId }` gives a team project a policy of both kinds.
+It needs the same two scopes as the list. It returns the new entry, in the same shape as the list.
+
+- The call creates a scope row for each kind that has none, in one transaction. If one write
+  fails, the call saves nothing.
+- A new row has no rules and `defaultAction: 'allow'`, so the project gets the access that the
+  instance policy gives. A type that the instance delegates stays blocked, because only an
+  explicit project `allow` rule satisfies `delegate`.
+- A kind that already has a row does not change.
+- If the project already has a row of both kinds, the call returns 409.
+- A personal project returns 400. A project that does not exist returns 404.
+
+For each created kind, the call emits `node-type-policy-scope-updated` for the audit log, and
+`node-type-policy-saved` with `origin: 'add-project-policy'` for telemetry.
+
+### Setting the access of a type
+
+`PATCH /{node,credential}-type-policies/instance/access` and
+`PATCH /projects/:projectId/{node,credential}-type-policies/project/access` take
+`{ version, changes: [{ type, access }] }`. `access` is `allow`, `deny`, `delegate` (instance
+only) or `inherit`. The client does not send the rule list, so the order of the rules stays a
+server decision. `policy-access-changes.ts` places the rules:
+
+- `allow`, `deny` and `delegate` write a `name` rule at the position of the rule that decides
+  the type today, or at the end when the default action decides, and removes the other `name`
+  rules for the type. No earlier rule matches the type, so the new rule decides it and is never
+  shadowed. Every other type keeps its access. A generated tool variant that followed its base
+  follows the new rule.
+- `inherit` removes the `name` rules for the type. It also removes a `name` rule for a tool
+  variant that comes after the base rule: that rule never matched, and it would decide the
+  variant once the base rule is gone. It keeps `package` and `extends` rules, because those
+  decide other types too.
+
+The write goes through the same path as `PUT`, so the same version check, warnings and `409`
+for several attachments or a shared document apply. One call changes either all types or none.
+
+Unlike `PUT`, a call that leaves the rules as they are writes nothing and keeps the version, so
+it does not fail the next write of another admin. A stale `version` still fails with `409`, but
+the `409` for several attachments or a shared document does not apply, because the call changes
+no document.
 
 ### Usage counts of each credential type
 
@@ -408,18 +505,22 @@ through a sealed repository method, and the lint rule that guards that has no al
 | File                                              | Role                                                                            |
 | ------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `node-type-policy.check.ts`                       | Node types: the six points, the save diff, the violations                       |
-| `credential-type-policy.check.ts`                 | Credential types: all eight points, including `credentialSave`                  |
+| `credential-type-policy.check.ts`                 | Credential types: every point but `executionAdmission`, incl. `credentialSave` |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
+| `policy-access-changes.ts`                        | Places the rules for an access write, so that only the changed types move       |
 | `policy-rule-lint.ts`                             | Adds `notLoaded` warnings and merges all write-time warnings in rule order      |
 | `package-resolver.ts`                             | Resolves a type's package per `kind`, for the `package` selector                |
 | `type-availability-policy.service.ts`             | Reads and writes the store, with versioning and row locks                       |
 | `type-availability-policy-snapshot.ts`            | Holds every scope in memory for decisions, and keeps it fresh                   |
 | `effective-policy.ts`                             | The composed policy of one scope, and its allow-all default                     |
 | `type-availability-policy-instance.controller.ts` | Instance scope, documents, attachments and access of each type, `node-types`    |
-| `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins, `node-types`                         |
+| `type-availability-policy-project.controller.ts`  | A project's own scope and access of each type, for project admins, `node-types` |
 | `credential-type-policy-instance.controller.ts`   | Instance scope, documents, attachments and access of each type, `credential-types` |
-| `credential-type-policy-project.controller.ts`    | A project's own scope, for project admins, `credential-types`                   |
+| `credential-type-policy-project.controller.ts`    | A project's own scope and access of each type, for project admins, `credential-types` |
+| `project-policies.controller.ts`                  | List and create the project policies of team projects, for both kinds           |
+| `listed-node-types.ts`                            | The node types the policy pages list, for the access routes and counts          |
+| `hidden-node-types.ts`                            | The hidden node types, read from the static node types file                     |
 | `available-types.controller.ts`                   | The effective type set for one project, for the builder                         |
 | `sub-workflow-policy-check.controller.ts`         | The start violations a parent's call to a sub-workflow would hit                |
 | `sub-workflow-policy-check.service.ts`            | Caller policy, draft and published evaluation, and project name disclosure      |

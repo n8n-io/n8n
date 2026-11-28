@@ -13,7 +13,7 @@ permissions:
 jobs:
   build-and-format:
     name: Build & format
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-bmi-n8n
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -40,12 +40,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [24.22.2, 26.13.0]
+        node: [24, 26]
     with:
       ref: ${{ github.sha }}
-      nodeVersion: ${{ matrix.node-version }}
-      collectCoverage: ${{ matrix.node-version == '24.22.2' }}
-      warmPrCache: ${{ matrix.node-version == '26.13.0' }}
+      # Empty uses NODE_VERSION of docker/docker-bake.hcl (Node 26).
+      nodeVersion: ${{ matrix.node == 24 && '24.22.2' || '' }}
+      collectCoverage: ${{ matrix.node == 24 }}
+      warmPrCache: ${{ matrix.node == 26 }}
     secrets: inherit
 
   lint:
@@ -54,9 +55,13 @@ jobs:
     with:
       ref: ${{ github.sha }}
 
-  # The CodSpeed `performance` job (test-bench-reusable.yml) is removed for now:
-  # @codspeed/vitest-plugin does not support Vitest 5 yet. Add the job back, and
-  # add it to `notify-on-failure.needs`, when the plugin supports Vitest 5.
+  # CodSpeed benchmarks run post-merge only. On PRs they failed for reasons
+  # unrelated to the change, so the red check gave authors no usable signal.
+  performance:
+    name: Performance
+    uses: ./.github/workflows/test-bench-reusable.yml
+    with:
+      ref: ${{ github.sha }}
 
   # Scoped to the packages this push touched, so it stays cheap enough to run on every commit.
   verify-single-instance-npm:
@@ -71,7 +76,7 @@ jobs:
   notify-on-failure:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
-    needs: [unit-test, lint, build-and-format]
+    needs: [unit-test, lint, performance, build-and-format]
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -26,6 +26,12 @@ const api = vi.hoisted(() => ({
 
 vi.mock('../promotionsSettings.api', () => api);
 
+const getPromotionSettings = vi.hoisted(() => vi.fn());
+vi.mock('../promotions.api', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	getPromotionSettings,
+}));
+
 // The protected instance setting of the shell.
 const shell = reactive({ isProtected: false });
 const switchTo = vi.fn();
@@ -121,6 +127,21 @@ describe('PromotionsSettingsView', () => {
 			else expect(button).toBeDisabled();
 		},
 	);
+
+	it('shows who can promote in the Project access section to a user who manages security settings', async () => {
+		useRBACStore().setGlobalScopes([...PROMOTIONS_SETTINGS_SCOPES, 'securitySettings:manage']);
+		api.fetchPromotionEnvironments.mockResolvedValue([]);
+		getPromotionSettings.mockResolvedValue({
+			whoCanPromote: 'projectAdmins',
+			whoCanApprove: 'instanceAdmins',
+			whoCanApply: 'instanceAdmins',
+			requireApproval: 'whenConfigured',
+		});
+		renderView();
+
+		const section = await screen.findByTestId('promotion-project-access-section');
+		expect(within(section).getByRole('combobox', { name: 'Who can promote' })).toBeVisible();
+	});
 
 	it('shows the Preview and limited enterprise readiness tags next to the title on enterprise', () => {
 		mockedStore(useSettingsStore).isEnterprisePlan = true;
@@ -317,6 +338,21 @@ describe('PromotionsSettingsView', () => {
 			type: 'success',
 		});
 		expect(screen.queryByTestId('promotion-environment-retry')).not.toBeInTheDocument();
+	});
+
+	it('sets the Remove action apart from the other actions with a divider', async () => {
+		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
+		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
+		renderView();
+
+		await userEvent.click(
+			menuButton(await screen.findByTestId('promotion-environment-card-apply')),
+		);
+
+		const remove = await screen.findByTestId('action-remove');
+		const separators = screen.getAllByRole('separator');
+		expect(separators).toHaveLength(1);
+		expect(separators[0].nextElementSibling).toBe(remove);
 	});
 
 	it('hides the connection test from a user who cannot connect', async () => {

@@ -107,9 +107,6 @@ export function createMockAdapter() {
 		wait: vi.fn().mockResolvedValue(100),
 
 		// State
-		getCookies: vi.fn().mockResolvedValue([]),
-		setCookies: vi.fn().mockResolvedValue(undefined),
-		clearCookies: vi.fn().mockResolvedValue(undefined),
 		getStorage: vi.fn().mockResolvedValue({}),
 		setStorage: vi.fn().mockResolvedValue(undefined),
 		clearStorage: vi.fn().mockResolvedValue(undefined),
