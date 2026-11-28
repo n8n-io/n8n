@@ -40,6 +40,7 @@ import {
 	type AgentJsonMcpServerConfig,
 	type AgentJsonMemoryConfig,
 	type AgentJsonToolConfig,
+	type AgentJsonWorkflowToolConfig,
 	type AgentSkill,
 	type SubAgentRunPolicy,
 	type SubAgentSource,
@@ -48,14 +49,18 @@ import {
 import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { AgentsConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { User, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UnexpectedError, UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
-import { CredentialsFinderService } from '@n8n/backend-services';
+import {
+	CredentialsFinderService,
+	ExecutionRedactionServiceProxy,
+	type RedactableExecution,
+} from '@n8n/backend-services';
 import { sanitizeSandboxErrorDetail } from '@n8n/utils/redaction/sanitize-sandbox-error-detail';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -217,6 +222,13 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	 * integration parents, which keep the project-scoped trust boundary.
 	 */
 	user?: User;
+	/**
+	 * The n8n user who reads the output of a run without an interactive user,
+	 * for example the chatting user of a published n8n Chat. Workflow tools whose
+	 * execution data this user cannot reveal are left out. No other access check
+	 * applies. Ignored when `user` is set, because the full filter covers it.
+	 */
+	outputReader?: User;
 	attributionUserId?: string;
 	/**
 	 * The stored agent's service account (`agents.identityId`). Workflow tools stamp it
@@ -356,6 +368,8 @@ export interface UserToolAccessSnapshot {
 	 * `workflow:execute` on the project, integrations do not.
 	 */
 	requiresWorkflowExecute?: boolean;
+	/** The mode the workflow tools run in, to re-check that the user can see their output. */
+	workflowToolExecutionMode?: WorkflowToolExecutionMode;
 }
 
 /** Add the kept draft integration credentials to the snapshot so cached runtimes re-check them. */
@@ -380,13 +394,28 @@ function withIntegrationCredentials(
 export interface UnavailableTool {
 	toolName: string;
 	toolType: ReferencedToolKind;
-	reason: 'not_found' | 'not_published' | 'incompatible' | 'no_access';
+	reason: 'not_found' | 'not_published' | 'incompatible' | 'no_access' | 'redacted_output';
 	message: string;
 }
 
 function toolRefName(ref: AgentJsonToolConfig): string {
 	if (ref.type === 'custom') return ref.id;
 	return ref.type === 'workflow' ? (ref.name ?? ref.workflow) : ref.name;
+}
+
+/** Pin a checked workflow tool to its workflow id, so a renamed or new workflow cannot take its place. */
+function withCheckedWorkflow(ref: AgentJsonToolConfig, workflowId: string | undefined) {
+	return ref.type === 'workflow' && workflowId ? { ...ref, workflowId } : ref;
+}
+
+/** A workflow tool whose workflow is missing. A runtime built for a user leaves it out. */
+function missingWorkflow(ref: Extract<AgentJsonToolConfig, { type: 'workflow' }>): UnavailableTool {
+	return {
+		toolName: toolRefName(ref),
+		toolType: ref.type,
+		reason: 'not_found',
+		message: `Workflow "${ref.workflow}" not found`,
+	};
 }
 
 /** Ids that workflow tools stamp for log attribution. The run does not act as the account. */
@@ -452,6 +481,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly sandboxFiles: AgentSandboxFilesService,
 		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
+		private readonly executionRedaction: ExecutionRedactionServiceProxy,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -469,6 +499,7 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks = true,
 			allowPlanTools = true,
 			attributionUserId,
+			outputReader,
 			abortSignal,
 		}: {
 			/** Pass false when the caller cannot resume a suspended run (workflow executions). */
@@ -479,6 +510,8 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks?: boolean;
 			allowPlanTools?: boolean;
 			attributionUserId?: string;
+			/** See {@link ReconstructAgentRuntimeParams.outputReader}. */
+			outputReader?: User;
 			abortSignal?: AbortSignal;
 		} = {},
 	): Promise<ReconstructedAgentRuntime & { userToolAccessSnapshot?: UserToolAccessSnapshot }> {
@@ -502,7 +535,28 @@ export class AgentRuntimeReconstructionService {
 		if (user && config.tools?.length) {
 			const tools = config.tools;
 			const filtered = await raceWithAbort(
-				async () => await this.filterToolsForUser(tools, agentEntity.projectId, user),
+				async () =>
+					await this.filterToolsForUser(
+						tools,
+						agentEntity.projectId,
+						user,
+						workflowToolExecutionMode,
+					),
+				abortSignal,
+			);
+			config = { ...config, tools: filtered.tools };
+			userToolAccessSnapshot = filtered.snapshot;
+			unavailableTools = filtered.unavailable;
+		} else if (outputReader && config.tools?.length) {
+			const tools = config.tools;
+			const filtered = await raceWithAbort(
+				async () =>
+					await this.filterToolsForOutputReader(
+						tools,
+						agentEntity.projectId,
+						outputReader,
+						workflowToolExecutionMode,
+					),
 				abortSignal,
 			);
 			config = { ...config, tools: filtered.tools };
@@ -547,6 +601,7 @@ export class AgentRuntimeReconstructionService {
 			credentialIntegrations,
 			subAgentDelegation,
 			user,
+			...(outputReader && !user ? { outputReader } : {}),
 			attributionUserId,
 			...(agentEntity.identityId ? { agentServiceAccountId: agentEntity.identityId } : {}),
 			instrumentation,
@@ -564,6 +619,103 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	/**
+	 * Leave out the workflow tools whose execution data `reader` cannot reveal,
+	 * for a run that has no interactive user. The reader sees the replies of the
+	 * run, so the run must not use data that the reader cannot see. Other tools
+	 * stay, because the run keeps the project-scoped trust boundary.
+	 */
+	private async filterToolsForOutputReader(
+		tools: AgentJsonToolConfig[],
+		projectId: string,
+		reader: User,
+		mode: WorkflowToolExecutionMode,
+	): Promise<{
+		tools: AgentJsonToolConfig[];
+		snapshot?: UserToolAccessSnapshot;
+		unavailable: UnavailableTool[];
+	}> {
+		const filtered: AgentJsonToolConfig[] = [];
+		const unavailable: UnavailableTool[] = [];
+		const workflowIds: string[] = [];
+		for (const ref of tools) {
+			if (ref.enabled === false) continue;
+			if (ref.type !== 'workflow') {
+				filtered.push(ref);
+				continue;
+			}
+			const workflow = await this.findCheckedWorkflow(ref, projectId, mode);
+			if (!workflow) {
+				unavailable.push(missingWorkflow(ref));
+				continue;
+			}
+			if (await this.isWorkflowOutputHiddenFrom(workflow, reader, mode)) {
+				unavailable.push({
+					toolName: toolRefName(ref),
+					toolType: ref.type,
+					reason: 'redacted_output',
+					message: `Workflow "${workflow.name}" redacts its execution data and the user cannot reveal it`,
+				});
+				continue;
+			}
+			filtered.push(withCheckedWorkflow(ref, workflow.id));
+			workflowIds.push(workflow.id);
+		}
+		return {
+			tools: filtered,
+			unavailable,
+			...(workflowIds.length > 0
+				? {
+						snapshot: {
+							credentialIds: [],
+							workflowIds,
+							requiresWorkflowExecute: false,
+							workflowToolExecutionMode: mode,
+						},
+					}
+				: {}),
+		};
+	}
+
+	/**
+	 * True when `reader` can still reveal the execution data of every workflow
+	 * in `snapshot`. A runtime built for an output reader is rebuilt when this
+	 * is false, so a changed redaction setting takes effect.
+	 */
+	async outputReaderStillSeesWorkflowOutputs(
+		snapshot: UserToolAccessSnapshot,
+		projectId: string,
+		reader: User,
+	): Promise<boolean> {
+		const mode = snapshot.workflowToolExecutionMode;
+		if (!mode) return true;
+		const hidden = await Promise.all(
+			snapshot.workflowIds.map(async (id) => {
+				const ref = { type: 'workflow' as const, workflow: id, workflowId: id };
+				const workflow = await this.findCheckedWorkflow(ref, projectId, mode);
+				return !workflow || (await this.isWorkflowOutputHiddenFrom(workflow, reader, mode));
+			}),
+		);
+		return !hidden.some(Boolean);
+	}
+
+	/**
+	 * The workflow of a tool, with the active version that a published run uses.
+	 * A published run cannot use a workflow without an active version, so that
+	 * counts as missing.
+	 */
+	private async findCheckedWorkflow(
+		ref: AgentJsonWorkflowToolConfig,
+		projectId: string,
+		mode: WorkflowToolExecutionMode,
+	) {
+		const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId, {
+			withActiveVersion: mode === 'integrated',
+		});
+		if (mode === 'integrated' && !workflow?.activeVersion) return null;
+		return workflow;
+	}
+
+	/**
 	 * Drop node/workflow tool refs the calling user can't run: `workflow:execute`
 	 * gates both kinds, and node tools additionally need `credential:read` on
 	 * every credential baked into the ref. Filtering the config copy (rather
@@ -577,6 +729,7 @@ export class AgentRuntimeReconstructionService {
 		tools: AgentJsonToolConfig[],
 		projectId: string,
 		user: User,
+		mode: WorkflowToolExecutionMode,
 	): Promise<{
 		tools: AgentJsonToolConfig[];
 		snapshot?: UserToolAccessSnapshot;
@@ -599,12 +752,19 @@ export class AgentRuntimeReconstructionService {
 				filtered.push(ref);
 				continue;
 			}
-			const access = await this.checkToolAccess(ref, projectId, user, canExecute, loadUsableIds);
+			const access = await this.checkToolAccess(
+				ref,
+				projectId,
+				user,
+				canExecute,
+				loadUsableIds,
+				mode,
+			);
 			if ('reason' in access) {
 				unavailable.push(access);
 				continue;
 			}
-			filtered.push(ref);
+			filtered.push(withCheckedWorkflow(ref, access.workflowIds[0]));
 			keptGatedTool = true;
 			for (const id of access.credentialIds) grantedCredentialIds.add(id);
 			for (const id of access.workflowIds) grantedWorkflowIds.add(id);
@@ -618,6 +778,7 @@ export class AgentRuntimeReconstructionService {
 						snapshot: {
 							credentialIds: [...grantedCredentialIds],
 							workflowIds: [...grantedWorkflowIds],
+							workflowToolExecutionMode: mode,
 						},
 					}
 				: {}),
@@ -658,6 +819,7 @@ export class AgentRuntimeReconstructionService {
 		user: User,
 		canExecute: boolean,
 		loadUsableIds: () => Promise<Set<string>>,
+		mode: WorkflowToolExecutionMode,
 	): Promise<UserToolAccessSnapshot | UnavailableTool> {
 		const denied = (message: string): UnavailableTool => ({
 			toolName: toolRefName(ref),
@@ -689,9 +851,8 @@ export class AgentRuntimeReconstructionService {
 			return { credentialIds, workflowIds: [] };
 		}
 
-		const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId);
-		// Missing workflows stay in the list so the tool factory can return a stub.
-		if (!workflow) return { credentialIds: [], workflowIds: [] };
+		const workflow = await this.findCheckedWorkflow(ref, projectId, mode);
+		if (!workflow) return missingWorkflow(ref);
 		const accessibleWorkflow = await this.workflowFinderService.findWorkflowForUser(
 			workflow.id,
 			user,
@@ -700,7 +861,49 @@ export class AgentRuntimeReconstructionService {
 		if (!accessibleWorkflow) {
 			return denied(`The user cannot execute workflow "${workflow.name}"`);
 		}
+		if (await this.isWorkflowOutputHiddenFrom(workflow, user, mode)) {
+			return {
+				toolName: toolRefName(ref),
+				toolType: ref.type,
+				reason: 'redacted_output',
+				message: `Workflow "${workflow.name}" redacts its execution data and the user cannot reveal it`,
+			};
+		}
 		return { credentialIds: [], workflowIds: [workflow.id] };
+	}
+
+	/**
+	 * True when the workflow redacts the execution data of a run in `mode` and
+	 * the user cannot reveal it. An interactive run streams the tool output to
+	 * the user, so the user must be able to see it. Reads the workflow like an
+	 * execution without run data, so the strictest of the workflow settings and
+	 * the instance floor applies.
+	 */
+	private async isWorkflowOutputHiddenFrom(
+		workflow: Pick<WorkflowEntity, 'id' | 'settings' | 'nodes'> &
+			Partial<Pick<WorkflowEntity, 'activeVersion'>>,
+		user: User,
+		mode: WorkflowToolExecutionMode,
+	): Promise<boolean> {
+		const settings = workflow.settings ?? {};
+		const standIn: RedactableExecution = {
+			mode,
+			workflowId: workflow.id,
+			workflowData: {
+				// A run records a legacy `manual-only` policy as `all`.
+				settings:
+					settings.redactionPolicy === 'manual-only'
+						? { ...settings, redactionPolicy: 'all' }
+						: settings,
+				// A published run uses the nodes of the active version.
+				nodes: (mode === 'integrated' && workflow.activeVersion?.nodes) || workflow.nodes,
+			},
+			data: { resultData: { runData: {} } },
+			dataTooLargeToDisplay: true,
+		};
+		await this.executionRedaction.processExecutions([standIn], { user });
+		const info = standIn.data.redactionInfo;
+		return info?.isRedacted === true && !info.canReveal;
 	}
 
 	/**
@@ -744,7 +947,17 @@ export class AgentRuntimeReconstructionService {
 					await this.workflowFinderService.findWorkflowForUser(id, user, ['workflow:execute']),
 			),
 		);
-		return workflows.every((workflow) => Boolean(workflow));
+		if (!workflows.every((workflow) => Boolean(workflow))) return false;
+
+		const mode = snapshot.workflowToolExecutionMode;
+		if (!mode) return true;
+		const hidden = await Promise.all(
+			workflows.map(
+				async (workflow) =>
+					workflow !== null && (await this.isWorkflowOutputHiddenFrom(workflow, user, mode)),
+			),
+		);
+		return !hidden.some(Boolean);
 	}
 
 	/**
@@ -773,7 +986,28 @@ export class AgentRuntimeReconstructionService {
 			const user = params.user;
 			const tools = config.tools;
 			const filtered = await raceWithAbort(
-				async () => await this.filterToolsForUser(tools, params.projectId, user),
+				async () =>
+					await this.filterToolsForUser(
+						tools,
+						params.projectId,
+						user,
+						params.workflowToolExecutionMode ?? 'manual',
+					),
+				params.abortSignal,
+			);
+			config = { ...config, tools: filtered.tools };
+			unavailableTools = filtered.unavailable;
+		} else if (params.outputReader && config.tools?.length) {
+			const outputReader = params.outputReader;
+			const tools = config.tools;
+			const filtered = await raceWithAbort(
+				async () =>
+					await this.filterToolsForOutputReader(
+						tools,
+						params.projectId,
+						outputReader,
+						params.workflowToolExecutionMode ?? 'manual',
+					),
 				params.abortSignal,
 			);
 			config = { ...config, tools: filtered.tools };
@@ -1643,6 +1877,7 @@ export class AgentRuntimeReconstructionService {
 			workflowToolExecutionMode,
 			subAgentDelegation,
 			user,
+			outputReader,
 			instrumentation,
 			backgroundTasksEnabled,
 		} = params;
@@ -1655,6 +1890,7 @@ export class AgentRuntimeReconstructionService {
 			workflowToolExecutionMode,
 			delegation: subAgentDelegation,
 			user,
+			...(outputReader ? { outputReader } : {}),
 			instrumentation,
 			abortSignal: params.abortSignal,
 		};
@@ -1720,6 +1956,7 @@ export class AgentRuntimeReconstructionService {
 		delegation: SubAgentDelegationConfig;
 		parentWorkspaceHandle?: AgentSandboxRuntime;
 		user?: User;
+		outputReader?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
 		rootSessionId?: string;
 		rootSessionCapUsd?: number;
@@ -1738,6 +1975,7 @@ export class AgentRuntimeReconstructionService {
 			delegation,
 			parentWorkspaceHandle,
 			user,
+			outputReader,
 			instrumentation,
 			rootSessionId,
 			rootSessionCapUsd,
@@ -1762,6 +2000,7 @@ export class AgentRuntimeReconstructionService {
 				workflowToolExecutionMode,
 				...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 				user,
+				...(outputReader ? { outputReader } : {}),
 				instrumentation,
 				parentBudget: config.config?.guardrails?.budget,
 				runBackgroundSubAgent,
@@ -1824,6 +2063,7 @@ export class AgentRuntimeReconstructionService {
 		workflowToolExecutionMode: WorkflowToolExecutionMode;
 		delegation: SubAgentDelegationConfig;
 		user?: User;
+		outputReader?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
 		parentWorkspaceHandle?: AgentSandboxRuntime;
 		rootSessionCapUsd?: number;

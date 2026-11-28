@@ -1,3 +1,4 @@
+import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type { BuiltTool, Tool } from '@n8n/agents';
 import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { FolderService } from '@/services/folder.service';
@@ -171,6 +172,7 @@ function makeRuntimeReconstructionService(
 		makeKnowledgeAvailabilityService(),
 		mock<AgentSandboxFilesService>(),
 		mock<WorkflowsInSkillsFlagGate>(),
+		mock<ExecutionRedactionServiceProxy>(),
 	);
 }
 
@@ -278,6 +280,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			agentSandboxRuntimeService,
 			skillRefs,
+			mock<UserRepository>(),
 		);
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		const modificationTelemetry = mock<AgentModificationTelemetryService>();

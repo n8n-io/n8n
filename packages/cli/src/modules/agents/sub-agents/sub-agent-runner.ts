@@ -114,6 +114,12 @@ export interface SubAgentRunContext {
 	 */
 	user?: User;
 	/**
+	 * The n8n user who reads the output of a parent run without an interactive
+	 * user. The sub-agent leaves out workflow tools whose execution data this
+	 * user cannot reveal.
+	 */
+	outputReader?: User;
+	/**
 	 * Runtime instrumentation of the delegating parent run. Threaded into the
 	 * child's reconstruction so delegated runs share the parent's seams
 	 * (model fetch, MCP fetch, tool execution contexts).
@@ -373,6 +379,7 @@ export class SubAgentRunner {
 				rootSessionCapUsd: context.rootSessionCapUsd,
 				budgetForwarded: context.budgetForwarded,
 				user: context.user,
+				...(context.outputReader ? { outputReader: context.outputReader } : {}),
 				instrumentation: context.instrumentation,
 				...(sandboxPrincipalHash !== undefined ? { sandboxPrincipalHash } : {}),
 				...(context.parentWorkspaceHandle !== undefined

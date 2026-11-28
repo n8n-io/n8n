@@ -1,7 +1,7 @@
 import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import type { User } from '@n8n/db';
+import { UserRepository, type User } from '@n8n/db';
 import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
@@ -46,6 +46,12 @@ export interface GetRuntimeParams {
 	/** Disable background-job tools and wake hints for task-triggered runtimes. */
 	allowBackgroundTasks?: boolean;
 	attributionUserId?: string;
+	/**
+	 * The n8n user who reads the replies of a run without `user`, for example
+	 * the chatting user of a published n8n Chat. The runtime leaves out workflow
+	 * tools whose execution data this user cannot reveal. Part of the cache key.
+	 */
+	outputReaderUserId?: string;
 	/**
 	 * Build for the in-app preview chat, which gets an extra instruction saying
 	 * the agent cannot change its own setup. It makes the runtime unusable for
@@ -126,6 +132,7 @@ export class AgentRuntimeCacheService {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -138,6 +145,9 @@ export class AgentRuntimeCacheService {
 		if (params.integrationType) parts.push(params.integrationType);
 		if (params.allowBackgroundTasks === false) parts.push('no-background-tasks');
 		if (params.attributionUserId) parts.push(`attribution:${params.attributionUserId}`);
+		if (params.outputReaderUserId && !params.user) {
+			parts.push(`output-reader:${params.outputReaderUserId}`);
+		}
 		if (params.simulation) parts.push(params.simulation.runtimeCacheKey);
 		// Per-user runtimes have node/workflow tools filtered by that user's
 		// access — keying by user id keeps them from colliding with each other
@@ -268,8 +278,8 @@ export class AgentRuntimeCacheService {
 		params: GetRuntimeParams,
 	): Promise<boolean> {
 		const { userToolAccessSnapshot } = runtime;
-		const { user } = params;
-		if (!userToolAccessSnapshot || !user) return true;
+		const { user, outputReaderUserId } = params;
+		if (!userToolAccessSnapshot || (!user && !outputReaderUserId)) return true;
 		if (Date.now() - runtime.toolAccessCheckedAt < TOOL_ACCESS_RECHECK_INTERVAL_MS) return true;
 
 		const inFlight = this.toolAccessRechecks.get(runtime);
@@ -277,21 +287,29 @@ export class AgentRuntimeCacheService {
 
 		const recheck = (async () => {
 			try {
-				const stillGranted = await this.agentRuntimeReconstructionService.userStillHasToolAccess(
-					userToolAccessSnapshot,
-					params.projectId,
-					user,
-				);
+				const stillGranted = user
+					? await this.agentRuntimeReconstructionService.userStillHasToolAccess(
+							userToolAccessSnapshot,
+							params.projectId,
+							user,
+						)
+					: await this.outputReaderStillSeesOutputs(
+							userToolAccessSnapshot,
+							params.projectId,
+							outputReaderUserId,
+						);
 				if (stillGranted) runtime.toolAccessCheckedAt = Date.now();
 				return stillGranted;
 			} catch (error) {
-				// Availability over freshness: a failing re-check must not take down
-				// the chat — serve the cached runtime and retry next interval.
-				runtime.toolAccessCheckedAt = Date.now();
 				this.logger.warn('[AgentRuntimeCacheService] Failed to re-check tool access', {
 					agentId: runtime.agentId,
 					error: error instanceof Error ? error.message : String(error),
 				});
+				// An output reader runtime is rebuilt, so its workflow tools are checked again.
+				if (!user) return false;
+				// Availability over freshness: a failing re-check must not take down
+				// the chat — serve the cached runtime and retry next interval.
+				runtime.toolAccessCheckedAt = Date.now();
 				return true;
 			}
 		})();
@@ -306,6 +324,31 @@ export class AgentRuntimeCacheService {
 		}
 	}
 
+	/**
+	 * The output reader of a run. A reader id that no longer resolves to a user
+	 * stops the build, so the run never uses tools without the check.
+	 */
+	private async loadOutputReader(userId: string | undefined): Promise<User | undefined> {
+		if (!userId) return undefined;
+		const reader = await this.userRepository.findByIdWithRole(userId);
+		if (!reader) throw new UserError('The user of this chat no longer exists');
+		return reader;
+	}
+
+	private async outputReaderStillSeesOutputs(
+		snapshot: NonNullable<AgentRuntime['userToolAccessSnapshot']>,
+		projectId: string,
+		userId: string | undefined,
+	): Promise<boolean> {
+		const reader = await this.loadOutputReader(userId);
+		if (!reader) return true;
+		return await this.agentRuntimeReconstructionService.outputReaderStillSeesWorkflowOutputs(
+			snapshot,
+			projectId,
+			reader,
+		);
+	}
+
 	private async reconstructRuntime(params: GetRuntimeParams): Promise<AgentRuntime> {
 		const {
 			agentId,
@@ -317,8 +360,10 @@ export class AgentRuntimeCacheService {
 			allowBackgroundTasks,
 			previewChat,
 			attributionUserId,
+			outputReaderUserId,
 			simulation,
 		} = params;
+		const outputReader = !user ? await this.loadOutputReader(outputReaderUserId) : undefined;
 
 		const agentEntity = await getAgentOrThrow(
 			this.agentRepository,
@@ -355,7 +400,12 @@ export class AgentRuntimeCacheService {
 			simulation?.instrumentation(),
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
-			{ previewChat, allowBackgroundTasks, attributionUserId },
+			{
+				previewChat,
+				allowBackgroundTasks,
+				attributionUserId,
+				...(outputReader ? { outputReader } : {}),
+			},
 		);
 		const {
 			agent: agentInstance,

@@ -4,7 +4,7 @@ import type { AgentToolGuardrailConfig } from '@n8n/api-types';
 import type { LanguageModel } from 'ai';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { User, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import { OperationalError } from '@n8n/errors';
 
@@ -62,6 +62,7 @@ function makeService({
 		isEnabled: () => sandboxEnabled,
 	});
 	const globalConfig = { multiMainSetup: { enabled: multiMain } } as GlobalConfig;
+	const userRepository = mock<UserRepository>();
 
 	publisher.publishCommand.mockResolvedValue();
 
@@ -73,9 +74,10 @@ function makeService({
 		credentialsService,
 		sandboxRuntimeService,
 		createAgentSkillRefsService(),
+		userRepository,
 	);
 
-	return { service, agentRepository, publisher, reconstructionService };
+	return { service, agentRepository, publisher, reconstructionService, userRepository };
 }
 
 describe('AgentRuntimeCacheService', () => {
@@ -335,6 +337,94 @@ describe('AgentRuntimeCacheService', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it('builds an n8n Chat runtime with the chatting user as output reader and re-checks it', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			const { service, agentRepository, reconstructionService, userRepository } = makeService();
+			const reader = mock<User>({ id: 'chat-user' });
+			const snapshot = {
+				credentialIds: [],
+				workflowIds: ['wf-1'],
+				requiresWorkflowExecute: false,
+				workflowToolExecutionMode: 'integrated' as const,
+			};
+			const originalRuntime = { ...makeRuntime(), userToolAccessSnapshot: snapshot };
+			const rebuiltRuntime = makeRuntime();
+			userRepository.findByIdWithRole.mockResolvedValue(reader);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity
+				.mockResolvedValueOnce(originalRuntime)
+				.mockResolvedValueOnce(rebuiltRuntime);
+			reconstructionService.outputReaderStillSeesWorkflowOutputs.mockResolvedValue(false);
+			const params = {
+				agentId,
+				projectId,
+				attributionUserId: 'chat-user',
+				outputReaderUserId: 'chat-user',
+			};
+
+			const first = await service.getRuntime(params);
+			service.releaseRuntimeLease(first.agent);
+			expect(reconstructionService.reconstructFromAgentEntity.mock.calls[0][8]).toEqual(
+				expect.objectContaining({ outputReader: reader }),
+			);
+
+			vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+			const second = await service.getRuntime(params);
+
+			expect(reconstructionService.outputReaderStillSeesWorkflowOutputs).toHaveBeenCalledWith(
+				snapshot,
+				projectId,
+				reader,
+			);
+			expect(reconstructionService.userStillHasToolAccess).not.toHaveBeenCalled();
+			expect(second.agent).toBe(rebuiltRuntime.agent);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('rebuilds an n8n Chat runtime when the output reader re-check fails', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			const { service, agentRepository, reconstructionService, userRepository } = makeService();
+			userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'chat-user' }));
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			const snapshot = { credentialIds: [], workflowIds: ['wf-1'] };
+			const originalRuntime = { ...makeRuntime(), userToolAccessSnapshot: snapshot };
+			const rebuiltRuntime = makeRuntime();
+			reconstructionService.reconstructFromAgentEntity
+				.mockResolvedValueOnce(originalRuntime)
+				.mockResolvedValueOnce(rebuiltRuntime);
+			reconstructionService.outputReaderStillSeesWorkflowOutputs.mockRejectedValue(
+				new Error('database unavailable'),
+			);
+			const params = { agentId, projectId, outputReaderUserId: 'chat-user' };
+
+			const first = await service.getRuntime(params);
+			service.releaseRuntimeLease(first.agent);
+			vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+			const second = await service.getRuntime(params);
+
+			expect(second.agent).toBe(rebuiltRuntime.agent);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('does not build an n8n Chat runtime when the chatting user no longer exists', async () => {
+		const { service, agentRepository, reconstructionService, userRepository } = makeService();
+		userRepository.findByIdWithRole.mockResolvedValue(null);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+		await expect(
+			service.getRuntime({ agentId, projectId, outputReaderUserId: 'gone-user' }),
+		).rejects.toThrow('The user of this chat no longer exists');
+		expect(reconstructionService.reconstructFromAgentEntity).not.toHaveBeenCalled();
 	});
 
 	it('keeps the cached runtime when a tool-access re-check fails and retries after the debounce window', async () => {

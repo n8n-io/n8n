@@ -388,6 +388,11 @@ interface ChatChannelSetup {
 		integrationType: string;
 		/** n8n Chat only: telemetry and the runtime cache key name the chatting user. */
 		attributionUserId?: string;
+		/**
+		 * n8n Chat only: the chatting user reads the replies, so the runtime leaves
+		 * out workflow tools whose execution data this user cannot reveal.
+		 */
+		outputReaderUserId?: string;
 		/** Preview only: tools and credentials are scoped to the user. */
 		user?: User;
 		/** Preview only: the runtime gets the preview chat's extra instruction. */
@@ -403,7 +408,7 @@ interface ChatChannelSetup {
 interface ResumeScope {
 	access: AgentThreadAccess;
 	source?: string;
-	runtime: Pick<ChatChannelSetup['runtime'], 'user' | 'attributionUserId'>;
+	runtime: Pick<ChatChannelSetup['runtime'], 'user' | 'attributionUserId' | 'outputReaderUserId'>;
 }
 
 /** Which sandbox scope a resumed checkpoint must carry. */
@@ -870,6 +875,8 @@ export class AgentExecutionOrchestratorService {
 				runType: resume.usePublishedVersion ? 'production' : 'test',
 				workflowToolExecutionMode: resume.usePublishedVersion ? 'integrated' : 'manual',
 				user: credentialUser,
+				// n8n Chat: the chatting user reads the result, so the child checks its workflow tools for them.
+				...(scope.runtime.outputReaderUserId ? { outputReader: config.user } : {}),
 			},
 		);
 		return true;
@@ -1109,6 +1116,7 @@ export class AgentExecutionOrchestratorService {
 						usePublishedVersion: setup.runtime.usePublishedVersion,
 						sandboxPrincipalHash: setup.sandboxPrincipalHash,
 						attributionUserId: setup.runtime.attributionUserId,
+						outputReaderUserId: setup.runtime.outputReaderUserId,
 					},
 					{
 						threadId: memory.threadId,
@@ -1699,6 +1707,7 @@ export class AgentExecutionOrchestratorService {
 				allowBackgroundTasks,
 				user: scope.runtime.user,
 				attributionUserId: scope.runtime.attributionUserId,
+				outputReaderUserId: scope.runtime.outputReaderUserId,
 				...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
 				previewChat,
 				...simulationRuntimeParams(config.simulationSession),
@@ -2059,6 +2068,7 @@ export class AgentExecutionOrchestratorService {
 				usePublishedVersion: true,
 				integrationType: N8N_CHAT_INTEGRATION_TYPE,
 				attributionUserId: userId,
+				outputReaderUserId: userId,
 			},
 		};
 	}
@@ -2383,6 +2393,9 @@ export class AgentExecutionOrchestratorService {
 				...(setup?.runtime.previewChat ? { previewChat: setup.runtime.previewChat } : {}),
 				...(setup?.runtime.attributionUserId
 					? { attributionUserId: setup.runtime.attributionUserId }
+					: {}),
+				...(setup?.runtime.outputReaderUserId
+					? { outputReaderUserId: setup.runtime.outputReaderUserId }
 					: {}),
 				...(setup?.runtime.user ? { user: setup.runtime.user } : {}),
 				sandboxPrincipalHash: identity.principalHash,

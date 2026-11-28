@@ -661,6 +661,7 @@ describe('background approvals', () => {
 				workflowToolExecutionMode: published ? 'integrated' : 'manual',
 			}),
 		);
+		expect(runner.resume.mock.calls[0][2]).not.toHaveProperty('outputReader');
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 	});
 
@@ -722,6 +723,8 @@ describe('background approvals', () => {
 				runType: 'production',
 				workflowToolExecutionMode: 'integrated',
 				user: undefined,
+				// The chat user reads the result, so the resumed child checks its workflow tools for them.
+				outputReader: user,
 			}),
 		);
 	});
@@ -2815,6 +2818,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				integrationType: N8N_CHAT_INTEGRATION_TYPE,
 				usePublishedVersion: true,
 				attributionUserId: user.id,
+				outputReaderUserId: user.id,
 				sandboxPrincipalHash: userPrincipalHash,
 			}),
 		);
@@ -4215,6 +4219,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				integrationType: N8N_CHAT_INTEGRATION_TYPE,
 				usePublishedVersion: true,
 				attributionUserId: userId,
+				outputReaderUserId: userId,
 			}),
 		);
 		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
@@ -5469,6 +5474,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		const runtimeParams = runtimeCacheService.getRuntime.mock.calls[0][0];
 		expect(runtimeParams.user).toBeUndefined();
 		expect(runtimeParams.attributionUserId).toBe(user.id);
+		// The chat user reads the replies, so the runtime checks the workflow tools for them.
+		expect(runtimeParams.outputReaderUserId).toBe(user.id);
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({ source: 'n8n_chat_production' }),
 		);

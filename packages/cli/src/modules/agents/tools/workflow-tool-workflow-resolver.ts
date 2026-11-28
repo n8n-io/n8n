@@ -58,11 +58,16 @@ export async function findWorkflowToolWorkflow(
 	workflowRepository: WorkflowRepository,
 	ref: AgentJsonWorkflowToolConfig,
 	projectId: string,
+	options: { withActiveVersion?: boolean } = {},
 ): Promise<WorkflowEntity | null> {
-	return await workflowRepository.findOneByAgentToolReference(projectId, {
-		workflowName: ref.workflow,
-		...(ref.workflowId !== undefined ? { workflowId: ref.workflowId } : {}),
-	});
+	return await workflowRepository.findOneByAgentToolReference(
+		projectId,
+		{
+			workflowName: ref.workflow,
+			...(ref.workflowId !== undefined ? { workflowId: ref.workflowId } : {}),
+		},
+		options,
+	);
 }
 
 /**
