@@ -238,7 +238,7 @@ export class ERPNext implements INodeType {
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 
-					if (!properties.customProperty.length) {
+					if (!properties.customProperty?.length) {
 						throw new NodeOperationError(
 							this.getNode(),
 							'Please enter at least one property for the document to create.',
@@ -286,7 +286,7 @@ export class ERPNext implements INodeType {
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 
-					if (!properties.customProperty.length) {
+					if (!properties.customProperty?.length) {
 						throw new NodeOperationError(
 							this.getNode(),
 							'Please enter at least one property for the document to update.',
