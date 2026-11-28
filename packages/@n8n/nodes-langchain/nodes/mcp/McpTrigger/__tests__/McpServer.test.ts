@@ -847,6 +847,31 @@ describe('McpServer', () => {
 		});
 	});
 
+	it('accepts a tools/call request that omits arguments', async () => {
+		const server = createMockServer();
+		const sessionId = 'no-args-session';
+		const tool = createMockTool('no_args_tool');
+		const internals = mcpServer as unknown as {
+			sessionManager: SessionManager;
+			setupHandlers(server: unknown): void;
+		};
+		await internals.sessionManager.registerSession(
+			sessionId,
+			server,
+			createMockTransport(sessionId, 'sse'),
+			[tool],
+		);
+		internals.setupHandlers(server);
+		const handler = server.setRequestHandler.mock.calls[1][1] as (
+			request: { params: { name: string; arguments?: Record<string, unknown> } },
+			extra: { sessionId?: string; requestId?: string },
+		) => Promise<{ isError?: boolean }>;
+
+		const result = await handler({ params: { name: 'no_args_tool' } }, { sessionId });
+
+		expect(result.isError).not.toBe(true);
+	});
+
 	describe('credential gate', () => {
 		const sessionId = 'gated-session';
 		const requestId = 'req-1';
