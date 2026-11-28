@@ -690,8 +690,12 @@ export function useCanvasPreview({
 			}
 			const hasProjectId =
 				passedProjectId !== undefined ||
-				openTabs.value.some((tab) => tab.id === serverId && Boolean(tab.projectId)) ||
-				artifactTabs.value.some((tab) => tab.id === serverId && Boolean(tab.projectId));
+				openTabs.value.some(
+					(tab) => tab.type === 'mcp-server' && tab.id === serverId && Boolean(tab.projectId),
+				) ||
+				artifactTabs.value.some(
+					(tab) => tab.type === 'mcp-server' && tab.id === serverId && Boolean(tab.projectId),
+				);
 			if (!hasProjectId) return false;
 			if (hadActivePreview) return false;
 			selectTab(serverId);
