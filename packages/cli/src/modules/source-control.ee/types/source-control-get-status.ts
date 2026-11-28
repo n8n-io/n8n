@@ -70,7 +70,10 @@ export class SourceControlGetStatus {
 		verbose: string | boolean;
 	}) {
 		this.direction = values.direction || 'push';
-		this.preferLocalVersion = booleanFromString(values.preferLocalVersion) || true;
+		this.preferLocalVersion =
+			values.preferLocalVersion === undefined
+				? true
+				: booleanFromString(values.preferLocalVersion);
 		this.verbose = booleanFromString(values.verbose) || false;
 		// Never read from `values`, an untrusted query parameter must not be propagated through.
 		this.publicApi = false;
