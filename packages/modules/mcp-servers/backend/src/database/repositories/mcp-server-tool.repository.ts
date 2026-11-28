@@ -7,7 +7,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
 import { McpServerTool } from '../entities/mcp-server-tool.entity';
@@ -23,6 +23,11 @@ export type NewWorkflowTool = {
 	toolName: string;
 	description: string;
 };
+
+export type McpServerToolSummary = Pick<
+	McpServerTool,
+	'id' | 'serverId' | 'kind' | 'targetId' | 'toolName'
+>;
 
 export type McpServerToolChanges = Partial<
 	Pick<McpServerTool, 'toolName' | 'description'> & { draftSource: McpServerToolDraftSource }
@@ -48,6 +53,26 @@ export class McpServerToolRepository {
 			where: { serverId },
 			order: { position: 'ASC', createdAt: 'ASC' },
 		});
+	}
+
+	/** Summaries of every tool across the given servers, in display order. */
+	async listSummaryByServers(
+		serverIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, McpServerToolSummary[]>> {
+		if (serverIds.length === 0) return new Map();
+		const rows = await this.table.managerFor(ctx).find(McpServerTool, {
+			select: ['id', 'serverId', 'kind', 'targetId', 'toolName'],
+			where: { serverId: In(serverIds) },
+			order: { position: 'ASC', createdAt: 'ASC' },
+		});
+		const byServer = new Map<string, McpServerToolSummary[]>();
+		for (const row of rows) {
+			const list = byServer.get(row.serverId) ?? [];
+			list.push(row);
+			byServer.set(row.serverId, list);
+		}
+		return byServer;
 	}
 
 	async findInServer(

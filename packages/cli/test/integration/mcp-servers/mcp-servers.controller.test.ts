@@ -1,4 +1,5 @@
 import { CUSTOM_MCP_SERVERS_FLAG, CUSTOM_MCP_SERVERS_FLAG_VARIANT } from '@n8n/api-types';
+import { McpServerTool } from '@n8n/backend-module-mcp-servers';
 import { EventService, PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
@@ -9,6 +10,7 @@ import {
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AssignableProjectRole } from '@n8n/permissions';
+import { DataSource } from '@n8n/typeorm';
 import type { MockInstance } from 'vitest';
 
 import { createAdmin, createMember, createOwner } from '../shared/db/users';
@@ -202,6 +204,63 @@ describe('GET /projects/:projectId/mcp-servers', () => {
 			first.id,
 			second.id,
 		]);
+	});
+
+	it('returns each server with its tools in position order and zero connectionCount when unshared', async () => {
+		const first = await createServer({ name: 'Sales tools', slug: 'sales-tools' });
+		const empty = await createServer({ name: 'Empty server', slug: 'empty-server' });
+		const toolRepo = Container.get(DataSource).getRepository(McpServerTool);
+		await toolRepo.insert([
+			{
+				id: '0190a8d6-4a2e-7000-8000-0000000000a2',
+				serverId: first.id,
+				kind: 'workflow',
+				targetId: 'wf-1',
+				toolName: 'get_numbers',
+				description: 'Gets numbers',
+				draftSource: 'defaults',
+				toolData: null,
+				position: 1,
+			},
+			{
+				id: '0190a8d6-4a2e-7000-8000-0000000000a1',
+				serverId: first.id,
+				kind: 'node',
+				targetId: null,
+				toolName: 'search_slack',
+				description: 'Searches Slack',
+				draftSource: 'defaults',
+				toolData: null,
+				position: 0,
+			},
+		]);
+
+		const response = await ownerAgent.get(serversPath()).expect(200);
+		const byId = new Map<string, { tools: unknown[]; connectionCount: number }>(
+			response.body.data.map((row: { id: string; tools: unknown[]; connectionCount: number }) => [
+				row.id,
+				row,
+			]),
+		);
+
+		expect(byId.get(first.id)).toMatchObject({
+			tools: [
+				{
+					id: '0190a8d6-4a2e-7000-8000-0000000000a1',
+					kind: 'node',
+					targetId: null,
+					toolName: 'search_slack',
+				},
+				{
+					id: '0190a8d6-4a2e-7000-8000-0000000000a2',
+					kind: 'workflow',
+					targetId: 'wf-1',
+					toolName: 'get_numbers',
+				},
+			],
+			connectionCount: 0,
+		});
+		expect(byId.get(empty.id)).toMatchObject({ tools: [], connectionCount: 0 });
 	});
 
 	it.each([
