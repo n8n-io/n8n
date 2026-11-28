@@ -8,7 +8,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { getResourcePermissions } from '@n8n/permissions';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import {
@@ -592,6 +592,271 @@ describe('useNodeCommands', () => {
 
 			expect(items.map((item) => item.id)).toEqual(['n8n-nodes-base.slack']);
 			expect(hasMore).toBe(false);
+		});
+	});
+
+	// Regression tests for NODE-6015.
+	// Auto-generated HITL tool variants reuse the source node displayName (see hitl-tools.ts).
+	// The command bar must exclude HITL tool variants or distinguish them by title or description.
+	describe('HITL tool variants', () => {
+		const createRegularNodeType = (
+			name: string,
+			displayName: string,
+			icon: INodeTypeDescription['icon'],
+			description: string,
+		): INodeTypeDescription => ({
+			...createMockNodeType(name, displayName),
+			icon,
+			description,
+			group: ['transform'],
+			defaults: { name: displayName },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			codex: {
+				categories: ['Communication'],
+				subcategories: { Communication: ['Messaging'] },
+			},
+		});
+
+		const createAiToolNodeType = (
+			name: string,
+			displayName: string,
+			icon: INodeTypeDescription['icon'],
+			description: string,
+		): INodeTypeDescription => ({
+			...createMockNodeType(`${name}Tool`, `${displayName} Tool`),
+			icon,
+			description,
+			group: ['transform'],
+			defaults: { name: displayName },
+			inputs: [],
+			outputs: [NodeConnectionTypes.AiTool],
+			codex: {
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Other Tools'],
+				},
+				resources: {},
+			},
+		});
+
+		const createHitlToolNodeType = (
+			name: string,
+			displayName: string,
+			icon: INodeTypeDescription['icon'],
+		): INodeTypeDescription => ({
+			...createMockNodeType(`${name}HitlTool`, displayName),
+			icon,
+			subtitle: 'Send and wait',
+			description: 'Request human approval for tools',
+			group: ['transform'],
+			defaults: { name: displayName },
+			skipNameGeneration: true,
+			inputs: [
+				{
+					displayName: 'Tool',
+					type: NodeConnectionTypes.AiTool,
+					required: true,
+				},
+			],
+			outputs: [
+				{
+					displayName: 'Human review',
+					type: NodeConnectionTypes.AiTool,
+					filter: {
+						nodes: ['@n8n/n8n-nodes-langchain.agent', '@n8n/n8n-nodes-langchain.agentTool'],
+					},
+				},
+			],
+			codex: {
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Human in the Loop'],
+				},
+				resources: {},
+			},
+		});
+
+		const setVisibleNodeTypes = (nodeTypes: INodeTypeDescription[]) => {
+			mockNodeTypesStore.setNodeTypes(nodeTypes);
+			vi.mocked(mockNodeTypesStore.getNodeType).mockImplementation(
+				(type: string) =>
+					nodeTypes.find((nodeType) => nodeType.name === type) ?? createMockNodeType(type, type),
+			);
+			mockGenerateMergedNodesAndActionsFn.mockImplementation(
+				(visibleTypes: INodeTypeDescription[]) => ({ mergedNodes: visibleTypes }),
+			);
+		};
+
+		const findIndistinguishableDuplicates = (query: string, baseNodeId: string) => {
+			const addNodeItems = searchNodes({ query }).items.filter(
+				(item) => item.section === ADD_NODE_SECTION,
+			);
+			const baseItem = addNodeItems.find((item) => item.id === baseNodeId);
+			expect(baseItem).toBeDefined();
+
+			return addNodeItems
+				.filter((item) => item.id !== baseItem?.id)
+				.filter(
+					(item) =>
+						item.title === baseItem?.title &&
+						(item.description?.trim() ?? '') === (baseItem?.description?.trim() ?? ''),
+				)
+				.map((item) => ({
+					id: item.id,
+					title: item.title,
+					description: item.description,
+				}));
+		};
+
+		it('should return unambiguous entries for regular nodes without HITL variants', () => {
+			setVisibleNodeTypes([
+				createRegularNodeType(
+					'n8n-nodes-base.gmail',
+					'Gmail',
+					'file:gmail.svg',
+					'Consume the Gmail API',
+				),
+				createRegularNodeType(
+					'n8n-nodes-base.slack',
+					'Slack',
+					'file:slack.svg',
+					'Consume Slack API',
+				),
+			]);
+
+			const { items } = searchNodes({ query: 'gmail' });
+
+			expect(items.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+				{ id: 'n8n-nodes-base.gmail', title: 'Gmail' },
+			]);
+			expect(findIndistinguishableDuplicates('gmail', 'n8n-nodes-base.gmail')).toEqual([]);
+		});
+
+		it('should not show two identical Gmail entries when a HITL tool variant exists', () => {
+			setVisibleNodeTypes([
+				createRegularNodeType(
+					'n8n-nodes-base.gmail',
+					'Gmail',
+					'file:gmail.svg',
+					'Consume the Gmail API',
+				),
+				createHitlToolNodeType('n8n-nodes-base.gmail', 'Gmail', 'file:gmail.svg'),
+				createAiToolNodeType(
+					'n8n-nodes-base.gmail',
+					'Gmail',
+					'file:gmail.svg',
+					'Consume the Gmail API',
+				),
+			]);
+
+			expect(findIndistinguishableDuplicates('gmail', 'n8n-nodes-base.gmail')).toEqual([]);
+		});
+
+		it.each([
+			{
+				query: 'slack',
+				name: 'n8n-nodes-base.slack',
+				displayName: 'Slack',
+				icon: 'file:slack.svg' as const,
+				description: 'Consume Slack API',
+			},
+			{
+				query: 'discord',
+				name: 'n8n-nodes-base.discord',
+				displayName: 'Discord',
+				icon: 'file:discord.svg' as const,
+				description: 'Sends data to Discord',
+			},
+			{
+				query: 'telegram',
+				name: 'n8n-nodes-base.telegram',
+				displayName: 'Telegram',
+				icon: 'file:telegram.svg' as const,
+				description: 'Sends data to Telegram',
+			},
+		])(
+			'should not show duplicate $displayName entries when its HITL tool variant exists',
+			({ query, name, displayName, icon, description }) => {
+				setVisibleNodeTypes([
+					createRegularNodeType(name, displayName, icon, description),
+					createHitlToolNodeType(name, displayName, icon),
+				]);
+
+				expect(findIndistinguishableDuplicates(query, name)).toEqual([]);
+			},
+		);
+
+		it('should exclude HITL tool variants from add-node results while keeping base and AI tool nodes', () => {
+			setVisibleNodeTypes([
+				createRegularNodeType(
+					'n8n-nodes-base.gmail',
+					'Gmail',
+					'file:gmail.svg',
+					'Consume the Gmail API',
+				),
+				createHitlToolNodeType('n8n-nodes-base.gmail', 'Gmail', 'file:gmail.svg'),
+				createAiToolNodeType(
+					'n8n-nodes-base.gmail',
+					'Gmail',
+					'file:gmail.svg',
+					'Consume the Gmail API',
+				),
+				createRegularNodeType(
+					'@n8n/n8n-nodes-langchain.chat',
+					'Chat',
+					'file:chat.svg',
+					'Send a message into the chat',
+				),
+				createHitlToolNodeType('@n8n/n8n-nodes-langchain.chat', 'Chat', 'file:chat.svg'),
+			]);
+
+			expect(searchNodeIds('gmail')).toEqual(['n8n-nodes-base.gmail', 'n8n-nodes-base.gmailTool']);
+			expect(searchNodeIds('chat')).toEqual(['@n8n/n8n-nodes-langchain.chat']);
+			expect(searchNodeIds('')).toEqual([
+				'n8n-nodes-base.gmail',
+				'n8n-nodes-base.gmailTool',
+				'@n8n/n8n-nodes-langchain.chat',
+			]);
+		});
+
+		it('should not list a policy-restricted HITL tool variant in add-node results', () => {
+			setVisibleNodeTypes([
+				createRegularNodeType(
+					'n8n-nodes-base.gmail',
+					'Gmail',
+					'file:gmail.svg',
+					'Consume the Gmail API',
+				),
+				createHitlToolNodeType('n8n-nodes-base.gmail', 'Gmail', 'file:gmail.svg'),
+			]);
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.gmailHitlTool': 'instance' });
+
+			expect(searchNodeIds('gmail')).toEqual(['n8n-nodes-base.gmail']);
+		});
+
+		it('should still list an existing HITL tool node that is already in the workflow', () => {
+			setVisibleNodeTypes([
+				createRegularNodeType(
+					'n8n-nodes-base.gmail',
+					'Gmail',
+					'file:gmail.svg',
+					'Consume the Gmail API',
+				),
+				createHitlToolNodeType('n8n-nodes-base.gmail', 'Gmail', 'file:gmail.svg'),
+			]);
+			setWorkflowNodes([
+				{ id: 'hitl-node-1', name: 'Approve via Gmail', type: 'n8n-nodes-base.gmailHitlTool' },
+			]);
+
+			const { items } = searchNodes({ query: 'gmail' });
+
+			expect(items.map((item) => [item.id, item.section])).toEqual([
+				['hitl-node-1', IN_WORKFLOW_SECTION],
+				['n8n-nodes-base.gmail', ADD_NODE_SECTION],
+			]);
 		});
 	});
 });
