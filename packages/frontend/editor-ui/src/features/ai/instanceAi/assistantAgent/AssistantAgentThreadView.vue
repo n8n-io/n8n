@@ -79,14 +79,16 @@ import { useCreditWarningBanner } from '../composables/useCreditWarningBanner';
 import type { AgentTestHandoffParams } from '../composables/useInstanceAiAgentTestHandoff';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
+	claimPendingFirstMessage,
 	clearPendingComposerDraft,
+	clearPendingFirstMessage,
 	clearPendingHandoffContext,
 	clearPendingWorkflowAttachment,
 	consumePendingDraftAttachment,
-	consumePendingFirstMessage,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	getPendingWorkflowAttachment,
+	readPendingFirstMessage,
 	type PendingFirstMessage,
 } from '../composables/useInstanceAiHandoff';
 import {
@@ -185,9 +187,10 @@ const messageTelemetry = useAssistantAgentMessageTelemetry(props.threadId);
 // A new thread has a launch marker until the server accepts its first message.
 // The server does not know the thread before then.
 const launch = getAssistantAgentLaunch(props.threadId);
-// What the empty view or a hand-off left for this new thread. The first message
-// and the nodes are read once, so a reload cannot send them again. The rest
-// stays until the server accepts the first message.
+// What the empty view or a hand-off left for this new thread. The nodes are read
+// once, so a reload cannot add them again. A hand-off message stays until this
+// view sends it (see `beforeSend`). The rest stays until the server accepts the
+// first message.
 const handoff = readPendingHandoff();
 const isNewThread = launch !== undefined || handoff.firstMessage !== undefined;
 const isNewSession = ref(isNewThread);
@@ -220,7 +223,12 @@ function readPendingHandoff() {
 	// The empty view keeps its message in memory, because it can carry files. A
 	// hand-off stores its message in localStorage, so a new tab can read it.
 	const fromEmptyView = consumePendingAssistantAgentMessage(props.threadId);
-	const fromHandoff = consumePendingFirstMessage(props.threadId);
+	// Not removed here: when the editor or a template page hands off before the
+	// Assistant layout has loaded, the outgoing layout mounts a copy of this view
+	// that is removed before it can send. The copy that remains must still find it.
+	const fromHandoff = readPendingFirstMessage(props.threadId);
+	// The message from the empty view goes first, so a stashed one is never sent.
+	if (fromEmptyView) clearPendingFirstMessage(props.threadId);
 	const firstMessage = firstMessageOf(fromEmptyView, fromHandoff);
 	// The handed-off workflow shows as a composer chip, so the user sees it and can remove it.
 	const workflowChip = getPendingWorkflowAttachment(props.threadId) ?? undefined;
@@ -230,6 +238,7 @@ function readPendingHandoff() {
 	const references: InstanceAiAttachment[] = firstMessage?.references ?? [];
 	return {
 		firstMessage,
+		firstMessageIsStashed: !fromEmptyView && fromHandoff !== null,
 		draft,
 		nodes,
 		context,
@@ -332,6 +341,23 @@ function assertCreditsAvailable(): void {
 	if (creditsStore.isOutOfCredits) throw new Error('No Assistant credits are left');
 }
 
+// True from when the hand-off message is queued in the chat until it is sent.
+let sendsStashedFirstMessage = false;
+
+function beforeSend(): void {
+	// Checked first, so a send refused for credits keeps the hand-off message for a
+	// later send or a reload.
+	assertCreditsAvailable();
+	if (sendsStashedFirstMessage) {
+		sendsStashedFirstMessage = false;
+		// Claim it only now, so a copy of this view that is removed before it sends
+		// leaves it to the other. The claim also stops a second send of it.
+		if (!claimPendingFirstMessage(props.threadId)) {
+			throw new Error('The hand-off message was sent already');
+		}
+	}
+}
+
 const trace = useAssistantAgentTrace({
 	threadId: props.threadId,
 	messages: () => panel.value?.messages ?? [],
@@ -375,6 +401,7 @@ watch(panel, (current) => {
 		current.addComposerAttachment(chip, clientContextPatch);
 	}
 	if (handoff.firstMessage) {
+		sendsStashedFirstMessage = handoff.firstMessageIsStashed;
 		messageTelemetry.expectHostSend(handoff.firstMessage);
 		current.sendMessageFromOutside(handoff.firstMessage.text, handoff.firstMessage.files);
 	} else if (handoff.draft) {
@@ -1089,7 +1116,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						:show-attach-button="false"
 						:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 						:disabled="creditsStore.isOutOfCredits"
-						:before-send="assertCreditsAvailable"
+						:before-send="beforeSend"
 						@stream-event="onStreamEvent"
 						@session-created="onSessionCreated"
 						@message-sending="onMessageSending"

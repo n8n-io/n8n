@@ -43,6 +43,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import {
 	getPendingComposerDraft,
 	getPendingWorkflowAttachment,
+	readPendingFirstMessage,
 	stashPendingDraftAttachment,
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
@@ -2271,11 +2272,36 @@ describe('AssistantAgentThreadView', () => {
 			]);
 		});
 
-		it('sends a handed-off opening message once', async () => {
+		function currentBeforeSend(): () => Promise<void> {
+			const hook = panelProps.current['before-send'];
+			if (typeof hook !== 'function') throw new Error('The panel has no before-send hook');
+			return async () => await (hook as () => Promise<void> | void)();
+		}
+
+		function stashTemplateMessage(): void {
 			stashPendingFirstMessage('thread-new', {
 				message: 'Adjust template 42',
 				authorship: { kind: 'prefill', prefillType: 'template_adjustment' },
 			});
+		}
+
+		it('sends a handed-off opening message once', async () => {
+			stashTemplateMessage();
+			const { unmount } = await renderNewThread();
+			expect(sendMessageFromOutside).toHaveBeenCalledWith('Adjust template 42', []);
+			await currentBeforeSend()();
+			expect(readPendingFirstMessage('thread-new')).toBeNull();
+			unmount();
+			sendMessageFromOutside.mockReset();
+
+			await renderNewThread();
+
+			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+		});
+
+		// The outgoing layout mounts a copy of the view while the Assistant layout loads.
+		it('leaves a handed-off opening message to the next view when it is removed before it sends', async () => {
+			stashTemplateMessage();
 			const { unmount } = await renderNewThread();
 			expect(sendMessageFromOutside).toHaveBeenCalledWith('Adjust template 42', []);
 			unmount();
@@ -2283,7 +2309,46 @@ describe('AssistantAgentThreadView', () => {
 
 			await renderNewThread();
 
-			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+			expect(panelProps.current['new-session']).toBe(true);
+			expect(sendMessageFromOutside).toHaveBeenCalledWith('Adjust template 42', []);
+			await expect(currentBeforeSend()()).resolves.toBeUndefined();
+			expect(readPendingFirstMessage('thread-new')).toBeNull();
+		});
+
+		it('refuses to send a handed-off opening message that another view sent', async () => {
+			stashTemplateMessage();
+			await renderNewThread();
+			const firstBeforeSend = currentBeforeSend();
+			await renderNewThread();
+			const secondBeforeSend = currentBeforeSend();
+
+			await expect(secondBeforeSend()).resolves.toBeUndefined();
+			await expect(firstBeforeSend()).rejects.toThrow();
+		});
+
+		it('does not claim a later message once the handed-off one is sent', async () => {
+			stashTemplateMessage();
+			await renderNewThread();
+			const beforeSend = currentBeforeSend();
+			await beforeSend();
+
+			await expect(beforeSend()).resolves.toBeUndefined();
+		});
+
+		it('keeps a handed-off opening message that is refused for credits, and claims it at the next send', async () => {
+			const creditsStore = useAssistantCreditsStore();
+			creditsStore.creditsQuota = 100;
+			creditsStore.creditsClaimed = 100;
+			stashTemplateMessage();
+			await renderNewThread();
+			const beforeSend = currentBeforeSend();
+
+			await expect(beforeSend()).rejects.toThrow();
+			expect(readPendingFirstMessage('thread-new')).not.toBeNull();
+
+			creditsStore.creditsQuota = 200;
+			await expect(beforeSend()).resolves.toBeUndefined();
+			expect(readPendingFirstMessage('thread-new')).toBeNull();
 		});
 
 		it('keeps a handed-off workflow and draft until the server accepts the first message', async () => {
