@@ -456,7 +456,9 @@ export function getExecutionCallAction(
  */
 export function callCarriesInputFiles(toolName: string, args: unknown): boolean {
 	if (!isRecord(args)) return false;
-	if (getExecutionCallAction(toolName, args.action) === 'run') return hasEntries(args.files);
+	const executionAction = getExecutionCallAction(toolName, args.action);
+	if (executionAction === 'run') return hasEntries(args.files);
+	if (executionAction === 'run-step') return itemsCarryFiles(args.mockInput);
 	const resolved = resolveBuilderToolName(toolName);
 	if (
 		resolved === SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE ||
