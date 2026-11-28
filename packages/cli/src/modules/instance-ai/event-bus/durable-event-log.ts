@@ -264,17 +264,17 @@ export class DurableEventLog {
 	}
 
 	async getEventsAfter(threadId: string, afterSeq: number): Promise<StoredEvent[]> {
-		return await this.repo.getAfter(threadId, afterSeq);
+		return await this.repo.getAfter(threadId, afterSeq, {});
 	}
 
 	async getEventsForRuns(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
-		return await this.repo.getForRuns(threadId, runIds);
+		return await this.repo.getForRuns(threadId, runIds, {});
 	}
 
 	/** Latest persisted setup panel snapshot per workflow (see repository). */
 	async getSetupItemsSnapshots(threadId: string) {
 		await this.flush(threadId);
-		return await this.repo.getSetupItemsSnapshots(threadId);
+		return await this.repo.getSetupItemsSnapshots(threadId, {});
 	}
 
 	/**
@@ -283,7 +283,7 @@ export class DurableEventLog {
 	 * and a flush would cut an open text segment in two on every thread open.
 	 */
 	async getLastAppliedPreferences(threadId: string) {
-		return await this.repo.getLastAppliedPreferences(threadId);
+		return await this.repo.getLastAppliedPreferences(threadId, {});
 	}
 
 	/**
@@ -320,7 +320,7 @@ export class DurableEventLog {
 		// goes stale the moment a sibling main wins a seq range, which would seed
 		// the client's replay cursor below rows its history response already
 		// covered. The cache stays writer-only (persistWithRetry).
-		return (await this.repo.maxSeq(threadId)) + 1;
+		return (await this.repo.maxSeq(threadId, {})) + 1;
 	}
 
 	/**
@@ -583,7 +583,7 @@ export class DurableEventLog {
 			try {
 				// Confirm a lost response before terminal facts can filter our own committed batch.
 				if (attemptedFirstSeq !== undefined) {
-					const payload = await this.repo.payloadAt(threadId, attemptedFirstSeq);
+					const payload = await this.repo.payloadAt(threadId, attemptedFirstSeq, {});
 					if (this.lifecycles.get(threadId) !== lifecycle) return { entries: [] };
 					if (payload === JSON.stringify(events[0])) {
 						this.lastSeq.set(threadId, attemptedFirstSeq + events.length - 1);
@@ -596,7 +596,7 @@ export class DurableEventLog {
 				firstSeq = (await this.currentSeq(threadId)) + 1;
 				const activity = createInstanceAiEventLifecycle();
 				const runIds = [...new Set(entries.map((entry) => entry.event.runId))];
-				for (const event of await this.repo.getActivityTerminalEvents(threadId, runIds)) {
+				for (const event of await this.repo.getActivityTerminalEvents(threadId, runIds, {})) {
 					acceptInstanceAiEvent(activity, event);
 				}
 				admitted = [];
@@ -619,7 +619,7 @@ export class DurableEventLog {
 				}
 				if (events.length === 0) return { entries: admitted };
 				attemptedFirstSeq = firstSeq;
-				const bytes = await this.repo.appendBatch(threadId, firstSeq, events);
+				const bytes = await this.repo.appendBatch(threadId, firstSeq, events, {});
 				this.lastSeq.set(threadId, firstSeq + events.length - 1);
 				this.metrics.recordDrainBatch(events.length, bytes);
 				return { firstSeq, entries: admitted };
@@ -679,7 +679,7 @@ export class DurableEventLog {
 		events: InstanceAiEvent[],
 	): Promise<boolean> {
 		try {
-			const payload = await this.repo.payloadAt(threadId, firstSeq);
+			const payload = await this.repo.payloadAt(threadId, firstSeq, {});
 			return payload !== null && payload === JSON.stringify(events[0]);
 		} catch {
 			return false;
@@ -810,7 +810,7 @@ export class DurableEventLog {
 	private async currentSeq(threadId: string): Promise<number> {
 		const cached = this.lastSeq.get(threadId);
 		if (cached !== undefined) return cached;
-		const max = await this.repo.maxSeq(threadId);
+		const max = await this.repo.maxSeq(threadId, {});
 		this.lastSeq.set(threadId, max);
 		return max;
 	}

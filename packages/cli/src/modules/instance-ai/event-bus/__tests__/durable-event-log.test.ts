@@ -1,6 +1,7 @@
 import type { InstanceAiEvent, InstanceAiSetupItem } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
+import type { OperationContext } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -42,7 +43,7 @@ class FakeRepo {
 	/** Seq seeds served from the DB — proves whether the writer's cache was dropped. */
 	maxSeqCalls = 0;
 
-	async maxSeq(_threadId: string): Promise<number> {
+	async maxSeq(_threadId: string, _ctx: OperationContext): Promise<number> {
 		this.maxSeqCalls++;
 		if (this.failNextMaxSeq > 0) {
 			this.failNextMaxSeq--;
@@ -51,7 +52,7 @@ class FakeRepo {
 		return this.rows.length ? this.rows[this.rows.length - 1].seq : 0;
 	}
 
-	async payloadAt(_threadId: string, seq: number): Promise<string | null> {
+	async payloadAt(_threadId: string, seq: number, _ctx: OperationContext): Promise<string | null> {
 		if (this.failNextPayloadReads > 0) {
 			this.failNextPayloadReads--;
 			throw new Error('connect ETIMEDOUT');
@@ -60,7 +61,12 @@ class FakeRepo {
 		return row ? JSON.stringify(row.event) : null;
 	}
 
-	async appendBatch(_threadId: string, firstSeq: number, events: InstanceAiEvent[]) {
+	async appendBatch(
+		_threadId: string,
+		firstSeq: number,
+		events: InstanceAiEvent[],
+		_ctx: OperationContext,
+	) {
 		if (this.gateNextAppend) {
 			const gate = this.gateNextAppend;
 			this.gateNextAppend = undefined;
@@ -83,7 +89,7 @@ class FakeRepo {
 			if (this.failNextAppends > 0) {
 				this.failNextAppends--;
 				for (let i = 0; i < this.siblingRowsPerConflict; i++) {
-					const seq = (await this.maxSeq(_threadId)) + 1;
+					const seq = (await this.maxSeq(_threadId, {})) + 1;
 					this.rows.push({
 						seq,
 						event: {
@@ -113,16 +119,16 @@ class FakeRepo {
 		return bytes;
 	}
 
-	async getAfter(_threadId: string, afterSeq: number) {
+	async getAfter(_threadId: string, afterSeq: number, _ctx: OperationContext) {
 		return this.rows.filter((r) => r.seq > afterSeq).map((r) => ({ id: r.seq, event: r.event }));
 	}
 
-	async getForRuns(_threadId: string, runIds: string[]) {
+	async getForRuns(_threadId: string, runIds: string[], _ctx: OperationContext) {
 		const set = new Set(runIds);
 		return this.rows.filter((r) => set.has(r.event.runId)).map((r) => r.event);
 	}
 
-	async getActivityTerminalEvents(_threadId: string, runIds: string[]) {
+	async getActivityTerminalEvents(_threadId: string, runIds: string[], _ctx: OperationContext) {
 		if (this.failNextTerminalReads > 0) {
 			this.failNextTerminalReads--;
 			throw new Error('connect ETIMEDOUT');
@@ -136,7 +142,7 @@ class FakeRepo {
 			.map((row) => row.event);
 	}
 
-	async getSetupItemsSnapshots(_threadId: string) {
+	async getSetupItemsSnapshots(_threadId: string, _ctx: OperationContext) {
 		const latest = new Map<string, InstanceAiSetupItem[]>();
 		for (const { event } of [...this.rows].sort((a, b) => a.seq - b.seq)) {
 			if (event.type !== 'setup-items') continue;
@@ -485,8 +491,8 @@ describe('DurableEventLog', () => {
 		});
 		vi.spyOn(repo, 'payloadAt')
 			.mockRejectedValueOnce(new Error('connect ETIMEDOUT'))
-			.mockImplementationOnce(async (threadId, seq) => {
-				const payload = await payloadAt(threadId, seq);
+			.mockImplementationOnce(async (threadId, seq, ctx) => {
+				const payload = await payloadAt(threadId, seq, ctx);
 				entered();
 				await gate;
 				return payload;

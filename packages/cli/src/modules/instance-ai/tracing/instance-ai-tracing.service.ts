@@ -479,7 +479,7 @@ export class InstanceAiTracingService {
 		responseId: string,
 		payload: { rating: 'up' | 'down'; comment?: string },
 	): Promise<void> {
-		const anchor = await this.eventLog.findLangsmithAnchor(threadId, responseId);
+		const anchor = await this.eventLog.findLangsmithAnchor(threadId, responseId, {});
 		if (!anchor) {
 			this.logger.debug('No LangSmith anchor for feedback; skipping annotation', {
 				threadId,

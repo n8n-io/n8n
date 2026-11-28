@@ -97,7 +97,7 @@ export class InterruptedRunSweeper {
 	async sweep(): Promise<void> {
 		let unfinished;
 		try {
-			unfinished = await this.eventLogRepo.findUnfinishedRuns();
+			unfinished = await this.eventLogRepo.findUnfinishedRuns({});
 		} catch (error) {
 			this.logger.error('Interrupted-run sweep failed to query the event log', { error });
 			return;
@@ -152,7 +152,7 @@ export class InterruptedRunSweeper {
 	async cancelUnfinishedRuns(threadId: string): Promise<number> {
 		let unfinished;
 		try {
-			unfinished = await this.eventLogRepo.findUnfinishedRuns(threadId);
+			unfinished = await this.eventLogRepo.findUnfinishedRunsForThread(threadId, {});
 		} catch (error) {
 			this.logger.error('Cancel-time zombie resolution failed to query the event log', { error });
 			return 0;
@@ -221,7 +221,7 @@ export class InterruptedRunSweeper {
 		// step, so recent writes mean "not a zombie, leave it alone".
 		if (this.instanceSettings.isMultiMain) {
 			const cutoff = Date.now() - InterruptedRunSweeper.LIVENESS_GRACE_MS;
-			const lastFact = await this.eventLogRepo.lastFactAt(threadId, runId);
+			const lastFact = await this.eventLogRepo.lastFactAt(threadId, runId, {});
 			const newestCheckpointAt = runCheckpoints
 				.map((row) => row.updatedAt?.getTime() ?? 0)
 				.reduce((a, b) => Math.max(a, b), 0);
@@ -229,7 +229,7 @@ export class InterruptedRunSweeper {
 			if (lastActivity > cutoff) return null;
 		}
 
-		const events = await this.eventLogRepo.getForRuns(threadId, [runId]);
+		const events = await this.eventLogRepo.getForRuns(threadId, [runId], {});
 		// Belt against drain races: a terminal fact may have landed between the
 		// unfinished-run query and this read — never append a second one (a
 		// later run-finish would win the fold and rewrite the run's outcome).

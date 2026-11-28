@@ -465,13 +465,13 @@ export class SelfHealingInvestigationService {
 		if (Date.now() - investigation.createdAt.getTime() < InterruptedRunSweeper.LIVENESS_GRACE_MS) {
 			return;
 		}
-		if (!(await this.events.lastFactAt(threadId, runId))) {
+		if (!(await this.events.lastFactAt(threadId, runId, {}))) {
 			await this.finishWithoutResult(investigation, 'crash_interrupted');
 			return;
 		}
 		await this.sweeper.sweepRun(threadId, runId);
 		await this.eventLog.flush(threadId);
-		if (await this.events.getRunFinish(threadId, runId)) {
+		if (await this.events.getRunFinish(threadId, runId, {})) {
 			await this.finishWithoutResult(investigation, 'crash_interrupted');
 		}
 	}

@@ -98,19 +98,19 @@ function buildSweeper(setup: Setup) {
 	const log: InstanceAiEvent[] = [...(setup.events ?? [])];
 
 	const eventLogRepo = mock<InstanceAiEventLogRepository>();
-	// Mirrors the repository contract: DISTINCT (threadId, runId) pairs,
-	// optionally scoped to one thread (the in-memory log is all THREAD).
-	eventLogRepo.findUnfinishedRuns.mockImplementation(async (threadId) =>
-		threadId !== undefined && threadId !== THREAD
-			? []
-			: [
-					...new Map(
-						log
-							.filter((e) => e.type === 'run-start')
-							.filter((s) => !log.some((f) => f.type === 'run-finish' && f.runId === s.runId))
-							.map((s) => [s.runId, { threadId: THREAD, runId: s.runId }]),
-					).values(),
-				],
+	// Mirrors the repository contract: DISTINCT (threadId, runId) pairs
+	// (the in-memory log is all THREAD).
+	const unfinishedRuns = () => [
+		...new Map(
+			log
+				.filter((e) => e.type === 'run-start')
+				.filter((s) => !log.some((f) => f.type === 'run-finish' && f.runId === s.runId))
+				.map((s) => [s.runId, { threadId: THREAD, runId: s.runId }]),
+		).values(),
+	];
+	eventLogRepo.findUnfinishedRuns.mockImplementation(async () => unfinishedRuns());
+	eventLogRepo.findUnfinishedRunsForThread.mockImplementation(async (threadId) =>
+		threadId !== THREAD ? [] : unfinishedRuns(),
 	);
 	eventLogRepo.getForRuns.mockImplementation(async (_threadId, runIds) =>
 		log.filter((e) => runIds.includes(e.runId)),
@@ -362,7 +362,7 @@ describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 		expect(published.filter((e) => e.type === 'run-finish')).toHaveLength(1);
 		// Scoping happens in the query — foreign threads' zombies are never
 		// fetched, so an ordinary cancel doesn't scan global history.
-		expect(eventLogRepo.findUnfinishedRuns).toHaveBeenCalledWith(THREAD);
+		expect(eventLogRepo.findUnfinishedRunsForThread).toHaveBeenCalledWith(THREAD, {});
 	});
 
 	it('leaves live, suspended, and recently-active runs alone', async () => {
@@ -404,7 +404,7 @@ describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 		});
 		// Simulate the unfinished-run read racing the drain: the query claims the
 		// run is unfinished even though its terminal fact is already readable.
-		eventLogRepo.findUnfinishedRuns.mockResolvedValue([{ threadId: THREAD, runId: RUN }]);
+		eventLogRepo.findUnfinishedRunsForThread.mockResolvedValue([{ threadId: THREAD, runId: RUN }]);
 
 		expect(await sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
 		expect(published).toHaveLength(0);

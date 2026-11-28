@@ -322,7 +322,7 @@ describe('InstanceAiTracingService', () => {
 				{ rating: 'up' },
 			);
 
-			expect(findLangsmithAnchor).toHaveBeenCalledWith('thread-a', 'response-1');
+			expect(findLangsmithAnchor).toHaveBeenCalledWith('thread-a', 'response-1', {});
 			expect(submitLangsmithUserFeedback).not.toHaveBeenCalled();
 		});
 
