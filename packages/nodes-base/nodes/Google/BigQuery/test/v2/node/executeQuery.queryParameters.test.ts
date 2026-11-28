@@ -1,7 +1,22 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { DateTime, Duration } from 'luxon';
+import { constructExecutionMetaData } from 'n8n-core';
+import type {
+	GenericValue,
+	IDataObject,
+	IExecuteFunctions,
+	INode,
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
+} from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import nock from 'nock';
+import { mock } from 'vitest-mock-extended';
 
 import { googleApiCredentials } from './credentials.fixture';
+import { GoogleBigQuery } from '../../../GoogleBigQuery.node';
+import { description, execute } from '../../../v2/actions/database/executeQuery.operation';
 
 describe('Test Google BigQuery V2, executeQuery with named parameters', () => {
 	nock('https://oauth2.googleapis.com')
@@ -27,7 +42,7 @@ describe('Test Google BigQuery V2, executeQuery with named parameters', () => {
 						{
 							name: 'n8n_variable',
 							parameterType: { type: 'STRING' },
-							parameterValue: { value: 42 },
+							parameterValue: { value: '42' },
 						},
 					],
 					query:
@@ -53,5 +68,697 @@ describe('Test Google BigQuery V2, executeQuery with named parameters', () => {
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['executeQuery.queryParameters.workflow.json'],
 		credentials: { googleApi: googleApiCredentials },
+	});
+});
+
+describe('Test Google BigQuery V2, executeQuery named parameter types (NODE-5865)', () => {
+	const isNodeProperties = (
+		option: INodeProperties | INodePropertyOptions | INodePropertyCollection,
+	): option is INodeProperties => 'type' in option;
+
+	const isNodePropertyCollection = (
+		option: INodeProperties | INodePropertyOptions | INodePropertyCollection,
+	): option is INodePropertyCollection => 'values' in option;
+
+	const isNodePropertyOption = (
+		option: INodeProperties | INodePropertyOptions | INodePropertyCollection,
+	): option is INodePropertyOptions => 'value' in option;
+
+	const namedParameter = (name: string, value: unknown, type?: string): IDataObject =>
+		type === undefined
+			? { name, value: value as GenericValue }
+			: { name, value: value as GenericValue, type };
+
+	const runExecuteQueryWithOptions = async (
+		queryParameters: unknown,
+		sqlQuery = 'SELECT * FROM dataset.customers WHERE customer_id = @customer_id;',
+	) => {
+		const nodeParameters: IDataObject = {
+			authentication: 'oAuth2',
+			projectId: 'test-project',
+			sqlQuery,
+			options: {
+				queryParameters: queryParameters as GenericValue,
+			},
+		};
+		const requestOAuth2 = vi.fn().mockResolvedValue({
+			jobReference: { jobId: 'job_123' },
+			status: { state: 'DONE' },
+		});
+		const executeFunctions = mock<IExecuteFunctions>({
+			getExecutionCancelSignal: () => undefined,
+			getInputData: () => [{ json: {} }],
+			getNode: () => mock<INode>({ typeVersion: 2.2 }),
+			getNodeParameter: ((name: string, _itemIndex: number, fallbackValue?: unknown) => {
+				const resolved = name
+					.split('.')
+					.reduce<unknown>(
+						(acc, key) =>
+							acc !== null && typeof acc === 'object' && key in acc
+								? (acc as Record<string, unknown>)[key]
+								: undefined,
+						nodeParameters,
+					);
+				return resolved ?? fallbackValue;
+			}) as IExecuteFunctions['getNodeParameter'],
+			evaluateExpression: (expression: string) => expression,
+			helpers: mock({ constructExecutionMetaData, requestOAuth2 }),
+		});
+
+		await execute.call(executeFunctions);
+
+		return requestOAuth2;
+	};
+
+	const runExecuteQuery = async (
+		namedParameters: IDataObject[],
+		sqlQuery = 'SELECT * FROM dataset.customers WHERE customer_id = @customer_id;',
+	) => await runExecuteQueryWithOptions({ namedParameters }, sqlQuery);
+
+	it('should send plain string named parameters with STRING type', async () => {
+		const requestOAuth2 = await runExecuteQuery(
+			[namedParameter('email', 'test@n8n.io')],
+			'SELECT * FROM dataset.customers WHERE email = @email;',
+		);
+
+		expect(requestOAuth2).toHaveBeenNthCalledWith(
+			1,
+			'googleBigQueryOAuth2Api',
+			expect.objectContaining({
+				method: 'POST',
+				body: {
+					configuration: {
+						query: {
+							query: 'SELECT * FROM dataset.customers WHERE email = @email;',
+							useLegacySql: false,
+							parameterMode: 'NAMED',
+							queryParameters: [
+								{
+									name: 'email',
+									parameterType: { type: 'STRING' },
+									parameterValue: { value: 'test@n8n.io' },
+								},
+							],
+						},
+					},
+				},
+			}),
+		);
+	});
+
+	// NODE-5865: Execute Query hardcodes every named parameter to STRING and leaves values unstringified.
+	it.each([
+		{ paramName: 'customer_id', paramValue: 42, paramType: 'INT64', expectedValue: '42' },
+		{ paramName: 'price', paramValue: 19.99, paramType: 'FLOAT64', expectedValue: '19.99' },
+		{ paramName: 'amount', paramValue: '19.99', paramType: 'NUMERIC', expectedValue: '19.99' },
+		{ paramName: 'is_active', paramValue: true, paramType: 'BOOL', expectedValue: 'true' },
+		{
+			paramName: 'event_date',
+			paramValue: '2026-01-15',
+			paramType: 'DATE',
+			expectedValue: '2026-01-15',
+		},
+		{
+			paramName: 'created_at',
+			paramValue: '2026-01-15T10:30:00Z',
+			paramType: 'TIMESTAMP',
+			expectedValue: '2026-01-15T10:30:00Z',
+		},
+		{
+			paramName: 'total_balance',
+			paramValue: '12345678901234567890.123456789',
+			paramType: 'BIGNUMERIC',
+			expectedValue: '12345678901234567890.123456789',
+		},
+		{
+			paramName: 'event_datetime',
+			paramValue: '2026-01-15 10:30:00',
+			paramType: 'DATETIME',
+			expectedValue: '2026-01-15 10:30:00',
+		},
+		{
+			paramName: 'event_time',
+			paramValue: '10:30:00',
+			paramType: 'TIME',
+			expectedValue: '10:30:00',
+		},
+		{
+			paramName: 'raw_bytes',
+			paramValue: 'aGVsbG8=',
+			paramType: 'BYTES',
+			expectedValue: 'aGVsbG8=',
+		},
+		{
+			paramName: 'location',
+			paramValue: 'POINT(-122.335503 47.625536)',
+			paramType: 'GEOGRAPHY',
+			expectedValue: 'POINT(-122.335503 47.625536)',
+		},
+		{
+			paramName: 'duration',
+			paramValue: '1-2 3 4:5:6.789',
+			paramType: 'INTERVAL',
+			expectedValue: '1-2 3 4:5:6.789',
+		},
+		{
+			paramName: 'payload',
+			paramValue: { customerId: 42, active: true },
+			paramType: 'JSON',
+			expectedValue: '{"customerId":42,"active":true}',
+		},
+		{
+			paramName: 'ids',
+			paramValue: ['a', 'b'],
+			paramType: 'JSON',
+			expectedValue: '["a","b"]',
+		},
+	])(
+		'should send $paramType parameterType and stringified parameterValue for $paramName',
+		async ({ paramName, paramValue, paramType, expectedValue }) => {
+			const sqlQuery = `SELECT * FROM dataset.customers WHERE ${paramName} = @${paramName};`;
+			const requestOAuth2 = await runExecuteQuery(
+				[namedParameter(paramName, paramValue, paramType)],
+				sqlQuery,
+			);
+
+			expect(requestOAuth2).toHaveBeenNthCalledWith(
+				1,
+				'googleBigQueryOAuth2Api',
+				expect.objectContaining({
+					method: 'POST',
+					body: {
+						configuration: {
+							query: {
+								query: sqlQuery,
+								useLegacySql: false,
+								parameterMode: 'NAMED',
+								queryParameters: [
+									{
+										name: paramName,
+										parameterType: { type: paramType },
+										parameterValue: { value: expectedValue },
+									},
+								],
+							},
+						},
+					},
+				}),
+			);
+		},
+	);
+
+	it('should stringify non-string values when parameter type defaults to STRING', async () => {
+		// NODE-5865: Keep STRING as the default when type is omitted and serialize the value as a string.
+		const requestOAuth2 = await runExecuteQuery([namedParameter('customer_id', 42)]);
+
+		expect(requestOAuth2).toHaveBeenNthCalledWith(
+			1,
+			'googleBigQueryOAuth2Api',
+			expect.objectContaining({
+				method: 'POST',
+				body: {
+					configuration: {
+						query: {
+							query: 'SELECT * FROM dataset.customers WHERE customer_id = @customer_id;',
+							useLegacySql: false,
+							parameterMode: 'NAMED',
+							queryParameters: [
+								{
+									name: 'customer_id',
+									parameterType: { type: 'STRING' },
+									parameterValue: { value: '42' },
+								},
+							],
+						},
+					},
+				},
+			}),
+		);
+	});
+
+	it('should expose a BigQuery type option on named query parameters', () => {
+		// NODE-5865: Named query parameters must expose a BigQuery type option.
+		const optionsProperty = description.find((property) => property.name === 'options');
+		const queryParametersProperty = optionsProperty?.options
+			?.filter(isNodeProperties)
+			.find((option) => option.name === 'queryParameters');
+		const namedParametersCollection = queryParametersProperty?.options
+			?.filter(isNodePropertyCollection)
+			.find((option) => option.name === 'namedParameters');
+		const typeProperty = namedParametersCollection?.values.find((field) => field.name === 'type');
+
+		expect(typeProperty).toBeDefined();
+		expect(typeProperty?.type).toBe('options');
+		expect(typeProperty?.default).toBe('STRING');
+
+		const optionValues = typeProperty?.options
+			?.filter(isNodePropertyOption)
+			.map((option) => option.value);
+
+		expect(optionValues).toEqual(
+			expect.arrayContaining([
+				'BIGNUMERIC',
+				'BOOL',
+				'BYTES',
+				'DATE',
+				'DATETIME',
+				'FLOAT64',
+				'GEOGRAPHY',
+				'INT64',
+				'INTERVAL',
+				'JSON',
+				'NUMERIC',
+				'STRING',
+				'TIME',
+				'TIMESTAMP',
+			]),
+		);
+	});
+
+	it('should serialize null, undefined, falsy scalars, Date, and Buffer values cleanly', async () => {
+		const sqlQuery =
+			'MERGE dataset.customers AS target USING (SELECT @customer_id AS customer_id, @count AS count, @is_active AS is_active, @empty_text AS empty_text, @optional_id AS optional_id, @missing_id AS missing_id, @created_at AS created_at, @raw_bytes AS raw_bytes) AS source ON target.customer_id = source.customer_id WHEN NOT MATCHED THEN INSERT ROW;';
+		const requestOAuth2 = await runExecuteQuery(
+			[
+				namedParameter('customer_id', 42, 'INT64'),
+				namedParameter('count', 0, 'INT64'),
+				namedParameter('is_active', false, 'BOOL'),
+				namedParameter('empty_text', '', 'STRING'),
+				namedParameter('optional_id', null, 'INT64'),
+				namedParameter('missing_id', undefined, 'INT64'),
+				namedParameter('created_at', new Date('2026-01-15T10:30:00Z'), 'TIMESTAMP'),
+				namedParameter('raw_bytes', Buffer.from('hello'), 'BYTES'),
+			],
+			sqlQuery,
+		);
+
+		expect(requestOAuth2).toHaveBeenNthCalledWith(
+			1,
+			'googleBigQueryOAuth2Api',
+			expect.objectContaining({
+				method: 'POST',
+				body: {
+					configuration: {
+						query: {
+							query: sqlQuery,
+							useLegacySql: false,
+							parameterMode: 'NAMED',
+							queryParameters: [
+								{
+									name: 'customer_id',
+									parameterType: { type: 'INT64' },
+									parameterValue: { value: '42' },
+								},
+								{
+									name: 'count',
+									parameterType: { type: 'INT64' },
+									parameterValue: { value: '0' },
+								},
+								{
+									name: 'is_active',
+									parameterType: { type: 'BOOL' },
+									parameterValue: { value: 'false' },
+								},
+								{
+									name: 'empty_text',
+									parameterType: { type: 'STRING' },
+									parameterValue: { value: '' },
+								},
+								{
+									name: 'optional_id',
+									parameterType: { type: 'INT64' },
+									parameterValue: { value: null },
+								},
+								{
+									name: 'missing_id',
+									parameterType: { type: 'INT64' },
+									parameterValue: { value: null },
+								},
+								{
+									name: 'created_at',
+									parameterType: { type: 'TIMESTAMP' },
+									parameterValue: { value: '2026-01-15T10:30:00.000Z' },
+								},
+								{
+									name: 'raw_bytes',
+									parameterType: { type: 'BYTES' },
+									parameterValue: { value: 'aGVsbG8=' },
+								},
+							],
+						},
+					},
+				},
+			}),
+		);
+	});
+
+	it('should default empty parameter type string to STRING', async () => {
+		const requestOAuth2 = await runExecuteQuery([namedParameter('customer_id', 42, '')]);
+
+		expect(requestOAuth2).toHaveBeenNthCalledWith(
+			1,
+			'googleBigQueryOAuth2Api',
+			expect.objectContaining({
+				method: 'POST',
+				body: {
+					configuration: {
+						query: {
+							query: 'SELECT * FROM dataset.customers WHERE customer_id = @customer_id;',
+							useLegacySql: false,
+							parameterMode: 'NAMED',
+							queryParameters: [
+								{
+									name: 'customer_id',
+									parameterType: { type: 'STRING' },
+									parameterValue: { value: '42' },
+								},
+							],
+						},
+					},
+				},
+			}),
+		);
+	});
+
+	it.each([
+		{
+			paramName: 'event_date',
+			paramValue: new Date('2026-01-15T10:30:45.123Z'),
+			paramType: 'DATE',
+			expectedValue: '2026-01-15',
+		},
+		{
+			paramName: 'event_datetime',
+			paramValue: new Date('2026-01-15T10:30:45.123Z'),
+			paramType: 'DATETIME',
+			expectedValue: '2026-01-15T10:30:45.123',
+		},
+		{
+			paramName: 'event_time',
+			paramValue: new Date('2026-01-15T10:30:45.123Z'),
+			paramType: 'TIME',
+			expectedValue: '10:30:45.123',
+		},
+		{
+			paramName: 'created_at',
+			paramValue: new Date('2026-01-15T10:30:45.123Z'),
+			paramType: 'TIMESTAMP',
+			expectedValue: '2026-01-15T10:30:45.123Z',
+		},
+		{
+			paramName: 'label',
+			paramValue: new Date('2026-01-15T10:30:45.123Z'),
+			paramType: 'STRING',
+			expectedValue: '2026-01-15T10:30:45.123Z',
+		},
+		{
+			paramName: 'invalid_date',
+			paramValue: new Date('not-a-date'),
+			paramType: 'DATE',
+			expectedValue: 'Invalid Date',
+		},
+	])(
+		'should format JS Date values for $paramType parameter ($paramName)',
+		async ({ paramName, paramValue, paramType, expectedValue }) => {
+			const sqlQuery = `SELECT * FROM dataset.events WHERE ${paramName} = @${paramName};`;
+			const requestOAuth2 = await runExecuteQuery(
+				[namedParameter(paramName, paramValue, paramType)],
+				sqlQuery,
+			);
+
+			expect(requestOAuth2).toHaveBeenNthCalledWith(
+				1,
+				'googleBigQueryOAuth2Api',
+				expect.objectContaining({
+					method: 'POST',
+					body: {
+						configuration: {
+							query: {
+								query: sqlQuery,
+								useLegacySql: false,
+								parameterMode: 'NAMED',
+								queryParameters: [
+									{
+										name: paramName,
+										parameterType: { type: paramType },
+										parameterValue: { value: expectedValue },
+									},
+								],
+							},
+						},
+					},
+				}),
+			);
+		},
+	);
+
+	it.each([
+		{
+			label: 'Luxon DateTime as TIMESTAMP',
+			paramName: 'created_at',
+			paramValue: DateTime.fromISO('2026-01-15T12:30:45.123+02:00', { setZone: true }),
+			paramType: 'TIMESTAMP',
+			expectedValue: '2026-01-15T12:30:45.123+02:00',
+		},
+		{
+			label: 'Luxon DateTime as DATE',
+			paramName: 'event_date',
+			paramValue: DateTime.fromISO('2026-01-15T00:30:00.000+02:00', { setZone: true }),
+			paramType: 'DATE',
+			expectedValue: '2026-01-15',
+		},
+		{
+			label: 'Luxon DateTime as DATETIME',
+			paramName: 'event_datetime',
+			paramValue: DateTime.fromISO('2026-01-15T12:30:45.123+02:00', { setZone: true }),
+			paramType: 'DATETIME',
+			expectedValue: '2026-01-15T12:30:45.123',
+		},
+		{
+			label: 'Luxon DateTime as TIME',
+			paramName: 'event_time',
+			paramValue: DateTime.fromISO('2026-01-15T12:30:45.123+02:00', { setZone: true }),
+			paramType: 'TIME',
+			expectedValue: '12:30:45.123',
+		},
+		{
+			label: 'Luxon DateTime as STRING without surrounding quotes',
+			paramName: 'raw_now',
+			paramValue: DateTime.utc(2026, 1, 15, 10, 30, 0),
+			paramType: 'STRING',
+			expectedValue: '2026-01-15T10:30:00.000Z',
+		},
+		{
+			label: 'invalid Luxon DateTime',
+			paramName: 'bad_dt',
+			paramValue: DateTime.invalid('bad input'),
+			paramType: 'TIMESTAMP',
+			expectedValue: 'Invalid DateTime',
+		},
+		{
+			label: 'Luxon Duration via toISO without surrounding quotes',
+			paramName: 'dur',
+			paramValue: Duration.fromObject({ hours: 2, minutes: 30 }),
+			paramType: 'TIME',
+			expectedValue: 'PT2H30M',
+		},
+		{
+			label: 'object with toJSON returning undefined',
+			paramName: 'empty_obj',
+			paramValue: { toJSON: () => undefined },
+			paramType: 'JSON',
+			expectedValue: null,
+		},
+	])(
+		'should serialize $label cleanly',
+		async ({ paramName, paramValue, paramType, expectedValue }) => {
+			const sqlQuery = `SELECT * FROM dataset.events WHERE ${paramName} = @${paramName};`;
+			const requestOAuth2 = await runExecuteQuery(
+				[namedParameter(paramName, paramValue, paramType)],
+				sqlQuery,
+			);
+
+			expect(requestOAuth2).toHaveBeenNthCalledWith(
+				1,
+				'googleBigQueryOAuth2Api',
+				expect.objectContaining({
+					method: 'POST',
+					body: {
+						configuration: {
+							query: {
+								query: sqlQuery,
+								useLegacySql: false,
+								parameterMode: 'NAMED',
+								queryParameters: [
+									{
+										name: paramName,
+										parameterType: { type: paramType },
+										parameterValue: { value: expectedValue },
+									},
+								],
+							},
+						},
+					},
+				}),
+			);
+		},
+	);
+
+	it.each([
+		{ label: 'null queryParameters', queryParameters: null },
+		{ label: 'missing namedParameters', queryParameters: {} },
+		{ label: 'empty namedParameters array', queryParameters: { namedParameters: [] } },
+		{
+			label: 'namedParameters with only blank name row',
+			queryParameters: { namedParameters: [namedParameter('', '', 'STRING')] },
+		},
+		{
+			label: 'namedParameters with only whitespace name row',
+			queryParameters: { namedParameters: [namedParameter('   ', 'ignored', 'INT64')] },
+		},
+	])('should omit queryParameters and parameterMode for $label', async ({ queryParameters }) => {
+		const sqlQuery = 'SELECT 1;';
+		const requestOAuth2 = await runExecuteQueryWithOptions(queryParameters, sqlQuery);
+
+		expect(requestOAuth2).toHaveBeenNthCalledWith(
+			1,
+			'googleBigQueryOAuth2Api',
+			expect.objectContaining({
+				method: 'POST',
+				body: {
+					configuration: {
+						query: {
+							query: sqlQuery,
+							useLegacySql: false,
+						},
+					},
+				},
+			}),
+		);
+	});
+
+	it('should filter out blank named parameter rows and trim valid names', async () => {
+		const sqlQuery = 'SELECT * FROM dataset.customers WHERE customer_id = @customer_id;';
+		const requestOAuth2 = await runExecuteQuery(
+			[
+				namedParameter('', 'ignored', 'STRING'),
+				namedParameter('  customer_id  ', 42, ' int64 '),
+				namedParameter('   ', 'also ignored', 'INT64'),
+			],
+			sqlQuery,
+		);
+
+		expect(requestOAuth2).toHaveBeenNthCalledWith(
+			1,
+			'googleBigQueryOAuth2Api',
+			expect.objectContaining({
+				method: 'POST',
+				body: {
+					configuration: {
+						query: {
+							query: sqlQuery,
+							useLegacySql: false,
+							parameterMode: 'NAMED',
+							queryParameters: [
+								{
+									name: 'customer_id',
+									parameterType: { type: 'INT64' },
+									parameterValue: { value: '42' },
+								},
+							],
+						},
+					},
+				},
+			}),
+		);
+	});
+
+	it.each([
+		{
+			label: 'array value with default STRING type',
+			param: namedParameter('ids', ['a', 'b']),
+			expectedType: 'STRING',
+		},
+		{
+			label: 'plain object value with STRING type',
+			param: namedParameter('customer', { id: 42 }, 'STRING'),
+			expectedType: 'STRING',
+		},
+		{
+			label: 'array value with INT64 type',
+			param: namedParameter('location', [1, 2], 'INT64'),
+			expectedType: 'INT64',
+		},
+	])(
+		'should throw NodeOperationError for $label instead of silently JSON-stringifying',
+		async ({ param, expectedType }) => {
+			await expect(
+				runExecuteQuery(
+					[param],
+					`SELECT * FROM dataset.customers WHERE id = @${String(param.name)};`,
+				),
+			).rejects.toMatchObject({
+				name: NodeOperationError.name,
+				message: `Array and struct values are not supported for parameter "${String(param.name)}" of type "${expectedType}"`,
+				description:
+					'Select type "JSON" to pass an object or array as a JSON parameter, or convert the value to a string.',
+			});
+		},
+	);
+
+	it('should send typed named parameters through GoogleBigQuery v2.2 node execution', async () => {
+		const nodeType = new GoogleBigQuery().getNodeType(2.2);
+		const sqlQuery = 'SELECT * FROM dataset.customers WHERE customer_id = @customer_id;';
+		const nodeParameters: IDataObject = {
+			resource: 'database',
+			operation: 'executeQuery',
+			authentication: 'oAuth2',
+			projectId: 'test-project',
+			sqlQuery,
+			options: {
+				queryParameters: {
+					namedParameters: [namedParameter('customer_id', 42, 'INT64')],
+				},
+			},
+		};
+		const requestOAuth2 = vi.fn().mockResolvedValue({
+			jobReference: { jobId: 'job_123' },
+			status: { state: 'DONE' },
+		});
+		const executeFunctions = mock<IExecuteFunctions>({
+			getExecutionCancelSignal: () => undefined,
+			getInputData: () => [{ json: {} }],
+			getNode: () => mock<INode>({ typeVersion: 2.2 }),
+			getNodeParameter: ((name: string, _itemIndex: number, fallbackValue?: unknown) =>
+				nodeParameters[name] ?? fallbackValue) as IExecuteFunctions['getNodeParameter'],
+			evaluateExpression: (expression: string) => expression,
+			helpers: mock({ constructExecutionMetaData, requestOAuth2 }),
+		});
+
+		await nodeType.execute?.call(executeFunctions);
+
+		expect(requestOAuth2).toHaveBeenNthCalledWith(
+			1,
+			'googleBigQueryOAuth2Api',
+			expect.objectContaining({
+				method: 'POST',
+				body: {
+					configuration: {
+						query: {
+							query: sqlQuery,
+							useLegacySql: false,
+							parameterMode: 'NAMED',
+							queryParameters: [
+								{
+									name: 'customer_id',
+									parameterType: { type: 'INT64' },
+									parameterValue: { value: '42' },
+								},
+							],
+						},
+					},
+				},
+			}),
+		);
 	});
 });
