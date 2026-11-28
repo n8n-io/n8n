@@ -2851,7 +2851,7 @@ describe('JobProcessor', () => {
 	});
 
 	describe('waitTill propagation', () => {
-		it('carries waitTill on JobFinishedProps from the worker run (lightweight path)', () => {
+		it('carries the recorded trigger and waitTill in the worker summary', () => {
 			const waitTill = new Date(Date.now() + 60_000);
 			const jobProcessor = new JobProcessor(
 				logger,
@@ -2869,6 +2869,7 @@ describe('JobProcessor', () => {
 				status: 'waiting',
 				stoppedAt: new Date(),
 				data: mock<IRunExecutionData>({
+					startData: { triggerNodeType: 'n8n-nodes-base.webhook' },
 					resultData: { runData: {}, error: undefined },
 					executionData: undefined,
 				}),
@@ -2880,6 +2881,7 @@ describe('JobProcessor', () => {
 
 			expect(props.waitTill).toBe(waitTill);
 			expect(props.status).toBe('waiting');
+			expect(props.triggerNodeType).toBe('n8n-nodes-base.webhook');
 		});
 
 		it('defaults waitTill to null on JobFinishedProps when the run is not waiting', () => {

@@ -1046,6 +1046,7 @@ export class WorkflowRunner {
 						status: jobResult.status,
 						waitTill: jobResult.waitTill,
 						data: createRunExecutionData({
+							startData: { triggerNodeType: jobResult.triggerNodeType },
 							resultData: {
 								runData: {},
 								lastNodeExecuted: jobResult.lastNodeExecuted,

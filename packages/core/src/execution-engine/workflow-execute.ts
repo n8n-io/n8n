@@ -60,6 +60,7 @@ import {
 	deepCopy,
 	applyDynamicCredentialsUsage,
 	hasExecutionRunNodes,
+	isTriggerNodeType,
 	hasPolicyRefusalMarker,
 	isExecutionOutputRedacted,
 	redactErrorReport,
@@ -355,6 +356,7 @@ export class WorkflowExecute {
 		this.runExecutionData = createRunExecutionData({
 			binaryDataAccess: this.runExecutionData.binaryDataAccess,
 			startData: {
+				triggerNodeType: isTriggerNodeType(trigger.type) ? trigger.type : null,
 				destinationNode,
 				originalDestinationNode: originalDestination,
 				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),

@@ -65,6 +65,7 @@ describe('establishExecutionContext', () => {
 			expect(runExecutionData.executionData!.runtimeData).toHaveProperty('version', 1);
 			expect(runExecutionData.executionData!.runtimeData).toHaveProperty('establishedAt');
 			expect(runExecutionData.executionData!.runtimeData).toHaveProperty('source', 'manual');
+			expect(runExecutionData.startData?.triggerNodeType).toBe(startNode.type);
 
 			const establishedAt = runExecutionData.executionData!.runtimeData!.establishedAt;
 			expect(establishedAt).toBeGreaterThanOrEqual(beforeTimestamp);
@@ -143,6 +144,53 @@ describe('establishExecutionContext', () => {
 		});
 	});
 
+	it.each(['n8n-nodes-base.webhook', null])(
+		'preserves the recorded trigger %s when an execution resumes at another node',
+		async (triggerNodeType) => {
+			const runExecutionData = createRunExecutionData({
+				startData: { triggerNodeType },
+				executionData: {
+					runtimeData: { version: 1, establishedAt: 0, source: 'webhook' },
+					nodeExecutionStack: [
+						{
+							node: mock<INode>({ type: 'n8n-nodes-base.scheduleTrigger' }),
+							data: { main: [[{ json: {} }]] },
+							source: null,
+						},
+					],
+				},
+			});
+
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'webhook',
+			);
+
+			expect(runExecutionData.startData?.triggerNodeType).toBe(triggerNodeType);
+		},
+	);
+
+	it('records no trigger when a partial execution starts at a regular node', async () => {
+		const runExecutionData = createRunExecutionData({
+			executionData: {
+				runtimeData: { version: 1, establishedAt: 0, source: 'manual' },
+				nodeExecutionStack: [
+					{
+						node: mock<INode>({ type: 'n8n-nodes-base.set' }),
+						data: { main: [[{ json: {} }]] },
+						source: null,
+					},
+				],
+			},
+		});
+
+		await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'manual');
+
+		expect(runExecutionData.startData?.triggerNodeType).toBeNull();
+	});
+
 	describe('Chat Trigger workflow support', () => {
 		it('should establish basic context for empty execution stack (Chat Trigger)', async () => {
 			const runExecutionData = createRunExecutionData({
@@ -164,6 +212,7 @@ describe('establishExecutionContext', () => {
 			const afterTimestamp = Date.now();
 
 			// Should establish basic context even with empty stack
+			expect(runExecutionData.startData?.triggerNodeType).toBeNull();
 			expect(runExecutionData.executionData!.runtimeData).toBeDefined();
 			expect(runExecutionData.executionData!.runtimeData!.version).toBe(1);
 			expect(runExecutionData.executionData!.runtimeData!.source).toBe('manual');
@@ -537,6 +586,7 @@ describe('establishExecutionContext', () => {
 				establishedAt: 1000000000,
 				source: 'manual',
 				credentials: 'parent-credentials',
+				triggerNode: { name: 'Webhook', type: 'n8n-nodes-base.webhook' },
 			};
 
 			const parentExecution: RelatedExecution = {
@@ -582,6 +632,8 @@ describe('establishExecutionContext', () => {
 
 			// Should inherit credentials from parent
 			expect(childContext.credentials).toBe('parent-credentials');
+			expect(childContext.triggerNode).toEqual(parentContext.triggerNode);
+			expect(runExecutionData.startData?.triggerNodeType).toBe(startNode.type);
 			expect(childContext.version).toBe(1);
 
 			// Should have fresh establishedAt

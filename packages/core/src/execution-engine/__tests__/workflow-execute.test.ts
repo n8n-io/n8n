@@ -826,6 +826,32 @@ describe('WorkflowExecute', () => {
 			expect(fullRunData.data.resultData.runData).not.toHaveProperty(node1.name);
 		});
 
+		test('records the trigger that the partial execution reuses', async () => {
+			const workflowExecute = new WorkflowExecute(
+				Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
+				'manual',
+			);
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node1)
+				.addConnections({ from: trigger, to: node1 })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { name: trigger.name } }])],
+			};
+			vi.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(vi.fn());
+
+			await workflowExecute.runPartialWorkflow2(workflow, runData, {}, [], {
+				nodeName: node1.name,
+				mode: 'inclusive',
+			});
+
+			expect(workflowExecute.getFullRunData(new Date()).data.startData?.triggerNodeType).toBe(
+				'n8n-nodes-base.manualTrigger',
+			);
+		});
+
 		it('preserves binary data grants when it reconstructs a partial execution', async () => {
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
 			const destination = createNodeData({ name: 'destination' });

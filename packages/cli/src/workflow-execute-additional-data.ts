@@ -56,6 +56,7 @@ import {
 	ManualExecutionCancelledError,
 	Workflow,
 	createRunExecutionData,
+	isTriggerNodeType,
 	mergeRunsPerBranch,
 	collectSubWorkflowOutput,
 	getSubWorkflowOutputPolicy,
@@ -123,6 +124,9 @@ export function getRunData(
 
 	const runExecutionData = createRunExecutionData({
 		binaryDataAccess,
+		startData: {
+			triggerNodeType: isTriggerNodeType(startingNode.type) ? startingNode.type : null,
+		},
 		executionData: {
 			nodeExecutionStack,
 		},
@@ -908,6 +912,9 @@ async function startExecution(
 			startTime,
 		);
 		if (blockedReason) fullRunData.data.resultData.failedBeforeStart = blockedReason;
+		// The failed run is a new object without the recorded start data.
+		(fullRunData.data.startData ??= {}).triggerNodeType =
+			runData.executionData?.startData?.triggerNodeType;
 
 		// When failing, we might not have finished the execution
 		// Therefore, database might not contain finished errors.

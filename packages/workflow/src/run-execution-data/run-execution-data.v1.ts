@@ -41,6 +41,8 @@ export interface RedactionInfo {
 export interface IRunExecutionDataV1 {
 	version: 1;
 	startData?: {
+		/** Trigger selected for this execution. Null means it starts without a trigger. */
+		triggerNodeType?: string | null;
 		startNodes?: StartNodeData[];
 		destinationNode?: IDestinationNode;
 		originalDestinationNode?: IDestinationNode;

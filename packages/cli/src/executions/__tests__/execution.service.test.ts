@@ -567,6 +567,19 @@ describe('ExecutionService', () => {
 			expect(workflowRunner.run.mock.calls[0][0].executionData?.rootExecutionMode).toBeUndefined();
 		});
 
+		it('keeps the recorded trigger of the original run', async () => {
+			const { service, workflowRunner } = buildRetryService();
+			const execution = buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} });
+			execution.data.startData = { triggerNodeType: 'n8n-nodes-base.webhook' };
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+
+			await service.retry(retryArgs());
+
+			expect(workflowRunner.run.mock.calls[0][0].executionData?.startData?.triggerNodeType).toBe(
+				'n8n-nodes-base.webhook',
+			);
+		});
+
 		it('should not throw when retrying a crashed execution whose runData is undefined', async () => {
 			const { service, workflowRunner } = buildRetryService();
 			executionPersistence.findWithUnflattenedData.mockResolvedValue(

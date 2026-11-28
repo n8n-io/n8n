@@ -136,7 +136,7 @@ describe('ManualExecutionService', () => {
 			vi.resetAllMocks();
 		});
 
-		it('should correctly process triggerToStartFrom data when data.triggerToStartFrom.data is present', async () => {
+		it.each([false, true])('records the supplied trigger (%s)', async (triggerOnly) => {
 			const mockTriggerData = mock<ITaskData>();
 			const startNodeName = 'startNode';
 			const triggerNodeName = 'triggerNode';
@@ -147,6 +147,7 @@ describe('ManualExecutionService', () => {
 				},
 				startNodes: [{ name: startNodeName }],
 				executionMode: 'manual',
+				destinationNode: triggerOnly ? { nodeName: triggerNodeName, mode: 'inclusive' } : undefined,
 				pinData: undefined,
 			});
 
@@ -154,6 +155,8 @@ describe('ManualExecutionService', () => {
 			const workflow = mock<Workflow>({
 				getNode: vi.fn((name) => {
 					if (name === startNodeName) return startNode;
+					if (name === triggerNodeName)
+						return mock<INode>({ name, type: '@n8n/n8n-nodes-langchain.chatTrigger' });
 					return null;
 				}),
 			});
@@ -170,19 +173,25 @@ describe('ManualExecutionService', () => {
 				pinData,
 			);
 
-			expect(DirectedGraph.fromWorkflow).toHaveBeenCalledWith(workflow);
+			if (!triggerOnly) {
+				expect(DirectedGraph.fromWorkflow).toHaveBeenCalledWith(workflow);
 
-			expect(recreateNodeExecutionStack).toHaveBeenCalledWith(
-				mockFilteredGraph,
-				new Set([startNode]),
-				{ [triggerNodeName]: [mockTriggerData] },
-				{},
-			);
+				expect(recreateNodeExecutionStack).toHaveBeenCalledWith(
+					mockFilteredGraph,
+					new Set([startNode]),
+					{ [triggerNodeName]: [mockTriggerData] },
+					{},
+				);
+			}
 
 			expect(WorkflowExecute).toHaveBeenCalledWith(
 				additionalData,
 				data.executionMode,
 				expect.objectContaining({
+					startData: {
+						destinationNode: data.destinationNode,
+						triggerNodeType: '@n8n/n8n-nodes-langchain.chatTrigger',
+					},
 					resultData: {
 						runData: { [triggerNodeName]: [mockTriggerData] },
 						pinData,
@@ -190,9 +199,9 @@ describe('ManualExecutionService', () => {
 					executionData: {
 						contextData: {},
 						metadata: {},
-						nodeExecutionStack,
-						waitingExecution,
-						waitingExecutionSource,
+						nodeExecutionStack: triggerOnly ? [] : nodeExecutionStack,
+						waitingExecution: triggerOnly ? {} : waitingExecution,
+						waitingExecutionSource: triggerOnly ? {} : waitingExecutionSource,
 					},
 				}),
 				'fs',
@@ -243,7 +252,7 @@ describe('ManualExecutionService', () => {
 				additionalData,
 				data.executionMode,
 				expect.objectContaining({
-					startData: { destinationNode },
+					startData: { destinationNode, triggerNodeType: null },
 					resultData: expect.any(Object),
 					executionData: expect.any(Object),
 				}),
@@ -523,7 +532,7 @@ describe('ManualExecutionService', () => {
 		])('preserves binary grants during $name', async ({ data }) => {
 			const binaryDataAccess = ['binary-id'];
 			const workflow = mock<Workflow>({
-				getNode: vi.fn((name) => mock<INode>({ name })),
+				getNode: vi.fn((name) => mock<INode>({ name, type: 'n8n-nodes-base.manualTrigger' })),
 				getTriggerNodes: vi.fn().mockReturnValue([]),
 			});
 

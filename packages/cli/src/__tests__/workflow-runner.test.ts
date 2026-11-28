@@ -1471,7 +1471,7 @@ describe('enqueueExecution', () => {
 		});
 	});
 
-	it('keeps failedBeforeStart when it rebuilds the run from the job result', async () => {
+	it('keeps the recorded trigger and failedBeforeStart in the job result', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		let workflowExecution: PCancelable<IRun> | undefined;
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
@@ -1495,6 +1495,7 @@ describe('enqueueExecution', () => {
 			startedAt: new Date(),
 			stoppedAt: new Date(),
 			failedBeforeStart: 'startFailed',
+			triggerNodeType: 'n8n-nodes-base.scheduleTrigger',
 		} satisfies JobFinishedProps);
 
 		// @ts-expect-error Private method
@@ -1503,6 +1504,7 @@ describe('enqueueExecution', () => {
 
 		const [, run] = finalize.mock.calls.at(-1)!;
 		expect(run?.data.resultData.failedBeforeStart).toBe('startFailed');
+		expect(run?.data.startData?.triggerNodeType).toBe('n8n-nodes-base.scheduleTrigger');
 	});
 
 	it.each([
