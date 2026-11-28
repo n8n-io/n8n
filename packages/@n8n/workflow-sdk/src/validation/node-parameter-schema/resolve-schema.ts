@@ -9,6 +9,16 @@ import {
 // Re-export types from display-options for backward compatibility
 export type { DisplayOptions, DisplayOptionsContext };
 
+function isDisplayCondition(val: unknown): val is { _cnd: Record<string, unknown> } {
+	return (
+		val !== null &&
+		typeof val === 'object' &&
+		'_cnd' in val &&
+		typeof val._cnd === 'object' &&
+		val._cnd !== null
+	);
+}
+
 /**
  * Format a value for display in error messages.
  * Booleans are shown without quotes, strings are quoted,
@@ -20,9 +30,10 @@ function formatValue(val: unknown): string {
 	if (typeof val === 'number') return String(val);
 
 	// Handle _cnd conditions
-	if (val !== null && typeof val === 'object' && '_cnd' in val) {
-		const cnd = (val as { _cnd: Record<string, unknown> })._cnd;
-		const [operator, operand] = Object.entries(cnd)[0];
+	if (isDisplayCondition(val)) {
+		const entry = Object.entries(val._cnd)[0];
+		if (!entry) return JSON.stringify(val);
+		const [operator, operand] = entry;
 		switch (operator) {
 			case 'exists':
 				return 'exists';
@@ -47,8 +58,15 @@ function formatValue(val: unknown): string {
 			case 'regex':
 				return `matches /${String(operand)}/`;
 			case 'between': {
-				const { from, to } = operand as { from: number; to: number };
-				return `between ${from} and ${to}`;
+				if (
+					operand !== null &&
+					typeof operand === 'object' &&
+					'from' in operand &&
+					'to' in operand
+				) {
+					return `between ${String(operand.from)} and ${String(operand.to)}`;
+				}
+				return JSON.stringify(val);
 			}
 			default:
 				return JSON.stringify(val);
@@ -88,31 +106,87 @@ function isRegexPath(path: string): boolean {
 }
 
 /**
- * Format displayOptions conditions into a human-readable requirements string.
- * Example: { show: { sendBody: [true], contentType: ["raw"] } }
- * Returns: 'sendBody=true, contentType="raw"'
+ * Format a map of displayOptions conditions (show or hide) into readable clauses.
+ * Example: { sendBody: [true], contentType: ["raw"] }
+ * Returns: ['sendBody=true', 'contentType="raw"']
  */
-function formatDisplayOptionsRequirements(displayOptions: DisplayOptions): string {
-	const requirements: string[] = [];
+function formatConditionEntries(conditions: Record<string, unknown[]>): string[] {
+	const entries: string[] = [];
 
-	if (displayOptions.show) {
-		for (const [key, values] of Object.entries(displayOptions.show)) {
-			if (Array.isArray(values)) {
-				const valStr =
-					values.length === 1 ? formatValue(values[0]) : values.map(formatValue).join(' or ');
+	for (const [key, values] of Object.entries(conditions)) {
+		if (!Array.isArray(values)) continue;
 
-				// Format regex paths more readably
-				if (isRegexPath(key)) {
-					const formattedPath = formatRegexPath(key);
-					requirements.push(`one of ${formattedPath} ${valStr}`);
-				} else {
-					requirements.push(`${key}=${valStr}`);
-				}
-			}
+		const valStr =
+			values.length === 1 ? formatValue(values[0]) : values.map(formatValue).join(' or ');
+
+		if (isRegexPath(key)) {
+			const formattedPath = formatRegexPath(key);
+			entries.push(`one of ${formattedPath} ${valStr}`);
+		} else if (values.some(isDisplayCondition)) {
+			entries.push(
+				values
+					.map((v) =>
+						isDisplayCondition(v) ? `${key} ${formatValue(v)}` : `${key}=${formatValue(v)}`,
+					)
+					.join(' or '),
+			);
+		} else {
+			entries.push(`${key}=${valStr}`);
 		}
 	}
 
-	return requirements.join(', ');
+	return entries;
+}
+
+type FormattedDisplayOptions = {
+	show: string;
+	hide: string;
+};
+
+/**
+ * Format displayOptions show and hide conditions into readable strings.
+ * Show conditions are ANDed (comma-separated); hide conditions are ORed (" or ").
+ */
+function formatDisplayOptionsRequirements(displayOptions: DisplayOptions): FormattedDisplayOptions {
+	const show = displayOptions.show ? formatConditionEntries(displayOptions.show).join(', ') : '';
+	const hide = displayOptions.hide ? formatConditionEntries(displayOptions.hide).join(' or ') : '';
+	return { show, hide };
+}
+
+/**
+ * Build an error message explaining why a field is not allowed in the current configuration.
+ */
+function formatHiddenFieldMessage(displayOptions: DisplayOptions): string {
+	const { show, hide } = formatDisplayOptionsRequirements(displayOptions);
+
+	if (show && hide) {
+		return `This field is only allowed when: ${show} (hidden when: ${hide})`;
+	}
+	if (show) {
+		return `This field is only allowed when: ${show}`;
+	}
+	if (hide) {
+		return `This field is hidden when: ${hide}`;
+	}
+	return 'This field is not applicable for the current configuration';
+}
+
+/**
+ * Format one variant's displayOptions for resolveOneOfSchemas error messages.
+ */
+function formatVariantRequirements(displayOptions: DisplayOptions): string {
+	const { show, hide } = formatDisplayOptionsRequirements(displayOptions);
+
+	if (show && hide) {
+		return `${show}, not (${hide})`;
+	}
+	if (show) {
+		return show;
+	}
+	if (hide) {
+		return `not (${hide})`;
+	}
+	return '';
 }
 
 export type ResolveSchemaConfig = {
@@ -162,11 +236,8 @@ export function resolveSchema({
 		return required ? schema : schema.optional();
 	} else {
 		// Use z.any().refine() instead of z.undefined() to provide a descriptive error message
-		const requirements = formatDisplayOptionsRequirements(displayOptions);
 		return z.any().refine((val) => val === undefined, {
-			message: requirements
-				? `This field is only allowed when: ${requirements}`
-				: 'This field is not applicable for the current configuration',
+			message: formatHiddenFieldMessage(displayOptions),
 		});
 	}
 }
@@ -217,7 +288,7 @@ export function resolveOneOfSchemas({
 	}
 
 	const requirementParts = variants
-		.map((v) => formatDisplayOptionsRequirements(v.displayOptions))
+		.map((v) => formatVariantRequirements(v.displayOptions))
 		.filter(Boolean);
 	const message = requirementParts.length
 		? `This field is only allowed when one of: ${requirementParts.map((r) => `(${r})`).join(' or ')}`
