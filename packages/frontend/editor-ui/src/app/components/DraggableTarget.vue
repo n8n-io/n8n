@@ -8,14 +8,15 @@ type Props = {
 	type: string;
 	disabled?: boolean;
 	sticky?: boolean;
-	stickyOffset?: XYPosition;
+	/** A function gets the target element, to calculate the offset when the drag enters it */
+	stickyOffset?: XYPosition | ((target: HTMLElement) => XYPosition);
 	stickyOrigin?: 'top-left' | 'center';
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	disabled: false,
 	sticky: false,
-	stickyOffset: () => [0, 0],
+	stickyOffset: (): XYPosition => [0, 0],
 	stickyOrigin: 'top-left',
 });
 
@@ -67,15 +68,19 @@ function getStickyPosition(): XYPosition | null {
 	}
 
 	const { left, top, width, height } = targetRef.value.getBoundingClientRect();
+	const [offsetX, offsetY] =
+		typeof props.stickyOffset === 'function'
+			? props.stickyOffset(targetRef.value)
+			: props.stickyOffset;
 
 	if (props.stickyOrigin === 'center') {
 		return [
-			left + props.stickyOffset[0] + width / 2 - (draggableDimensions.value?.width ?? 0) / 2,
-			top + props.stickyOffset[1] + height / 2 - (draggableDimensions.value?.height ?? 0) / 2,
+			left + offsetX + width / 2 - (draggableDimensions.value?.width ?? 0) / 2,
+			top + offsetY + height / 2 - (draggableDimensions.value?.height ?? 0) / 2,
 		];
 	}
 
-	return [left + props.stickyOffset[0], top + props.stickyOffset[1]];
+	return [left + offsetX, top + offsetY];
 }
 </script>
 

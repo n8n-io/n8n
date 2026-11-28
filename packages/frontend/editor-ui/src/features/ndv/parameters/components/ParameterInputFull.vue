@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, type ComputedRef, ref, useTemplateRef, watch } from 'vue';
-import type { IUpdateInformation } from '@/Interface';
+import type { IUpdateInformation, XYPosition } from '@/Interface';
 
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
@@ -331,6 +331,62 @@ function onDrop(newParamValue: string) {
 	}, 200);
 }
 
+const DEFAULT_STICKY_OFFSET: XYPosition = [3, 3];
+// Browsers resolve `line-height: normal` to about 1.2 times the font size
+const DEFAULT_LINE_HEIGHT = 1.2;
+
+function measureTextWidth(text: string, style: CSSStyleDeclaration): number | null {
+	const context = document.createElement('canvas').getContext('2d');
+	if (!context) return null;
+
+	context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+	return context.measureText(text).width;
+}
+
+// A drop on a fixed field that takes multiple field names appends the new name
+// (see getMappedResult), so the drag preview snaps after the existing text.
+// A value with line breaks renders as a textarea, where the new name lands after the last line.
+function getStickyOffset(target: HTMLElement): XYPosition {
+	const value = props.value;
+	if (
+		props.parameter.requiresDataPath !== 'multiple' ||
+		typeof value !== 'string' ||
+		value.trim() === '' ||
+		value.trim() === '='
+	) {
+		return DEFAULT_STICKY_OFFSET;
+	}
+
+	const field = target.querySelector<HTMLInputElement | HTMLTextAreaElement>('input, textarea');
+	if (!field) return DEFAULT_STICKY_OFFSET;
+
+	const style = window.getComputedStyle(field);
+	const lines = `${value}, `.split('\n');
+	const textWidth = measureTextWidth(lines[lines.length - 1], style);
+	if (textWidth === null) return DEFAULT_STICKY_OFFSET;
+
+	const { width: targetWidth, height: targetHeight } = target.getBoundingClientRect();
+	const previewWidth = ndvStore.value.draggable.dimensions?.width ?? 0;
+	const previewHeight = ndvStore.value.draggable.dimensions?.height ?? 0;
+
+	const textStartX =
+		(parseFloat(style.paddingLeft) || 0) + (parseFloat(style.borderLeftWidth) || 0);
+	const maxOffsetX = targetWidth - previewWidth - DEFAULT_STICKY_OFFSET[0];
+	const offsetX = Math.min(textStartX + textWidth - field.scrollLeft, maxOffsetX);
+
+	let offsetY = DEFAULT_STICKY_OFFSET[1];
+	if (lines.length > 1) {
+		const lineHeight =
+			parseFloat(style.lineHeight) || (parseFloat(style.fontSize) || 0) * DEFAULT_LINE_HEIGHT;
+		const textStartY =
+			(parseFloat(style.paddingTop) || 0) + (parseFloat(style.borderTopWidth) || 0);
+		const maxOffsetY = targetHeight - previewHeight - DEFAULT_STICKY_OFFSET[1];
+		offsetY = Math.min(textStartY + (lines.length - 1) * lineHeight - field.scrollTop, maxOffsetY);
+	}
+
+	return [Math.max(DEFAULT_STICKY_OFFSET[0], offsetX), Math.max(DEFAULT_STICKY_OFFSET[1], offsetY)];
+}
+
 const showOverrideButton = computed(
 	() => canCreateContentOverride.value && !isContentOverride.value && !props.isReadOnly,
 );
@@ -523,7 +579,7 @@ function removeOverride(clearField = false) {
 			type="mapping"
 			:disabled="isDropDisabled"
 			sticky
-			:sticky-offset="[3, 3]"
+			:sticky-offset="getStickyOffset"
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">

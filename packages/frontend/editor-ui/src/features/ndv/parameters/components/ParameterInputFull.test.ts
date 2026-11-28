@@ -300,6 +300,166 @@ describe('ParameterInputFull.vue', () => {
 		expect(emitted().hover).toEqual([[true], [false]]);
 	});
 
+	// KNO-13: a drop on a fixed field with `requiresDataPath: 'multiple'` (for example
+	// "Fields To Include" in the Aggregate node) appends ", <field>" to the value. While
+	// the user hovers, the drag ghost must snap to where the value lands, after the
+	// existing text, and not on top of it.
+	describe('drag ghost position on a fixed multiple-fields input', () => {
+		const inputRect = { left: 100, top: 200, width: 300, height: 30 };
+		const charWidth = 6;
+		const ghostWidth = 40;
+		const ghostHeight = 20;
+		const fieldStyle = {
+			paddingLeft: '11px',
+			borderLeftWidth: '1px',
+			paddingTop: '4px',
+			borderTopWidth: '1px',
+			lineHeight: '18px',
+		};
+		const textStartX = 11 + 1;
+		const textStartY = 4 + 1;
+		const lineHeight = 18;
+
+		const fieldsParameter = createTestNodeProperties({
+			displayName: 'Fields To Include',
+			name: 'fieldsToInclude',
+			type: 'string',
+			default: '',
+			requiresDataPath: 'multiple',
+		});
+
+		beforeEach(() => {
+			// jsdom has no text layout, so give each character a fixed width
+			vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+				font: '',
+				measureText: (text: string) => ({ width: text.length * charWidth }),
+			} as never);
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		const startMappingDrag = () => {
+			mockNdvState.isDraggableDragging = true;
+			mockNdvState.draggableType = 'mapping';
+			mockNdvState.draggable = {
+				isDragging: true,
+				type: 'mapping',
+				data: '{{ $json.age }}',
+				dimensions: { width: ghostWidth, height: ghostHeight },
+				activeTarget: null,
+				stickyPosition: null,
+			} as never;
+			mockNdvState.setDraggableTarget = vi.fn();
+		};
+
+		const hoverDropTarget = async (
+			value: string,
+			{
+				parameter = fieldsParameter,
+				rect = inputRect,
+			}: { parameter?: typeof fieldsParameter; rect?: typeof inputRect } = {},
+		) => {
+			startMappingDrag();
+			const { getByTestId } = renderComponent({
+				props: { path: parameter.name, parameter, value },
+			});
+
+			// jsdom applies no stylesheet, so give the field fixed box metrics
+			const field = document.querySelector<HTMLElement>('input, textarea');
+			if (field) {
+				Object.assign(field.style, fieldStyle);
+			}
+
+			// The DraggableTarget root is the direct child of the input label
+			const inputLabel = getByTestId('input-label');
+			let dropTarget = getByTestId('parameter-input');
+			while (dropTarget.parentElement && dropTarget.parentElement !== inputLabel) {
+				dropTarget = dropTarget.parentElement;
+			}
+			vi.spyOn(dropTarget, 'getBoundingClientRect').mockReturnValue({
+				...rect,
+				x: rect.left,
+				y: rect.top,
+				right: rect.left + rect.width,
+				bottom: rect.top + rect.height,
+				toJSON: () => ({}),
+			});
+
+			await fireEvent.mouseEnter(dropTarget);
+			await nextTick();
+
+			const calls = vi.mocked(mockNdvState.setDraggableTarget!).mock.calls;
+			const target = calls[calls.length - 1]?.[0];
+			expect(target).toBeTruthy();
+			return target!.stickyPosition;
+		};
+
+		it('snaps the ghost to the start of an empty field', async () => {
+			const stickyPosition = await hoverDropTarget('');
+
+			expect(stickyPosition).toEqual([inputRect.left + 3, inputRect.top + 3]);
+		});
+
+		it('snaps the ghost after the existing fields, not over them', async () => {
+			const stickyPosition = await hoverDropTarget('name, email');
+
+			expect(stickyPosition).not.toBeNull();
+			// The ghost must not cover the existing "name, email" text at the start of the input
+			expect(stickyPosition![0]).toBeGreaterThan(inputRect.left + 3);
+			// The drop appends ", <field>", so the ghost sits where the new field lands
+			expect(stickyPosition).toEqual([
+				inputRect.left + textStartX + 'name, email, '.length * charWidth,
+				inputRect.top + 3,
+			]);
+		});
+
+		it('snaps the ghost after the last line of a multiline value', async () => {
+			const textareaRect = { ...inputRect, height: 100 };
+			const stickyPosition = await hoverDropTarget('name,\nemail', { rect: textareaRect });
+
+			expect(document.querySelector('textarea')).not.toBeNull();
+			expect(stickyPosition).toEqual([
+				textareaRect.left + textStartX + 'email, '.length * charWidth,
+				textareaRect.top + textStartY + lineHeight,
+			]);
+		});
+
+		it('keeps the ghost inside the textarea when the value has more lines than it shows', async () => {
+			const textareaRect = { ...inputRect, height: 100 };
+			const stickyPosition = await hoverDropTarget(
+				Array.from({ length: 10 }, (_, i) => `field${i}`).join(',\n'),
+				{ rect: textareaRect },
+			);
+
+			expect(stickyPosition![1]).toBe(textareaRect.top + textareaRect.height - ghostHeight - 3);
+		});
+
+		it('keeps the ghost inside the input when the existing fields are wider than it', async () => {
+			const stickyPosition = await hoverDropTarget('a'.repeat(200));
+
+			expect(stickyPosition).toEqual([
+				inputRect.left + inputRect.width - ghostWidth - 3,
+				inputRect.top + 3,
+			]);
+		});
+
+		it('keeps the ghost at the start of a field whose value is replaced on drop', async () => {
+			const stickyPosition = await hoverDropTarget('name', {
+				parameter: createTestNodeProperties({
+					displayName: 'Field To Split Out',
+					name: 'fieldToSplitOut',
+					type: 'string',
+					default: '',
+					requiresDataPath: 'single',
+				}),
+			});
+
+			expect(stickyPosition).toEqual([inputRect.left + 3, inputRect.top + 3]);
+		});
+	});
+
 	// Guards the three capability reads in this component. Each test pairs a baseline
 	// with the flag set, so reverting a read back to the literal
 	// `isResourceLocator` list flips the flagged case and fails here.
