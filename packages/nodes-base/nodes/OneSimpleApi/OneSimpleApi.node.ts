@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { oneSimpleApiRequest } from './GenericFunctions';
 
@@ -39,10 +39,6 @@ export class OneSimpleApi implements INodeType {
 					{
 						name: 'Information',
 						value: 'information',
-					},
-					{
-						name: 'Social Profile',
-						value: 'socialProfile',
 					},
 					{
 						name: 'Utility',
@@ -88,33 +84,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				],
 				default: 'pdf',
-			},
-			// socialProfile
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						resource: ['socialProfile'],
-					},
-				},
-				options: [
-					{
-						name: 'Instagram',
-						value: 'instagramProfile',
-						description: 'Get details about an Instagram profile',
-						action: 'Get details about an Instagram profile',
-					},
-					{
-						name: 'Spotify',
-						value: 'spotifyArtistProfile',
-						description: 'Get details about a Spotify Artist',
-						action: 'Get details about a Spotify artist',
-					},
-				],
-				default: 'instagramProfile',
 			},
 			// Information
 			{
@@ -498,36 +467,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				],
 			},
-			// socialProfile: instagramProfile
-			{
-				displayName: 'Profile Name',
-				name: 'profileName',
-				type: 'string',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['instagramProfile'],
-						resource: ['socialProfile'],
-					},
-				},
-				default: '',
-				description: 'Profile name to get details of',
-			},
-			// socialProfile: spotifyArtistProfile
-			{
-				displayName: 'Artist Name',
-				name: 'artistName',
-				type: 'string',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['spotifyArtistProfile'],
-						resource: ['socialProfile'],
-					},
-				},
-				default: '',
-				description: 'Artist name to get details for',
-			},
 			// information: exchangeRate
 			{
 				displayName: 'Value',
@@ -780,29 +719,11 @@ export class OneSimpleApi implements INodeType {
 				}
 
 				if (resource === 'socialProfile') {
-					if (operation === 'instagramProfile') {
-						const profileName = this.getNodeParameter('profileName', i) as string;
-						qs.profile = profileName;
-						responseData = await oneSimpleApiRequest.call(
-							this,
-							'GET',
-							requestPath`/instagram_profile`,
-							{},
-							qs,
-						);
-					}
-
-					if (operation === 'spotifyArtistProfile') {
-						const artistName = this.getNodeParameter('artistName', i) as string;
-						qs.profile = artistName;
-						responseData = await oneSimpleApiRequest.call(
-							this,
-							'GET',
-							requestPath`/spotify_profile`,
-							{},
-							qs,
-						);
-					}
+					throw new NodeOperationError(
+						this.getNode(),
+						'The One Simple API social profile operations have been retired.',
+						{ itemIndex: i },
+					);
 				}
 
 				if (resource === 'information') {
