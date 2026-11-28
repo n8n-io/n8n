@@ -72,6 +72,51 @@ describe('successful production executions', () => {
 	});
 });
 
+describe('retry executions', () => {
+	it.each(['all', 'none', 'DEFAULT', undefined] as const)(
+		'should save successful retries when the workflow success setting is %s',
+		(saveDataSuccessExecution) => {
+			globalConfig.executions.saveDataOnSuccess = 'none';
+
+			const saveSettings = toSaveSettings({ saveDataSuccessExecution }, 'retry');
+
+			expect(saveSettings.success).toBe(true);
+		},
+	);
+
+	it('should save successful retries when workflow settings are null', () => {
+		globalConfig.executions.saveDataOnSuccess = 'none';
+
+		expect(toSaveSettings(null, 'retry').success).toBe(true);
+	});
+
+	it('should keep the other save settings for retries', () => {
+		const workflowSettings = {
+			saveDataSuccessExecution: 'none' as const,
+			saveDataErrorExecution: 'none' as const,
+			saveManualExecutions: false,
+			saveExecutionProgress: false,
+		};
+
+		expect(toSaveSettings(workflowSettings, 'retry')).toEqual({
+			success: true,
+			error: false,
+			manual: false,
+			progress: false,
+		});
+		expect(workflowSettings.saveDataSuccessExecution).toBe('none');
+	});
+
+	it.each(['webhook', 'trigger', 'manual', 'integrated'] as const)(
+		'should still apply the success save setting to %s executions',
+		(mode) => {
+			globalConfig.executions.saveDataOnSuccess = 'none';
+
+			expect(toSaveSettings({}, mode).success).toBe(false);
+		},
+	);
+});
+
 describe('manual executions', () => {
 	it('should favor workflow setting over default', () => {
 		globalConfig.executions.saveDataManualExecutions = false;

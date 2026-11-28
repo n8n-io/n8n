@@ -1022,7 +1022,7 @@ export function getLifecycleHooksForSubExecutions(
 	telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'],
 ): ExecutionLifecycleHooks {
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
-	const saveSettings = toSaveSettings(workflowData.settings);
+	const saveSettings = toSaveSettings(workflowData.settings, mode);
 	hookFunctionsMemoryGuard(hooks);
 	// No `parentAgentRun`: only the execution that an agent's workflow tool starts names the agent.
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, undefined, telemetryMetadata);
@@ -1078,7 +1078,7 @@ export function getLifecycleHooksForScalingWorker(
 		workflowData,
 		retryOf ?? undefined,
 	);
-	const saveSettings = toSaveSettings(workflowData.settings);
+	const saveSettings = toSaveSettings(workflowData.settings, executionMode);
 	const optionalParameters = {
 		pushRef,
 		pushRefUserId: getPushRefUserId(data),
@@ -1131,7 +1131,7 @@ export function getLifecycleHooksForScalingMain(
 		workflowData,
 		retryOf ?? undefined,
 	);
-	const saveSettings = toSaveSettings(workflowData.settings);
+	const saveSettings = toSaveSettings(workflowData.settings, executionMode);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
 	const executionRepository = Container.get(ExecutionRepository);
 	const executionPersistence = Container.get(ExecutionPersistence);
@@ -1247,7 +1247,7 @@ export function getLifecycleHooksForRegularMain(
 		workflowData,
 		retryOf ?? undefined,
 	);
-	const saveSettings = toSaveSettings(workflowData.settings);
+	const saveSettings = toSaveSettings(workflowData.settings, executionMode);
 	const optionalParameters = {
 		pushRef,
 		pushRefUserId: getPushRefUserId(data),
