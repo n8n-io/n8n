@@ -64,7 +64,7 @@ export class PoolConfigService {
 	): Promise<ProjectPoolSettingsResponse> {
 		const defaultPool = patch.defaultPool ? patch.defaultPool : null;
 
-		await this.projectPoolSettingsRepository.setDefaultPool(projectId, defaultPool);
+		await this.projectPoolSettingsRepository.setDefaultPool(projectId, defaultPool, {});
 		await this.cacheService.delete(this.cacheKey(projectId));
 
 		const availablePools = await this.workerPoolsService.getAvailablePools();
@@ -81,7 +81,7 @@ export class PoolConfigService {
 		const cached = await this.cacheService.get<string>(cacheKey);
 		if (cached !== undefined) return cached || undefined;
 
-		const pool = await this.projectPoolSettingsRepository.getDefaultPool(projectId);
+		const pool = await this.projectPoolSettingsRepository.getDefaultPool(projectId, {});
 		void this.cacheService.set(cacheKey, pool ?? '');
 		return pool ?? undefined;
 	}
