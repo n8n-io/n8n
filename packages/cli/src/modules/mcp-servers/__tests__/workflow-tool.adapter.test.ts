@@ -98,6 +98,46 @@ describe('WorkflowToolAdapter', () => {
 			});
 			expect(workflows.findByIds).not.toHaveBeenCalled();
 		});
+
+		it('reports a workflow that another project owns now as moved on describe', async () => {
+			const { runner, sharedWorkflows, workflows, adapter } = setup();
+			runner.describe.mockResolvedValue({ callable: false, reason: 'not_found' });
+			ownedBy(sharedWorkflows, 'project-2');
+			workflows.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), { id: WORKFLOW_ID, isArchived: false }),
+			]);
+
+			await expect(adapter.describe(PROJECT_ID, WORKFLOW_ID)).resolves.toEqual({
+				callable: false,
+				reason: 'moved',
+			});
+		});
+
+		it('reports a workflow that another project owns now as moved on run', async () => {
+			const { runner, sharedWorkflows, workflows, adapter } = setup();
+			runner.run.mockResolvedValue({ status: 'refused', reason: 'not_found' });
+			ownedBy(sharedWorkflows, 'project-2');
+			workflows.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), { id: WORKFLOW_ID, isArchived: false }),
+			]);
+
+			await expect(adapter.run(PROJECT_ID, WORKFLOW_ID, {}, { waitMs: 5_000 })).resolves.toEqual({
+				status: 'refused',
+				reason: 'moved',
+			});
+		});
+
+		it('keeps not_found on run for a deleted workflow', async () => {
+			const { runner, sharedWorkflows, workflows, adapter } = setup();
+			runner.run.mockResolvedValue({ status: 'refused', reason: 'not_found' });
+			ownedBy(sharedWorkflows);
+
+			await expect(adapter.run(PROJECT_ID, WORKFLOW_ID, {}, { waitMs: 5_000 })).resolves.toEqual({
+				status: 'refused',
+				reason: 'not_found',
+			});
+			expect(workflows.findByIds).not.toHaveBeenCalled();
+		});
 	});
 
 	it('lists the workflows of the project without the check, and leaves out archived ones', async () => {

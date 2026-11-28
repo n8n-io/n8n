@@ -13,6 +13,7 @@ import {
 	N8nTabs,
 	N8nText,
 	N8nTooltip,
+	N8nVisuallyHidden,
 	type PathItem,
 } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
@@ -20,7 +21,7 @@ import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/fronte
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import McpServerAssistantPanel from '../components/McpServerAssistantPanel.vue';
@@ -54,9 +55,10 @@ const connections = useMcpServerConnections(projectId, serverId);
 const canUseAssistant = computed(() => assistant.available.value && permissions.value.canUpdate);
 
 const server = ref<McpServerResponse | null>(null);
-/** The share page lists the tools, so Share waits for the first tool. */
-const toolCount = ref<number | null>(null);
-const canShare = computed(() => (toolCount.value ?? 0) > 0);
+/** The share page omits broken tools, so Share waits for at least one working tool. */
+const shareableToolCount = ref<number | null>(null);
+const canShare = computed(() => (shareableToolCount.value ?? 0) > 0);
+const shareDisabledReasonId = useId();
 const loading = ref(true);
 const notFound = ref(false);
 const renameOpen = ref(false);
@@ -145,7 +147,7 @@ async function load({ silent = false } = {}) {
 	// Another server: drop the old one and its dialogs, so no action reaches the wrong server.
 	if (server.value?.id !== serverId.value) {
 		server.value = null;
-		toolCount.value = null;
+		shareableToolCount.value = null;
 		renameOpen.value = false;
 		deleteOpen.value = false;
 	}
@@ -155,7 +157,7 @@ async function load({ silent = false } = {}) {
 		const response = await getMcpServer(rootStore.restApiContext, projectId.value, serverId.value);
 		if (!isLatest()) return;
 		server.value = response;
-		toolCount.value = response.tools.length;
+		shareableToolCount.value = response.tools.filter((tool) => tool.brokenReason === null).length;
 	} catch (error) {
 		if (!isLatest()) return;
 		const missing = error instanceof ResponseError && error.httpStatusCode === 404;
@@ -382,6 +384,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 										@click="openAssistant()"
 									/>
 									<N8nTooltip
+										as-child
 										:disabled="canShare"
 										:content="i18n.baseText('mcpServers.actions.share.noTools')"
 									>
@@ -391,11 +394,16 @@ async function onBreadcrumbSelected(item: PathItem) {
 											icon="share"
 											:label="i18n.baseText('mcpServers.actions.share')"
 											:disabled="!canShare"
+											focusable-when-disabled
+											:aria-describedby="!canShare ? shareDisabledReasonId : undefined"
 											data-test-id="mcp-server-share-button"
 											data-attr="mcp-server-share-button"
 											@click="copyShareLink(server)"
 										/>
 									</N8nTooltip>
+									<N8nVisuallyHidden v-if="!canShare" :id="shareDisabledReasonId">
+										{{ i18n.baseText('mcpServers.actions.share.noTools') }}
+									</N8nVisuallyHidden>
 									<N8nActionToggle
 										:actions="menuActions"
 										:aria-label="i18n.baseText('mcpServers.server.menu')"
@@ -432,7 +440,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 							:refresh-key="contentsRefreshKey"
 							@build-with-assistant="onBuildWithAssistant"
 							@server-updated="applyResponse"
-							@tools-changed="toolCount = $event"
+							@tools-changed="shareableToolCount = $event"
 						/>
 						<McpServerConnectionsTab
 							v-else

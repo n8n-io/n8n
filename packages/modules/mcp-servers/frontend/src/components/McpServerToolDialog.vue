@@ -35,6 +35,10 @@ const props = defineProps<{
 	removing?: boolean;
 	/** The fields for which a "Generate" call runs. */
 	generating?: McpServerToolDraftField[];
+	/** Incremented when a save for this tool's name fails, so a focused field retries on blur/close. */
+	failedNameRevision?: number;
+	/** Incremented when a save for this tool's description fails, so a focused field retries on blur/close. */
+	failedDescriptionRevision?: number;
 	/** The URL of the source workflow, which opens in a new tab. */
 	workflowHref: string | null;
 }>();
@@ -70,17 +74,32 @@ watch(
 		displayedWorkflowHref.value = props.workflowHref;
 		const switched = !previous || tool.id !== previous.id;
 		if (switched) editing.value = null;
-		// Always sync submitted values to the server so a failed save retries on the next blur or close.
-		lastSubmittedName = tool.toolName;
-		lastSubmittedDescription = tool.description;
+		// Keep lastSubmitted* while editing if this field's server value did not change, so an
+		// unrelated tool update cannot swallow a revert made while a slower save is in flight.
 		if (switched || tool.toolName !== previous.toolName || editing.value !== 'toolName') {
 			toolName.value = tool.toolName;
+			lastSubmittedName = tool.toolName;
 		}
 		if (switched || tool.description !== previous.description || editing.value !== 'description') {
 			description.value = tool.description;
+			lastSubmittedDescription = tool.description;
 		}
 	},
 	{ immediate: true },
+);
+
+watch(
+	() => props.failedNameRevision,
+	() => {
+		if (props.tool) lastSubmittedName = props.tool.toolName;
+	},
+);
+
+watch(
+	() => props.failedDescriptionRevision,
+	() => {
+		if (props.tool) lastSubmittedDescription = props.tool.description;
+	},
 );
 
 watch(

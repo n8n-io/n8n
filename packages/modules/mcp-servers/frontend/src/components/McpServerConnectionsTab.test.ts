@@ -149,10 +149,19 @@ describe('McpServerConnectionsTab', () => {
 		expect(copy).toHaveBeenCalledWith(expect.stringMatching(/\/mcp-share\/support-desk$/));
 	});
 
-	it('turns off "Share" in the empty state while the server has no tool', async () => {
+	it('turns off "Share" in the empty state while the server has no tool and explains why accessibly', async () => {
 		render({ connections: [], blocks: [] }, false, false);
 
-		expect(screen.getByTestId('mcp-server-connections-share')).toBeDisabled();
+		const share = screen.getByTestId('mcp-server-connections-share');
+		expect(share).toHaveAttribute('aria-disabled', 'true');
+		expect(share).toHaveAccessibleDescription('Add a tool first');
+		expect(screen.getByTestId('mcp-server-connections-share-reason')).toHaveTextContent(
+			'Add a tool first',
+		);
+		share.focus();
+		expect(share).toHaveFocus();
+		await userEvent.click(share);
+		expect(copy).not.toHaveBeenCalled();
 	});
 
 	it('blocks a person after the confirmation', async () => {

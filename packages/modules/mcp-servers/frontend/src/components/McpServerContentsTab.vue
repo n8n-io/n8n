@@ -55,7 +55,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'build-with-assistant': [];
 	'server-updated': [server: McpServerResponse];
-	/** The number of tools, after each load, add and remove. */
+	/** The number of shareable (non-broken) tools, after each load, add, edit, and remove. */
 	'tools-changed': [count: number];
 }>();
 
@@ -90,6 +90,9 @@ const highlightedIds = ref(new Set<string>());
 const generating = ref(new Map<string, Set<McpServerToolDraftField>>());
 /** The tool whose remove request is currently in flight. */
 const removingToolId = ref<string | null>(null);
+/** Incremented when a tool field save fails while its modal is open so the field retries on blur/close. */
+const failedToolNameRevision = ref(0);
+const failedToolDescriptionRevision = ref(0);
 
 const canUpdate = computed(() => getMcpServerPermissions(props.projectId).canUpdate);
 const canBuildWithAssistant = computed(() => canUpdate.value && !!props.assistantAvailable);
@@ -202,12 +205,13 @@ async function reload() {
 	}
 }
 
-watch(
-	() => server.value?.tools.length,
-	(count) => {
-		if (count !== undefined) emit('tools-changed', count);
-	},
+const shareableToolCount = computed(() =>
+	server.value ? server.value.tools.filter((tool) => tool.brokenReason === null).length : undefined,
 );
+
+watch(shareableToolCount, (count) => {
+	if (count !== undefined) emit('tools-changed', count);
+});
 
 watch(
 	() => props.refreshKey,
@@ -362,6 +366,10 @@ async function onUpdate(tool: McpServerToolResponse, changes: UpdateMcpServerToo
 		// another save that ended while this one ran.
 		const current = server.value?.tools.find(({ id }) => id === tool.id) ?? tool;
 		replaceTool({ ...current });
+		if (selectedToolId.value === tool.id) {
+			if (changes.toolName !== undefined) failedToolNameRevision.value++;
+			if (changes.description !== undefined) failedToolDescriptionRevision.value++;
+		}
 		toast.showError(error, i18n.baseText('mcpServers.tools.saveError'));
 	}
 }
@@ -470,6 +478,8 @@ onMounted(load);
 				:drafting="selectedTool ? draftingIds.has(selectedTool.id) : false"
 				:removing="selectedTool ? removingToolId === selectedTool.id : false"
 				:generating="selectedTool ? generatingFields(selectedTool.id) : []"
+				:failed-name-revision="failedToolNameRevision"
+				:failed-description-revision="failedToolDescriptionRevision"
 				:workflow-href="selectedTool?.targetId ? workflowHref(selectedTool.targetId) : null"
 				@close="selectedToolId = null"
 				@update="selectedTool && onUpdate(selectedTool, $event)"

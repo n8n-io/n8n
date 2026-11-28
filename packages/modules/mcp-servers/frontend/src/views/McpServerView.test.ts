@@ -364,12 +364,16 @@ describe('McpServerView', () => {
 			});
 		});
 
-		it('turns off "Share" and "Copy share link" until the server has a tool', async () => {
+		it('turns off "Share" and "Copy share link" until the server has a working tool', async () => {
 			api.getMcpServer.mockResolvedValue({ ...server, tools: [] });
 			await renderPage();
 
 			const share = screen.getByTestId('mcp-server-share-button');
-			expect(share).toBeDisabled();
+			expect(share).toHaveAttribute('aria-disabled', 'true');
+			expect(share).toHaveAccessibleDescription('Add a tool first');
+			await userEvent.click(share);
+			expect(copy).not.toHaveBeenCalled();
+
 			await userEvent.click(screen.getByTestId('mcp-server-menu').querySelector('button')!);
 			expect(
 				(await screen.findByText('Copy share link')).closest('[data-disabled]'),
@@ -379,7 +383,24 @@ describe('McpServerView', () => {
 			await userEvent.keyboard('{Escape}');
 			await userEvent.click(screen.getByTestId('stub-add-tool'));
 
-			expect(share).toBeEnabled();
+			expect(share).not.toHaveAttribute('aria-disabled');
+			expect(share).not.toHaveAttribute('aria-describedby');
+		});
+
+		it('keeps "Share" and "Copy share link" off when every tool is broken', async () => {
+			api.getMcpServer.mockResolvedValue({
+				...server,
+				tools: [{ ...server.tools[0], brokenReason: 'moved' }],
+			});
+			await renderPage();
+
+			const share = screen.getByTestId('mcp-server-share-button');
+			expect(share).toHaveAttribute('aria-disabled', 'true');
+			await userEvent.click(screen.getByTestId('mcp-server-menu').querySelector('button')!);
+			expect(
+				(await screen.findByText('Copy share link')).closest('[data-disabled]'),
+			).not.toBeNull();
+			expect(copy).not.toHaveBeenCalled();
 		});
 
 		it('renames the server from the dialog that a double-click on the title opens', async () => {

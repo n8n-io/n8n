@@ -20,7 +20,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 
 import { blocksWithoutClient } from '../composables/useMcpServerConnections';
 import { useMcpServerUrl } from '../composables/useMcpServerUrl';
@@ -44,6 +44,7 @@ const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
 const { copyShareLink } = useMcpServerUrl();
+const shareDisabledReasonId = useId();
 
 const permissions = computed(() => getMcpServerPermissions(props.server.projectId));
 
@@ -251,20 +252,34 @@ const removeDescription = computed(() => {
 			data-test-id="mcp-server-connections-empty"
 		>
 			<template #additionalContent>
-				<N8nTooltip
-					:disabled="canShare"
-					:content="i18n.baseText('mcpServers.actions.share.noTools')"
-				>
-					<N8nButton
-						variant="solid"
-						icon="share"
-						:label="i18n.baseText('mcpServers.actions.share')"
-						:disabled="!canShare"
-						data-test-id="mcp-server-connections-share"
-						data-attr="mcp-server-connections-share"
-						@click="copyShareLink(server)"
-					/>
-				</N8nTooltip>
+				<div :class="$style.emptyShare">
+					<N8nTooltip
+						as-child
+						:disabled="canShare"
+						:content="i18n.baseText('mcpServers.actions.share.noTools')"
+					>
+						<N8nButton
+							variant="solid"
+							icon="share"
+							:label="i18n.baseText('mcpServers.actions.share')"
+							:disabled="!canShare"
+							focusable-when-disabled
+							:aria-describedby="!canShare ? shareDisabledReasonId : undefined"
+							data-test-id="mcp-server-connections-share"
+							data-attr="mcp-server-connections-share"
+							@click="copyShareLink(server)"
+						/>
+					</N8nTooltip>
+					<N8nText
+						v-if="!canShare"
+						:id="shareDisabledReasonId"
+						size="small"
+						color="text-light"
+						data-test-id="mcp-server-connections-share-reason"
+					>
+						{{ i18n.baseText('mcpServers.actions.share.noTools') }}
+					</N8nText>
+				</div>
 			</template>
 		</N8nEmptyState>
 		<N8nDataTableServer
@@ -395,6 +410,13 @@ const removeDescription = computed(() => {
 	flex-direction: column;
 	gap: var(--spacing--md);
 	padding-top: var(--spacing--xs);
+}
+
+.emptyShare {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .person {

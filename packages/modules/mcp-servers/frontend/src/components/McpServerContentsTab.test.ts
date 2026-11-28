@@ -706,7 +706,7 @@ describe('McpServerContentsTab', () => {
 			await waitFor(() => expect(screen.queryByTestId('mcp-tool-dialog')).not.toBeInTheDocument());
 		});
 
-		it('tells the page the number of tools after the load and after a remove', async () => {
+		it('tells the page the number of shareable tools after the load and after a remove', async () => {
 			api.getMcpServer.mockResolvedValue(server([tool()]));
 			api.removeTool.mockResolvedValue(undefined);
 			const { findByTestId, emitted } = await render();
@@ -715,6 +715,15 @@ describe('McpServerContentsTab', () => {
 			await userEvent.click(await screen.findByTestId('mcp-tool-dialog-remove'));
 
 			await waitFor(() => expect(emitted('tools-changed')).toEqual([[1], [0]]));
+		});
+
+		it('does not count broken tools as shareable', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool({ brokenReason: 'moved' })]));
+			const { findByTestId, emitted } = await render();
+
+			await findByTestId('mcp-tool-chip');
+
+			await waitFor(() => expect(emitted('tools-changed')).toEqual([[0]]));
 		});
 
 		it('removes a tool from the modal and closes it', async () => {
@@ -798,6 +807,101 @@ describe('McpServerContentsTab', () => {
 			expect(screen.getByTestId('mcp-tool-dialog-description-input')).toHaveValue(
 				'Numbers of a campaign.',
 			);
+		});
+
+		it('still sends a reverted description when an unrelated tool update lands while the earlier save is in flight', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			const slowDescriptionSave = deferred<McpServerToolResponse>();
+			const revertSave = deferred<McpServerToolResponse>();
+			api.updateTool
+				.mockReturnValueOnce(slowDescriptionSave.promise)
+				.mockReturnValueOnce(revertSave.promise);
+			const nameDraft = deferred<{ status: 'drafted'; tool: McpServerToolResponse }>();
+			api.draftTool.mockReturnValueOnce(nameDraft.promise);
+			const { findByTestId } = await render();
+
+			await userEvent.click(await findByTestId('mcp-tool-chip'));
+			const description = await screen.findByTestId('mcp-tool-dialog-description-input');
+			await userEvent.clear(description);
+			await userEvent.type(description, 'Temporary text.');
+			await fireEvent.blur(description);
+
+			// Trigger an unrelated tool update (Generate name) while the description save is still running.
+			await userEvent.click(screen.getByTestId('mcp-tool-dialog-generate-name'));
+			await fireEvent.focus(description);
+			await userEvent.clear(description);
+			await userEvent.type(description, 'Numbers of a campaign.');
+
+			// Unrelated update arrives carrying the old server description ("Numbers of a campaign.").
+			nameDraft.resolve({
+				status: 'drafted',
+				tool: tool({ toolName: 'campaign_metrics', draftSource: 'ai' }),
+			});
+			await waitFor(() =>
+				expect(screen.getByTestId('mcp-tool-dialog-name-input')).toHaveValue('campaign_metrics'),
+			);
+
+			// Blur must still send the revert so the slow save does not leave the server on "Temporary text.".
+			await fireEvent.blur(description);
+			await waitFor(() => expect(api.updateTool).toHaveBeenCalledTimes(2));
+			expect(api.updateTool).toHaveBeenLastCalledWith(
+				expect.anything(),
+				PROJECT_ID,
+				SERVER_ID,
+				tool().id,
+				{ description: 'Numbers of a campaign.' },
+			);
+
+			slowDescriptionSave.resolve(tool({ description: 'Temporary text.', draftSource: 'edited' }));
+			revertSave.resolve(tool({ description: 'Numbers of a campaign.', draftSource: 'edited' }));
+			await Promise.all([slowDescriptionSave.promise, revertSave.promise]);
+		});
+
+		it('still sends a reverted tool name when an unrelated tool update lands while the earlier save is in flight', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			const slowNameSave = deferred<McpServerToolResponse>();
+			const revertSave = deferred<McpServerToolResponse>();
+			api.updateTool
+				.mockReturnValueOnce(slowNameSave.promise)
+				.mockReturnValueOnce(revertSave.promise);
+			const descriptionDraft = deferred<{ status: 'drafted'; tool: McpServerToolResponse }>();
+			api.draftTool.mockReturnValueOnce(descriptionDraft.promise);
+			const { findByTestId } = await render();
+
+			await userEvent.click(await findByTestId('mcp-tool-chip'));
+			const name = await screen.findByTestId('mcp-tool-dialog-name-input');
+			await userEvent.clear(name);
+			await userEvent.type(name, 'temp_name');
+			await fireEvent.blur(name);
+
+			await userEvent.click(screen.getByTestId('mcp-tool-dialog-generate-description'));
+			await fireEvent.focus(name);
+			await userEvent.clear(name);
+			await userEvent.type(name, 'get_campaign_numbers');
+
+			descriptionDraft.resolve({
+				status: 'drafted',
+				tool: tool({ description: 'Generated description.', draftSource: 'ai' }),
+			});
+			await waitFor(() =>
+				expect(screen.getByTestId('mcp-tool-dialog-description-input')).toHaveValue(
+					'Generated description.',
+				),
+			);
+
+			await fireEvent.blur(name);
+			await waitFor(() => expect(api.updateTool).toHaveBeenCalledTimes(2));
+			expect(api.updateTool).toHaveBeenLastCalledWith(
+				expect.anything(),
+				PROJECT_ID,
+				SERVER_ID,
+				tool().id,
+				{ toolName: 'get_campaign_numbers' },
+			);
+
+			slowNameSave.resolve(tool({ toolName: 'temp_name', draftSource: 'edited' }));
+			revertSave.resolve(tool({ toolName: 'get_campaign_numbers', draftSource: 'edited' }));
+			await Promise.all([slowNameSave.promise, revertSave.promise]);
 		});
 	});
 
