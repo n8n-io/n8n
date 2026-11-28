@@ -186,6 +186,12 @@ export { UserPublicDto, UserListPublicDto, userPublicSchema } from './user/user-
 export { CreateUsersPublicDto, InvitedUsersPublicDto } from './user/create-users-public.dto';
 export { DeleteUserQueryPublicDto } from './user/delete-user-query-public.dto';
 
+export {
+	ExecutionUsageDto,
+	toExecutionUsage,
+	type ExecutionUsageSource,
+} from './execution-limits/execution-usage.dto';
+
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
 export {
