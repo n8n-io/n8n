@@ -13,6 +13,7 @@ import type { TextDraftPort } from './text-draft-port';
 /**
  * Why a workflow cannot be a tool:
  * - `not_found`: the project does not own the workflow, or it is archived.
+ * - `moved`: the workflow exists and is not archived, but another project owns it now.
  * - `not_published`: the workflow has no published version.
  * - `no_supported_trigger`: it has no trigger "When Executed by Another Workflow".
  * - `incompatible_nodes`: the trigger reaches a node that cannot run as a tool.
@@ -20,6 +21,7 @@ import type { TextDraftPort } from './text-draft-port';
  */
 export type WorkflowToolRefusal =
 	| 'not_found'
+	| 'moved'
 	| 'not_published'
 	| 'no_supported_trigger'
 	| 'incompatible_nodes'

@@ -52,6 +52,8 @@ const GENERIC_FAILURE_MESSAGE =
 
 const REFUSAL_MESSAGES: Record<WorkflowToolRefusal, string> = {
 	not_found: 'The workflow of this tool no longer exists. Ask a builder of the server to fix it.',
+	moved:
+		'The workflow of this tool moved to another project. Ask a builder of the server to fix it.',
 	not_published: 'The workflow of this tool is not published. Publish it to use this tool.',
 	no_supported_trigger:
 		'The workflow of this tool has no trigger "When Executed by Another Workflow". Add the trigger to use this tool.',

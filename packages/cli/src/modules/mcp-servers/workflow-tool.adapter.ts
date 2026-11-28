@@ -40,7 +40,12 @@ export class WorkflowToolAdapter extends WorkflowToolPort {
 	}
 
 	async check(projectId: string, workflowId: string): Promise<WorkflowToolCheck> {
-		return await this.runner.check(projectId, workflowId);
+		const check = await this.runner.check(projectId, workflowId);
+		if (check.callable || check.reason !== 'not_found') return check;
+		// The builder can move the workflow back, so a move is not a delete.
+		return (await this.isOwnedByAnotherProject(projectId, workflowId))
+			? { callable: false, reason: 'moved' }
+			: check;
 	}
 
 	async describe(projectId: string, workflowId: string): Promise<WorkflowToolDescription> {
@@ -54,5 +59,15 @@ export class WorkflowToolAdapter extends WorkflowToolPort {
 		options: WorkflowToolRunOptions,
 	): Promise<WorkflowToolRunResult> {
 		return await this.runner.run(projectId, workflowId, input, options);
+	}
+
+	private async isOwnedByAnotherProject(projectId: string, workflowId: string): Promise<boolean> {
+		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds([workflowId]);
+		const owner = owners.get(workflowId);
+		if (!owner || owner.id === projectId) return false;
+		const [workflow] = await this.workflowRepository.findByIds([workflowId], {
+			fields: ['isArchived'],
+		});
+		return !!workflow && !workflow.isArchived;
 	}
 }

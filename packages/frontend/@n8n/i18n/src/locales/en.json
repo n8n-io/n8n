@@ -2683,6 +2683,7 @@
 	"mcpServers.tools.broken.badge.caller_policy": "Calls not allowed",
 	"mcpServers.tools.broken.callout.not_published": "The workflow is not published. Calls return an error until you publish it.",
 	"mcpServers.tools.broken.callout.deleted": "The workflow was deleted. Calls return an error. Remove this tool.",
+	"mcpServers.tools.broken.callout.moved": "The workflow moved to another project. Calls return an error. Move the workflow back, or remove this tool.",
 	"mcpServers.tools.broken.callout.missing_trigger": "The workflow does not start with the trigger 'When Executed by Another Workflow'. Calls return an error until you add it.",
 	"mcpServers.tools.broken.callout.incompatible_nodes": "The workflow uses a node that cannot run as a tool. Calls return an error until you remove the node.",
 	"mcpServers.tools.broken.callout.caller_policy": "The workflow settings do not allow calls from other workflows. Calls return an error until you change the settings.",
