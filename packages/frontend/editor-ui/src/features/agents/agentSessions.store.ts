@@ -13,6 +13,10 @@ import {
 	type ThreadDetail,
 } from './composables/useAgentThreadsApi';
 import type { AgentChatChannel } from './composables/useAgentApi';
+import {
+	useAgentThreadTitleUpdates,
+	type AgentThreadTitleUpdate,
+} from './composables/useAgentThreadTitleUpdates';
 
 const ITEMS_PER_PAGE = 20;
 const AUTO_REFRESH_INTERVAL_MS = 5_000;
@@ -221,6 +225,34 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		}
 	}
 
+	/** Shows a generated title as soon as the server stores it, before the turn ends. */
+	function applyGeneratedTitle({
+		projectId,
+		agentId,
+		threadId,
+		title,
+		emoji,
+	}: AgentThreadTitleUpdate) {
+		const matches = (thread: AgentExecutionThread) =>
+			thread.id === threadId && thread.projectId === projectId && thread.agentId === agentId;
+		const retitle = (list: AgentExecutionThread[]) =>
+			list.map((thread) =>
+				matches(thread) ? { ...thread, title, emoji: emoji ?? thread.emoji } : thread,
+			);
+		threads.value = retitle(threads.value);
+		const knownInPreview = previewThreads.value.some(matches);
+		previewThreads.value = retitle(previewThreads.value);
+		// A new preview session is not in the list until the turn ends. Load the list
+		// again, so the session picker shows the title at once.
+		if (!knownInPreview && previewTarget === `${projectId}:${agentId}`) {
+			void fetchPreviewThreads(projectId, agentId).catch(() => {
+				// The next refresh retries failed Preview requests.
+			});
+		}
+	}
+
+	useAgentThreadTitleUpdates(applyGeneratedTitle);
+
 	async function deleteThread(projectId: string, agentId: string, threadId: string) {
 		const rootStore = useRootStore();
 		await deleteThreadApi(rootStore.restApiContext, projectId, agentId, threadId);
@@ -297,6 +329,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		getThreadDetail,
 		resumeTaskApproval,
 		upsertThread,
+		applyGeneratedTitle,
 		deleteThread,
 		exportThreadToLangSmith,
 		setFilters,

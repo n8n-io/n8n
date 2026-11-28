@@ -16,6 +16,7 @@ import {
 import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
 import { useAgentSessionUsage } from '@/features/agents/composables/useAgentSessionUsage';
 import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
+import { useAgentThreadTitleUpdates } from '@/features/agents/composables/useAgentThreadTitleUpdates';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import { formatSessionDateTime } from '@/features/agents/utils/timeline-time';
 import { formatDuration, threadTokenBreakdownOf } from '@/features/agents/session-timeline.utils';
@@ -269,6 +270,19 @@ const {
 	() => ({}),
 );
 useAgentExecutionUpdates({ projectId, agentId, threadId }, () => {}, onExecutionUpdated);
+// The detail loads before the first turn has a title. Show the title as soon as it is stored.
+useAgentThreadTitleUpdates((update) => {
+	const current = thread.value;
+	if (
+		!current ||
+		current.id !== update.threadId ||
+		current.projectId !== update.projectId ||
+		current.agentId !== update.agentId
+	) {
+		return;
+	}
+	thread.value = { ...current, title: update.title, emoji: update.emoji ?? current.emoji };
+});
 const totalTokens = computed(() => sessionUsage.value.totalTokens);
 
 const hasLoadedThread = computed(() => thread.value?.id === threadId.value);

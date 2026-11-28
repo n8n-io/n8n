@@ -1,6 +1,6 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { AgentN8nChatThreadSummary } from '@n8n/api-types';
+import type { AgentN8nChatThreadSummary, PushMessage } from '@n8n/api-types';
 
 import { useAgentN8nChatThreadsStore } from './n8nChatThreads.store';
 
@@ -8,6 +8,25 @@ const mockListN8nChatThreads = vi.fn();
 const mockGetN8nChatThread = vi.fn();
 const mockDeleteN8nChatThread = vi.fn();
 const mockShowError = vi.fn();
+const pushListeners = vi.hoisted(() => new Set<(event: PushMessage) => void>());
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		addEventListener: (handler: (event: PushMessage) => void) => {
+			pushListeners.add(handler);
+			return () => pushListeners.delete(handler);
+		},
+	}),
+}));
+
+function pushTitle(threadId: string, title: string, agentId = 'agent-1') {
+	for (const listener of pushListeners) {
+		listener({
+			type: 'agentThreadTitleUpdated',
+			data: { projectId: 'project-1', agentId, threadId, title },
+		});
+	}
+}
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest', pushRef: 'push-1' } }),
@@ -34,6 +53,40 @@ describe('useAgentN8nChatThreadsStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+		pushListeners.clear();
+	});
+
+	describe('generated titles', () => {
+		it('retitles a known thread when the title push arrives', async () => {
+			const untitled = { ...makeThread('1', '2025-01-02T00:00:00.000Z'), title: null };
+			mockListN8nChatThreads.mockResolvedValueOnce({ data: [untitled], nextCursor: null });
+			const store = useAgentN8nChatThreadsStore();
+			await store.fetchRecent(10);
+
+			pushTitle('1', 'Refund policy question');
+
+			expect(store.threadsById.get('1')?.title).toBe('Refund policy question');
+		});
+
+		it('ignores a push for a thread of another agent with the same id', async () => {
+			const untitled = { ...makeThread('1', '2025-01-02T00:00:00.000Z'), title: null };
+			mockListN8nChatThreads.mockResolvedValueOnce({ data: [untitled], nextCursor: null });
+			const store = useAgentN8nChatThreadsStore();
+			await store.fetchRecent(10);
+
+			pushTitle('1', 'Other agent', 'agent-2');
+
+			expect(store.threadsById.get('1')?.title).toBeNull();
+		});
+
+		it('does not load a thread that it does not hold', () => {
+			const store = useAgentN8nChatThreadsStore();
+
+			pushTitle('builder-session', 'Preview chat');
+
+			expect(mockGetN8nChatThread).not.toHaveBeenCalled();
+			expect(store.threadsById.size).toBe(0);
+		});
 	});
 
 	describe('fetchRecent', () => {
@@ -114,8 +167,24 @@ describe('useAgentN8nChatThreadsStore', () => {
 				{ baseUrl: '/rest', pushRef: 'push-1' },
 				'1',
 			);
-			expect(store.threadsById.get('1')).toEqual(thread);
+			expect(store.threadsById.get('1')).toEqual({ ...thread, firstMessage: null });
 			expect(store.recentThreads).toEqual([]);
+		});
+
+		it('keeps the sent text as the preview of a new thread that the server has no preview for yet', async () => {
+			mockGetN8nChatThread
+				.mockResolvedValueOnce(makeThread('queued', '2025-01-02T00:00:00.000Z'))
+				.mockResolvedValueOnce({
+					...makeThread('admitted', '2025-01-02T00:00:00.000Z'),
+					firstMessage: 'Server preview',
+				});
+			const store = useAgentN8nChatThreadsStore();
+
+			await store.loadThread('queued', 'Budget questions');
+			await store.loadThread('admitted', 'Budget questions');
+
+			expect(store.threadsById.get('queued')?.firstMessage).toBe('Budget questions');
+			expect(store.threadsById.get('admitted')?.firstMessage).toBe('Server preview');
 		});
 
 		it('keeps a loaded thread when a later fetchRecent replaces the recent list', async () => {
@@ -130,7 +199,7 @@ describe('useAgentN8nChatThreadsStore', () => {
 			await store.loadThread('old');
 			await store.fetchRecent(10);
 
-			expect(store.threadsById.get('old')).toEqual(opened);
+			expect(store.threadsById.get('old')).toEqual({ ...opened, firstMessage: null });
 		});
 
 		it('does not fetch a thread already in recentThreads', async () => {

@@ -24,7 +24,7 @@ import N8nChatPageLayout from './components/N8nChatPageLayout.vue';
 import N8nChatThreadHistory from './components/N8nChatThreadHistory.vue';
 import { useAgentN8nChatThreadsStore } from './n8nChatThreads.store';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
-import { firstMessageTitle } from '@/features/ai/instanceAi/instanceAi.threadRuntime';
+import { formatThreadTitle } from '../utils/thread-title';
 
 // `agentThreadId` (not `threadId`): this route's sibling `InstanceAiLayout` reads
 // `route.params.threadId` for an n8n Assistant thread id, and the two must not collide.
@@ -106,14 +106,17 @@ watch(
 // A thread outside the newest page (e.g. opened directly by URL) is missing here until
 // `loadThread` below adds it.
 const firstUserMessage = ref<string>();
-// Like the n8n Assistant: the generated title, else the first user message until the
-// title arrives, else a generic label for a known but untitled thread.
+// Like the n8n Assistant and the sidebar: the generated title, else the first user
+// message until the title arrives, else a generic label for a known but untitled thread.
 const threadTitle = computed(() => {
 	if (!props.agentThreadId) return undefined;
 	const thread = threadsStore.threadsById.get(props.agentThreadId);
-	if (thread?.title) return thread.title;
-	if (firstUserMessage.value?.trim()) return firstMessageTitle(firstUserMessage.value);
-	return thread ? i18n.baseText('commandBar.instanceAi.newThread') : undefined;
+	const firstMessage = thread?.firstMessage ?? firstUserMessage.value;
+	if (!thread && !firstMessage?.trim()) return undefined;
+	return formatThreadTitle(
+		{ title: thread?.title ?? null, firstMessage },
+		i18n.baseText('commandBar.instanceAi.newThread'),
+	);
 });
 
 // Fetches a thread the store doesn't know yet, once per (agent, thread) pair — not on
@@ -123,7 +126,8 @@ watch(
 	([, threadId]) => {
 		if (!threadId) return;
 		if (threadsStore.threadsById.has(threadId)) return;
-		void threadsStore.loadThread(threadId);
+		// A new chat can load before the server has its preview. The sent text stands in.
+		void threadsStore.loadThread(threadId, firstUserMessage.value);
 	},
 	{ immediate: true },
 );

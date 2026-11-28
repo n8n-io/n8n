@@ -11,6 +11,10 @@ import {
 	getN8nChatThread,
 	listN8nChatThreads,
 } from '../composables/useAgentApi';
+import {
+	useAgentThreadTitleUpdates,
+	type AgentThreadTitleUpdate,
+} from '../composables/useAgentThreadTitleUpdates';
 
 /**
  * The user's own n8n Chat threads across every agent they can reach, for the sidebar's
@@ -66,16 +70,41 @@ export const useAgentN8nChatThreadsStore = defineStore(STORES.AGENT_N8N_CHAT_THR
 	 * Best-effort: a missing title must not break the page, so this swallows
 	 * every error instead of throwing.
 	 */
-	async function loadThread(threadId: string): Promise<void> {
+	async function loadThread(threadId: string, firstMessage?: string): Promise<void> {
 		if (threadsById.value.has(threadId)) return;
 		try {
 			const thread = await getN8nChatThread(rootStore.restApiContext, threadId);
 			if (threadsById.value.has(thread.id)) return;
-			openedThreads.value.push(thread);
+			// A new chat can load while its first message is still queued, before the
+			// server has its preview. The sent text stands in until the title arrives.
+			openedThreads.value.push({
+				...thread,
+				firstMessage: thread.firstMessage ?? firstMessage ?? null,
+			});
 		} catch (error) {
 			console.error('Failed to load n8n Chat thread', error);
 		}
 	}
+
+	/**
+	 * Shows a generated title as soon as the server stores it, before the turn ends.
+	 * Ignores threads that this store does not hold, such as preview sessions of the
+	 * agent builder: only n8n Chat threads can load through this store.
+	 */
+	function applyGeneratedTitle({ projectId, agentId, threadId, title }: AgentThreadTitleUpdate) {
+		const retitle = (threads: AgentN8nChatThreadSummary[]) =>
+			threads.map((thread) =>
+				thread.id === threadId &&
+				thread.agent.id === agentId &&
+				thread.agent.projectId === projectId
+					? { ...thread, title }
+					: thread,
+			);
+		recentThreads.value = retitle(recentThreads.value);
+		openedThreads.value = retitle(openedThreads.value);
+	}
+
+	useAgentThreadTitleUpdates(applyGeneratedTitle);
 
 	/**
 	 * Delete one of the user's own threads, like the preview chat deletes sessions.
@@ -108,6 +137,7 @@ export const useAgentN8nChatThreadsStore = defineStore(STORES.AGENT_N8N_CHAT_THR
 		deletedThreadIds,
 		fetchRecent,
 		loadThread,
+		applyGeneratedTitle,
 		deleteThread,
 	};
 });
