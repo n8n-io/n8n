@@ -2,7 +2,7 @@ import { inTest, Logger } from '@n8n/backend-common';
 import { isAxiosError } from '@n8n/backend-network';
 import { type InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import type { ReportingOptions } from '@n8n/errors';
+import type { ErrorLevel, ReportingOptions } from '@n8n/errors';
 import type { DataCollection, ErrorEvent, EventHint, Integration } from '@sentry/core';
 import type Sentry from '@sentry/node';
 import { ApplicationError, ExecutionCancelledError } from 'n8n-workflow';
@@ -166,6 +166,7 @@ export class ErrorReporter {
 
 			const { executionId } = options ?? {};
 			const context = executionId ? ` (execution ${executionId})` : '';
+			const log = this.getLogMethod(this.resolveReportLevel(error, options));
 
 			// Prevent infinite loops in cyclic cause chains.
 			const seen = new Set<Error>();
@@ -185,10 +186,28 @@ export class ErrorReporter {
 				const msg = [e.message + context, stack].join('');
 				// Default to logging the error if option is not specified
 				if (options?.shouldBeLogged ?? true) {
-					this.logger.error(msg, meta);
+					log(msg, meta);
 				}
 				e = e.cause as Error;
 			} while (e && !seen.has(e));
+		}
+	}
+
+	/** Matches the level that the Sentry path assigns to the event. */
+	private resolveReportLevel(error: Error, options?: ReportingOptions): ErrorLevel {
+		if (options?.level && options.level !== 'error') return options.level;
+		if (error instanceof ApplicationError || error instanceof BaseError) return error.level;
+		return 'error';
+	}
+
+	private getLogMethod(level: ErrorLevel) {
+		switch (level) {
+			case 'info':
+				return this.logger.info.bind(this.logger);
+			case 'warning':
+				return this.logger.warn.bind(this.logger);
+			default:
+				return this.logger.error.bind(this.logger);
 		}
 	}
 
