@@ -3,6 +3,7 @@ import CopyInput from '@/app/components/CopyInput.vue';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
+import { I18nT } from 'vue-i18n';
 
 import { N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
@@ -288,16 +289,16 @@ onMounted(async () => {
 		<div :class="[$style.card, $style.firstCard]">
 			<slot name="protocol-select" />
 			<div :class="$style.group">
-				<label>Redirect URL</label>
+				<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
 				<CopyInput
 					:value="ssoStore.oidc.callbackUrl"
 					:copy-button-text="i18n.baseText('generic.clickToCopy')"
-					toast-title="Redirect URL copied to clipboard"
+					:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
 				/>
-				<small>Copy the Redirect URL to configure your OIDC provider </small>
+				<small>{{ i18n.baseText('settings.sso.settings.oidc.redirectUrl.help') }}</small>
 			</div>
 			<div :class="$style.group">
-				<label>Discovery Endpoint</label>
+				<label>{{ i18n.baseText('settings.sso.settings.oidc.discoveryEndpoint.label') }}</label>
 				<N8nInput
 					:model-value="discoveryEndpoint"
 					:disabled="isSsoManagedByEnv"
@@ -306,10 +307,10 @@ onMounted(async () => {
 					placeholder="https://accounts.google.com/.well-known/openid-configuration"
 					@update:model-value="(v: string) => (discoveryEndpoint = v)"
 				/>
-				<small>Paste here your discovery endpoint</small>
+				<small>{{ i18n.baseText('settings.sso.settings.oidc.discoveryEndpoint.help') }}</small>
 			</div>
 			<div :class="$style.group">
-				<label>Client ID</label>
+				<label>{{ i18n.baseText('settings.sso.settings.oidc.clientId.label') }}</label>
 				<N8nInput
 					:model-value="clientId"
 					:disabled="isSsoManagedByEnv"
@@ -317,12 +318,10 @@ onMounted(async () => {
 					data-test-id="oidc-client-id"
 					@update:model-value="(v: string) => (clientId = v)"
 				/>
-				<small
-					>The client ID you received when registering your application with your provider</small
-				>
+				<small>{{ i18n.baseText('settings.sso.settings.oidc.clientId.help') }}</small>
 			</div>
 			<div :class="$style.group">
-				<label>Client Secret</label>
+				<label>{{ i18n.baseText('settings.sso.settings.oidc.clientSecret.label') }}</label>
 				<N8nInput
 					:model-value="clientSecret"
 					:disabled="isSsoManagedByEnv"
@@ -330,13 +329,10 @@ onMounted(async () => {
 					data-test-id="oidc-client-secret"
 					@update:model-value="(v: string) => (clientSecret = v)"
 				/>
-				<small
-					>The client Secret you received when registering your application with your
-					provider</small
-				>
+				<small>{{ i18n.baseText('settings.sso.settings.oidc.clientSecret.help') }}</small>
 			</div>
 			<div :class="$style.group">
-				<label>Prompt</label>
+				<label>{{ i18n.baseText('settings.sso.settings.oidc.prompt.label') }}</label>
 				<N8nSelect
 					:model-value="prompt"
 					:disabled="isSsoManagedByEnv"
@@ -351,7 +347,7 @@ onMounted(async () => {
 						:value="option.value"
 					/>
 				</N8nSelect>
-				<small>The prompt parameter to use when authenticating with the OIDC provider</small>
+				<small>{{ i18n.baseText('settings.sso.settings.oidc.prompt.help') }}</small>
 			</div>
 		</div>
 		<div :class="$style.card">
@@ -381,7 +377,7 @@ onMounted(async () => {
 				"
 			/>
 			<div :class="$style.group">
-				<label>Authentication Context Class Reference</label>
+				<label>{{ i18n.baseText('settings.sso.settings.oidc.acr.label') }}</label>
 				<N8nInput
 					:model-value="authenticationContextClassReference"
 					type="textarea"
@@ -390,38 +386,44 @@ onMounted(async () => {
 					placeholder="mfa, phrh, pwd"
 					@update:model-value="(v: string) => (authenticationContextClassReference = v)"
 				/>
-				<small
-					>ACR values to include in the authorization request (acr_values parameter), separated by
-					commas in order of preference.</small
-				>
+				<small>{{ i18n.baseText('settings.sso.settings.oidc.acr.help') }}</small>
 			</div>
 			<div :class="$style.group">
 				<label
-					>Additional scopes
-					<span :class="$style.optional">(Optional)</span>
+					>{{ i18n.baseText('settings.sso.settings.oidc.additionalScopes.label') }}
+					<span :class="$style.optional">{{
+						i18n.baseText('settings.sso.settings.oidc.additionalScopes.optional')
+					}}</span>
 				</label>
 				<N8nInput
 					:model-value="additionalScopes"
 					:disabled="isSsoManagedByEnv"
 					type="text"
 					data-test-id="oidc-additional-scopes"
-					placeholder="e.g. groups roles"
+					:placeholder="i18n.baseText('settings.sso.settings.oidc.additionalScopes.placeholder')"
 					@update:model-value="(v: string) => (additionalScopes = v)"
 				/>
-				<small v-if="isAdditionalScopesInvalid" :class="$style.fieldError"
-					>Use spaces to separate scopes. Commas and semicolons are not allowed.</small
-				>
-				<small v-else
-					>By default n8n requests <code>openid</code>, <code>profile</code> and <code>email</code>.
-					If you need other scopes, define them here space separated.</small
-				>
+				<small v-if="isAdditionalScopesInvalid" :class="$style.fieldError">{{
+					i18n.baseText('settings.sso.settings.oidc.additionalScopes.invalid')
+				}}</small>
+				<small v-else>
+					<I18nT
+						keypath="settings.sso.settings.oidc.additionalScopes.help"
+						tag="span"
+						scope="global"
+					>
+						<template #openid><code>openid</code></template>
+						<template #profile><code>profile</code></template>
+						<template #email><code>email</code></template>
+					</I18nT>
+				</small>
 			</div>
 		</div>
 		<div :class="$style.card">
 			<div :class="$style.settingsItem">
 				<div :class="$style.settingsItemLabel">
-					<label>Single sign-on (SSO)</label>
-					<small>Allow users to sign in through your identity provider</small>
+					<label>{{ i18n.baseText('settings.sso.settings.ssoToggle.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.ssoToggle.description') }}</small>
 				</div>
 				<div :class="$style.settingsItemControl">
 					<N8nSelect
@@ -434,15 +436,23 @@ onMounted(async () => {
 						<template #prefix>
 							<span v-if="ssoStore.isOidcLoginEnabled" :class="$style.greenDot" />
 						</template>
-						<N8nOption value="enabled" label="Enabled" data-test-id="sso-oidc-toggle-option" />
-						<N8nOption value="disabled" label="Disabled" data-test-id="sso-oidc-toggle-option" />
+						<N8nOption
+							value="enabled"
+							:label="i18n.baseText('settings.sso.settings.ssoToggle.enabled')"
+							data-test-id="sso-oidc-toggle-option"
+						/>
+						<N8nOption
+							value="disabled"
+							:label="i18n.baseText('settings.sso.settings.ssoToggle.disabled')"
+							data-test-id="sso-oidc-toggle-option"
+						/>
 					</N8nSelect>
 				</div>
 			</div>
 			<div :class="$style.settingsItem">
 				<div :class="$style.settingsItemLabel">
-					<label>Log out from identity provider</label>
-					<small>Also end your session at the identity provider when signing out of n8n</small>
+					<label>{{ i18n.baseText('settings.sso.settings.oidc.logoutToggle.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.oidc.logoutToggle.description') }}</small>
 				</div>
 				<div :class="$style.settingsItemControl">
 					<N8nSelect
@@ -455,8 +465,14 @@ onMounted(async () => {
 						<template #prefix>
 							<span v-if="rpInitiatedLogoutEnabled" :class="$style.greenDot" />
 						</template>
-						<N8nOption value="enabled" label="Enabled" />
-						<N8nOption value="disabled" label="Disabled" />
+						<N8nOption
+							value="enabled"
+							:label="i18n.baseText('settings.sso.settings.ssoToggle.enabled')"
+						/>
+						<N8nOption
+							value="disabled"
+							:label="i18n.baseText('settings.sso.settings.ssoToggle.disabled')"
+						/>
 					</N8nSelect>
 				</div>
 			</div>
