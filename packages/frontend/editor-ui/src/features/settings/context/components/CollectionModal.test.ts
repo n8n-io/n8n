@@ -153,6 +153,34 @@ describe('CollectionModal', () => {
 		]);
 	});
 
+	it('filters the projects by the name that the user types', async () => {
+		const { getByTestId } = renderModal({ props: { open: true }, pinia });
+
+		const items = await getDropdownItems(getByTestId('collection-project-select'));
+		await userEvent.keyboard('supp');
+
+		await waitFor(() =>
+			expect(
+				Array.from(items)
+					.filter((item) => (item as HTMLElement).style.display !== 'none')
+					.map((item) => item.textContent?.trim()),
+			).toEqual(['Support team']),
+		);
+	});
+
+	it('says so when no project matches the search', async () => {
+		const { getByTestId } = renderModal({ props: { open: true }, pinia });
+
+		await getDropdownItems(getByTestId('collection-project-select'));
+		await userEvent.keyboard('zzz');
+
+		await waitFor(() =>
+			expect(document.querySelector('.el-select-dropdown__empty')).toHaveTextContent(
+				'No projects match your search',
+			),
+		);
+	});
+
 	it('shows the required errors when the user submits an empty form', async () => {
 		const { getByTestId, getAllByText, queryByText } = renderModal({
 			props: { open: true },

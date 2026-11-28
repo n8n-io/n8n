@@ -4743,6 +4743,7 @@
 	"settings.context.collections.modal.project.label": "Project",
 	"settings.context.collections.modal.project.hint": "Every agent in this project can use the collection. You can share it with other projects later.",
 	"settings.context.collections.modal.project.personal": "Personal project",
+	"settings.context.collections.modal.project.noMatch": "No projects match your search",
 	"settings.context.collections.modal.cancel": "Cancel",
 	"settings.context.collections.modal.submit": "Create collection",
 	"settings.context.collections.modal.edit.title": "Edit collection",
