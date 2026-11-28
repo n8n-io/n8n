@@ -1,0 +1,118 @@
+operationId: listAgentExecutions
+tags:
+  - Agent
+summary: List agent executions
+description: |-
+  List the runs of one agent that you can see, newest first. Project sessions are visible to every project member, private sessions only to their owner. The response is one cursor page: read the next page with the cursor query parameter. Narrow the list to one session with sessionId, or to one run status with status. Runs of a sub-agent do not appear in this list.
+
+  Requires the `agent:read` API key scope.
+x-required-scope: agent:read
+parameters:
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - schema:
+      type: string
+    required: true
+    description: The ID of the agent.
+    name: agentId
+    in: path
+  - schema:
+      type: string
+      minLength: 1
+    required: false
+    name: sessionId
+    in: query
+  - schema:
+      type: string
+      enum:
+        - running
+        - success
+        - error
+        - cancelled
+        - interrupted
+        - awaiting
+    required: false
+    name: status
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  executionId:
+                    type: string
+                  sessionId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - running
+                      - success
+                      - error
+                      - cancelled
+                      - interrupted
+                      - awaiting
+                  source:
+                    type: string
+                    nullable: true
+                  createdAt:
+                    type: string
+                  startedAt:
+                    type: string
+                    nullable: true
+                  stoppedAt:
+                    type: string
+                    nullable: true
+                  usage:
+                    type: object
+                    properties:
+                      promptTokens:
+                        type: number
+                        nullable: true
+                      completionTokens:
+                        type: number
+                        nullable: true
+                      totalTokens:
+                        type: number
+                        nullable: true
+                      cost:
+                        type: number
+                        nullable: true
+                    required:
+                      - promptTokens
+                      - completionTokens
+                      - totalTokens
+                      - cost
+                required:
+                  - executionId
+                  - sessionId
+                  - status
+                  - source
+                  - createdAt
+                  - startedAt
+                  - stoppedAt
+                  - usage
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

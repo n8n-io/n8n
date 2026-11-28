@@ -72,7 +72,9 @@ async function onToggleProjectFavorite() {
 
 const projectPages = useProjectPages();
 
-const props = defineProps<SlotProjectHeaderProps>();
+const props = defineProps<
+	SlotProjectHeaderProps & { disableAgentCreation?: boolean; hideFolderCreation?: boolean }
+>();
 
 const emit = defineEmits<{
 	createFolder: [];
@@ -246,7 +248,7 @@ const createAgentButton = computed(() => ({
 	value: ACTION_TYPES.AGENT,
 	label: i18n.baseText('projects.header.create.agent'),
 	size: 'mini' as const,
-	disabled: !canCreateAgent.value,
+	disabled: props.disableAgentCreation || !canCreateAgent.value,
 }));
 
 const canCreateApp = computed(
@@ -355,7 +357,7 @@ const menu = computed(() => {
 		});
 	}
 
-	if (showFolders.value) {
+	if (showFolders.value && !props.hideFolderCreation) {
 		items.push({
 			value: ACTION_TYPES.FOLDER,
 			label: i18n.baseText('projects.header.create.folder'),
@@ -383,7 +385,7 @@ const menu = computed(() => {
 		items.push({
 			value: ACTION_TYPES.AGENT,
 			label: i18n.baseText('projects.header.create.agent'),
-			disabled: !canCreateAgent.value,
+			disabled: createAgentButton.value.disabled,
 		});
 	}
 
