@@ -3,7 +3,12 @@ import type { MockInstance } from 'vitest';
 import * as apiUtils from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-import { fetchCloudBrowserLiveView, postCloudBrowserReturnControl } from '../instanceAi.api';
+import {
+	deleteSavedLogin,
+	fetchCloudBrowserLiveView,
+	fetchSavedLogins,
+	postCloudBrowserReturnControl,
+} from '../instanceAi.api';
 
 vi.mock('@n8n/rest-api-client');
 
@@ -67,5 +72,31 @@ describe('cloud browser API', () => {
 			});
 			expect(result).toEqual({ ok: true, loginWillBeSaved: true });
 		});
+	});
+
+	it("fetchSavedLogins gets the user's saved logins", async () => {
+		const response = { savedLogins: [] };
+		makeRestApiRequestSpy.mockResolvedValue(response);
+
+		const result = await fetchSavedLogins(context);
+
+		expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/instance-ai/cloud-browser/saved-logins',
+		);
+		expect(result).toEqual(response);
+	});
+
+	it('deleteSavedLogin deletes the login and encodes its id', async () => {
+		makeRestApiRequestSpy.mockResolvedValue(undefined);
+
+		await deleteSavedLogin(context, 'login/1');
+
+		expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+			context,
+			'DELETE',
+			'/instance-ai/cloud-browser/saved-logins/login%2F1',
+		);
 	});
 });

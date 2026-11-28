@@ -568,6 +568,8 @@ export {
 	InstanceAiCorrectTaskRequest,
 	InstanceAiCloudBrowserReturnControlRequest,
 	type InstanceAiCloudBrowserReturnControlResponse,
+	type InstanceAiSavedLogin,
+	type InstanceAiSavedLoginsResponse,
 	type InstanceAiCloudBrowserLoginToSaveResponse,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,

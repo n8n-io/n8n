@@ -6,13 +6,15 @@
  * user, they already have control; otherwise the agent's calls wait from now on. "I'm done" gives
  * control back. After a takeover the agent did not ask for, it first asks what the user changed.
  */
-import { FocusScope, N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import type { InstanceAiCloudBrowserLoginToSaveResponse } from '@n8n/api-types';
+import { FocusScope, N8nButton, N8nIcon, N8nInput, N8nLink, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { withTimeout } from '@n8n/utils/promise/with-timeout';
 import { computed, inject, ref, watch } from 'vue';
 
+import { VIEWS } from '@/app/constants';
 import { CLOUD_BROWSER_LOGIN_TO_SAVE_TIMEOUT } from '@/app/constants/durations';
 import {
 	fetchCloudBrowserLoginToSave,
@@ -25,6 +27,8 @@ import {
 	CloudBrowserLiveViewsKey,
 	embeddedLiveViewUrl,
 } from '../composables/useCloudBrowserLiveViews';
+import { SAVED_LOGINS_QUERY } from '../constants';
+import { formatSavedLoginDate } from '@/features/ai/instanceAi/cloudBrowserAgents';
 import { useThread } from '../instanceAi.store';
 
 const props = defineProps<{
@@ -59,6 +63,13 @@ const loginProfile = computed(() =>
 	liveView.value?.status === 'live' ? liveView.value.loginProfile : undefined,
 );
 
+/** The date the user saved the login this session uses, or nothing when it uses none. */
+const savedLoginDate = computed(() => {
+	const savedAt = loginProfile.value?.savedAt;
+	if (!savedAt) return undefined;
+	return formatSavedLoginDate(savedAt);
+});
+
 /**
  * Whether the user can maybe save a login: the agent asked them to sign in, and the session has a
  * login profile that is not saved yet. Only the server knows the site of the current page, so it
@@ -74,6 +85,9 @@ const canMaybeSaveLogin = computed(() => {
 
 /** The site of the login that the save dialog offers to save. */
 const loginDomainToSave = ref<string>();
+
+/** When the user saved the login that the save replaces, or nothing when there is none. */
+const replacedSavedLoginDate = ref<string>();
 
 const isDisconnected = computed(
 	() => liveView.value?.status === 'disconnected' || liveView.value?.status === 'not-found',
@@ -141,6 +155,7 @@ watch(hasControl, (inControl) => {
 	isNoteDialogOpen.value = false;
 	isSaveLoginDialogOpen.value = false;
 	loginDomainToSave.value = undefined;
+	replacedSavedLoginDate.value = undefined;
 	note.value = '';
 });
 
@@ -172,31 +187,31 @@ async function onDone() {
 		return;
 	}
 	if (isBusy.value) return;
-	const domain = await findLoginDomainToSave();
+	const loginToSave = await findLoginToSave();
 	// Control ended elsewhere while we asked, for example on a timeout.
 	if (!hasControl.value) return;
-	if (domain) {
-		loginDomainToSave.value = domain;
+	if (loginToSave.domain) {
+		loginDomainToSave.value = loginToSave.domain;
+		replacedSavedLoginDate.value = loginToSave.replacesSavedLoginFrom;
 		isSaveLoginDialogOpen.value = true;
 		return;
 	}
 	void returnControl();
 }
 
-/** Asks the server which login the user can save now. Nothing when they cannot save one. */
-async function findLoginDomainToSave(): Promise<string | undefined> {
-	if (!canMaybeSaveLogin.value) return undefined;
+/** Asks the server which login the user can save now. No domain when they cannot save one. */
+async function findLoginToSave(): Promise<InstanceAiCloudBrowserLoginToSaveResponse> {
+	if (!canMaybeSaveLogin.value) return {};
 	isBusy.value = true;
 	try {
-		const { domain } = await withTimeout(
+		return await withTimeout(
 			fetchCloudBrowserLoginToSave(rootStore.restApiContext, thread.id, props.taskId),
 			CLOUD_BROWSER_LOGIN_TO_SAVE_TIMEOUT,
 			() => new Error('Timed out while checking which login can be saved'),
 		);
-		return domain;
 	} catch {
 		// Only the server knows the site of the current page, so without its answer we offer no save.
-		return undefined;
+		return {};
 	} finally {
 		isBusy.value = false;
 	}
@@ -245,7 +260,7 @@ function showSaveLoginResult(loginWillBeSaved: boolean, domain: string | undefin
 <template>
 	<div :class="$style.container" data-test-id="instance-ai-browser-preview">
 		<div
-			v-if="userAction || hasControl"
+			v-if="userAction || hasControl || savedLoginDate"
 			:class="$style.banner"
 			data-test-id="instance-ai-browser-preview-banner"
 		>
@@ -254,15 +269,35 @@ function showSaveLoginResult(loginWillBeSaved: boolean, domain: string | undefin
 					{{
 						hasControl
 							? i18n.baseText('instanceAi.cloudBrowser.youHaveControl')
-							: i18n.baseText('instanceAi.cloudBrowser.needsInput')
+							: userAction
+								? i18n.baseText('instanceAi.cloudBrowser.needsInput')
+								: i18n.baseText('instanceAi.cloudBrowser.agentWorking')
 					}}
 				</N8nText>
-				<N8nText tag="div" size="medium">
+				<N8nText v-if="userAction || hasControl" tag="div" size="medium">
 					{{
 						hasControl
 							? i18n.baseText('instanceAi.cloudBrowser.returnControlHint')
 							: userAction?.reason
 					}}
+				</N8nText>
+				<N8nText
+					v-if="savedLoginDate"
+					tag="div"
+					size="medium"
+					data-test-id="instance-ai-browser-preview-saved-login"
+				>
+					{{
+						i18n.baseText('instanceAi.cloudBrowser.savedLoginNotice', {
+							interpolate: { date: savedLoginDate },
+						})
+					}}
+					<N8nLink
+						:to="{ name: VIEWS.PERSONAL_SETTINGS, query: { [SAVED_LOGINS_QUERY]: 'open' } }"
+						size="medium"
+					>
+						{{ i18n.baseText('instanceAi.cloudBrowser.manageSavedLogins') }}
+					</N8nLink>
 				</N8nText>
 			</div>
 			<N8nButton
@@ -411,6 +446,22 @@ function showSaveLoginResult(loginWillBeSaved: boolean, domain: string | undefin
 								{{
 									i18n.baseText('instanceAi.cloudBrowser.saveLoginDescription', {
 										interpolate: { domain: loginDomainToSave },
+									})
+								}}
+							</N8nText>
+							<N8nText
+								v-if="replacedSavedLoginDate"
+								tag="p"
+								size="small"
+								:class="$style.noteDescription"
+								data-test-id="instance-ai-browser-preview-save-login-replaces"
+							>
+								{{
+									i18n.baseText('instanceAi.cloudBrowser.saveLoginReplaces', {
+										interpolate: {
+											domain: loginDomainToSave,
+											date: formatSavedLoginDate(replacedSavedLoginDate),
+										},
 									})
 								}}
 							</N8nText>

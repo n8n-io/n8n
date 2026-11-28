@@ -222,6 +222,7 @@ export class InstanceAiModule implements ModuleInterface {
 			enabled,
 			mcpConnectionsAvailable,
 			browserUseEnabled,
+			cloudBrowserEnabled: settingsService.isCloudBrowserEnabled(),
 			proxyEnabled: service.isProxyEnabled(),
 			cloudManaged: globalConfig.deployment.type === 'cloud',
 			setupCompleted,

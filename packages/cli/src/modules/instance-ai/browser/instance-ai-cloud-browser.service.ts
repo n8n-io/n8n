@@ -1,6 +1,8 @@
 import {
 	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	type InstanceAiCloudBrowserLiveViewResponse,
+	type InstanceAiCloudBrowserLoginToSaveResponse,
+	type InstanceAiSavedLogin,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { PostHogClient } from '@n8n/backend-services';
@@ -172,17 +174,20 @@ export class InstanceAiCloudBrowserService {
 	}
 
 	/**
-	 * The site of the login the user can save in the task's browser, for its owner only. Nothing
-	 * when they cannot save one.
+	 * The login the user can save in the task's browser, for its owner only. No domain when they
+	 * cannot save one.
 	 */
-	async getLoginDomainToSave(
+	async getLoginToSave(
 		userId: string,
 		threadId: string,
 		taskId: string,
-	): Promise<string | undefined> {
+	): Promise<InstanceAiCloudBrowserLoginToSaveResponse> {
 		const entry = this.serversByTaskId.get(taskId);
-		if (entry?.userId !== userId || entry.threadId !== threadId) return undefined;
-		return await entry.server.getLoginDomainToSave();
+		if (entry?.userId !== userId || entry.threadId !== threadId) return {};
+		const loginToSave = await entry.server.getLoginToSave();
+		if (!loginToSave) return {};
+		const { domain, replacesSavedLoginFrom } = loginToSave;
+		return { domain, replacesSavedLoginFrom: replacesSavedLoginFrom?.toISOString() };
 	}
 
 	/**
@@ -216,6 +221,29 @@ export class InstanceAiCloudBrowserService {
 		const entries = [...this.serversByTaskId.values()];
 		this.serversByTaskId.clear();
 		await Promise.allSettled(entries.map(async ({ server }) => await server.release()));
+	}
+
+	/** The user's saved logins, most recently used first. */
+	async listSavedLogins(userId: string): Promise<InstanceAiSavedLogin[]> {
+		await this.assertAvailable();
+		const loginProfiles = await this.getSessionProvider().listSavedLoginProfiles({ userId });
+		return loginProfiles.flatMap(({ id, domain, savedAt, lastUsedAt }) =>
+			savedAt && lastUsedAt
+				? [{ id, domain, savedAt: savedAt.toISOString(), lastUsedAt: lastUsedAt.toISOString() }]
+				: [],
+		);
+	}
+
+	/** Deletes one of the user's saved logins. The provider refuses a login of another user. */
+	async deleteSavedLogin(userId: string, savedLoginId: string): Promise<void> {
+		await this.assertAvailable();
+		await this.getSessionProvider().deleteLoginProfile({ userId }, savedLoginId);
+	}
+
+	private async assertAvailable(): Promise<void> {
+		if (!(await this.isAvailable())) {
+			throw new UserError('The cloud browser is not available on this instance');
+		}
 	}
 
 	private getSessionProvider(): CloudBrowserSessionProvider {
@@ -285,6 +313,10 @@ export class InstanceAiCloudBrowserService {
 			},
 			deleteLoginProfile: async ({ userId }, id) =>
 				await this.aiGatewayBrowserUseService.deleteContext({ userId, contextId: id }),
+			listSavedLoginProfiles: async ({ userId }, domain) =>
+				(await this.aiGatewayBrowserUseService.listSavedContexts({ userId, domain })).map(
+					toLoginProfile,
+				),
 		};
 	}
 }

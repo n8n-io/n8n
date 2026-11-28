@@ -5,7 +5,9 @@ import { defineComponent, h, reactive } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { VIEWS } from '@/app/constants';
 import { CLOUD_BROWSER_LOGIN_TO_SAVE_TIMEOUT } from '@/app/constants/durations';
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 
 import type { CloudBrowserLiveView } from '../../composables/useCloudBrowserLiveViews';
 import {
@@ -515,6 +517,48 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(getByTestId('instance-ai-browser-preview-overlay')).toBeInTheDocument();
 		});
 	});
+	describe('saved login', () => {
+		const savedAt = '2026-10-01T08:00:00.000Z';
+
+		it('says which saved login the session uses and links to the saved logins', () => {
+			const { getByTestId } = render({
+				...live,
+				loginProfile: { domain: 'shop.example.com', savedAt },
+			});
+
+			const notice = getByTestId('instance-ai-browser-preview-saved-login');
+			expect(notice).toHaveTextContent(
+				`This session uses your saved login from ${convertToDisplayDate(savedAt).date}.`,
+			);
+			const link = notice.querySelector('a');
+			expect(link).toHaveTextContent('Manage saved logins');
+			expect(JSON.parse(link?.getAttribute('data-to') ?? '')).toEqual({
+				name: VIEWS.PERSONAL_SETTINGS,
+				query: { savedLogins: 'open' },
+			});
+		});
+
+		it('says "today" for a login saved today', () => {
+			const { getByTestId } = render({
+				...live,
+				loginProfile: { domain: 'shop.example.com', savedAt: new Date().toISOString() },
+			});
+
+			expect(getByTestId('instance-ai-browser-preview-saved-login')).toHaveTextContent(
+				'This session uses your saved login from today.',
+			);
+		});
+
+		it.each([
+			['the session has no login profile', live],
+			['the login profile is not saved', liveWithLogin],
+		])('does not mention a saved login when %s', (_, view) => {
+			const { queryByTestId } = render(view);
+
+			expect(queryByTestId('instance-ai-browser-preview-saved-login')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('save login', () => {
 		async function takeOverAndFinish(
 			view: CloudBrowserLiveView,
@@ -550,6 +594,27 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(getByTestId('instance-ai-browser-preview-save-login-dialog')).toHaveTextContent(
 				'n8n Assistant can reuse your login for example.com.',
 			);
+		});
+
+		it('says which saved login the save replaces', async () => {
+			vi.mocked(fetchCloudBrowserLoginToSave).mockResolvedValue({
+				domain: 'example.com',
+				replacesSavedLoginFrom: '2025-11-12T10:00:00.000Z',
+			});
+
+			const { getByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
+
+			expect(getByTestId('instance-ai-browser-preview-save-login-replaces')).toHaveTextContent(
+				'This replaces your saved login for example.com from Nov 12, 2025.',
+			);
+		});
+
+		it('says nothing about a replace when the user has no saved login for the site', async () => {
+			const { queryByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
+
+			expect(
+				queryByTestId('instance-ai-browser-preview-save-login-replaces'),
+			).not.toBeInTheDocument();
 		});
 
 		it('returns control without asking when the server says the user cannot save a login', async () => {

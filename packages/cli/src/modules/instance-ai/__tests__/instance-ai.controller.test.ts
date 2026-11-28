@@ -89,6 +89,14 @@ function scopeOf(handlerName: string): { scope: Scope; globalOnly: boolean } | u
 	return route.accessScope;
 }
 
+function routeOf(handlerName: string): { method: string; path: string } {
+	const { method, path } = routeMetadata.getRouteMetadata(
+		InstanceAiController as unknown as Parameters<typeof routeMetadata.getRouteMetadata>[0],
+		handlerName,
+	);
+	return { method, path };
+}
+
 describe('InstanceAiController', () => {
 	const instanceAiService = mock<InstanceAiService>();
 	const browserSessionService = mock<InstanceAiBrowserSessionService>();
@@ -1245,23 +1253,25 @@ describe('InstanceAiController', () => {
 			});
 		});
 
-		it('should return the site of the login the user can save', async () => {
+		it('should return the login the user can save', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			cloudBrowserService.getLoginDomainToSave.mockResolvedValue('example.com');
+			cloudBrowserService.getLoginToSave.mockResolvedValue({
+				domain: 'example.com',
+				replacesSavedLoginFrom: '2026-11-12T10:00:00.000Z',
+			});
 
 			const result = await controller.cloudBrowserLoginToSave(req, res, THREAD_ID, 'task-1');
 
-			expect(result).toEqual({ domain: 'example.com' });
-			expect(cloudBrowserService.getLoginDomainToSave).toHaveBeenCalledWith(
-				USER_ID,
-				THREAD_ID,
-				'task-1',
-			);
+			expect(result).toEqual({
+				domain: 'example.com',
+				replacesSavedLoginFrom: '2026-11-12T10:00:00.000Z',
+			});
+			expect(cloudBrowserService.getLoginToSave).toHaveBeenCalledWith(USER_ID, THREAD_ID, 'task-1');
 		});
 
 		it('should return no site when the user cannot save a login', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			cloudBrowserService.getLoginDomainToSave.mockResolvedValue(undefined);
+			cloudBrowserService.getLoginToSave.mockResolvedValue({});
 
 			const result = await controller.cloudBrowserLoginToSave(req, res, THREAD_ID, 'task-1');
 
@@ -1274,7 +1284,7 @@ describe('InstanceAiController', () => {
 			await expect(
 				controller.cloudBrowserLoginToSave(req, res, THREAD_ID, 'task-1'),
 			).rejects.toThrow(ForbiddenError);
-			expect(cloudBrowserService.getLoginDomainToSave).not.toHaveBeenCalled();
+			expect(cloudBrowserService.getLoginToSave).not.toHaveBeenCalled();
 		});
 
 		it('should not check when Instance AI is disabled', async () => {
@@ -1283,7 +1293,7 @@ describe('InstanceAiController', () => {
 			await expect(
 				controller.cloudBrowserLoginToSave(req, res, THREAD_ID, 'task-1'),
 			).rejects.toThrow(ForbiddenError);
-			expect(cloudBrowserService.getLoginDomainToSave).not.toHaveBeenCalled();
+			expect(cloudBrowserService.getLoginToSave).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1399,6 +1409,71 @@ describe('InstanceAiController', () => {
 			).rejects.toThrow(ForbiddenError);
 			expect(memoryService.checkThreadOwnership).not.toHaveBeenCalled();
 			expect(cloudBrowserService.returnControlToAgent).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('listSavedLogins', () => {
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('listSavedLogins')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+		});
+
+		it('should be GET /cloud-browser/saved-logins', () => {
+			expect(routeOf('listSavedLogins')).toEqual({
+				method: 'get',
+				path: '/cloud-browser/saved-logins',
+			});
+		});
+
+		it("should return the user's saved logins", async () => {
+			const savedLogins = [
+				{
+					id: 'ctx-1',
+					domain: 'example.com',
+					savedAt: '2026-11-01T10:00:00.000Z',
+					lastUsedAt: '2026-11-02T09:30:00.000Z',
+				},
+			];
+			cloudBrowserService.listSavedLogins.mockResolvedValue(savedLogins);
+
+			expect(await controller.listSavedLogins(req)).toEqual({ savedLogins });
+			expect(cloudBrowserService.listSavedLogins).toHaveBeenCalledWith(USER_ID);
+		});
+
+		it('should not list saved logins when Instance AI is disabled', async () => {
+			settingsService.isInstanceAiEnabled.mockReturnValue(false);
+
+			await expect(controller.listSavedLogins(req)).rejects.toThrow(ForbiddenError);
+			expect(cloudBrowserService.listSavedLogins).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('deleteSavedLogin', () => {
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('deleteSavedLogin')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		it('should be DELETE /cloud-browser/saved-logins/:savedLoginId', () => {
+			expect(routeOf('deleteSavedLogin')).toEqual({
+				method: 'delete',
+				path: '/cloud-browser/saved-logins/:savedLoginId',
+			});
+		});
+
+		it("should delete one of the user's saved logins", async () => {
+			const result = await controller.deleteSavedLogin(req, res, 'ctx-1');
+
+			expect(result).toEqual({ ok: true });
+			expect(cloudBrowserService.deleteSavedLogin).toHaveBeenCalledWith(USER_ID, 'ctx-1');
+		});
+
+		it('should not delete a saved login when Instance AI is disabled', async () => {
+			settingsService.isInstanceAiEnabled.mockReturnValue(false);
+
+			await expect(controller.deleteSavedLogin(req, res, 'ctx-1')).rejects.toThrow(ForbiddenError);
+			expect(cloudBrowserService.deleteSavedLogin).not.toHaveBeenCalled();
 		});
 	});
 

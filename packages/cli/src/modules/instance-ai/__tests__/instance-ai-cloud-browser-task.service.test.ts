@@ -1113,7 +1113,7 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 			mcpServer.getLoginSaveResults.mockReturnValue([
 				{ domain: 'example.com', status: 'saved' },
 				{ domain: 'example.org', status: 'notSaved' },
-				{ domain: 'shop.example.net', status: 'notSaved' },
+				{ domain: 'shop.example.net', status: 'removed' },
 			]);
 			await service.startTask(task, run);
 			await runSpawnedTask();
@@ -1123,7 +1123,8 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 			const message = startFollowUpRun.mock.calls[0][2];
 			const afterSummary = message.split(wrapUntrustedData('$20 a month', 'cloud-browser'))[1];
 			expect(afterSummary).toContain(
-				'Logins saved: example.com.\nLogins not saved: example.org, shop.example.net.\n</task>',
+				'Logins saved: example.com.\nLogins not saved: example.org.\n' +
+					'Saved logins removed: shop.example.net.\n</task>',
 			);
 		});
 

@@ -10,6 +10,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { redactTelemetryProperties } from '@n8n/telemetry';
 import { computed } from 'vue';
 import { useThread } from '../instanceAi.store';
+import { formatSavedLoginDate } from '@/features/ai/instanceAi/cloudBrowserAgents';
 
 const props = defineProps<{
 	requestId: string;
@@ -17,6 +18,8 @@ const props = defineProps<{
 	resource: string;
 	description: string;
 	options: InstanceGatewayResourceDecision[];
+	/** The user's saved login for the site. Only for `host-with-saved-login`. */
+	savedLogin?: GatewayConfirmationRequiredPayload['savedLogin'];
 	/** The task that asks. Several tasks can ask at the same time. */
 	taskTitle: string;
 }>();
@@ -37,9 +40,18 @@ const title = computed(() =>
 			}),
 );
 
-const details = computed(() =>
-	props.kind === 'credential-write' ? props.description : props.resource,
-);
+const details = computed(() => {
+	if (props.kind === 'credential-write') return props.description;
+	if (props.kind === 'host-with-saved-login' && props.savedLogin) {
+		return i18n.baseText('instanceAi.cloudBrowserConfirmation.savedLoginDetails', {
+			interpolate: {
+				domain: props.savedLogin.domain,
+				date: formatSavedLoginDate(props.savedLogin.savedAt),
+			},
+		});
+	}
+	return props.resource;
+});
 
 // Same layout as the domain access card: persistent option first, deny last.
 // Only the options the request offers are shown.
@@ -62,6 +74,22 @@ const approvalOptions = computed<ApprovalOption[]>(() => {
 			icon: 'check',
 			label: i18n.baseText('instanceAi.domainAccess.allowOnce'),
 			testId: 'cloud-browser-decision-allow-once',
+		});
+	}
+	if (props.options.includes('allowWithSavedLogin')) {
+		list.push({
+			key: 'allowWithSavedLogin',
+			icon: 'check',
+			label: i18n.baseText('instanceAi.cloudBrowserConfirmation.allowWithSavedLogin'),
+			testId: 'cloud-browser-decision-allow-with-saved-login',
+		});
+	}
+	if (props.options.includes('allowWithoutSavedLogin')) {
+		list.push({
+			key: 'allowWithoutSavedLogin',
+			icon: 'check',
+			label: i18n.baseText('instanceAi.cloudBrowserConfirmation.allowWithoutSavedLogin'),
+			testId: 'cloud-browser-decision-allow-without-saved-login',
 		});
 	}
 	if (props.options.includes('denyOnce')) {

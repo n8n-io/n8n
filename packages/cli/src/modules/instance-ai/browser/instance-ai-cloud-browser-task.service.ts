@@ -633,15 +633,18 @@ export class InstanceAiCloudBrowserTaskService {
 function loginSaveResultLines(loginSaveResults: CloudBrowserTaskRecord['loginSaveResults'] = []) {
 	const savedSites: string[] = [];
 	const unsavedSites: string[] = [];
+	const removedSites: string[] = [];
 	for (const { domain, status } of loginSaveResults) {
 		const site = sanitisePromptText(domain);
 		if (status === 'saved') savedSites.push(site);
 		if (status === 'notSaved') unsavedSites.push(site);
+		if (status === 'removed') removedSites.push(site);
 	}
 
 	const lines: string[] = [];
 	if (savedSites.length > 0) lines.push(`Logins saved: ${savedSites.join(', ')}.`);
 	if (unsavedSites.length > 0) lines.push(`Logins not saved: ${unsavedSites.join(', ')}.`);
+	if (removedSites.length > 0) lines.push(`Saved logins removed: ${removedSites.join(', ')}.`);
 	return lines;
 }
 
