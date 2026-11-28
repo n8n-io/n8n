@@ -40,6 +40,18 @@ it in `execution_limit_policy_assignment`. Each project counts its own execution
 project has several policies, the lowest maximum applies. The period and the instance limit
 are in the `features.executionLimits` settings row.
 
+Write policies and assignments through `ExecutionLimitsService` only. Each write locks the
+settings row. A write that changes a value adds rows to `execution_limit_audit` and reloads
+the limits in memory.
+
+- A project and a group have one policy. An assignment replaces the policy that is there.
+- Only a team project can get a policy. A personal project is rejected.
+- The maximum of a policy cannot be above the instance limit. A lower instance limit is
+  accepted later, and the policy stays as it is.
+- A new team project gets the policy of the `newProjects` group. A change of that group
+  does not change existing projects.
+- A deleted policy removes its assignments. The audit table gets one row for the policy.
+
 ## Limit check
 
 `ExecutionLimitPolicyCheck` runs at the `executionAdmission` policy point. `init` registers

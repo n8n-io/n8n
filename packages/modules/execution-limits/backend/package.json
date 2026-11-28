@@ -47,7 +47,8 @@
     "@n8n/errors": "workspace:*",
     "@n8n/typeorm": "workspace:*",
     "@n8n/utils": "workspace:*",
-    "n8n-core": "workspace:*"
+    "n8n-core": "workspace:*",
+    "uuid": "catalog:"
   },
   "peerDependencies": {
     "zod": "catalog:"

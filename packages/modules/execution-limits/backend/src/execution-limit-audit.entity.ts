@@ -25,4 +25,7 @@ export class ExecutionLimitAudit extends WithCreatedAt {
 
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	loginId: string | null;
+
+	@Column({ type: 'uuid', nullable: true })
+	policyId: string | null;
 }

@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { ProjectMutationHooksProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { FoldStepRegistry } from '@n8n/db';
 import { ModuleMetadata, PolicyCheckMetadata } from '@n8n/decorators';
@@ -15,6 +16,7 @@ import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
 import { ExecutionLimitUsagePruningTask } from '../execution-limit-usage-pruning.task';
 import { ExecutionUsageCache } from '../execution-usage-cache';
 import { ExecutionLimitsModule } from '../execution-limits.module';
+import { ExecutionLimitsService } from '../execution-limits.service';
 import { ExecutionLimitsSnapshot } from '../execution-limits-snapshot';
 
 const registeredCheckNames = () =>
@@ -26,10 +28,12 @@ describe('ExecutionLimitsModule', () => {
 	let registry: FoldStepRegistry;
 	let licenseState: ReturnType<typeof mockInstance<LicenseState>>;
 	let usageCache: ReturnType<typeof mockInstance<ExecutionUsageCache>>;
+	let hooks: ReturnType<typeof mockInstance<ProjectMutationHooksProxy>>;
 
 	beforeEach(() => {
 		licenseState = mockInstance(LicenseState);
 		usageCache = mockInstance(ExecutionUsageCache);
+		hooks = mockInstance(ProjectMutationHooksProxy);
 		mockInstance(ExecutionLimitsSnapshot);
 		mockInstance(InstanceSettings, { instanceType: 'main' });
 		registry = new FoldStepRegistry();
@@ -57,6 +61,83 @@ describe('ExecutionLimitsModule', () => {
 		expect(registry.getAll().map((step) => step.name)).toEqual(['execution_limit_usage']);
 		expect(snapshot.start).not.toHaveBeenCalled();
 		expect(usageCache.start).not.toHaveBeenCalled();
+	});
+
+	const registeredProvider = () => {
+		expect(hooks.registerProvider).toHaveBeenCalledTimes(1);
+		return hooks.registerProvider.mock.calls[0][0];
+	};
+
+	it.each([false, true])(
+		'registers both project hooks in one provider at boot when licensed is %s',
+		async (licensed) => {
+			licenseState.isExecutionLimitsLicensed.mockReturnValue(licensed);
+
+			await new ExecutionLimitsModule().init();
+
+			expect(Object.keys(registeredProvider()).sort()).toEqual([
+				'afterTeamProjectCreated',
+				'beforeProjectDeleted',
+			]);
+		},
+	);
+
+	describe('project created hook', () => {
+		let service: ReturnType<typeof mockInstance<ExecutionLimitsService>>;
+
+		beforeEach(() => {
+			service = mockInstance(ExecutionLimitsService);
+		});
+
+		it('does not call the service when unlicensed at the call', async () => {
+			licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
+			await new ExecutionLimitsModule().init();
+
+			await registeredProvider().afterTeamProjectCreated?.('project-1');
+
+			expect(service.assignNewProjectsPolicyTo).not.toHaveBeenCalled();
+		});
+
+		it('assigns the policy of the new projects group when licensed at the call', async () => {
+			licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
+			await new ExecutionLimitsModule().init();
+
+			await registeredProvider().afterTeamProjectCreated?.('project-1');
+
+			expect(service.assignNewProjectsPolicyTo).toHaveBeenCalledExactlyOnceWith('project-1');
+		});
+
+		it('assigns the policy when the licence started after the boot', async () => {
+			licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
+			await new ExecutionLimitsModule().init();
+			licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
+
+			await registeredProvider().afterTeamProjectCreated?.('project-1');
+
+			expect(service.assignNewProjectsPolicyTo).toHaveBeenCalledExactlyOnceWith('project-1');
+		});
+	});
+
+	it('records the policy of a deleted project also when unlicensed', async () => {
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
+		const service = mockInstance(ExecutionLimitsService);
+		const announce = async () => {};
+		service.recordPolicyOfDeletedProject.mockResolvedValue(announce);
+		await new ExecutionLimitsModule().init();
+		const ctx = {};
+
+		const result = await registeredProvider().beforeProjectDeleted?.(
+			{ projectId: 'project-1', userId: 'user-1', loginId: 'login-1' },
+			ctx,
+		);
+
+		expect(service.recordPolicyOfDeletedProject).toHaveBeenCalledExactlyOnceWith(
+			'project-1',
+			'user-1',
+			'login-1',
+			ctx,
+		);
+		expect(result).toBe(announce);
 	});
 
 	// By class name: importing the check here would register it and make the test vacuous.

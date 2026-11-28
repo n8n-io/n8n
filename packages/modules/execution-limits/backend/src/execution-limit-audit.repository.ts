@@ -5,7 +5,8 @@ import { DataSource } from '@n8n/typeorm';
 import { ExecutionLimitAudit } from './execution-limit-audit.entity';
 import type { RecordedExecutionLimitChange } from './execution-limits.types';
 
-const SQLITE_SAFE_INSERT_BATCH_SIZE = 5_000;
+// A row binds up to 7 values, and SQLite accepts 32,766 in one statement.
+const SQLITE_SAFE_INSERT_BATCH_SIZE = 4_000;
 
 class ExecutionLimitAuditTable extends BaseRepository<ExecutionLimitAudit> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {

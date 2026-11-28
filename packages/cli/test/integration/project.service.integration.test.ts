@@ -1,4 +1,4 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import {
 	linkUserToProject,
 	createTeamProject,
@@ -6,7 +6,10 @@ import {
 	createWorkflow,
 	getPersonalProject,
 	testDb,
+	testModules,
 } from '@n8n/backend-test-utils';
+import { ExecutionLimitsService } from '@n8n/backend-module-execution-limits';
+import { EventService } from '@n8n/backend-services';
 import {
 	ProjectRelationRepository,
 	ProjectRelation,
@@ -17,13 +20,14 @@ import {
 	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, IsNull } from '@n8n/typeorm';
 import { LicenseMocker } from '@test-integration/license';
 
 import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createOwner, createUser } from './shared/db/users';
 
 import { License } from '@/license';
+import { packagedModules } from '@/modules/modules.manifest';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -32,6 +36,7 @@ describe('ProjectService', () => {
 	let sharedWorkflowRepository: SharedWorkflowRepository;
 
 	beforeAll(async () => {
+		await testModules.loadModules(['execution-limits'], packagedModules);
 		await testDb.init();
 
 		projectService = Container.get(ProjectService);
@@ -42,6 +47,8 @@ describe('ProjectService', () => {
 		license.mockLicenseState(Container.get(LicenseState));
 		license.enable('feat:projectRole:editor');
 		license.setQuota('quota:maxTeamProjects', -1);
+		license.enable('feat:executionLimits');
+		await Container.get(ModuleRegistry).initModules('main', ['execution-limits']);
 	});
 
 	afterEach(async () => {
@@ -51,12 +58,133 @@ describe('ProjectService', () => {
 			'ProjectRelation',
 			'WorkflowEntity',
 			'SharedWorkflow',
+			'Settings',
+			'ExecutionLimitAudit',
 		]);
+		await Container.get(DataSource).getRepository('ExecutionLimitPolicy').delete({});
 	});
 
 	afterAll(async () => {
 		await cleanupRolesAndScopes();
 		await testDb.terminate();
+	});
+
+	describe('execution limit policies', () => {
+		const changes: unknown[] = [];
+		let executionLimitsService: ExecutionLimitsService;
+		let owner: User;
+
+		const assignmentsOf = async (projectId: string) =>
+			(
+				await Container.get(DataSource)
+					.getRepository('ExecutionLimitPolicyAssignment')
+					.findBy({ projectId })
+			).map((row) => (row as { policyId: string }).policyId);
+
+		const readPolicyRows = async () =>
+			await Container.get(DataSource)
+				.getRepository('ExecutionLimitAudit')
+				.find({
+					select: ['projectId', 'policyId', 'field', 'oldValue', 'newValue', 'updatedBy'],
+					where: { field: 'projectPolicy' },
+					order: { id: 'ASC' },
+				});
+
+		beforeAll(() => {
+			executionLimitsService = Container.get(ExecutionLimitsService);
+			Container.get(EventService).on('execution-limit-updated', (event) => changes.push(event));
+		});
+
+		beforeEach(async () => {
+			owner = await createOwner();
+			changes.length = 0;
+		});
+
+		it('gives a new team project the policy of the newProjects group', async () => {
+			const policy = await executionLimitsService.createPolicy(
+				{ name: 'New projects', maxExecutions: 50 },
+				owner.id,
+			);
+			await executionLimitsService.assignPolicyToGroup(policy.id, 'newProjects', owner.id);
+			changes.length = 0;
+
+			const project = await projectService.createTeamProject(owner, { name: 'Team' });
+
+			expect(await assignmentsOf(project.id)).toEqual([policy.id]);
+			expect(executionLimitsService.getApplicableLimits(project.id)?.projectMaxExecutions).toBe(50);
+			expect(await readPolicyRows()).toEqual([
+				{
+					projectId: project.id,
+					policyId: policy.id,
+					field: 'projectPolicy',
+					oldValue: null,
+					newValue: policy.id,
+					updatedBy: null,
+				},
+			]);
+			expect(changes).toHaveLength(1);
+		});
+
+		it('gives a new team project no policy when the group has none', async () => {
+			const project = await projectService.createTeamProject(owner, { name: 'Team' });
+
+			expect(await assignmentsOf(project.id)).toEqual([]);
+			expect(changes).toEqual([]);
+		});
+
+		describe('deleteProject', () => {
+			let project: Project;
+			let policyId: string;
+
+			beforeEach(async () => {
+				project = await createTeamProject('Limited', owner);
+				({ id: policyId } = await executionLimitsService.createPolicy(
+					{ name: 'Limited', maxExecutions: 10 },
+					owner.id,
+				));
+				await executionLimitsService.assignPolicyToProjects(policyId, [project.id], owner.id);
+				changes.length = 0;
+			});
+
+			it('records the removal of the policy of the project', async () => {
+				await projectService.deleteProject(owner, project.id);
+
+				const removal = {
+					projectId: project.id,
+					policyId,
+					field: 'projectPolicy',
+					oldValue: policyId,
+					newValue: null,
+					updatedBy: owner.id,
+				};
+				expect(changes).toEqual([expect.objectContaining(removal)]);
+				expect(
+					await Container.get(DataSource)
+						.getRepository('ExecutionLimitAudit')
+						.find({
+							select: ['projectId', 'policyId', 'field', 'oldValue', 'newValue', 'updatedBy'],
+							where: { field: 'projectPolicy', newValue: IsNull() },
+						}),
+				).toEqual([removal]);
+				expect(await assignmentsOf(project.id)).toEqual([]);
+			});
+
+			it('keeps the policy and records nothing when the project delete fails', async () => {
+				vi.spyOn(
+					Container.get(ProjectRepository),
+					'removeProjectForDeletion',
+				).mockRejectedValueOnce(new Error('The project delete failed'));
+				const rowsBefore = await readPolicyRows();
+
+				await expect(projectService.deleteProject(owner, project.id)).rejects.toThrow(
+					'The project delete failed',
+				);
+
+				expect(await assignmentsOf(project.id)).toEqual([policyId]);
+				expect(changes).toEqual([]);
+				expect(await readPolicyRows()).toEqual(rowsBefore);
+			});
+		});
 	});
 
 	describe('project reads', () => {

@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { ProjectMutationHooksProxy } from '@n8n/backend-services';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -14,6 +15,27 @@ export class ExecutionLimitsModule implements ModuleInterface {
 		const { ExecutionLimitUsageFoldStep } = await import('./execution-limit-usage.fold-step.js');
 
 		Container.get(FoldStepRegistry).register(Container.get(ExecutionLimitUsageFoldStep));
+
+		// Registered without a licence: a policy assigned under an earlier licence still exists.
+		const hooks = Container.get(ProjectMutationHooksProxy);
+		hooks.registerProvider({
+			beforeProjectDeleted: async ({ projectId, userId, loginId }, ctx) => {
+				const { ExecutionLimitsService } = await import('./execution-limits.service.js');
+				return await Container.get(ExecutionLimitsService).recordPolicyOfDeletedProject(
+					projectId,
+					userId,
+					loginId,
+					ctx,
+				);
+			},
+			// Checked at each call: a licence can start after the boot.
+			afterTeamProjectCreated: async (projectId) => {
+				if (!Container.get(LicenseState).isExecutionLimitsLicensed()) return;
+
+				const { ExecutionLimitsService } = await import('./execution-limits.service.js');
+				await Container.get(ExecutionLimitsService).assignNewProjectsPolicyTo(projectId);
+			},
+		});
 
 		if (!Container.get(LicenseState).isExecutionLimitsLicensed()) return;
 

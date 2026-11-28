@@ -5152,7 +5152,16 @@ describe('LogStreamingEventRelay', () => {
 			const payload = {
 				updatedBy: 'sa-1',
 				projectId: 'project-1',
-				field: 'projectMaxExecutions',
+				policyId: 'policy-1',
+				field: 'projectPolicy',
+				oldValue: 'policy-1',
+				newValue: null,
+			} as const;
+			const settingsPayload = {
+				updatedBy: 'sa-1',
+				projectId: null,
+				policyId: null,
+				field: 'instanceMaxExecutions',
 				oldValue: 100,
 				newValue: null,
 			} as const;
@@ -5165,13 +5174,38 @@ describe('LogStreamingEventRelay', () => {
 				},
 			]);
 
-			it('should send the changed limit with its old and new value', () => {
+			it('should send the changed limit with its policy and its old and new value', () => {
 				eventService.emit('execution-limit-updated', payload);
 
 				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
 					eventName: 'n8n.audit.execution-limit.updated',
 					payload,
 				});
+			});
+
+			it('should send the name and the maximum of a policy that changed', () => {
+				const policyChange = {
+					...payload,
+					projectId: null,
+					field: 'policy',
+					oldValue: { name: 'Free', maxExecutions: 10 },
+					newValue: { name: 'Free', maxExecutions: 20 },
+				} as const;
+
+				eventService.emit('execution-limit-updated', policyChange);
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.execution-limit.updated',
+					payload: policyChange,
+				});
+			});
+
+			it('should send no policy id key for a settings change', () => {
+				eventService.emit('execution-limit-updated', settingsPayload);
+
+				const [{ payload: sent }] = eventBus.sendAuditEvent.mock.calls[0];
+				expect(sent).not.toHaveProperty('policyId');
+				expect(sent).toMatchObject({ field: 'instanceMaxExecutions', oldValue: 100 });
 			});
 
 			it('should send no user for a limit that n8n changed', () => {

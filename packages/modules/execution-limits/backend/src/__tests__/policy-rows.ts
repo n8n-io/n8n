@@ -4,6 +4,10 @@ import { randomUUID } from 'node:crypto';
 
 import { ExecutionLimitPolicy } from '../execution-limit-policy.entity';
 import { ExecutionLimitPolicyAssignment } from '../execution-limit-policy-assignment.entity';
+import {
+	ExecutionLimitPolicyGroupAssignment,
+	type ExecutionLimitPolicyGroup,
+} from '../execution-limit-policy-group-assignment.entity';
 
 /** Inserts a policy and returns its id. */
 export async function insertPolicy(
@@ -20,4 +24,13 @@ export async function assignPolicyToProject(policyId: string, projectId: string)
 	await Container.get(DataSource)
 		.getRepository(ExecutionLimitPolicyAssignment)
 		.insert({ policyId, projectId });
+}
+
+export async function assignPolicyToGroup(
+	policyId: string,
+	group: ExecutionLimitPolicyGroup,
+): Promise<void> {
+	await Container.get(DataSource)
+		.getRepository(ExecutionLimitPolicyGroupAssignment)
+		.insert({ policyId, group });
 }
