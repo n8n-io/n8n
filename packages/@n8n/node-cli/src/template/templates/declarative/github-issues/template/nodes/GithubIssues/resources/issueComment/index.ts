@@ -19,7 +19,7 @@ export const issueCommentDescription: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get issue comments',
+				action: 'Get many issue comments',
 				description: 'Get issue comments',
 				routing: {
 					request: {
