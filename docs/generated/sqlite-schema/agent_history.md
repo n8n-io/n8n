@@ -125,6 +125,7 @@ erDiagram
   varchar_32_ taskId
   TEXT taskStop
   varchar_36_ taskVersionId FK
+  VARCHAR_32_ testTaskId
   varchar_255_ title
   INTEGER totalCompletionTokens
   REAL totalCost

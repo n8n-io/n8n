@@ -175,6 +175,8 @@ export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionC
 	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 	abortSignal?: AbortSignal;
 	simulation?: DraftSimulationResolver;
+	/** False for a schedule test, which runs like a scheduled run. Defaults to true. */
+	allowBackgroundTasks?: boolean;
 }
 
 export interface ExecuteForChatPublishedConfig extends ChatExecutionInput {
@@ -701,11 +703,23 @@ export class AgentExecutionOrchestratorService {
 			...resume,
 			source: resume.source ?? checkpoint.scope.source,
 			simulationSession,
+			...((await this.isScheduleTest(checkpoint.memoryScope.threadId))
+				? { allowBackgroundTasks: false }
+				: {}),
 		};
 		yield* this.withRuntimeLease(
 			async () => await this.getResumeRuntime(run, checkpoint),
 			(runtime) => this.resumeRuntimeTurn(run, checkpoint, runtime),
 		);
+	}
+
+	/**
+	 * A schedule test runs and resumes like a scheduled run, without background
+	 * tasks. The mark is on the thread, so every surface keeps it.
+	 */
+	private async isScheduleTest(threadId: string): Promise<boolean> {
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		return Boolean(thread?.testTaskId);
 	}
 
 	/**
@@ -939,8 +953,20 @@ export class AgentExecutionOrchestratorService {
 			previewChat: config.previewChat,
 			sessionMode,
 		});
+		// Every new draft turn passes here: the Preview queue, MCP and Instance AI.
+		const scheduleTest = await this.isScheduleTest(config.memory.threadId);
+		// A schedule test runs one turn, like the scheduled run. Only the Preview queue
+		// creates a test session and admits its first turn, so any other turn is a follow-up.
+		if (scheduleTest && !config.admittedExecution) {
+			throw new UserError('A schedule test runs once. Start a new session to chat with the agent.');
+		}
 		const simulationSession = await config.simulation?.(config.memory.threadId);
-		const draft = { ...config, sessionMode, simulationSession };
+		const draft = {
+			...config,
+			sessionMode,
+			simulationSession,
+			...(scheduleTest ? { allowBackgroundTasks: false } : {}),
+		};
 		// The session is known only after the access check, and a new test chat is marked only
 		// when its turn starts, so the test chat's own sandbox is chosen here.
 		const draftSetup = simulationSession
@@ -1375,6 +1401,10 @@ export class AgentExecutionOrchestratorService {
 
 	async executeForWake(config: ExecuteForWakeConfig): Promise<void> {
 		const { agentId, memory, identity, abortSignal } = config;
+		// A schedule test runs one turn, like the scheduled run. It takes no wake.
+		if (await this.isScheduleTest(memory.threadId)) {
+			throw new OperationalError('A schedule test session takes no background job wake');
+		}
 		const isDraft = identity.type === 'draft';
 		const productionUserId = isDraft
 			? undefined
@@ -2125,6 +2155,8 @@ export class AgentExecutionOrchestratorService {
 				user: setup.runtime.user,
 				sandboxPrincipalHash: setup.sandboxPrincipalHash,
 				previewChat: setup.runtime.previewChat,
+				// Before the simulation params: a test run turns background tasks off.
+				allowBackgroundTasks: config.allowBackgroundTasks,
 				...simulationRuntimeParams(config.simulationSession),
 			},
 			{

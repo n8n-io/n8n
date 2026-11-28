@@ -1015,8 +1015,10 @@ describe('AgentExecutionOrchestratorService', () => {
 			onBudgetNotice,
 			budget,
 			runtimeChunks,
+			scheduleTest = false,
 		}: {
 			abortSignal?: AbortSignal;
+			scheduleTest?: boolean;
 			previewChat?: boolean;
 			automaticPreviewContinuation?: boolean;
 			announceExecution?: boolean;
@@ -1027,6 +1029,11 @@ describe('AgentExecutionOrchestratorService', () => {
 			const fixtures = makeService();
 			const runtime = makeRuntime(runtimeChunks, undefined, budget);
 			fixtures.runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+			if (scheduleTest) {
+				fixtures.executionService.findThreadById.mockResolvedValue(
+					mock<AgentExecutionThread>({ id: 'thread-1', testTaskId: 'task-1' }),
+				);
+			}
 			fixtures.checkpointStorage.getStatus.mockResolvedValue({
 				status: 'active',
 				checkpoint: makeCheckpoint(),
@@ -1046,6 +1053,16 @@ describe('AgentExecutionOrchestratorService', () => {
 							...(announceExecution ? { onExecutionStarted } : {}),
 							previewChat,
 							...(onBudgetNotice ? { onBudgetNotice } : {}),
+							// The Preview queue admits the one turn of a schedule test.
+							...(scheduleTest
+								? {
+										admittedExecution: {
+											executionId: 'admitted-1',
+											startedAt: new Date(),
+											inputMessageIds: ['message-1'],
+										},
+									}
+								: {}),
 							abortSignal,
 						})
 					: fixtures.service.resumeForChat({
@@ -1072,6 +1089,48 @@ describe('AgentExecutionOrchestratorService', () => {
 				sdkStart: operation === 'start' ? runtime.agent.stream : runtime.agent.resume,
 			};
 		}
+
+		it('builds the runtime of a schedule test without background tasks', async () => {
+			const { stream, runtimeCacheService } = makeTurn({ previewChat: true, scheduleTest: true });
+
+			await collect(stream);
+
+			expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ previewChat: true, allowBackgroundTasks: false }),
+			);
+		});
+
+		it.runIf(operation === 'start')(
+			'refuses a turn of a schedule test that the Preview queue did not admit',
+			async () => {
+				// MCP `call_agent` and the Instance AI draft test run a turn without the queue.
+				const { runtimeCacheService, executionService, service } = makeTurn({
+					scheduleTest: true,
+				});
+				const stream = service.executeForChat({
+					agentId,
+					projectId,
+					user,
+					message: 'Follow up',
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					sessionMode: 'existing',
+				});
+
+				await expect(collect(stream)).rejects.toThrow('A schedule test runs once');
+				expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+				expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+			},
+		);
+
+		it('resumes a schedule test without background tasks on every surface', async () => {
+			const { stream, runtimeCacheService } = makeTurn({ scheduleTest: true });
+
+			await collect(stream);
+
+			expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ allowBackgroundTasks: false }),
+			);
+		});
 
 		it('finishes an admitted turn when Agents is disabled', async () => {
 			const { stream, settingsService, onExecutionStarted, executionService } = makeTurn();
@@ -3786,6 +3845,26 @@ describe('AgentExecutionOrchestratorService', () => {
 			);
 		},
 	);
+
+	it('rejects a wake on a schedule test session', async () => {
+		const { service, runtimeCacheService, executionService } = makeService();
+		executionService.findThreadById.mockResolvedValue(
+			mock<AgentExecutionThread>({ id: 'thread-1', testTaskId: 'task-1' }),
+		);
+
+		await expect(
+			service.executeForWake({
+				backgroundJobSignal: { tasks: [] },
+				agentId,
+				projectId,
+				message: 'Results are ready.',
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				identity: { type: 'draft', user, principalHash: userPrincipalHash },
+				abortSignal: new AbortController().signal,
+			}),
+		).rejects.toThrow('A schedule test session takes no background job wake');
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
 
 	it('blocks tools and rejects a pause report interrupted by its guardrail', async () => {
 		const { service, runtimeCacheService } = makeService();

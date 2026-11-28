@@ -102,6 +102,74 @@ describe('AgentChatMessageDto', () => {
 	});
 });
 
+describe('schedule test fields', () => {
+	const attachment = {
+		fileName: 'photo.png',
+		mimeType: 'image/png',
+		data: Buffer.from([1, 2, 3]).toString('base64'),
+	};
+
+	it('accepts a task id only on the first message of a new session', () => {
+		expect(
+			AgentPreviewChatMessageDto.safeParse({
+				message: 'Summarize',
+				newSession: true,
+				taskId: 'task-1',
+			}).success,
+		).toBe(true);
+		expect(
+			AgentPreviewChatMessageDto.safeParse({ message: 'Summarize', taskId: 'task-1' }).success,
+		).toBe(false);
+		expect(
+			AgentPreviewChatMessageDto.safeParse({ message: 'Summarize', newSession: true, taskId: '' })
+				.success,
+		).toBe(false);
+	});
+
+	it('accepts only the schedule objective with a task id', () => {
+		const test = { newSession: true, taskId: 'task-1' };
+		expect(AgentPreviewChatMessageDto.safeParse({ ...test, message: '  ' }).success).toBe(false);
+		expect(
+			AgentPreviewChatMessageDto.safeParse({ ...test, message: '', attachments: [attachment] })
+				.success,
+		).toBe(false);
+		expect(
+			AgentPreviewChatMessageDto.safeParse({
+				...test,
+				message: 'Summarize',
+				attachments: [attachment],
+			}).success,
+		).toBe(false);
+	});
+
+	it('accepts a valid task timezone only with a task id', () => {
+		const test = { message: 'Summarize', newSession: true, taskId: 'task-1' };
+		const parsed = AgentPreviewChatMessageDto.safeParse({ ...test, taskTimezone: 'Europe/Berlin' });
+		expect(parsed.success && parsed.data.taskTimezone).toBe('Europe/Berlin');
+		expect(AgentPreviewChatMessageDto.safeParse({ ...test, taskTimezone: null }).success).toBe(
+			true,
+		);
+		expect(
+			AgentPreviewChatMessageDto.safeParse({ ...test, taskTimezone: 'Not/AZone' }).success,
+		).toBe(false);
+		expect(
+			AgentPreviewChatMessageDto.safeParse({ message: 'Hi', taskTimezone: 'Europe/Berlin' })
+				.success,
+		).toBe(false);
+	});
+
+	it('drops the schedule test fields from an n8n Chat message', () => {
+		const parsed = AgentChatMessageDto.parse({
+			message: 'Summarize',
+			newSession: true,
+			taskId: 'task-1',
+			taskTimezone: 'Europe/Berlin',
+		});
+		expect(parsed).not.toHaveProperty('taskId');
+		expect(parsed).not.toHaveProperty('taskTimezone');
+	});
+});
+
 describe('chat message mode', () => {
 	it('accepts a test run only in the preview chat', () => {
 		expect(AgentPreviewChatMessageDto.parse({ message: 'Hi', mode: 'test' })).toMatchObject({

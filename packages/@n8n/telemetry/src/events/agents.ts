@@ -1121,9 +1121,11 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			source: z
-				.enum(['icon', 'primary'])
+				.enum(['icon', 'primary', 'schedule', 'schedule_modal', 'schedule_rerun'])
 				.optional()
-				.describe('The button that opened the preview. Omit this for non-button openings.'),
+				.describe(
+					'The button that opened the preview. schedule: the Test action of a schedule in the agent config. schedule_modal: Preview in the schedule modal. schedule_rerun: Run again in a schedule test session. Omit this for non-button openings.',
+				),
 		}),
 	},
 	USER_REVERTED_CHANGES_ON_AGENT: {

@@ -39,6 +39,7 @@ import { randomUUID } from 'node:crypto';
 import { AgentPlanService } from './agent-plan.service';
 import { presentPlan } from './plans/agent-plan-tools';
 import { AgentTaskCancellationService } from './agent-task-cancellation.service';
+import { AgentTaskService } from './agent-task.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -95,6 +96,7 @@ export class AgentChatController {
 		private readonly chatRelay: AgentChatRelayService,
 		private readonly plans: AgentPlanService,
 		private readonly agentTestScenariosService: AgentTestScenariosService,
+		private readonly agentTaskService: AgentTaskService,
 	) {}
 
 	private async requireProductionChat(agentId: string, projectId: string): Promise<void> {
@@ -266,7 +268,8 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		// The text-or-attachment invariant is enforced by the DTO schema.
-		const { message, sessionId, messageId, newSession, attachments, mode } = payload;
+		const { message, sessionId, messageId, newSession, attachments, mode, taskId, taskTimezone } =
+			payload;
 
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
@@ -301,6 +304,10 @@ export class AgentChatController {
 			}
 			const threadId = prepared.sessionId;
 			const resourceId = draftChatMemoryResourceId(req.user.id);
+			// Throws when the task is not on this agent. The relay reports it on the stream.
+			const turnMessage = taskId
+				? await this.agentTaskService.buildTaskTestMessage(agentId, taskId, message, taskTimezone)
+				: message;
 			return {
 				agentId,
 				projectId,
@@ -309,7 +316,8 @@ export class AgentChatController {
 				source: 'chat',
 				payload: {
 					kind: 'preview',
-					message,
+					message: turnMessage,
+					...(taskId ? { taskId } : {}),
 					messageId,
 					...(mode ? { mode } : {}),
 					attachments: await this.chatRelay.storeChatAttachments({
@@ -1106,7 +1114,10 @@ export class AgentChatController {
 			req.user.id,
 		);
 		if (!history && !checkpoint) throw new NotFoundError(`Thread "${threadId}" not found`);
-		return threadMessagesResponse(history, isOlderChatHistoryPage(page) ? null : checkpoint);
+		return {
+			...threadMessagesResponse(history, isOlderChatHistoryPage(page) ? null : checkpoint),
+			...(thread?.testTaskId ? { testTaskId: thread.testTaskId } : {}),
+		};
 	}
 
 	@Get('/:agentId/chat/messages')

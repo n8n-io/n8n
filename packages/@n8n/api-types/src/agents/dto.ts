@@ -976,6 +976,16 @@ const agentPreviewChatMessageShape = {
 	 * stays one. Absent or `live` runs the draft against real services.
 	 */
 	mode: agentChatModeSchema.optional(),
+	/**
+	 * Test a schedule. The server sends the message as that task's scheduled run
+	 * would, and runs the turn without background tasks. Needs `newSession`.
+	 */
+	taskId: z.string().min(1).optional(),
+	/**
+	 * The unsaved timezone of the tested task. `null` is the instance timezone.
+	 * Omit it to use the saved timezone.
+	 */
+	taskTimezone: agentTaskSchema.shape.timezone,
 };
 
 /** Rules that every chat message DTO applies on top of its shape. */
@@ -989,6 +999,22 @@ const hasSessionForMessageId = {
 		!value.messageId || !!value.sessionId,
 	options: { message: 'A session ID is required with a message ID', path: ['sessionId'] },
 };
+const hasNewSessionForTaskId = {
+	check: (value: { taskId?: string; newSession?: true }) => !value.taskId || !!value.newSession,
+	options: { message: 'A task test must start a new session', path: ['newSession'] },
+};
+// A scheduled run sends only the objective, so a test does too.
+const hasOnlyObjectiveForTaskId = {
+	check: (value: { taskId?: string; message: string; attachments?: unknown[] }) =>
+		!value.taskId || (value.message.trim().length > 0 && (value.attachments?.length ?? 0) === 0),
+	options: { message: 'A task test sends only the schedule objective', path: ['message'] },
+};
+
+const hasTaskIdForTaskTimezone = {
+	check: (value: { taskId?: string; taskTimezone?: string | null }) =>
+		value.taskTimezone === undefined || !!value.taskId,
+	options: { message: 'A task timezone needs a task ID', path: ['taskTimezone'] },
+};
 
 const agentChatMessageSchema = z
 	.object(agentChatMessageShape)
@@ -998,7 +1024,10 @@ const agentChatMessageSchema = z
 const agentPreviewChatMessageSchema = z
 	.object(agentPreviewChatMessageShape)
 	.refine(hasMessageContent.check, hasMessageContent.options)
-	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
+	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options)
+	.refine(hasNewSessionForTaskId.check, hasNewSessionForTaskId.options)
+	.refine(hasOnlyObjectiveForTaskId.check, hasOnlyObjectiveForTaskId.options)
+	.refine(hasTaskIdForTaskTimezone.check, hasTaskIdForTaskTimezone.options);
 
 /**
  * A UUID in canonical lowercase form. Use it where an id becomes part of a

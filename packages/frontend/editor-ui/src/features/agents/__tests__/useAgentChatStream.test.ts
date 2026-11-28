@@ -3888,6 +3888,106 @@ describe('useAgentChatStream — done executionId', () => {
 			}
 		},
 	);
+
+	it('sends a task id only with the first message of a new session', async () => {
+		getChatMessagesMock.mockRejectedValue({ httpStatusCode: 404 });
+		const fetchMock = vi.fn(
+			async (_input: RequestInfo | URL, _init?: RequestInit) =>
+				new Response(JSON.stringify({ message: 'Unavailable' }), { status: 503 }),
+		);
+		globalThis.fetch = fetchMock as typeof fetch;
+		const newSession = ref(true);
+		const hook = buildHook('thread-new', { newSession });
+
+		await hook.loadHistory();
+		expect(hook.sessionTestTaskId.value).toBeUndefined();
+		await hook.sendMessage('Summarize', undefined, undefined, undefined, {
+			taskId: 'task-1',
+		});
+		await flushPromises();
+		// The server refused the test, so the session stays open.
+		expect(hook.sessionTestTaskId.value).toBeUndefined();
+		newSession.value = false;
+		await hook.sendMessage('Summarize', undefined, undefined, undefined, {
+			taskId: 'task-1',
+		});
+		await flushPromises();
+
+		expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
+			newSession: true,
+			taskId: 'task-1',
+		});
+		expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).not.toHaveProperty('taskId');
+	});
+
+	it('sends the unsaved timezone of a schedule test, including the instance timezone', async () => {
+		getChatMessagesMock.mockRejectedValue({ httpStatusCode: 404 });
+		const fetchMock = vi.fn(
+			async (_input: RequestInfo | URL, _init?: RequestInit) =>
+				new Response(JSON.stringify({ message: 'Unavailable' }), { status: 503 }),
+		);
+		globalThis.fetch = fetchMock as typeof fetch;
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		await hook.loadHistory();
+		await hook.sendMessage('Summarize', undefined, undefined, undefined, {
+			taskId: 'task-1',
+			timezone: 'Asia/Tokyo',
+		});
+		await flushPromises();
+		await hook.sendMessage('Summarize', undefined, undefined, undefined, {
+			taskId: 'task-1',
+			timezone: null,
+		});
+		await flushPromises();
+		await hook.sendMessage('Summarize', undefined, undefined, undefined, { taskId: 'task-1' });
+		await flushPromises();
+
+		const bodies = fetchMock.mock.calls.map((call) => JSON.parse(String(call[1]?.body)));
+		expect(bodies[0]).toMatchObject({ taskId: 'task-1', taskTimezone: 'Asia/Tokyo' });
+		expect(bodies[1]).toMatchObject({ taskId: 'task-1', taskTimezone: null });
+		expect(bodies[2]).not.toHaveProperty('taskTimezone');
+	});
+
+	it('marks a schedule test session once the server accepts the test', async () => {
+		getChatMessagesMock.mockRejectedValue({ httpStatusCode: 404 });
+		const response = Promise.withResolvers<Response>();
+		globalThis.fetch = vi.fn(async () => await response.promise) as typeof fetch;
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+		const onAccepted = vi.fn(() => {
+			// The host consumes the pending prompt here, so the mark must be set too.
+			expect(hook.sessionTestTaskId.value).toBe('task-1');
+		});
+
+		await hook.loadHistory();
+		const sending = hook.sendMessage('Summarize', undefined, onAccepted, undefined, {
+			taskId: 'task-1',
+		});
+		await flushPromises();
+		// No notice yet: the user cannot start another session before the test is accepted.
+		expect(hook.sessionTestTaskId.value).toBeUndefined();
+
+		response.resolve(makeSseResponse([{ type: 'finish', finishReason: 'stop' } as AgentSseEvent]));
+		await sending;
+		await flushPromises();
+
+		expect(onAccepted).toHaveBeenCalledOnce();
+		expect(hook.sessionTestTaskId.value).toBe('task-1');
+	});
+
+	it('marks a reopened schedule test session from its history', async () => {
+		getChatMessagesMock.mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+			testTaskId: 'task-1',
+		});
+		const hook = buildHook('thread-test');
+
+		await hook.loadHistory();
+
+		expect(hook.sessionTestTaskId.value).toBe('task-1');
+	});
 });
 
 describe('useAgentChatStream — subagent-chunk', () => {

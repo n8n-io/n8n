@@ -71,6 +71,7 @@ import {
 	moveAgent,
 	createAgentTask,
 	deleteAgent,
+	getAgentTasks,
 	updateAgentSkill,
 } from '../composables/useAgentApi';
 import { useAgentKnowledge } from '../composables/useAgentKnowledge';
@@ -84,6 +85,8 @@ import type {
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
+	AgentPreviewPrompt,
+	AgentTaskTestRequest,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentTestScenariosExperiment } from '@/experiments/agentTestScenarios/useAgentTestScenariosExperiment';
@@ -458,7 +461,7 @@ const defaultPanelWidth = computed(() => {
 const isPreviewDockOpen = computed(function isPreviewDockOpen() {
 	return !isStandalonePreview.value && persistedPreviewOpen.value;
 });
-const taskPreviewPrompt = ref<string>();
+const taskPreviewPrompt = ref<AgentPreviewPrompt>();
 const isPreviewActive = computed(function isPreviewActive() {
 	return isStandalonePreview.value || isPreviewDockOpen.value;
 });
@@ -1318,8 +1321,21 @@ function viewPreviewTrace() {
 	});
 }
 
+/** Counts the user's own session choices, so a slow schedule test does not override one. */
+let sessionChoice = 0;
+
 function startNewPreviewSession() {
+	sessionChoice++;
+	// A schedule test that was not sent yet must not move into the new chat.
+	taskPreviewPrompt.value = undefined;
 	onNewChat();
+}
+
+/** An unsent prompt belongs to the session it was made for, not to the picked one. */
+function pickPreviewSession(sessionId: string) {
+	sessionChoice++;
+	taskPreviewPrompt.value = undefined;
+	onSessionPick(sessionId);
 }
 
 async function onDeletePreviewSession(sessionId: string) {
@@ -1365,15 +1381,69 @@ async function onOpenPreview(
 	return true;
 }
 
-async function onPreviewTask(instructions: string) {
+/** Tests a schedule in a new Preview session, so the run does not mix with an open chat. */
+async function onPreviewTask(
+	{ objective, taskId, timezone, source }: AgentTaskTestRequest,
+	choice = sessionChoice,
+) {
 	const target = { projectId: projectId.value, agentId: agentId.value };
-	if (!(await onOpenPreview(undefined, target))) return;
+	if (!(await onOpenPreview(source, target))) return;
+	// The user picked a session or started a chat, or a newer test started, while Preview opened.
+	if (choice !== sessionChoice) return;
+	// This test now owns the session choice: an older pending test stops here.
+	sessionChoice++;
 
-	// Reset first so the same objective can be previewed more than once.
+	// Reset first so the same objective can be tested more than once.
 	taskPreviewPrompt.value = undefined;
+	onNewChat();
 	await nextTick();
 	if (isStaleAgentTarget(target.projectId, target.agentId)) return;
-	taskPreviewPrompt.value = instructions;
+	taskPreviewPrompt.value = {
+		text: objective,
+		scheduleTest: taskId ? { taskId, timezone } : undefined,
+	};
+}
+
+const isRunningScheduleTestAgain = ref(false);
+
+/** Tests the schedule of a schedule test session again, with its saved objective. */
+async function onRunScheduleTestAgain(taskId: string) {
+	if (isRunningScheduleTestAgain.value) return;
+	isRunningScheduleTestAgain.value = true;
+	try {
+		await runScheduleTestAgain(taskId);
+	} finally {
+		isRunningScheduleTestAgain.value = false;
+	}
+}
+
+async function runScheduleTestAgain(taskId: string) {
+	const target = { projectId: projectId.value, agentId: agentId.value };
+	// While the tasks load, the user can pick a session, start a chat or another test,
+	// or go back to another session. Preview is open, so the session ID shows each one.
+	const choice = sessionChoice;
+	const sessionId = effectiveSessionId.value;
+	const isStale = () =>
+		isStaleAgentTarget(target.projectId, target.agentId) ||
+		choice !== sessionChoice ||
+		effectiveSessionId.value !== sessionId;
+	let task;
+	try {
+		const tasks = await getAgentTasks(rootStore.restApiContext, target.projectId, target.agentId);
+		task = tasks.find(({ id }) => id === taskId);
+	} catch (error) {
+		if (!isStale()) showError(error, locale.baseText('agents.chat.scheduleTest.runAgain.error'));
+		return;
+	}
+	if (isStale()) return;
+	if (!task) {
+		showMessage({
+			type: 'warning',
+			title: locale.baseText('agents.chat.scheduleTest.runAgain.missing'),
+		});
+		return;
+	}
+	await onPreviewTask({ objective: task.objective, taskId, source: 'schedule_rerun' }, choice);
 }
 
 function getBuilderQuery() {
@@ -3532,7 +3602,7 @@ useKeybindings({
 			@back="returnToBuilderFromPreview"
 			@delete-session="onDeletePreviewSession"
 			@new-session="startNewPreviewSession"
-			@session-select="onSessionPick"
+			@session-select="pickPreviewSession"
 			@view-trace="viewPreviewTrace"
 		/>
 		<AgentBuilderHeader
@@ -3746,6 +3816,10 @@ useKeybindings({
 					:effective-session-id="effectiveSessionId"
 					:show-test-scenarios="showTestScenariosEmptyState"
 					:new-session="currentSessionIsEphemeral"
+					:initial-prompt="taskPreviewPrompt"
+					:schedule-test-disabled-reason="testModeDisabledReason"
+					:schedule-test-validation-issues="testValidationIssues"
+					:schedule-test-running="isRunningScheduleTestAgain"
 					:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
@@ -3756,6 +3830,9 @@ useKeybindings({
 					@session-created="markSessionCreated"
 					@open-build="returnToBuilderFromPreview"
 					@send-to-assistant="onSendPreviewToAssistant"
+					@initial-consumed="taskPreviewPrompt = undefined"
+					@schedule-test-run-again="onRunScheduleTestAgain"
+					@schedule-test-chat="startNewPreviewSession"
 				/>
 
 				<AgentBuilderEditorColumn
@@ -3899,6 +3976,9 @@ useKeybindings({
 							:new-session="currentSessionIsEphemeral"
 							:initial-prompt="taskPreviewPrompt"
 							:show-test-scenarios="showTestScenariosEmptyState"
+							:schedule-test-disabled-reason="testModeDisabledReason"
+							:schedule-test-validation-issues="testValidationIssues"
+							:schedule-test-running="isRunningScheduleTestAgain"
 							:can-delete-session="canDeletePreviewSession"
 							:is-deleting-session="isDeletingSession"
 							:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
@@ -3910,13 +3990,15 @@ useKeybindings({
 							@view-trace="viewPreviewTrace"
 							@new-session="startNewPreviewSession"
 							@delete-session="onDeletePreviewSession"
-							@session-select="onSessionPick"
+							@session-select="pickPreviewSession"
 							@close="closeTestChat"
 							@continue-loaded="onContinueLoaded"
 							@session-created="markSessionCreated"
 							@send-to-assistant="onSendPreviewToAssistant"
 							@open-build="!isArtifactMode && setChatMode('build')"
 							@initial-consumed="taskPreviewPrompt = undefined"
+							@schedule-test-run-again="onRunScheduleTestAgain"
+							@schedule-test-chat="startNewPreviewSession"
 						>
 							<template v-if="inlineTestChat" #composer-footer>
 								<AgentBuilderChatDisclaimer />

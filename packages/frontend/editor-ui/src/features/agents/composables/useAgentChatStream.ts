@@ -1,4 +1,14 @@
-import { ref, reactive, computed, watch, onScopeDispose, shallowRef, toRaw, type Ref } from 'vue';
+import {
+	ref,
+	reactive,
+	computed,
+	readonly,
+	watch,
+	onScopeDispose,
+	shallowRef,
+	toRaw,
+	type Ref,
+} from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { TIME } from '@/app/constants/durations';
@@ -65,7 +75,7 @@ import { addReplyAttachments } from '@/features/ai/shared/agentsChat/replyFiles'
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
-import type { AgentUsageUpdate } from '../types';
+import type { AgentScheduleTest, AgentUsageUpdate } from '../types';
 
 export interface FatalAgentError {
 	message: string;
@@ -212,6 +222,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const isLoadingHistory = ref(false);
 	/** Cursor of the next older page of the thread. `null` when no older turns exist. */
 	const olderMessagesCursor = ref<string | null>(null);
+	/** The task that this session tests. A schedule test runs once and takes no further messages. */
+	const sessionTestTaskId = ref<string>();
 	/** Whether `messages` starts with turns from older pages, which a refresh must keep. */
 	let hasLoadedOlderPages = false;
 	/** Stops a second load of the same page while one runs. */
@@ -283,6 +295,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			let openSuspensions: AgentBuilderOpenSuspension[] = [];
 			let runningExecutionId: string | null | undefined;
 			let nextCursor: string | null = null;
+			let testTaskId: string | undefined;
 			if (continueId) {
 				const envelope = await getChatMessages(
 					rootStore.restApiContext,
@@ -296,6 +309,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				openSuspensions = envelope.openSuspensions;
 				runningExecutionId = envelope.activeExecutionId;
 				nextCursor = envelope.nextCursor ?? null;
+				testTaskId = envelope.testTaskId;
 			} else if (!capabilities.value.previewHistory) {
 				// A fresh n8n Chat has no default thread to fall back to (unlike the
 				// builder's single test chat) — nothing to load until the first
@@ -314,6 +328,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			if (!isCurrent()) return false;
 			if (continueId) acknowledgeSessionCreation(continueId);
+			// A session never stops being a schedule test. The target watcher clears the mark.
+			if (testTaskId) sessionTestTaskId.value = testTaskId;
 			retryCount = 0;
 			clearTimeout(retryTimer);
 			if (!isStreamOpen.value && streamAtStart === streamVersion) {
@@ -715,6 +731,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		queueVersion++;
 		activeExecutionId.value = null;
 		acceptedSessionId.value = undefined;
+		sessionTestTaskId.value = undefined;
 		isRecovering.value = true;
 		isCancelling.value = false;
 		stopTargetId = undefined;
@@ -1832,6 +1849,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		onAccepted?: (queueId?: string) => void,
 		userMessage?: ChatMessage,
 		clientContext?: Record<string, unknown>,
+		scheduleTest?: AgentScheduleTest,
 	) {
 		const target = targetKey();
 		const baseUrl = agentChatBaseUrl(
@@ -1849,10 +1867,22 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			channel.value === 'system' && (!sessionId || newSession)
 				? `${baseUrl}?projectId=${encodeURIComponent(params.projectId.value)}`
 				: baseUrl;
+		let accepted = onAccepted;
 		if (sessionId) {
 			body.sessionId = sessionId;
 			body.messageId = userMessage?.id;
 			if (newSession) body.newSession = true;
+			// The server accepts a task test only as the first message of a new session.
+			if (newSession && scheduleTest) {
+				body.taskId = scheduleTest.taskId;
+				if (scheduleTest.timezone !== undefined) body.taskTimezone = scheduleTest.timezone;
+				// Lock the session only once the server takes the test. The pending
+				// prompt is consumed at the same time, so it cannot move to a new session.
+				accepted = (queueId) => {
+					if (target === targetKey()) sessionTestTaskId.value = scheduleTest.taskId;
+					onAccepted?.(queueId);
+				};
+			}
 		}
 		if (clientContext) body.clientContext = clientContext;
 		if (files?.length) {
@@ -1870,7 +1900,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			);
 		}
 		if (disposed || target !== targetKey()) return { outcome: 'aborted' };
-		const result = await postAndConsume(url, body, onAccepted, userMessage);
+		const result = await postAndConsume(url, body, accepted, userMessage);
 		if (
 			newSession &&
 			params.newSession?.value === true &&
@@ -2044,13 +2074,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	/**
 	 * `clientContext` is per-message context that a system agent's provider reads.
-	 * The request body carries it only when it is set.
+	 * The request body carries it only when it is set. `scheduleTest` makes the first
+	 * message of a new Preview session a test of that schedule.
 	 */
 	async function sendMessage(
 		text: string,
 		files?: File[],
 		onAccepted?: (queueId?: string) => void,
 		clientContext?: Record<string, unknown>,
+		scheduleTest?: AgentScheduleTest,
 	): Promise<'sent' | 'busy'> {
 		const trimmed = text.trim();
 		if ((!trimmed && !files?.length) || isSubmitting.value || isLoadingHistory.value) return 'busy';
@@ -2096,6 +2128,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				},
 				userMessage,
 				clientContext,
+				scheduleTest,
 			)
 				.then(({ outcome }) => {
 					detached = outcome === 'detached';
@@ -2236,6 +2269,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	return {
 		capabilities,
+		sessionTestTaskId: readonly(sessionTestTaskId),
 		queuedMessages,
 		canSteer,
 		steeringQueueIds,

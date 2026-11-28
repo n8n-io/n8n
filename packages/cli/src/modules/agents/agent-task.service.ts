@@ -578,6 +578,37 @@ export class AgentTaskService {
 		objective: string,
 		taskTimezone: string | null,
 	): { message: string; threadId: string } {
+		return {
+			message: this.formatTaskRunMessage(taskId, objective, taskTimezone),
+			threadId: `task-${taskId}-${randomUUID()}`,
+		};
+	}
+
+	/**
+	 * The first message of a Preview session that tests a task. It has the same
+	 * format as a scheduled run. The objective and timezone come from the client,
+	 * so the task modal can test an edit before the user saves it. A timezone of
+	 * `undefined` uses the saved one.
+	 */
+	async buildTaskTestMessage(
+		agentId: string,
+		taskId: string,
+		objective: string,
+		timezone?: string | null,
+	): Promise<string> {
+		const task = await this.getOrThrow(agentId, taskId);
+		return this.formatTaskRunMessage(
+			task.id,
+			objective,
+			timezone === undefined ? task.timezone : timezone,
+		);
+	}
+
+	private formatTaskRunMessage(
+		taskId: string,
+		objective: string,
+		taskTimezone: string | null,
+	): string {
 		// Timestamped in the instance timezone so it agrees with the `get_environment`
 		// tool the agent also reads "today" from; the schedule's own zone is named
 		// instead of substituted, so the two can never contradict each other.
@@ -586,9 +617,7 @@ export class AgentTaskService {
 		const scheduleTimezone = this.resolveTaskTimezone(taskTimezone, taskId);
 		const scheduleNote =
 			scheduleTimezone === timezone ? '' : `\nThis task is scheduled in ${scheduleTimezone}.`;
-		const message = `${objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})${scheduleNote}`;
-		const threadId = `task-${taskId}-${randomUUID()}`;
-		return { message, threadId };
+		return `${objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})${scheduleNote}`;
 	}
 
 	/**

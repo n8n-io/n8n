@@ -14,6 +14,7 @@ import type {
 	AgentJsonVectorStoreConfig,
 	AgentResource,
 	AgentSkill,
+	AgentTaskTestRequest,
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -130,7 +131,7 @@ const emit = defineEmits<{
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'toggle-mcp-access': [enabled: boolean];
 	'tasks-changed': [];
-	'preview-task': [instructions: string];
+	'preview-task': [request: AgentTaskTestRequest];
 	'agent-changed': [];
 	'generate-eval-cases': [];
 	'open-preview': [source: 'primary' | 'icon'];

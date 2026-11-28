@@ -73,6 +73,7 @@ describe('AgentMessageQueueConsumer', () => {
 				agentId: 'agent',
 				projectId: 'project',
 				ownerId: integration ? null : 'user',
+				testTaskId: null,
 			}),
 			admission: {
 				executionId: `execution-${threadId}`,

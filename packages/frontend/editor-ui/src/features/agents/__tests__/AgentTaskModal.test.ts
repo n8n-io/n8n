@@ -389,7 +389,30 @@ describe('AgentTaskModal', () => {
 		expect(getByText(/agents\.builder\.capabilities\.deactivated/)).toBeInTheDocument();
 		await fireEvent.click(getByTestId('agent-task-preview'));
 
-		expect(onPreview).toHaveBeenCalledWith('Obj');
+		expect(onPreview).toHaveBeenCalledWith({
+			objective: 'Obj',
+			taskId: 'task-9',
+			// The saved task has no timezone, so it follows the instance timezone.
+			timezone: null,
+			source: 'schedule_modal',
+		});
+	});
+
+	it('tests the objective and timezone in the form of a new schedule without a task id', async () => {
+		setBrowserTimezone('Asia/Tokyo');
+		const onPreview = vi.fn();
+		const { getByTestId } = renderModal({ isRunnable: true, onPreview });
+
+		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Draft objective');
+		await fireEvent.click(getByTestId('agent-task-preview'));
+
+		expect(onPreview).toHaveBeenCalledWith({
+			objective: 'Draft objective',
+			taskId: undefined,
+			// A new schedule starts in the browser timezone.
+			timezone: 'Asia/Tokyo',
+			source: 'schedule_modal',
+		});
 	});
 
 	describe('schedule timezone', () => {
@@ -525,7 +548,13 @@ describe('AgentTaskModal', () => {
 
 		await fireEvent.click(getByTestId('agent-task-preview'));
 
-		expect(onPreview).toHaveBeenCalledWith('Test these instructions');
+		expect(onPreview).toHaveBeenCalledWith({
+			objective: 'Test these instructions',
+			taskId: 'task-9',
+			// The saved task has no timezone, so it follows the instance timezone.
+			timezone: null,
+			source: 'schedule_modal',
+		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
@@ -560,7 +589,7 @@ describe('AgentTaskModal', () => {
 		await nextTick();
 		expect(button).toBeEnabled();
 		await fireEvent.click(button);
-		expect(onPreview).toHaveBeenCalledWith('Obj');
+		expect(onPreview).toHaveBeenCalledWith(expect.objectContaining({ objective: 'Obj' }));
 	});
 
 	it('does not open Preview when the objective is invalid', async () => {

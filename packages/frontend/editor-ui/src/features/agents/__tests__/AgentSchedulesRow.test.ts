@@ -1,6 +1,6 @@
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
-import { screen, waitFor } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -85,6 +85,9 @@ describe('AgentSchedulesRow', () => {
 		expect(add.closest('[inert]')).toBeNull();
 		expect(add).not.toBeDisabled();
 		expect(add).toHaveAttribute('aria-disabled', 'true');
+		// The schedule's test button comes first and stays reachable too.
+		await user.tab();
+		expect(wrapper.get('[data-testid="agent-capabilities-test-task"]').element).toHaveFocus();
 		await user.tab();
 		expect(add).toHaveFocus();
 		await waitFor(() =>
@@ -128,6 +131,90 @@ describe('AgentSchedulesRow', () => {
 			]);
 		},
 	);
+
+	describe('testing a schedule', () => {
+		const testRequest = { objective: 'Do X', taskId: 'task-1', source: 'schedule' };
+
+		it('tests a deactivated schedule from its test button', async () => {
+			getAgentTasksSpy.mockResolvedValue([makeTask()]);
+			const wrapper = mountRow([taskRef('task-1', false)], { isRunnable: true });
+			await flushPromises();
+
+			await wrapper.get('[data-testid="agent-capabilities-test-task"]').trigger('click');
+
+			expect(wrapper.emitted('preview-task')).toEqual([[testRequest]]);
+			expect(openModalWithDataSpy).not.toHaveBeenCalled();
+		});
+
+		it('does not test a schedule while it is being removed', async () => {
+			getAgentTasksSpy.mockResolvedValue([makeTask()]);
+			const pending = Promise.withResolvers<void>();
+			deleteAgentTaskSpy.mockReturnValueOnce(pending.promise);
+			const wrapper = mountRow([taskRef()], { isRunnable: true });
+			await flushPromises();
+
+			await wrapper.get('[data-testid="agent-capabilities-task-row"]').trigger('contextmenu');
+			await userEvent.click(
+				await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.remove' }),
+			);
+			const test = wrapper.get('[data-testid="agent-capabilities-test-task"]');
+			expect(test.attributes('aria-disabled')).toBe('true');
+			await test.trigger('click');
+
+			expect(wrapper.emitted('preview-task')).toBeUndefined();
+			pending.resolve();
+			await flushPromises();
+		});
+
+		it('tests a schedule from Test now in its menu', async () => {
+			getAgentTasksSpy.mockResolvedValue([makeTask()]);
+			const wrapper = mountRow([taskRef()], { isRunnable: true });
+			await flushPromises();
+
+			await wrapper.get('[data-testid="agent-capabilities-task-row"]').trigger('contextmenu');
+			await userEvent.click(
+				await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.testNow' }),
+			);
+
+			expect(wrapper.emitted('preview-task')).toEqual([[testRequest]]);
+			expect(openModalWithDataSpy).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['the agent cannot run', { isRunnable: false }, 'agents.builder.preview.disabledTooltip'],
+			[
+				'Preview is unavailable',
+				{ isRunnable: true, previewDisabledReason: 'Assistant is working' },
+				'Assistant is working',
+			],
+		])('blocks a test when %s and explains why', async (_case, props, tooltip) => {
+			getAgentTasksSpy.mockResolvedValue([makeTask()]);
+			const wrapper = mountRow([taskRef()], props);
+			await flushPromises();
+			const user = userEvent.setup();
+
+			const test = wrapper.get('[data-testid="agent-capabilities-test-task"]');
+			expect(test.attributes('aria-disabled')).toBe('true');
+			await user.hover(test.element);
+			await waitFor(() => expect(screen.getByTestId('tooltip-content')).toHaveTextContent(tooltip));
+			await user.click(test.element);
+
+			await wrapper.get('[data-testid="agent-capabilities-task-row"]').trigger('contextmenu');
+			const testNow = await screen.findByRole('menuitem', {
+				name: 'agents.builder.contextMenu.testNow',
+			});
+			expect(testNow).toHaveAttribute('aria-disabled', 'true');
+			await user.hover(within(testNow).getByTestId('agent-context-menu-test-disabled-reason'));
+			await waitFor(() =>
+				expect(
+					screen.getAllByTestId('tooltip-content').map((tip) => tip.textContent?.trim()),
+				).toContain(tooltip),
+			);
+			await user.click(testNow);
+
+			expect(wrapper.emitted('preview-task')).toBeUndefined();
+		});
+	});
 
 	it('renders fetched task bodies with their config state', async () => {
 		getAgentTasksSpy.mockResolvedValue([makeTask()]);
@@ -337,7 +424,8 @@ describe('AgentSchedulesRow', () => {
 		expect(modalData.getPreviewDisabledReason()).toBe('Assistant is working');
 		await wrapper.setProps({ previewDisabledReason: undefined });
 		expect(modalData.getPreviewDisabledReason()).toBeUndefined();
-		modalData.onPreview('Test these instructions');
-		expect(wrapper.emitted('preview-task')).toEqual([['Test these instructions']]);
+		const request = { objective: 'Edited objective', taskId: 'task-1', source: 'schedule_modal' };
+		modalData.onPreview(request);
+		expect(wrapper.emitted('preview-task')).toEqual([[request]]);
 	});
 });

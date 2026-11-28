@@ -34,6 +34,7 @@ import AgentTaskForm from './AgentTaskForm.vue';
 import AgentTestButton from './AgentTestButton.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 import { AGENT_SCHEDULE_VIEW_TYPE } from '../constants';
+import type { AgentTaskTestRequest } from '../types';
 
 export type ChannelView = AgentChannelView;
 
@@ -81,7 +82,7 @@ const emit = defineEmits<{
 	'channel-disconnected': [channelType: string];
 	'agent-changed': [];
 	'tasks-changed': [];
-	'preview-task': [instructions: string];
+	'preview-task': [request: AgentTaskTestRequest];
 }>();
 
 const i18n = useI18n();
@@ -685,7 +686,13 @@ function previewTask() {
 	const objective = taskFormRef.value?.previewObjective();
 	if (!objective || props.previewDisabledReason) return;
 	completeAndClose();
-	emit('preview-task', objective);
+	// The form's objective and timezone, so an unsaved edit can be tested.
+	emit('preview-task', {
+		objective,
+		taskId: scheduleTask.value?.id,
+		timezone: taskFormRef.value?.previewTimezone(),
+		source: 'schedule_modal',
+	});
 }
 
 /** The list's "Make unavailable" menu item. n8n Chat has no credential to carry. */

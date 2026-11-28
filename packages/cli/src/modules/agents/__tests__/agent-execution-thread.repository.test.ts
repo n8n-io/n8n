@@ -136,8 +136,29 @@ describe('AgentExecutionThreadRepository', () => {
 				sessionNumber: 8,
 				parentThreadId: null,
 				parentAgentId: null,
+				testTaskId: null,
 			});
 			expect(result).toEqual({ thread: saved, created: true });
+		});
+
+		it('marks a new thread as a schedule test', async () => {
+			const saved = mock<AgentExecutionThread>({ id: 'thread-1', sessionNumber: 8 });
+			const scopedRepository = makeScopedRepository(saved);
+			entityManager.getRepository.mockReturnValue(scopedRepository as never);
+
+			await repository.findOrCreate(
+				'thread-1',
+				'agent-1',
+				'Support agent',
+				'project-1',
+				access,
+				{},
+				{ testTaskId: 'task-1' },
+			);
+
+			expect(scopedRepository.createQueryBuilder().values).toHaveBeenCalledWith(
+				expect.objectContaining({ taskId: null, testTaskId: 'task-1' }),
+			);
 		});
 
 		it('stores subagent origin metadata when creating a thread', async () => {
@@ -177,6 +198,7 @@ describe('AgentExecutionThreadRepository', () => {
 				sessionNumber: 8,
 				parentThreadId: 'parent-thread-1',
 				parentAgentId: 'parent-agent-1',
+				testTaskId: null,
 			});
 		});
 

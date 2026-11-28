@@ -6,6 +6,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import AgentTestDock from '../components/AgentTestDock.vue';
 import AgentTestChatPage from '../components/AgentTestChatPage.vue';
+import type { AgentPreviewPrompt } from '../types';
 
 enableAutoUnmount(afterEach);
 
@@ -140,7 +141,7 @@ function mountDock(
 		isOpen: boolean;
 		isDeletingSession: boolean;
 		canDeleteSession: boolean;
-		initialPrompt?: string;
+		initialPrompt?: AgentPreviewPrompt;
 		sessionOptions: Array<{
 			id: string;
 			title: string;
@@ -418,11 +419,12 @@ describe('AgentTestDock', () => {
 				},
 			],
 		};
-		const wrapper = mountDock({ beforeSend, initialPrompt: 'Test these instructions' });
+		const initialPrompt = { text: 'Test these instructions', scheduleTest: { taskId: 'task-1' } };
+		const wrapper = mountDock({ beforeSend, initialPrompt });
 		const chatPage = wrapper.findComponent({ name: 'AgentTestChatPage' });
 
 		expect(chatPage.props('beforeSend')).toBe(beforeSend);
-		expect(chatPage.props('initialPrompt')).toBe('Test these instructions');
+		expect(chatPage.props('initialPrompt')).toEqual(initialPrompt);
 		chatPage.vm.$emit('continue-loaded', { sessionId: 'thread-1', count: 3 });
 		chatPage.vm.$emit('open-build');
 		chatPage.vm.$emit('send-to-assistant', fixEvent);
@@ -719,7 +721,7 @@ describe('AgentTestChatPage', () => {
 				localConfig: null,
 				connectedTriggers: [],
 				effectiveSessionId: 'thread-1',
-				initialPrompt: 'Test these instructions',
+				initialPrompt: { text: 'Test these instructions', scheduleTest: { taskId: 'task-1' } },
 			},
 			global: {
 				stubs: {
@@ -735,7 +737,12 @@ describe('AgentTestChatPage', () => {
 
 		await wrapper.vm.$nextTick();
 
-		expect(sendMessageFromOutside).toHaveBeenCalledExactlyOnceWith('Test these instructions');
+		expect(sendMessageFromOutside).toHaveBeenCalledExactlyOnceWith(
+			'Test these instructions',
+			undefined,
+			undefined,
+			{ taskId: 'task-1' },
+		);
 		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
 
 		wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('initial-consumed');

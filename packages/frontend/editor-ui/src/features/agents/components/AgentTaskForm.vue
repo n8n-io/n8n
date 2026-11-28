@@ -348,6 +348,11 @@ function previewObjective(): string | undefined {
 	return objective.value.trim();
 }
 
+/** The timezone the form would save. `null` follows the instance timezone. */
+function previewTimezone(): string | null {
+	return followsInstanceTimezone.value ? null : timezone.value;
+}
+
 /** Deletes the saved task. Returns true when the task was deleted. */
 async function remove(): Promise<boolean> {
 	const current = task.value;
@@ -414,7 +419,16 @@ async function save(): Promise<boolean> {
 	}
 }
 
-defineExpose({ save, remove, previewObjective, saving, deleting, visibleNameError, isEditing });
+defineExpose({
+	save,
+	remove,
+	previewObjective,
+	previewTimezone,
+	saving,
+	deleting,
+	visibleNameError,
+	isEditing,
+});
 </script>
 
 <template>

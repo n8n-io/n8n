@@ -15,6 +15,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { deleteAgentTask, getAgentTasks } from './useAgentApi';
 import { AGENT_TASK_MODAL_KEY } from '../constants';
 import { resolveAgentValidationIssueMessageKey } from '../utils/agentValidationIssueMessages';
+import type { AgentTaskTestRequest } from '../types';
 
 export type AgentTaskRow = AgentTaskDto & {
 	enabled: boolean;
@@ -38,7 +39,7 @@ export interface UseAgentTasksOptions {
 	getEnsureAgentPersisted: () => (() => Promise<void>) | undefined;
 	onToggle: (payload: { id: string; enabled: boolean }) => void;
 	onChanged: () => void;
-	onPreview: (instructions: string) => void;
+	onPreview: (request: AgentTaskTestRequest) => void;
 }
 
 /**

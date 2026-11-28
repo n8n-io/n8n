@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
@@ -19,6 +20,7 @@ import type {
 	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
+	AgentPreviewPrompt,
 	AgentResource,
 } from '../types';
 import type { BudgetAmountField } from '../utils/budget-config';
@@ -57,8 +59,11 @@ const props = withDefaults(
 		placeholder?: string;
 		effectiveSessionId?: string;
 		newSession?: boolean;
-		initialPrompt?: string;
+		initialPrompt?: AgentPreviewPrompt;
 		showTestScenarios?: boolean;
+		scheduleTestDisabledReason?: string;
+		scheduleTestValidationIssues?: AgentConfigValidationIssue[];
+		scheduleTestRunning?: boolean;
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
 		canDeleteSession?: boolean;
@@ -93,6 +98,8 @@ const emit = defineEmits<{
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
+	'schedule-test-run-again': [taskId: string];
+	'schedule-test-chat': [];
 	'message-sent': [];
 }>();
 
@@ -344,6 +351,9 @@ defineExpose({ clearBudgetStops });
 				:new-session="props.newSession"
 				:initial-prompt="props.initialPrompt"
 				:show-test-scenarios="props.showTestScenarios"
+				:schedule-test-disabled-reason="props.scheduleTestDisabledReason"
+				:schedule-test-validation-issues="props.scheduleTestValidationIssues"
+				:schedule-test-running="props.scheduleTestRunning"
 				:can-send-to-assistant="props.canSendToAssistant"
 				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"
@@ -356,6 +366,8 @@ defineExpose({ clearBudgetStops });
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@initial-consumed="emit('initial-consumed')"
+				@schedule-test-run-again="emit('schedule-test-run-again', $event)"
+				@schedule-test-chat="emit('schedule-test-chat')"
 				@message-sent="emit('message-sent')"
 			>
 				<template v-if="$slots['composer-start']" #composer-start>

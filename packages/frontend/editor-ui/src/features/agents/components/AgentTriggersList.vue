@@ -6,6 +6,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAgentTasks, type AgentTaskRow } from '../composables/useAgentTasks';
 import { describeSchedule, summarizeSchedule } from '../utils/scheduleBuilder';
 import type { AgentTriggerChannelItem } from './AgentTriggersList.types';
+import type { AgentTaskTestRequest } from '../types';
 
 const props = withDefaults(
 	defineProps<{
@@ -39,7 +40,7 @@ const emit = defineEmits<{
 	'add-channel': [];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
-	'preview-task': [instructions: string];
+	'preview-task': [request: AgentTaskTestRequest];
 	'open-task': [task: AgentTaskRow];
 }>();
 
@@ -60,7 +61,7 @@ const { taskRows, taskErrorMessage, removingTaskId, toggleTask, reloadTasks } = 
 	getEnsureAgentPersisted: () => props.ensureAgentPersisted,
 	onToggle: (payload) => emit('toggle-task', payload),
 	onChanged: () => emit('tasks-changed'),
-	onPreview: (instructions) => emit('preview-task', instructions),
+	onPreview: (request) => emit('preview-task', request),
 });
 
 /**

@@ -212,6 +212,7 @@ const updateAgentMock = vi.fn();
 const updateAgentSkillMock = vi.fn();
 const createAgentSkillMock = vi.fn();
 const createAgentTaskMock = vi.fn().mockResolvedValue({ id: 'task-1' });
+const getAgentTasksMock = vi.fn().mockResolvedValue([]);
 const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
@@ -284,6 +285,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	createAgent: createAgentMock,
 	moveAgent: vi.fn(),
 	createAgentTask: createAgentTaskMock,
+	getAgentTasks: getAgentTasksMock,
 	updateAgent: updateAgentMock,
 	updateAgentSkill: updateAgentSkillMock,
 	createAgentSkill: createAgentSkillMock,
@@ -753,7 +755,9 @@ const commonStubs = {
 			'localConfig',
 			'connectedTriggers',
 			'effectiveSessionId',
+			'newSession',
 			'initialPrompt',
+			'scheduleTestRunning',
 			'canSendToAssistant',
 			'dismissedFixToolCallIds',
 			'beforeSend',
@@ -769,6 +773,8 @@ const commonStubs = {
 			'open-build',
 			'send-to-assistant',
 			'initial-consumed',
+			'schedule-test-run-again',
+			'schedule-test-chat',
 		],
 		// Stands in for the real `defineExpose`d `clearBudgetStops` — the view
 		// calls it through a template ref, not a prop or emit.
@@ -2889,24 +2895,37 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
 	});
 
-	it('opens Preview with the selected task instructions', async () => {
+	it('tests a schedule in a new Preview session', async () => {
+		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
 		const wrapper = await renderView();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		editor.vm.$emit('open-preview');
+		await flushPromises();
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+		expect(preview.props('effectiveSessionId')).toBe('thread-1');
 		trackMock.mockClear();
 
-		editor.vm.$emit('preview-task', 'Test these instructions');
+		editor.vm.$emit('preview-task', {
+			objective: 'Test these instructions',
+			taskId: 'task-1',
+			source: 'schedule',
+		});
 		await flushPromises();
 
-		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 		expect(preview.props()).toEqual(
 			expect.objectContaining({
 				isOpen: true,
-				initialPrompt: 'Test these instructions',
+				newSession: true,
+				initialPrompt: {
+					text: 'Test these instructions',
+					scheduleTest: { taskId: 'task-1', timezone: undefined },
+				},
 			}),
 		);
+		expect(preview.props('effectiveSessionId')).not.toBe('thread-1');
 		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
 			TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW,
-			{ agent_id: 'a1' },
+			{ agent_id: 'a1', source: 'schedule' },
 		);
 
 		preview.vm.$emit('initial-consumed');
@@ -2915,15 +2934,242 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(preview.props('initialPrompt')).toBeUndefined();
 	});
 
+	describe('schedule test sessions', () => {
+		async function openPreview() {
+			fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+			const wrapper = await renderView();
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('open-preview');
+			await flushPromises();
+			trackMock.mockClear();
+			return wrapper.findComponent({ name: 'AgentTestDock' });
+		}
+
+		it('runs the schedule again with its saved objective in a new session', async () => {
+			getAgentTasksMock.mockResolvedValue([
+				{
+					id: 'task-1',
+					name: 'Inbox digest',
+					objective: 'Summarize the inbox',
+					cronExpression: '0 9 * * *',
+					createdAt: '2026-01-01T00:00:00.000Z',
+					updatedAt: '2026-01-01T00:00:00.000Z',
+				},
+			]);
+			const preview = await openPreview();
+
+			preview.vm.$emit('schedule-test-run-again', 'task-1');
+			await flushPromises();
+
+			expect(getAgentTasksMock.mock.calls[0]?.slice(1)).toEqual(['p1', 'a1']);
+			expect(preview.props('newSession')).toBe(true);
+			expect(preview.props('effectiveSessionId')).not.toBe('thread-1');
+			expect(preview.props('initialPrompt')).toEqual({
+				text: 'Summarize the inbox',
+				scheduleTest: { taskId: 'task-1', timezone: undefined },
+			});
+			expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW,
+				{ agent_id: 'a1', source: 'schedule_rerun' },
+			);
+		});
+
+		const inboxTask = {
+			id: 'task-1',
+			name: 'Inbox digest',
+			objective: 'Summarize the inbox',
+			cronExpression: '0 9 * * *',
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+		};
+
+		it('starts one test when Run again is clicked twice', async () => {
+			const tasks = Promise.withResolvers<unknown[]>();
+			getAgentTasksMock.mockReturnValue(tasks.promise);
+			const preview = await openPreview();
+			const loadsBefore = getAgentTasksMock.mock.calls.length;
+
+			preview.vm.$emit('schedule-test-run-again', 'task-1');
+			await nextTick();
+			expect(preview.props('scheduleTestRunning')).toBe(true);
+			preview.vm.$emit('schedule-test-run-again', 'task-1');
+			tasks.resolve([inboxTask]);
+			await flushPromises();
+
+			expect(getAgentTasksMock.mock.calls.length - loadsBefore).toBe(1);
+			expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW,
+				{ agent_id: 'a1', source: 'schedule_rerun' },
+			);
+			expect(preview.props('scheduleTestRunning')).toBe(false);
+		});
+
+		it('drops Run again when the route moves to another session while the schedule loads', async () => {
+			localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+			routeQuery.continueSessionId = 'thread-1';
+			fetchedSessionThreads.push(
+				{ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' },
+				{ id: 'thread-2', updatedAt: '2026-01-02T00:00:00Z' },
+			);
+			const tasks = Promise.withResolvers<unknown[]>();
+			getAgentTasksMock.mockReturnValue(tasks.promise);
+			const wrapper = await renderView();
+			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+			expect(preview.props('effectiveSessionId')).toBe('thread-1');
+
+			preview.vm.$emit('schedule-test-run-again', 'task-1');
+			// Back or forward in the browser.
+			routeQuery.continueSessionId = 'thread-2';
+			await flushPromises();
+			expect(preview.props('effectiveSessionId')).toBe('thread-2');
+			tasks.resolve([inboxTask]);
+			await flushPromises();
+
+			expect(preview.props('effectiveSessionId')).toBe('thread-2');
+			expect(preview.props('initialPrompt')).toBeUndefined();
+		});
+
+		it('drops Run again when the user picks another session while the schedule loads', async () => {
+			const tasks = Promise.withResolvers<unknown[]>();
+			getAgentTasksMock.mockReturnValue(tasks.promise);
+			const preview = await openPreview();
+
+			preview.vm.$emit('schedule-test-run-again', 'task-1');
+			preview.vm.$emit('schedule-test-chat');
+			await flushPromises();
+			const chatSession = preview.props('effectiveSessionId');
+			tasks.resolve([
+				{
+					id: 'task-1',
+					name: 'Inbox digest',
+					objective: 'Summarize the inbox',
+					cronExpression: '0 9 * * *',
+					createdAt: '2026-01-01T00:00:00.000Z',
+					updatedAt: '2026-01-01T00:00:00.000Z',
+				},
+			]);
+			await flushPromises();
+
+			expect(preview.props('effectiveSessionId')).toBe(chatSession);
+			expect(preview.props('initialPrompt')).toBeUndefined();
+		});
+
+		it('does not start a schedule test when the user picks a session while Preview opens', async () => {
+			fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+			const wrapper = await renderView();
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			editor.vm.$emit('open-preview');
+			await flushPromises();
+			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+			editor.vm.$emit('preview-task', {
+				objective: 'Summarize the inbox',
+				taskId: 'task-1',
+				source: 'schedule',
+			});
+			// Preview flushes the autosave before it starts the test.
+			preview.vm.$emit('session-select', 'thread-1');
+			await flushPromises();
+
+			expect(preview.props('effectiveSessionId')).toBe('thread-1');
+			expect(preview.props('initialPrompt')).toBeUndefined();
+		});
+
+		it('drops an unsent schedule test when the user picks another session', async () => {
+			fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+			const wrapper = await renderView();
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('preview-task', {
+				objective: 'Summarize the inbox',
+				taskId: 'task-1',
+				source: 'schedule',
+			});
+			await flushPromises();
+			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+			expect(preview.props('initialPrompt')).toBeDefined();
+
+			preview.vm.$emit('session-select', 'thread-1');
+			await flushPromises();
+
+			expect(preview.props('initialPrompt')).toBeUndefined();
+		});
+
+		it('tells the user when the schedule no longer exists', async () => {
+			getAgentTasksMock.mockResolvedValue([]);
+			const preview = await openPreview();
+
+			preview.vm.$emit('schedule-test-run-again', 'task-1');
+			await flushPromises();
+
+			expect(showMessageMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					title: 'agents.chat.scheduleTest.runAgain.missing',
+				}),
+			);
+			expect(preview.props('effectiveSessionId')).toBe('thread-1');
+			expect(preview.props('initialPrompt')).toBeUndefined();
+		});
+
+		it('starts a normal session to chat with the agent', async () => {
+			const preview = await openPreview();
+
+			preview.vm.$emit('schedule-test-chat');
+			await flushPromises();
+
+			expect(preview.props('newSession')).toBe(true);
+			expect(preview.props('effectiveSessionId')).not.toBe('thread-1');
+			expect(preview.props('initialPrompt')).toBeUndefined();
+		});
+
+		it('drops a schedule test that was not sent when the user starts a chat', async () => {
+			const wrapper = await renderView();
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('preview-task', {
+				objective: 'Summarize the inbox',
+				taskId: 'task-1',
+				source: 'schedule',
+			});
+			await flushPromises();
+			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+			expect(preview.props('initialPrompt')).toEqual({
+				text: 'Summarize the inbox',
+				scheduleTest: { taskId: 'task-1', timezone: undefined },
+			});
+
+			preview.vm.$emit('schedule-test-chat');
+			await flushPromises();
+
+			expect(preview.props('initialPrompt')).toBeUndefined();
+		});
+	});
+
+	it('tests an unsaved schedule as a normal chat, without its timezone', async () => {
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('preview-task', {
+			objective: 'Draft objective',
+			timezone: 'Asia/Tokyo',
+			source: 'schedule_modal',
+		});
+		await flushPromises();
+
+		// The server takes a task timezone only with a task ID.
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialPrompt')).toEqual({
+			text: 'Draft objective',
+			scheduleTest: undefined,
+		});
+	});
+
 	it('clears selected task instructions when the active agent changes', async () => {
 		const wrapper = await renderView();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
-		editor.vm.$emit('preview-task', 'Test these instructions');
+		editor.vm.$emit('preview-task', {
+			objective: 'Test these instructions',
+			source: 'schedule_modal',
+		});
 		await flushPromises();
-		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialPrompt')).toBe(
-			'Test these instructions',
-		);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialPrompt')).toEqual({
+			text: 'Test these instructions',
+			scheduleTest: undefined,
+		});
 
 		routeParams.agentId = 'a2';
 		await flushPromises();

@@ -1,4 +1,5 @@
 import type { AgentPlanService } from '../agent-plan.service';
+import type { AgentTaskService } from '../agent-task.service';
 import { EventEmitter } from 'node:events';
 import { PassThrough, Readable } from 'node:stream';
 import type { SerializableAgentState } from '@n8n/agents';
@@ -113,6 +114,7 @@ function makeController() {
 	const taskCancellation = mock<AgentTaskCancellationService>();
 	const plans = mock<AgentPlanService>();
 	const agentTestScenariosService = mock<AgentTestScenariosService>();
+	const agentTaskService = mock<AgentTaskService>();
 	const controller = new AgentChatController(
 		taskCancellation,
 		agentExecutionOrchestratorService,
@@ -130,11 +132,13 @@ function makeController() {
 		new AgentChatRelayService(messageQueue, previewStreams, agentChatAttachmentService),
 		plans,
 		agentTestScenariosService,
+		agentTaskService,
 	);
 
 	return {
 		plans,
 		agentTestScenariosService,
+		agentTaskService,
 		taskCancellation,
 		controller,
 		agentsConfig,
@@ -625,6 +629,7 @@ describe('AgentChatController session files', () => {
 				agentId: 'agent-1',
 				accessScope: 'project',
 				ownerId: null,
+				testTaskId: null,
 			}),
 		);
 		checkpointStorage.findSuspendedForThread.mockResolvedValue(
@@ -772,6 +777,35 @@ describe('AgentChatController chat message history', () => {
 		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
 	});
 
+	it('reports the task that a schedule test session tests', async () => {
+		const { controller, agentsService, agentExecutionService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue({
+			messages: [],
+			activeExecutionId: null,
+		});
+		agentExecutionService.findThreadById.mockResolvedValue(
+			mock<AgentExecutionThread>({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				accessScope: 'user',
+				ownerId: 'user-1',
+				testTaskId: 'task-1',
+			}),
+		);
+		agentExecutionService.canUseDraftThread.mockResolvedValue(true);
+
+		const result = await controller.getChatMessages(
+			{
+				user: { id: 'user-1' },
+				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			} as never,
+			mock<express.Response>(),
+		);
+
+		expect(result.testTaskId).toBe('task-1');
+	});
+
 	it('reads one page of turns when the query has a limit', async () => {
 		const { controller, agentsService } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
@@ -817,6 +851,7 @@ describe('AgentChatController chat message history', () => {
 					agentId: 'agent-1',
 					accessScope: 'project',
 					ownerId: null,
+					testTaskId: null,
 				}),
 			);
 			checkpointStorage.findSuspendedForThread.mockResolvedValue({
@@ -864,6 +899,7 @@ describe('AgentChatController chat message history', () => {
 				agentId: 'agent-1',
 				accessScope: 'project',
 				ownerId: null,
+				testTaskId: null,
 			}),
 		);
 		const request = {
@@ -1327,6 +1363,105 @@ describe('AgentChatController HITL cancellation', () => {
 			});
 		},
 	);
+});
+
+describe('AgentChatController task test turns', () => {
+	function readEvents(writes: string[]) {
+		return writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string; message?: string });
+	}
+
+	/** An accepted turn keeps its stream open, so the browser leaves once the turn is queued. */
+	async function sendUntilQueued(
+		controller: AgentChatController,
+		messageQueue: ReturnType<typeof makeController>['messageQueue'],
+		payload: Record<string, unknown>,
+	) {
+		const res = makeSseResponse([]);
+		const request = controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			payload as never,
+		);
+		await vi.waitFor(() => expect(messageQueue.enqueue).toHaveBeenCalled());
+		(res as unknown as EventEmitter).emit('close');
+		await request;
+	}
+
+	function prepareReady(agentTestRunService: AgentTestRunService) {
+		vi.spyOn(agentTestRunService, 'prepareDraftRun').mockResolvedValue({
+			status: 'ready',
+			sessionId: 'thread-1',
+			sessionMode: 'new',
+		});
+	}
+
+	it('queues the task message and the task id for a task test', async () => {
+		const { controller, agentTestRunService, agentTaskService, messageQueue } = makeController();
+		prepareReady(agentTestRunService);
+		agentTaskService.buildTaskTestMessage.mockResolvedValue(
+			'Summarize\n\nCurrent date and time: …',
+		);
+
+		await sendUntilQueued(controller, messageQueue, {
+			message: 'Summarize',
+			newSession: true,
+			taskId: 'task-1',
+			taskTimezone: 'Asia/Tokyo',
+		});
+
+		expect(agentTaskService.buildTaskTestMessage).toHaveBeenCalledWith(
+			'agent-1',
+			'task-1',
+			'Summarize',
+			'Asia/Tokyo',
+		);
+		expect(messageQueue.enqueue).toHaveBeenCalledWith(
+			expect.objectContaining({
+				payload: expect.objectContaining({
+					kind: 'preview',
+					message: 'Summarize\n\nCurrent date and time: …',
+					taskId: 'task-1',
+				}),
+			}),
+			expect.any(Function),
+		);
+	});
+
+	it('queues the message as typed without a task id', async () => {
+		const { controller, agentTestRunService, agentTaskService, messageQueue } = makeController();
+		prepareReady(agentTestRunService);
+
+		await sendUntilQueued(controller, messageQueue, { message: 'hi' });
+
+		expect(agentTaskService.buildTaskTestMessage).not.toHaveBeenCalled();
+		const [input] = messageQueue.enqueue.mock.calls[0];
+		expect(input.payload).toMatchObject({ message: 'hi' });
+		expect(input.payload).not.toHaveProperty('taskId');
+	});
+
+	it('rejects a task of another agent without queueing a turn', async () => {
+		const { controller, agentTestRunService, agentTaskService, messageQueue } = makeController();
+		prepareReady(agentTestRunService);
+		agentTaskService.buildTaskTestMessage.mockRejectedValue(
+			new NotFoundError('Task "task-9" not found'),
+		);
+		const writes: string[] = [];
+
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			makeSseResponse(writes),
+			'agent-1',
+			{ message: 'Summarize', newSession: true, taskId: 'task-9' } as never,
+		);
+
+		expect(messageQueue.enqueue).not.toHaveBeenCalled();
+		expect(readEvents(writes)).toContainEqual(
+			expect.objectContaining({ type: 'error', message: 'Task "task-9" not found' }),
+		);
+	});
 });
 
 describe('AgentChatController attachment cleanup on failed turns', () => {

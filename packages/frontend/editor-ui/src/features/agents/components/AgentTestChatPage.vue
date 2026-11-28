@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { MANAGED_CREDENTIAL_TOKEN, type AgentConfigValidationIssue } from '@n8n/api-types';
 import { computed, inject, ref, useTemplateRef, watch } from 'vue';
 
 import { deriveAgentStatus } from '@/features/agents/composables/agentTelemetry.utils';
@@ -8,6 +8,7 @@ import type {
 	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
+	AgentPreviewPrompt,
 	AgentResource,
 } from '@/features/agents/types';
 import type { BudgetAmountField } from '@/features/agents/utils/budget-config';
@@ -28,8 +29,11 @@ const props = withDefaults(
 		connectedTriggers: string[];
 		effectiveSessionId?: string;
 		newSession?: boolean;
-		initialPrompt?: string;
+		initialPrompt?: AgentPreviewPrompt;
 		showTestScenarios?: boolean;
+		scheduleTestDisabledReason?: string;
+		scheduleTestValidationIssues?: AgentConfigValidationIssue[];
+		scheduleTestRunning?: boolean;
 		placeholder?: string;
 		composerHeight?: string;
 		canSendToAssistant?: boolean;
@@ -60,6 +64,8 @@ const emit = defineEmits<{
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
+	'schedule-test-run-again': [taskId: string];
+	'schedule-test-chat': [];
 	'message-sent': [];
 }>();
 
@@ -101,7 +107,7 @@ watch(
 	[() => props.initialPrompt, chatPanel],
 	([prompt, panel]) => {
 		if (!prompt || !panel) return;
-		panel.sendMessageFromOutside(prompt);
+		panel.sendMessageFromOutside(prompt.text, undefined, undefined, prompt.scheduleTest);
 	},
 	{ immediate: true, flush: 'post' },
 );
@@ -139,10 +145,15 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				:before-send="beforeSend"
 				:budget-cards="budgetCards"
 				:increase-budget="increaseBudget"
+				:schedule-test-disabled-reason="scheduleTestDisabledReason"
+				:schedule-test-validation-issues="scheduleTestValidationIssues"
+				:schedule-test-running="scheduleTestRunning"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@usage-updated="emit('usage-updated', $event)"
 				@session-created="emit('session-created', $event)"
 				@initial-consumed="emit('initial-consumed')"
+				@schedule-test-run-again="emit('schedule-test-run-again', $event)"
+				@schedule-test-chat="emit('schedule-test-chat')"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@first-user-message="onFirstUserMessage"

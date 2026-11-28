@@ -50,6 +50,8 @@ type TaskStopScope = AgentTaskStop & { threadId: string };
 export interface AgentExecutionThreadMetadata {
 	parentThreadId?: string;
 	parentAgentId?: string;
+	/** Marks a new Preview session as a test of this task. See `AgentExecutionThread.testTaskId`. */
+	testTaskId?: string;
 }
 
 export interface AgentExecutionThreadPage {
@@ -255,6 +257,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			sessionNumber: (maxResult?.max ?? 0) + 1,
 			parentThreadId: metadata?.parentThreadId ?? null,
 			parentAgentId: metadata?.parentAgentId ?? null,
+			testTaskId: metadata?.testTaskId ?? null,
 		};
 		const insert = repository
 			.createQueryBuilder()
@@ -775,6 +778,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	async findProjectId(threadId: string): Promise<string | null> {
 		const thread = await this.findOne({ select: ['projectId'], where: { id: threadId } });
 		return thread?.projectId ?? null;
+	}
+
+	/** A schedule test runs one turn, like the scheduled run, and no background work. */
+	async isScheduleTest(threadId: string): Promise<boolean> {
+		return await this.existsBy({ id: threadId, testTaskId: Not(IsNull()) });
 	}
 
 	/** Bump updatedAt to now so the thread sorts to top of the list. */
