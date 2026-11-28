@@ -328,6 +328,59 @@ describe('pairedItemUtils', () => {
 			expect(actual).toEqual(expected);
 		});
 
+		it('should map items whose pairedItem is a plain item index, including 0', () => {
+			const mockExecution: Partial<IExecutionResponse> = {
+				data: createRunExecutionData({
+					startData: {},
+					resultData: {
+						runData: {
+							Trigger: [
+								{
+									startTime: 1706027170005,
+									executionIndex: 0,
+									executionTime: 0,
+									source: [],
+									executionStatus: 'success',
+									data: {
+										main: [
+											[
+												{ json: {}, pairedItem: { item: 0 } },
+												{ json: {}, pairedItem: { item: 1 } },
+											],
+										],
+									},
+								},
+							],
+							JWT: [
+								{
+									startTime: 1706027170006,
+									executionIndex: 1,
+									executionTime: 1,
+									source: [{ previousNode: 'Trigger' }],
+									executionStatus: 'success',
+									data: {
+										main: [
+											[
+												{ json: {}, pairedItem: 0 },
+												{ json: {}, pairedItem: 1 },
+											],
+										],
+									},
+								},
+							],
+						},
+					},
+				}),
+			};
+
+			expect(getPairedItemsMapping(mockExecution)).toEqual({
+				JWT_r0_o0_i0: new Set(['Trigger_r0_o0_i0']),
+				JWT_r0_o0_i1: new Set(['Trigger_r0_o0_i1']),
+				Trigger_r0_o0_i0: new Set(['JWT_r0_o0_i0']),
+				Trigger_r0_o0_i1: new Set(['JWT_r0_o0_i1']),
+			});
+		});
+
 		it('should skip mapping if execution has more than max items overall', () => {
 			const mockExecution: Partial<IExecutionResponse> = {
 				data: createRunExecutionData({
