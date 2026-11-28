@@ -28,9 +28,9 @@ export function useNodeTypesLoad() {
 		},
 	);
 
-	/** The store holds the node types. */
-	const isLoaded = computed(() => nodeTypesStore.hasNodeTypes);
-	/** The node types are not in the store, and the load has not ended. */
+	/** The full node catalog load has completed. A non-empty catalog is not enough. */
+	const isLoaded = computed(() => nodeTypesStore.nodeTypesLoaded);
+	/** The full catalog has not loaded, and the load has not ended. */
 	const isLoading = computed(() => !isLoaded.value && !isSettled.value);
 
 	return {

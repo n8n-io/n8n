@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
+import { getActivePinia, type Pinia } from 'pinia';
+import { mount } from '@vue/test-utils';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -8,15 +10,20 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { ToolConfigCredentialSelectedKey } from '@/app/constants';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
+import type { IUpdateInformation } from '@/Interface';
 import { waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
-import { defineComponent, inject, type PropType } from 'vue';
+import { defineComponent, inject, nextTick, type PropType } from 'vue';
+import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
@@ -51,6 +58,13 @@ vi.mock('vue-router', () => ({
 	useRoute: () => ({ params: {}, query: {} }),
 	RouterLink: { template: '<a><slot /></a>' },
 }));
+
+// Keep the rest of the API real; only control the full catalog request so the
+// real store's `getNodeTypes` (and its completion signal) runs in the tests.
+vi.mock('@n8n/rest-api-client/api/nodeTypes', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/rest-api-client/api/nodeTypes')>();
+	return { ...actual, getNodeTypes: vi.fn() };
+});
 
 const MOCK_NODE_TYPE: INodeTypeDescription = {
 	displayName: 'Test Tool',
@@ -127,14 +141,30 @@ function createMockNode(overrides: Partial<INode> = {}): INode {
 	};
 }
 
+let emitParameterChange: ((data: IUpdateInformation) => void) | null = null;
+
+const ParameterInputListStub = defineComponent({
+	props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
+	emits: ['value-changed'],
+	setup(props, { emit }) {
+		// Registers emitParameterChange only for the params-tab instance (the one
+		// without a `path` prop). If the production template adds `path` to that
+		// instance, this binding silently breaks — update the condition together.
+		if (props.path === undefined) {
+			emitParameterChange = (data: IUpdateInformation) => {
+				emit('value-changed', data);
+			};
+		}
+		return {};
+	},
+	template:
+		'<div data-test-id="parameter-input-list" :data-read-only="isReadOnly">{{ JSON.stringify(parameters) }}<slot /></div>',
+});
+
 const renderComponent = createComponentRenderer(NodeToolSettingsContent, {
 	global: {
 		stubs: {
-			ParameterInputList: {
-				template:
-					'<div data-test-id="parameter-input-list" :data-read-only="isReadOnly">{{ JSON.stringify(parameters) }}<slot /></div>',
-				props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
-			},
+			ParameterInputList: ParameterInputListStub,
 			NodeCredentials: {
 				template: '<div data-test-id="node-credentials" :data-read-only="readonly" />',
 				props: ['node', 'readonly', 'showAll', 'hideIssues'],
@@ -143,19 +173,77 @@ const renderComponent = createComponentRenderer(NodeToolSettingsContent, {
 	},
 });
 
+// @testing-library/vue's render does not expose the VTU wrapper's `vm`, so
+// tests that drive the exposed `handleChangeName` / `isValid` API mount directly.
+type Props = InstanceType<typeof NodeToolSettingsContent>['$props'];
+
+const mountComponent = (props: Props) =>
+	mount(NodeToolSettingsContent, {
+		props,
+		global: {
+			plugins: [getActivePinia() as Pinia],
+			stubs: {
+				ParameterInputList: ParameterInputListStub,
+				NodeCredentials: {
+					template: '<div data-test-id="node-credentials" />',
+					props: ['node', 'readonly', 'showAll', 'hideIssues'],
+				},
+			},
+		},
+	});
+
+function getToolWorkflowStore() {
+	return useWorkflowDocumentStore(createWorkflowDocumentId('', 'node-tool-workflow'));
+}
+
+const NODE_TYPE_WITH_ENDPOINT: INodeTypeDescription = {
+	...MOCK_NODE_TYPE,
+	name: 'n8n-nodes-base.httpRequest',
+	displayName: 'HTTP Request',
+	properties: [
+		{
+			displayName: 'URL',
+			name: 'endpointUrl',
+			type: 'string',
+			default: '',
+		},
+		{
+			displayName: 'Include',
+			name: 'include',
+			type: 'options',
+			options: [
+				{ name: 'All', value: 'all' },
+				{ name: 'Selected', value: 'selected' },
+			],
+			default: 'all',
+		},
+		...MOCK_NODE_TYPE.properties,
+	],
+};
+
+const NODE_WITH_ENDPOINT = createMockNode({
+	type: 'n8n-nodes-base.httpRequest',
+	name: 'HTTP Request',
+	parameters: {},
+});
+
 describe('NodeToolSettingsContent', () => {
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 	let environmentsStore: ReturnType<typeof mockedStore<typeof useEnvironmentsStore>>;
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+	// The real action, captured before the suite replaces it with a resolved mock.
+	let realLoadNodeTypesIfNotLoaded: (typeof nodeTypesStore)['loadNodeTypesIfNotLoaded'];
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		emitParameterChange = null;
 
 		createTestingPinia({ stubActions: false });
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
+		realLoadNodeTypesIfNotLoaded = nodeTypesStore.loadNodeTypesIfNotLoaded;
 		credentialsStore = mockedStore(useCredentialsStore);
 		projectsStore = mockedStore(useProjectsStore);
 		environmentsStore = mockedStore(useEnvironmentsStore);
@@ -280,20 +368,23 @@ describe('NodeToolSettingsContent', () => {
 
 	it('syncs parameter changes to the scoped NDV when enabled', async () => {
 		const initialNode = createMockNode();
-		const { rerender } = renderComponent({
+		renderComponent({
 			props: { initialNode, syncNodeToNdv: true },
 		});
 		const toolNdvStore = useNDVStore(createWorkflowDocumentId('', 'node-tool-workflow'));
 
 		expect(toolNdvStore.activeNode?.parameters).toEqual(initialNode.parameters);
 
-		const updatedNode = createMockNode({
-			parameters: { ...initialNode.parameters, nameField: 'updated-value' },
+		emitParameterChange?.({
+			name: 'nameField',
+			value: 'updated-value',
 		});
-		await rerender({ initialNode: updatedNode });
 
 		await waitFor(() =>
-			expect(toolNdvStore.activeNode?.parameters).toEqual(updatedNode.parameters),
+			expect(toolNdvStore.activeNode?.parameters).toEqual({
+				...initialNode.parameters,
+				nameField: 'updated-value',
+			}),
 		);
 	});
 
@@ -480,7 +571,7 @@ describe('NodeToolSettingsContent', () => {
 	});
 
 	describe('makeUniqueName', () => {
-		it('should add suffix when auto-generated name conflicts with existing tools', () => {
+		it('should add suffix when auto-generated name conflicts with existing tools', async () => {
 			// The component auto-renames based on resource/operation, producing "Create contact"
 			const { emitted } = renderComponent({
 				props: {
@@ -489,13 +580,15 @@ describe('NodeToolSettingsContent', () => {
 				},
 			});
 
-			const nameEmissions = emitted('update:node-name') as string[][];
-			expect(nameEmissions).toBeDefined();
-			const emittedName = nameEmissions[0][0];
-			expect(emittedName).toBe('Create contact (1)');
+			await waitFor(() => {
+				const nameEmissions = emitted('update:node-name') as string[][];
+				expect(nameEmissions).toBeDefined();
+				const emittedName = nameEmissions[0][0];
+				expect(emittedName).toBe('Create contact (1)');
+			});
 		});
 
-		it('should increment suffix when multiple conflicts exist', () => {
+		it('should increment suffix when multiple conflicts exist', async () => {
 			const { emitted } = renderComponent({
 				props: {
 					initialNode: createMockNode({ name: 'Test Tool' }),
@@ -503,13 +596,15 @@ describe('NodeToolSettingsContent', () => {
 				},
 			});
 
-			const nameEmissions = emitted('update:node-name') as string[][];
-			expect(nameEmissions).toBeDefined();
-			const emittedName = nameEmissions[0][0];
-			expect(emittedName).toBe('Create contact (2)');
+			await waitFor(() => {
+				const nameEmissions = emitted('update:node-name') as string[][];
+				expect(nameEmissions).toBeDefined();
+				const emittedName = nameEmissions[0][0];
+				expect(emittedName).toBe('Create contact (2)');
+			});
 		});
 
-		it('should not add suffix when name is unique', () => {
+		it('should not add suffix when name is unique', async () => {
 			// User-edited name that doesn't match default — won't be auto-renamed
 			const { emitted } = renderComponent({
 				props: {
@@ -518,9 +613,11 @@ describe('NodeToolSettingsContent', () => {
 				},
 			});
 
-			const nameEmissions = emitted('update:node-name') as string[][];
-			expect(nameEmissions).toBeDefined();
-			expect(nameEmissions[0][0]).toBe('My Unique Tool');
+			await waitFor(() => {
+				const nameEmissions = emitted('update:node-name') as string[][];
+				expect(nameEmissions).toBeDefined();
+				expect(nameEmissions[0][0]).toBe('My Unique Tool');
+			});
 		});
 	});
 
@@ -757,12 +854,14 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		it('should emit updated name when initialNode changes', async () => {
-			const node = createMockNode({ name: 'First Tool' });
+			const node = createMockNode({ id: 'first-tool-id', name: 'First Tool' });
 			const { emitted, rerender } = renderComponent({
 				props: { initialNode: node },
 			});
 
-			await rerender({ initialNode: createMockNode({ name: 'Second Tool' }) });
+			await rerender({
+				initialNode: createMockNode({ id: 'second-tool-id', name: 'Second Tool' }),
+			});
 
 			await waitFor(() => {
 				const nameEmissions = emitted('update:node-name') as string[][];
@@ -772,7 +871,541 @@ describe('NodeToolSettingsContent', () => {
 		});
 	});
 
+	describe('hydration gating', () => {
+		beforeEach(() => {
+			nodeTypesStore.nodeTypes = {};
+			// Hand-rolled imitation of the real store's getNodeType. These tests assert
+			// on the component's reactive wiring, not on the store's implementation.
+			// Real getNodeType behavior is covered by the nodeTypes store's own tests.
+			nodeTypesStore.getNodeType = vi.fn((type: string) => {
+				const entry = nodeTypesStore.nodeTypes[type];
+				if (!entry) return null;
+				if ('name' in entry) return entry as unknown as INodeTypeDescription;
+				const versionNumbers = Object.keys(entry).map(Number);
+				return entry[Math.max(...versionNumbers)] ?? null;
+			});
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
+		});
+
+		it('warm load: ParameterInputList mounts and setNodes called with default parameters', async () => {
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			const toolWorkflowStore = getToolWorkflowStore();
+			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
+
+			const { getAllByTestId } = renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+			});
+
+			expect(setNodesSpy).toHaveBeenCalledTimes(1);
+			const callArgs = setNodesSpy.mock.calls[0][0] as INode[];
+			expect(callArgs.length).toBe(1);
+			const nodeArg = callArgs[0];
+			expect(nodeArg.parameters.endpointUrl).toBe('');
+			Object.entries(nodeArg.parameters).forEach(([_, value]) => {
+				expect(value).not.toBeNull();
+				expect(value).not.toBeUndefined();
+			});
+		});
+
+		it('cold load: ParameterInputList is NOT in DOM, setNodes not called, loading placeholder renders', async () => {
+			nodeTypesStore.nodeTypes = {};
+
+			const toolWorkflowStore = getToolWorkflowStore();
+			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
+
+			const { queryAllByTestId, container } = renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			expect(queryAllByTestId('parameter-input-list')).toHaveLength(0);
+			expect(setNodesSpy).not.toHaveBeenCalled();
+			expect(container.querySelector('[data-test-id="tool-settings-loading"]')).toBeTruthy();
+		});
+
+		it('cold load -> node types arrive: ParameterInputList mounts, setNodes called, spinner gone', async () => {
+			nodeTypesStore.nodeTypes = {};
+
+			const toolWorkflowStore = getToolWorkflowStore();
+			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
+
+			const { queryAllByTestId, getAllByTestId, container } = renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			expect(queryAllByTestId('parameter-input-list')).toHaveLength(0);
+			expect(container.querySelector('[data-test-id="tool-settings-loading"]')).toBeTruthy();
+
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			await waitFor(() => {
+				expect(getAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+			});
+
+			expect(setNodesSpy).toHaveBeenCalledTimes(1);
+			const callArgs = setNodesSpy.mock.calls[0][0] as INode[];
+			const nodeArg = callArgs[0];
+			expect(nodeArg.parameters).toBeDefined();
+			expect(nodeArg.parameters.endpointUrl).toBe('');
+			expect(container.querySelector('[data-test-id="tool-settings-loading"]')).toBeNull();
+		});
+
+		it('invalid/uninstalled node type: error notice renders, spinner gone, ParameterInputList not mounted, setNodes not called', async () => {
+			nodeTypesStore.nodeTypes = { 'some-other-type': { 1: MOCK_NODE_TYPE } };
+
+			const toolWorkflowStore = getToolWorkflowStore();
+			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
+
+			const { queryAllByTestId, container } = renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			await waitFor(() => {
+				expect(container.querySelector('[role="alert"]')).toBeTruthy();
+			});
+
+			expect(container.querySelector('[data-test-id="tool-settings-loading"]')).toBeNull();
+			expect(queryAllByTestId('parameter-input-list')).toHaveLength(0);
+			expect(setNodesSpy).not.toHaveBeenCalled();
+		});
+
+		it('invalid -> type later appears: error notice disappears, list mounts, store hydrated', async () => {
+			nodeTypesStore.nodeTypes = { 'some-other-type': { 1: MOCK_NODE_TYPE } };
+
+			const toolWorkflowStore = getToolWorkflowStore();
+			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
+
+			const { getAllByTestId, container } = renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			await waitFor(() => {
+				expect(container.querySelector('[role="alert"]')).toBeTruthy();
+			});
+
+			nodeTypesStore.nodeTypes = {
+				'some-other-type': { 1: MOCK_NODE_TYPE },
+				'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT },
+			};
+
+			await waitFor(() => {
+				expect(container.querySelector('[role="alert"]')).toBeNull();
+				expect(getAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+			});
+
+			expect(setNodesSpy).toHaveBeenCalledTimes(1);
+			const nodeInStore = toolWorkflowStore.allNodes[0];
+			expect(nodeInStore?.parameters.endpointUrl).toBe('');
+		});
+
+		it('store invariant: no unhydrated write in cold load scenario', async () => {
+			nodeTypesStore.nodeTypes = {};
+
+			const toolWorkflowStore = getToolWorkflowStore();
+
+			renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			let nodeInStore = toolWorkflowStore.allNodes[0];
+			expect(nodeInStore).toBeUndefined();
+
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			await waitFor(() => {
+				nodeInStore = toolWorkflowStore.allNodes[0];
+				expect(nodeInStore).toBeDefined();
+				expect(nodeInStore?.parameters).toBeDefined();
+				expect(nodeInStore?.parameters).not.toEqual({});
+				expect(nodeInStore?.parameters).not.toBeNull();
+				expect(nodeInStore?.parameters).not.toBeUndefined();
+				expect(nodeInStore?.parameters.endpointUrl).toBe('');
+			});
+		});
+
+		it('single write on warm load: setNodes called exactly once across mount and first tick', async () => {
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			const toolWorkflowStore = getToolWorkflowStore();
+			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
+
+			renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			await waitFor(() => {
+				expect(setNodesSpy).toHaveBeenCalledTimes(1);
+			});
+
+			await nextTick();
+			expect(setNodesSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('background node-types reactivity does not overwrite user edits', async () => {
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			const toolWorkflowStore = getToolWorkflowStore();
+
+			const { getAllByTestId } = renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+			});
+
+			emitParameterChange?.({
+				name: 'endpointUrl',
+				value: 'https://user-typed.example.com',
+			});
+
+			await waitFor(() => {
+				const nodeInStore = toolWorkflowStore.allNodes[0];
+				expect(nodeInStore?.parameters.endpointUrl).toBe('https://user-typed.example.com');
+			});
+
+			nodeTypesStore.nodeTypes = {
+				'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT },
+				'some-other-type': { 1: MOCK_NODE_TYPE },
+			};
+
+			await waitFor(() => {
+				const nodeAfterTrigger = toolWorkflowStore.allNodes[0];
+				expect(nodeAfterTrigger?.parameters.endpointUrl).toBe('https://user-typed.example.com');
+			});
+		});
+
+		it('swapping initialNode to different identity DOES re-hydrate', async () => {
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			const toolWorkflowStore = getToolWorkflowStore();
+			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
+
+			const firstNode = createMockNode({
+				id: 'first-id',
+				name: 'First Node',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { endpointUrl: 'https://first.example.com' },
+			});
+			const { rerender } = renderComponent({
+				props: { initialNode: firstNode },
+			});
+
+			await waitFor(() => {
+				expect(setNodesSpy).toHaveBeenCalledTimes(1);
+			});
+
+			const secondNode = createMockNode({
+				id: 'second-id',
+				name: 'Second Node',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { endpointUrl: 'https://second.example.com' },
+			});
+			setNodesSpy.mockClear();
+
+			await rerender({ initialNode: secondNode });
+
+			await waitFor(() => {
+				expect(setNodesSpy).toHaveBeenCalledTimes(1);
+				const callArgs = setNodesSpy.mock.calls[0][0] as INode[];
+				expect(callArgs[0].name).toBe('Second Node');
+				expect(callArgs[0].parameters.endpointUrl).toBe('https://second.example.com');
+			});
+		});
+
+		it('reference-only change to initialNode (same id) does NOT re-hydrate', async () => {
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			const toolWorkflowStore = getToolWorkflowStore();
+			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
+
+			const firstNode = createMockNode({
+				id: 'same-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+			});
+			const { rerender, getAllByTestId } = renderComponent({
+				props: { initialNode: firstNode },
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+				expect(setNodesSpy).toHaveBeenCalledTimes(1);
+			});
+
+			emitParameterChange?.({
+				name: 'endpointUrl',
+				value: 'https://user-typed.example.com',
+			});
+
+			await waitFor(() => {
+				const nodeInStore = toolWorkflowStore.allNodes[0];
+				expect(nodeInStore?.parameters.endpointUrl).toBe('https://user-typed.example.com');
+			});
+
+			setNodesSpy.mockClear();
+
+			const sameIdNode = {
+				...firstNode,
+				parameters: { endpointUrl: '' },
+			};
+
+			await rerender({ initialNode: sameIdNode });
+			await nextTick();
+
+			expect(setNodesSpy).not.toHaveBeenCalled();
+			const nodeInStore = toolWorkflowStore.allNodes[0];
+			expect(nodeInStore?.parameters.endpointUrl).toBe('https://user-typed.example.com');
+		});
+
+		it('loadNodeTypesIfNotLoaded rejection is non-blocking', async () => {
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockRejectedValue(new Error('Load failed'));
+
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+			const { emitted } = renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			await waitFor(() => {
+				expect(consoleErrorSpy).toHaveBeenCalledWith(
+					'Failed to load node types',
+					expect.any(Error),
+				);
+				expect(emitted('update:valid')).toBeDefined();
+			});
+
+			consoleErrorSpy.mockRestore();
+		});
+
+		it('isValid is false during cold load and true after hydration', async () => {
+			nodeTypesStore.nodeTypes = {};
+
+			const simpleNodeType: INodeTypeDescription = {
+				...MOCK_NODE_TYPE,
+				properties: [
+					{
+						displayName: 'Name Field',
+						name: 'nameField',
+						type: 'string',
+						default: '',
+					},
+				],
+				credentials: undefined,
+			};
+
+			const wrapper = mountComponent({
+				initialNode: createMockNode({ parameters: { nameField: 'test' } }),
+			});
+
+			const exposed = wrapper.vm as unknown as { isValid: boolean };
+			expect(exposed.isValid).toBe(false);
+
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.testTool': { 1: simpleNodeType } };
+
+			await waitFor(() => {
+				expect(exposed.isValid).toBe(true);
+			});
+		});
+
+		it('node types load failure: error notice renders, spinner gone, ParameterInputList not mounted', async () => {
+			nodeTypesStore.nodeTypes = {};
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockRejectedValue(new Error('Load failed'));
+
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+			const { container, queryAllByTestId } = renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			await waitFor(() => {
+				expect(container.querySelector('[role="alert"]')).toBeTruthy();
+			});
+
+			const alert = container.querySelector('[role="alert"]') as HTMLElement;
+			expect(alert.textContent).toContain('workflowDiff.error.loadNodeTypes');
+			expect(container.querySelector('[data-test-id="tool-settings-loading"]')).toBeNull();
+			expect(queryAllByTestId('parameter-input-list')).toHaveLength(0);
+
+			consoleErrorSpy.mockRestore();
+		});
+
+		it('deferred hydration preserves a user-edited name', async () => {
+			nodeTypesStore.nodeTypes = {};
+
+			const toolWorkflowStore = getToolWorkflowStore();
+
+			const wrapper = mountComponent({ initialNode: NODE_WITH_ENDPOINT });
+
+			const exposed = wrapper.vm as unknown as {
+				handleChangeName: (name: string) => void;
+			};
+			exposed.handleChangeName('My Edited Tool');
+
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			await waitFor(() => {
+				const nodeInStore = toolWorkflowStore.allNodes[0];
+				expect(nodeInStore).toBeDefined();
+				expect(nodeInStore?.name).toBe('My Edited Tool');
+			});
+		});
+
+		it('identity swap before hydration does not leak the previous node name', async () => {
+			nodeTypesStore.nodeTypes = {};
+
+			const toolWorkflowStore = getToolWorkflowStore();
+
+			const firstNode = createMockNode({
+				id: 'leak-first-id',
+				name: 'First Node',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { endpointUrl: 'https://first.example.com' },
+			});
+			const wrapper = mountComponent({ initialNode: firstNode });
+
+			const exposed = wrapper.vm as unknown as {
+				handleChangeName: (name: string) => void;
+			};
+			exposed.handleChangeName('First Node Name');
+
+			// Swap the node identity and let node types arrive in the same flush,
+			// as a real cold-start swap resolves. The preserved name belongs to the
+			// first node and must not be re-applied to the second one.
+			const secondNode = createMockNode({
+				id: 'leak-second-id',
+				name: 'Second Node',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { endpointUrl: 'https://second.example.com' },
+			});
+			const swapPromise = wrapper.setProps({ initialNode: secondNode });
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+			await swapPromise;
+
+			await waitFor(() => {
+				const nodeInStore = toolWorkflowStore.allNodes[0];
+				expect(nodeInStore).toBeDefined();
+				expect(nodeInStore?.name).toBe('Second Node');
+			});
+		});
+
+		it('cleared name survives deferred hydration', async () => {
+			nodeTypesStore.nodeTypes = {};
+
+			const toolWorkflowStore = getToolWorkflowStore();
+
+			const wrapper = mountComponent({ initialNode: NODE_WITH_ENDPOINT });
+
+			const exposed = wrapper.vm as unknown as {
+				handleChangeName: (name: string) => void;
+				isValid: boolean;
+			};
+			exposed.handleChangeName('');
+			// The computed gates on a truthy name, so an empty name yields a falsy value.
+			expect(exposed.isValid).toBeFalsy();
+
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			await waitFor(() => {
+				const nodeInStore = toolWorkflowStore.allNodes[0];
+				expect(nodeInStore).toBeDefined();
+				expect(nodeInStore?.name).toBe('');
+			});
+		});
+
+		it('id-less node with multiple edits preserves the last edit through deferred hydration', async () => {
+			nodeTypesStore.nodeTypes = {};
+
+			const toolWorkflowStore = getToolWorkflowStore();
+
+			const idlessNode = createMockNode({
+				id: '',
+				name: 'Original Name',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { endpointUrl: 'https://original.example.com' },
+			});
+			const wrapper = mountComponent({ initialNode: idlessNode });
+
+			const exposed = wrapper.vm as unknown as {
+				handleChangeName: (name: string) => void;
+			};
+			exposed.handleChangeName('First Edit');
+			exposed.handleChangeName('Second Edit');
+
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			await waitFor(() => {
+				const nodeInStore = toolWorkflowStore.allNodes[0];
+				expect(nodeInStore).toBeDefined();
+				expect(nodeInStore?.name).toBe('Second Edit');
+			});
+		});
+
+		it('regression anchor: warm load, simulated user edits update isolated store with no null fields', async () => {
+			// Note: The dynamic parameter options fetch surface runs inside child ParameterInput /
+			// ParameterOptions components. We assert here on the isolated document store state that
+			// feeds those children, proving that currentNodeParameters contains the typed URL and no
+			// field is null when subsequent parameter changes (e.g. changing include to 'selected') occur.
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			const toolWorkflowStore = getToolWorkflowStore();
+
+			const { getAllByTestId } = renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+			});
+
+			// Initial hydrated default in store
+			let nodeInStore = toolWorkflowStore.allNodes[0];
+			expect(nodeInStore?.parameters.endpointUrl).toBe('');
+
+			// Simulate user typing a URL
+			emitParameterChange?.({
+				name: 'endpointUrl',
+				value: 'https://api.example.com/data',
+			});
+
+			// Simulate user changing include to 'selected'
+			emitParameterChange?.({
+				name: 'include',
+				value: 'selected',
+			});
+
+			await waitFor(() => {
+				nodeInStore = toolWorkflowStore.allNodes[0];
+				expect(nodeInStore?.parameters.endpointUrl).toBe('https://api.example.com/data');
+				expect(nodeInStore?.parameters.include).toBe('selected');
+			});
+
+			// Verify that no parameter field is null or undefined
+			Object.entries(nodeInStore?.parameters ?? {}).forEach(([key, value]) => {
+				expect(value, `parameter ${key} should not be null`).not.toBeNull();
+				expect(value, `parameter ${key} should not be undefined`).not.toBeUndefined();
+			});
+		});
+	});
 	describe('node types that load after the component mounts', () => {
+		beforeEach(() => {
+			nodeTypesStore.nodeTypes = {};
+			// Read the type from the catalog, as the real store does, so the form
+			// stays gated until the requested type actually arrives.
+			nodeTypesStore.getNodeType = vi.fn((type: string) => {
+				const entry = nodeTypesStore.nodeTypes[type];
+				if (!entry) return null;
+				if ('name' in entry) return entry as unknown as INodeTypeDescription;
+				const versionNumbers = Object.keys(entry).map(Number);
+				return entry[Math.max(...versionNumbers)] ?? null;
+			});
+		});
+
 		afterEach(() => {
 			vi.restoreAllMocks();
 		});
@@ -781,7 +1414,6 @@ describe('NodeToolSettingsContent', () => {
 			(emitted()['update:node'] as INode[][]).at(-1)?.[0];
 
 		it('shows a loading state, then fills the default parameters once the node types load', async () => {
-			nodeTypesStore.hasNodeTypes = false;
 			const { promise, resolve } = Promise.withResolvers<void>();
 			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
 			const getNodeParametersSpy = vi.spyOn(NodeHelpers, 'getNodeParameters');
@@ -795,6 +1427,7 @@ describe('NodeToolSettingsContent', () => {
 			expect(queryByTestId('parameter-input-list')).not.toBeInTheDocument();
 			expect(getNodeParametersSpy).not.toHaveBeenCalled();
 
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.testTool': { 1: MOCK_NODE_TYPE } };
 			resolve();
 			await flushPromises();
 
@@ -808,11 +1441,8 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		it('reports the form as invalid until the node types load', async () => {
-			nodeTypesStore.hasNodeTypes = false;
 			const { promise, resolve } = Promise.withResolvers<void>();
 			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
-			// A node type with no required parameters or credentials, so only the load decides.
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE_NO_PARAMS);
 
 			const { emitted } = renderComponent({
 				props: {
@@ -827,23 +1457,54 @@ describe('NodeToolSettingsContent', () => {
 
 			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(false);
 
+			// A node type with no required parameters or credentials, so only the load decides.
+			nodeTypesStore.nodeTypes = {
+				[MOCK_NODE_TYPE_NO_PARAMS.name]: { 1: MOCK_NODE_TYPE_NO_PARAMS },
+			};
 			resolve();
 			await flushPromises();
 
 			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(true);
 		});
 
-		it('shows the form when the node types fail to load', async () => {
-			nodeTypesStore.hasNodeTypes = false;
-			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockRejectedValue(new Error('node types'));
+		it('shows a recoverable error and blocks saving when the node types fail to load', async () => {
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('node types'));
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-			const { queryByTestId, queryAllByTestId } = renderComponent({
-				props: { initialNode: createMockNode() },
+			const { emitted, getByTestId, queryByTestId, queryAllByTestId } = renderComponent({
+				props: {
+					initialNode: createMockNode({
+						name: 'No Params Tool',
+						type: MOCK_NODE_TYPE_NO_PARAMS.name,
+						parameters: {},
+					}),
+				},
 			});
 			await flushPromises();
 
+			// No node type is available, so nothing renders and the form is not valid.
 			expect(queryByTestId('tool-settings-loading')).not.toBeInTheDocument();
-			expect(queryAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+			expect(queryByTestId('tool-settings-load-error')).toBeInTheDocument();
+			expect(queryAllByTestId('parameter-input-list')).toHaveLength(0);
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(false);
+
+			// Retry starts a new load, which now provides the requested type.
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockImplementation(async () => {
+				nodeTypesStore.nodeTypes = {
+					[MOCK_NODE_TYPE_NO_PARAMS.name]: { 1: MOCK_NODE_TYPE_NO_PARAMS },
+				};
+			});
+			await userEvent.click(getByTestId('tool-settings-retry'));
+			await waitFor(() => {
+				expect(queryAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+			});
+
+			expect(queryByTestId('tool-settings-load-error')).not.toBeInTheDocument();
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(true);
+
+			consoleErrorSpy.mockRestore();
 		});
 	});
 
@@ -1121,6 +1782,429 @@ describe('NodeToolSettingsContent', () => {
 			const operationOptions = optionHeadlines(baseElement);
 			expect(operationOptions).toContain('Create');
 			expect(operationOptions).not.toContain('Delete');
+		});
+	});
+
+	describe('partial node-type catalog', () => {
+		const PARTIAL_NODE_TYPE: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			name: 'n8n-nodes-base.httpRequest',
+			displayName: 'HTTP Request',
+			credentials: undefined,
+			properties: [
+				{
+					displayName: 'URL',
+					name: 'endpointUrl',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Include',
+					name: 'include',
+					type: 'options',
+					options: [
+						{ name: 'All', value: 'all' },
+						{ name: 'Selected', value: 'selected' },
+					],
+					default: 'all',
+				},
+			],
+		};
+
+		beforeEach(() => {
+			nodeTypesStore.nodeTypes = {};
+			nodeTypesStore.getNodeType = vi.fn((type: string) => {
+				const entry = nodeTypesStore.nodeTypes[type];
+				if (!entry) return null;
+				if ('name' in entry) return entry as unknown as INodeTypeDescription;
+				const versionNumbers = Object.keys(entry).map(Number);
+				return entry[Math.max(...versionNumbers)] ?? null;
+			});
+		});
+
+		it('recovers when the requested type arrives after a partial catalog', async () => {
+			// The shared load stays pending while a partial catalog appears.
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
+
+			const toolWorkflowStore = getToolWorkflowStore();
+			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
+
+			const { emitted, queryByTestId, queryAllByTestId, container } = renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+			await flushPromises();
+
+			// Mounted with no catalog: gated, but not marked unknown.
+			expect(container.querySelector('[role="alert"]')).toBeNull();
+			expect(queryByTestId('tool-settings-loading')).toBeInTheDocument();
+			expect(setNodesSpy).not.toHaveBeenCalled();
+
+			// A partial catalog arrives that does not contain the requested type.
+			nodeTypesStore.nodeTypes = { 'some-other-type': { 1: MOCK_NODE_TYPE } };
+			await nextTick();
+
+			// Still gated, still not treated as unknown, still no store write.
+			expect(container.querySelector('[role="alert"]')).toBeNull();
+			expect(queryByTestId('tool-settings-loading')).toBeInTheDocument();
+			expect(setNodesSpy).not.toHaveBeenCalled();
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0] ?? false).toBe(false);
+
+			// The requested type arrives while the shared load is still pending.
+			nodeTypesStore.nodeTypes = {
+				'some-other-type': { 1: MOCK_NODE_TYPE },
+				'n8n-nodes-base.httpRequest': { 1: PARTIAL_NODE_TYPE },
+			};
+			await waitFor(() => {
+				expect(queryAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+			});
+
+			// Hydration completed automatically: no warning, defaults are set, the
+			// isolated store got the node, and the form is valid.
+			expect(container.querySelector('[role="alert"]')).toBeNull();
+			expect(queryByTestId('tool-settings-loading')).not.toBeInTheDocument();
+			expect(setNodesSpy).toHaveBeenCalledTimes(1);
+			const nodeInStore = toolWorkflowStore.allNodes[0];
+			expect(nodeInStore).toBeDefined();
+			expect(nodeInStore?.parameters.endpointUrl).toBe('');
+			expect(nodeInStore?.parameters.include).toBe('all');
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(true);
+
+			resolve();
+		});
+
+		it('hydrates immediately when the full catalog is already present', async () => {
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: PARTIAL_NODE_TYPE } };
+			nodeTypesStore.nodeTypesLoaded = true;
+
+			const toolWorkflowStore = getToolWorkflowStore();
+			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
+
+			const { emitted, queryByTestId, queryAllByTestId } = renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			await waitFor(() => {
+				expect(queryAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+			});
+
+			expect(queryByTestId('tool-settings-loading')).not.toBeInTheDocument();
+			expect(setNodesSpy).toHaveBeenCalledTimes(1);
+			expect(toolWorkflowStore.allNodes[0]?.parameters.endpointUrl).toBe('');
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(true);
+		});
+
+		it('marks a permanently unknown type only after the shared load settles', async () => {
+			// The load completes without ever providing the requested type.
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockImplementation(async () => {
+				nodeTypesStore.nodeTypesLoaded = true;
+			});
+
+			const toolWorkflowStore = getToolWorkflowStore();
+			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
+
+			const { emitted, container } = renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			await waitFor(() => {
+				expect(container.querySelector('[role="alert"]')).toBeTruthy();
+			});
+			const alert = container.querySelector('[role="alert"]') as HTMLElement;
+			expect(alert.textContent).toContain('nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown');
+			expect(setNodesSpy).not.toHaveBeenCalled();
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(false);
+		});
+	});
+
+	describe('partial catalog with the real node-types load', () => {
+		const REQUESTED_NODE_TYPE: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			name: 'n8n-nodes-base.httpRequest',
+			displayName: 'HTTP Request',
+			credentials: undefined,
+			properties: [
+				{
+					displayName: 'URL',
+					name: 'endpointUrl',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Include',
+					name: 'include',
+					type: 'options',
+					options: [
+						{ name: 'All', value: 'all' },
+						{ name: 'Selected', value: 'selected' },
+					],
+					default: 'all',
+				},
+			],
+		};
+
+		const requestedNode = () =>
+			createMockNode({
+				type: 'n8n-nodes-base.httpRequest',
+				name: 'HTTP Request',
+				parameters: {},
+			});
+
+		function seedPartialCatalog() {
+			nodeTypesStore.nodeTypes = {
+				'n8n-nodes-base.partial': {
+					1: { ...MOCK_NODE_TYPE, name: 'n8n-nodes-base.partial' },
+				},
+			};
+		}
+
+		beforeEach(() => {
+			window.localStorage.clear();
+			vi.mocked(nodeTypesApi.getNodeTypes).mockReset();
+			nodeTypesStore.nodeTypes = {};
+			nodeTypesStore.nodeTypesLoaded = false;
+			nodeTypesStore.getNodeType = vi.fn((type: string) => {
+				const entry = nodeTypesStore.nodeTypes[type];
+				if (!entry) return null;
+				if ('name' in entry) return entry as unknown as INodeTypeDescription;
+				const versionNumbers = Object.keys(entry).map(Number);
+				return entry[Math.max(...versionNumbers)] ?? null;
+			});
+			// Exercise the real gating: a partial catalog must not skip the full load.
+			nodeTypesStore.loadNodeTypesIfNotLoaded = realLoadNodeTypesIfNotLoaded;
+		});
+
+		it('stays pending with a partial catalog and hydrates when the full catalog arrives', async () => {
+			seedPartialCatalog();
+			const { promise, resolve } = Promise.withResolvers<INodeTypeDescription[]>();
+			vi.mocked(nodeTypesApi.getNodeTypes).mockReturnValueOnce(promise);
+
+			const toolWorkflowStore = getToolWorkflowStore();
+			const setNodesSpy = vi.spyOn(toolWorkflowStore, 'setNodes');
+
+			const { emitted, queryByTestId, queryAllByTestId, container } = renderComponent({
+				props: { initialNode: requestedNode() },
+			});
+			await flushPromises();
+
+			// The requested type is absent from the partial catalog, and the full
+			// load has not completed. Stay gated; do not call the type unknown.
+			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(1);
+			expect(container.querySelector('[role="alert"]')).toBeNull();
+			expect(queryByTestId('tool-settings-loading')).toBeInTheDocument();
+			expect(queryAllByTestId('parameter-input-list')).toHaveLength(0);
+			expect(setNodesSpy).not.toHaveBeenCalled();
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0] ?? false).toBe(false);
+
+			resolve([REQUESTED_NODE_TYPE]);
+			await waitFor(() => {
+				expect(queryAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+			});
+
+			expect(queryByTestId('tool-settings-loading')).not.toBeInTheDocument();
+			expect(container.querySelector('[role="alert"]')).toBeNull();
+			expect(setNodesSpy).toHaveBeenCalledTimes(1);
+			const nodeInStore = toolWorkflowStore.allNodes[0];
+			expect(nodeInStore?.parameters.endpointUrl).toBe('');
+			expect(nodeInStore?.parameters.include).toBe('all');
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(true);
+			expect(nodeTypesStore.nodeTypesLoaded).toBe(true);
+		});
+
+		it('recovers from a failed full load with a retry', async () => {
+			seedPartialCatalog();
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			vi.mocked(nodeTypesApi.getNodeTypes)
+				.mockRejectedValueOnce(new Error('node types'))
+				.mockResolvedValueOnce([REQUESTED_NODE_TYPE]);
+
+			const { emitted, getByTestId, queryByTestId, queryAllByTestId } = renderComponent({
+				props: { initialNode: requestedNode() },
+			});
+			await waitFor(() => {
+				expect(getByTestId('tool-settings-load-error')).toBeInTheDocument();
+			});
+
+			// A partial catalog is not enough to treat the type as known, and the
+			// failed load offers a retry instead of a false unknown warning.
+			expect(queryAllByTestId('parameter-input-list')).toHaveLength(0);
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(false);
+
+			await userEvent.click(getByTestId('tool-settings-retry'));
+			await waitFor(() => {
+				expect(queryAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+			});
+
+			expect(queryByTestId('tool-settings-load-error')).not.toBeInTheDocument();
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(true);
+			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(2);
+
+			consoleErrorSpy.mockRestore();
+		});
+	});
+
+	describe('MCP dynamic options request payload (integration)', () => {
+		const MCP_NODE_TYPE: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			name: 'n8n-nodes-base.mcpClientTool',
+			displayName: 'MCP Client Tool',
+			credentials: undefined,
+			properties: [
+				{
+					displayName: 'Endpoint',
+					name: 'endpointUrl',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Server Transport',
+					name: 'serverTransport',
+					type: 'options',
+					options: [
+						{ name: 'HTTP Streamable', value: 'httpStreamable' },
+						{ name: 'SSE', value: 'sse' },
+					],
+					default: 'httpStreamable',
+					noDataExpression: true,
+				},
+				{
+					displayName: 'Tools to Include',
+					name: 'include',
+					type: 'options',
+					options: [
+						{ name: 'All', value: 'all' },
+						{ name: 'Selected', value: 'selected' },
+					],
+					default: 'all',
+					noDataExpression: true,
+				},
+				{
+					displayName: 'Tools to Include',
+					name: 'includeTools',
+					type: 'multiOptions',
+					default: [],
+					typeOptions: {
+						loadOptionsMethod: 'getTools',
+						loadOptionsDependsOn: ['endpointUrl'],
+					},
+					displayOptions: { show: { include: ['selected'] } },
+				},
+			],
+		};
+
+		const renderWithRealParameterList = createComponentRenderer(NodeToolSettingsContent, {
+			global: {
+				stubs: {
+					// Leave ParameterInputList (and ParameterInput) real so the dynamic
+					// options request is built by the production code path.
+					NodeCredentials: {
+						template: '<div data-test-id="node-credentials" />',
+						props: ['node', 'readonly', 'showAll', 'hideIssues'],
+					},
+				},
+			},
+		});
+
+		it('sends the current endpointUrl and no null fields when include changes to selected', async () => {
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MCP_NODE_TYPE);
+			nodeTypesStore.getNodeParameterOptions = vi.fn().mockResolvedValue([]);
+
+			const toolWorkflowStore = getToolWorkflowStore();
+
+			const { container, baseElement } = renderWithRealParameterList({
+				props: {
+					initialNode: createMockNode({
+						id: 'mcp-node',
+						name: 'MCP Client Tool',
+						type: 'n8n-nodes-base.mcpClientTool',
+						parameters: {},
+					}),
+				},
+			});
+
+			// The request only becomes possible after the node is hydrated.
+			await waitFor(() => {
+				expect(container.querySelector('[data-test-id="parameter-input-field"]')).toBeTruthy();
+			});
+			expect(nodeTypesStore.getNodeParameterOptions).not.toHaveBeenCalled();
+
+			// Type the endpoint URL through the real controller and wait for the
+			// debounced change to reach the isolated store.
+			const endpointInput = container.querySelector(
+				'input[data-test-id="parameter-input-field"]',
+			) as HTMLInputElement;
+			await userEvent.type(endpointInput, 'https://mcp.example.com/mcp');
+			await waitFor(() => {
+				expect(toolWorkflowStore.allNodes[0]?.parameters.endpointUrl).toBe(
+					'https://mcp.example.com/mcp',
+				);
+			});
+			expect(nodeTypesStore.getNodeParameterOptions).not.toHaveBeenCalled();
+
+			// Change "Tools to Include" to "Selected". The dependent list mounts and
+			// loads its remote options through the real ParameterInput.
+			const selectTriggers = Array.from(
+				container.querySelectorAll('.select-trigger'),
+			) as HTMLElement[];
+			await userEvent.click(selectTriggers[1]);
+			const selectedOption = Array.from(
+				baseElement.querySelectorAll('[data-test-id="parameter-input-item"]'),
+			).find((option) => option.textContent?.includes('Selected')) as HTMLElement;
+			await userEvent.click(selectedOption);
+
+			await waitFor(() => {
+				expect(nodeTypesStore.getNodeParameterOptions).toHaveBeenCalled();
+			});
+
+			const payload = (nodeTypesStore.getNodeParameterOptions as ReturnType<typeof vi.fn>).mock
+				.calls[0][0] as {
+				nodeTypeAndVersion: { name: string; version: number };
+				path: string;
+				methodName: string;
+				currentNodeParameters: Record<string, unknown>;
+			};
+			expect(payload.nodeTypeAndVersion).toEqual({
+				name: 'n8n-nodes-base.mcpClientTool',
+				version: 1,
+			});
+			expect(payload.path).toBe('includeTools');
+			expect(payload.methodName).toBe('getTools');
+			expect(payload.currentNodeParameters.endpointUrl).toBe('https://mcp.example.com/mcp');
+			expect(payload.currentNodeParameters.serverTransport).toBe('httpStreamable');
+			// The original bug: a cold or partial hydration sent null for every
+			// parameter. No field in the request may be null or undefined.
+			Object.entries(payload.currentNodeParameters).forEach(([key, value]) => {
+				expect(value, `parameter ${key} should not be null`).not.toBeNull();
+				expect(value, `parameter ${key} should not be undefined`).not.toBeUndefined();
+			});
+		});
+
+		it('does not send a request while a cold cache leaves the node unhydrated', async () => {
+			nodeTypesStore.nodeTypes = {};
+			nodeTypesStore.getNodeType = vi.fn(() => null);
+			nodeTypesStore.getNodeParameterOptions = vi.fn().mockResolvedValue([]);
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
+
+			const toolWorkflowStore = getToolWorkflowStore();
+
+			const { container } = renderWithRealParameterList({
+				props: {
+					initialNode: createMockNode({
+						name: 'MCP Client Tool',
+						type: 'n8n-nodes-base.mcpClientTool',
+						parameters: {},
+					}),
+				},
+			});
+			await flushPromises();
+
+			// Nothing renders while loading, so no incomplete payload can be sent.
+			expect(container.querySelector('[data-test-id="parameter-input-field"]')).toBeNull();
+			expect(nodeTypesStore.getNodeParameterOptions).not.toHaveBeenCalled();
+			expect(toolWorkflowStore.allNodes).toHaveLength(0);
+
+			resolve();
 		});
 	});
 });

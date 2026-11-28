@@ -29,7 +29,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as utils from '@/app/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/app/utils/nodeTypes/nodeTypeTransforms';
-import { computed, shallowRef } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -91,6 +91,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	});
 
 	const hasNodeTypes = computed(() => Object.keys(nodeTypes.value).length > 0);
+
+	// True only after a full catalog load completed successfully. A non-empty
+	// catalog can be a partial registration, so it cannot stand in for this.
+	const nodeTypesLoaded = ref(false);
 
 	const allNodeTypes = computed(() => {
 		return Object.values(nodeTypes.value).flatMap((nodeType) =>
@@ -429,6 +433,9 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		if (nodeTypes.length) {
 			setNodeTypes(nodeTypes);
 		}
+		// A successful request completes the full catalog load even when the
+		// instance has no node types; otherwise callers would retry forever.
+		nodeTypesLoaded.value = true;
 	};
 
 	// Callers that start while a load runs share that load, so the editor sends one request.
@@ -436,7 +443,9 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	let nodeTypesLoad: Promise<void> | undefined;
 
 	const loadNodeTypesIfNotLoaded = async () => {
-		if (hasNodeTypes.value) {
+		// A non-empty catalog can be a partial registration, so it cannot decide
+		// whether the full catalog has loaded.
+		if (nodeTypesLoaded.value) {
 			return;
 		}
 
@@ -569,6 +578,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	return {
 		nodeTypes,
 		hasNodeTypes,
+		nodeTypesLoaded,
 		allNodeTypes,
 		allLatestNodeTypes,
 		getNodeType,

@@ -12,6 +12,7 @@ import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-avai
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { flushPromises } from '@vue/test-utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { defineComponent } from 'vue';
 
 import { createToolSettingsStub } from '../__tests__/toolSettingsStub';
 
@@ -175,6 +176,38 @@ describe('ToolSettingsModal', () => {
 
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 		expect(onConfirmMock).not.toHaveBeenCalled();
+	});
+
+	it('should pass syncNodeToNdv: true and readOnly to NodeToolSettingsContent', () => {
+		let capturedProps: Record<string, unknown> = {};
+		const ToolSettingsContentStub = defineComponent({
+			props: ['initialNode', 'existingToolNames', 'syncNodeToNdv', 'readOnly'],
+			setup(props) {
+				capturedProps = props;
+				return () => null;
+			},
+		});
+
+		renderComponent(ToolSettingsModal, {
+			props: {
+				modalName: MODAL_NAME,
+				data: {
+					node: createMockNode(),
+					existingToolNames: [],
+					onConfirm: onConfirmMock,
+				},
+			},
+			global: {
+				stubs: {
+					...sharedStubs,
+					NodeToolSettingsContent: ToolSettingsContentStub,
+				},
+			},
+		});
+
+		expect(capturedProps.syncNodeToNdv).toBe(true);
+		// Chat Hub does not restrict this node type, so the form stays editable.
+		expect(capturedProps.readOnly).toBe(false);
 	});
 
 	describe('restricted node types', () => {
