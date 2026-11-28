@@ -97,6 +97,11 @@ function childWithLastNodeOn(kind: 'secondInput' | 'secondOutput'): IWorkflowBas
 	return child;
 }
 
+/** Returns the child with the given saving mode for its successful executions. */
+function withSuccessSaving(child: IWorkflowBase, saving: 'all' | 'none'): IWorkflowBase {
+	return { ...child, settings: { ...child.settings, saveDataSuccessExecution: saving } };
+}
+
 function resumeUrlFrom(data: IRunExecutionData): string {
 	const url = data.resultData.runData['Resume URL'][0].data?.main?.[0]?.[0].json.resumeUrl;
 	if (typeof url !== 'string') throw new Error('Missing child resume URL');
@@ -183,15 +188,24 @@ test.describe(
 			{ kind: 'secondInput', ids: [55, 56, 57, 57, 56, 55] },
 			{ kind: 'secondOutput', ids: [56, 57] },
 		] as const) {
-			test(`returns parent item links when the last node is on a ${kind}`, async ({ api }) => {
-				const child = await api.workflows.importWorkflowFromDefinition(childWithLastNodeOn(kind));
-				await api.workflows.activate(child.workflowId, child.createdWorkflow.versionId!);
-				const parent = await publishParent(api, child.workflowId);
-				await api.webhooks.trigger(`/webhook/${parent.webhookPath}`);
-				expect(await output(api, parent.workflowId)).toEqual(
-					ids.map((id) => ({ id, parentId: id })),
-				);
-			});
+			for (const saving of ['all', 'none'] as const) {
+				test(`returns parent item links when the last node is on a ${kind} and the child saves ${saving} successful executions`, async ({
+					api,
+				}) => {
+					const child = await api.workflows.importWorkflowFromDefinition(
+						withSuccessSaving(childWithLastNodeOn(kind), saving),
+					);
+					await api.workflows.activate(child.workflowId, child.createdWorkflow.versionId!);
+					const parent = await publishParent(api, child.workflowId);
+					await api.webhooks.trigger(`/webhook/${parent.webhookPath}`);
+					expect(await output(api, parent.workflowId)).toEqual(
+						ids.map((id) => ({ id, parentId: id })),
+					);
+					expect(await api.workflows.getExecutions(child.workflowId)).toHaveLength(
+						saving === 'all' ? 1 : 0,
+					);
+				});
+			}
 		}
 
 		// Engine v1 runs "Upper terminal" once for each branch that feeds it, and engine v2
