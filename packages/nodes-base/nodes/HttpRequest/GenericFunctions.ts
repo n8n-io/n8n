@@ -254,6 +254,12 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 			includeCredentialsOnRefreshOnBody: true,
 		},
 	};
+
+	oAuth2Options.microsoftOAuth2Api = {
+		tokenExpiredStatusCode: [401, 403],
+		skipRefreshWhileTokenIsFresh: true,
+	};
+
 	return oAuth2Options[nodeCredentialType];
 };
 
