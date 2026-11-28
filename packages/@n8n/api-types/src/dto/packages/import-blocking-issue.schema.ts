@@ -422,6 +422,12 @@ const credentialPolicyViolationIssueSchema = z
 export const importBlockingIssueSchema = z
 	.discriminatedUnion('type', [
 		z.object({
+			type: z.literal('preference-conflict'),
+			kind: z.enum(['conflict', 'forbidden', 'invalid', 'unavailable']),
+			preferenceId: z.string().optional(),
+			message: z.string(),
+		}),
+		z.object({
 			type: z.literal('agent-conflict'),
 			kind: z.enum(['existing', 'id', 'task-id']),
 			sourceAgentId: z.string(),

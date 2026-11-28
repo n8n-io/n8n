@@ -231,6 +231,24 @@ The feature shipped behind the PostHog flag `111_context_preferences`. The flag 
 user, and `McpProtectedResource.getGrantableScopes` offers `aiPreference:read` and
 `aiPreference:write` to every user.
 
+### Shared transfers and protected environments
+
+`planSharedChanges` accepts validated shared UUIDs for a package batch. It checks
+identity, permissions, and the final scope contents. `checkSharedChanges` checks
+a preview again before package writes. `applySharedChanges` repeats validation
+and writes each item separately, as workflow imports do. A later failure keeps
+earlier writes and reports the completed Preference outcomes. New UUIDs use inserts,
+so another import cannot turn a creation into a replacement. Ordinary creation still
+uses its own ID. Scope limits and duplicate text are checked before writes. Concurrent
+writes to different rows can still pass these checks together.
+
+New imported rows use `import` and the destination actor. Updates keep the source
+and creator. Package transfer excludes user Preferences and personal projects.
+
+`InstanceWriteAccessService` blocks ordinary shared writes in a protected
+environment. This guard covers creation, edits, moves, and deletion in the shared
+service. Personal writes keep their current behavior.
+
 The settings and Assistant editors send `expectedUpdatedAt` from the row they loaded.
 The service rejects a stale version with HTTP 409. The conditional write also rejects
 changes that occur after this check. The draft stays open on failure.

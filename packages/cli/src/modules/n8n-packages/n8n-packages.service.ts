@@ -6,7 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
-import { buildImportResult, toPackageSummary } from './engine/import-result';
+import { emptyImportResult } from './engine/import-result';
 import { assertPackageImportApiKeyScopes, packageImportScopes } from './engine/import-gates';
 import { emitPackageImportedEvent, type ImportOutcome } from './engine/import-telemetry';
 import { N8nPackageParser } from './engine/n8n-package-parser';
@@ -20,6 +20,7 @@ import {
 	resolveFolderConflictPolicy,
 } from './entities/folder/folder-conflict-policy';
 import { FolderExporter } from './entities/folder/folder.exporter';
+import { PreferenceExporter } from './entities/preference/preference.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { TagExporter } from './entities/tag/tag.exporter';
@@ -74,9 +75,8 @@ import {
 	type PromotionLayoutProperties,
 	type ResolvedImportPackageRequest,
 	type ResolvedImportRequest,
-	createBindings,
 } from './n8n-packages.types';
-import { FORMAT_VERSION } from './spec/constants';
+import { FORMAT_VERSION, PREFERENCES_FORMAT_VERSION } from './spec/constants';
 import {
 	packageManifestSchema,
 	type ManifestEntry,
@@ -86,7 +86,7 @@ import type { PackageRequirements } from './spec/requirements.schema';
 
 interface WrittenExport {
 	manifest: PackageManifest;
-	counts: ExportPackageEventCounts;
+	counts: ExportPackageEventCounts & { preferences?: number };
 	agentIds: string[];
 	workflowIds: string[];
 	folderIds: string[];
@@ -141,6 +141,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 export class N8nPackagesService {
 	constructor(
 		private readonly projectExporter: ProjectExporter,
+		private readonly preferenceExporter: PreferenceExporter,
 		private readonly workflowExporter: WorkflowExporter,
 		private readonly folderExporter: FolderExporter,
 		private readonly credentialExporter: CredentialExporter,
@@ -174,7 +175,15 @@ export class N8nPackagesService {
 			...(result.workflowIds.length ? { workflowIds: result.workflowIds } : {}),
 			...(result.folderIds.length ? { folderIds: result.folderIds } : {}),
 			...(result.projectIds.length ? { projectIds: result.projectIds } : {}),
-			counts: result.counts,
+			counts: {
+				agents: result.counts.agents,
+				workflows: result.counts.workflows,
+				folders: result.counts.folders,
+				credentials: result.counts.credentials,
+				dataTables: result.counts.dataTables,
+				variables: result.counts.variables,
+				tags: result.counts.tags,
+			},
 			credentialExportPolicy: result.credentialExportPolicy,
 			includeArchived: result.includeArchived,
 			loginId: loginIdOf(request.ctx),
@@ -394,9 +403,16 @@ export class N8nPackagesService {
 			nodeTypes: collectNodeTypeUsage(requirements.nodeTypes),
 		});
 
+		const preferencesIncluded = request.includePreferences || !!request.preferenceIds?.length;
+		const preferenceEntries = await this.preferenceExporter.export(
+			request,
+			writer,
+			projectTargetsById,
+		);
 		const agentEntries = agentExportResult?.agentEntries ?? [];
 		const written = {
-			packageFormatVersion: FORMAT_VERSION,
+			packageFormatVersion: preferencesIncluded ? PREFERENCES_FORMAT_VERSION : FORMAT_VERSION,
+			...(preferencesIncluded ? { preferences: preferenceEntries } : {}),
 			sourceN8nVersion: getN8nVersion(),
 			sourceId: this.instanceSettings.instanceId,
 			...(agentEntries.length > 0 ? { agents: agentEntries } : {}),
@@ -420,7 +436,8 @@ export class N8nPackagesService {
 
 		await writer.writeFile('manifest.json', formatEntityFile(manifest));
 
-		const counts: ExportPackageEventCounts = {
+		const counts: ExportPackageEventCounts & { preferences?: number } = {
+			...(preferencesIncluded ? { preferences: preferenceEntries.length } : {}),
 			agents: agentEntries.length,
 			workflows: allWorkflowsInPackage.length,
 			folders: allFolders.length,
@@ -735,6 +752,7 @@ export class N8nPackagesService {
 			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
 			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
 			...CHERRY_PICK_IMPORT_POLICY,
+			preferenceConflictPolicy: request.preferenceConflictPolicy,
 			projectConflictPolicy: request.projectConflictPolicy ?? ProjectConflictPolicy.Merge,
 			overwriteDeletionPolicy: request.overwriteDeletionPolicy ?? OverwriteDeletionPolicy.Archive,
 			conflictPolicy: request.conflictPolicy ?? ImportConflictPolicy.NewVersion,
@@ -836,6 +854,7 @@ function isProjectPackage(manifest: PackageManifest): boolean {
 function hasContentWithoutProjects(manifest: PackageManifest): boolean {
 	return (
 		[
+			manifest.preferences,
 			manifest.workflows,
 			manifest.folders,
 			manifest.credentials,
@@ -844,21 +863,4 @@ function hasContentWithoutProjects(manifest: PackageManifest): boolean {
 			manifest.tags,
 		].some((entries) => (entries?.length ?? 0) > 0) || manifest.requirements !== undefined
 	);
-}
-
-function emptyImportResult(manifest: PackageManifest): ImportResult {
-	return buildImportResult({
-		package: toPackageSummary(manifest),
-		agentOutcomes: [],
-		workflows: [],
-		removedWorkflows: [],
-		removedFolders: [],
-		folders: [],
-		projects: [],
-		bindings: createBindings(),
-		credentials: { matched: [], stubbed: [], seeded: [], incomplete: [], updated: [] },
-		dataTables: { matched: 0, created: 0, updated: 0 },
-		variables: { matched: [], created: [], stubbed: [], updated: [], missing: [] },
-		tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
-	});
 }

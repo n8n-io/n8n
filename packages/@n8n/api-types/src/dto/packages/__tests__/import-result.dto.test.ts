@@ -1,4 +1,4 @@
-import { ImportBlockedErrorDto, ImportResultDto } from '../import-result.dto';
+import { ImportBlockedErrorDto, ImportResultDto, importResultSchema } from '../import-result.dto';
 
 describe('ImportResultDto', () => {
 	it('accepts a project-package happy-path result', () => {
@@ -154,6 +154,17 @@ describe('ImportResultDto', () => {
 });
 
 describe('ImportBlockedErrorDto', () => {
+	it('retains completed Preference results on a failure without blocking issues', () => {
+		const response = {
+			message: 'Package import failed.',
+			preferences: [
+				{ id: '09c33210-d8be-43a8-859f-1fec0501c035', scope: 'instance', status: 'create' },
+			],
+			counts: { preferences: { created: 1, updated: 0, removed: 0, skipped: 0 } },
+		};
+		expect(ImportBlockedErrorDto.parse(response)).toEqual(response);
+	});
+
 	it.each([
 		{ kind: 'task-id', sourceTaskId: 'task-1', success: true },
 		{ kind: 'task-id', sourceTaskId: undefined, success: false },
@@ -181,4 +192,29 @@ describe('ImportBlockedErrorDto', () => {
 			expect(result.success).toBe(success);
 		},
 	);
+});
+
+describe('Preference import outcomes', () => {
+	const result = importResultSchema.pick({ preferences: true });
+	const outcome = { id: '09c33210-d8be-43a8-859f-1fec0501c035', status: 'create' };
+
+	it.each([undefined, ''])('rejects a project outcome without a destination: %s', (projectId) => {
+		expect(
+			result.safeParse({ preferences: [{ ...outcome, scope: 'project', projectId }] }).success,
+		).toBe(false);
+	});
+
+	it('retains the project destination and strips it from instance outcomes', () => {
+		expect(
+			result.parse({
+				preferences: [
+					{ ...outcome, scope: 'project', projectId: 'team' },
+					{ ...outcome, scope: 'instance', projectId: 'irrelevant' },
+				],
+			}).preferences,
+		).toEqual([
+			{ ...outcome, scope: 'project', projectId: 'team' },
+			{ ...outcome, scope: 'instance' },
+		]);
+	});
 });

@@ -26,6 +26,7 @@ export type ManifestEntityCollection = {
  * path segments, so they are part of the package contract.
  */
 export const PACKAGE_ENTITY_LAYOUT = {
+	preferences: { directory: 'preferences', fileName: 'preference.json' },
 	projects: { directory: 'projects', fileName: 'project.json' },
 	folders: { directory: 'folders', fileName: 'folder.json' },
 	workflows: { directory: 'workflows', fileName: 'workflow.json' },
@@ -48,6 +49,7 @@ const MAX_PATH_SEGMENT_LENGTH = 255;
 
 /** Keeps the leaf from starting with a hyphen when a name slugifies to nothing. */
 const FALLBACK_SLUGS = {
+	preferences: 'preference',
 	projects: 'project',
 	folders: 'folder',
 	workflows: 'workflow',

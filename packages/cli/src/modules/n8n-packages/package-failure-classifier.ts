@@ -14,12 +14,14 @@ import {
 	PackageWorkflowInvalidError,
 } from './entities/package-export.errors';
 import type { PackageFailureReason } from './n8n-packages.types';
+import { PreferenceImportError } from './engine/preference-import.error';
 
 /**
  * Classifies a thrown error into the `reason` reported on the
  * `n8n.audit.n8n-package.<op>.failed` audit event.
  */
 export function classifyPackageFailure(error: unknown): PackageFailureReason {
+	if (error instanceof PreferenceImportError) return classifyPackageFailure(error.cause);
 	if (error instanceof PackageEntityAccessDeniedError) return 'access-denied';
 	if (error instanceof PackageEntityNotFoundError) return 'entity-not-found';
 	if (error instanceof PackageExportBlockedError) return 'blocked';

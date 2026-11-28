@@ -76,6 +76,48 @@ describe('N8nClient', () => {
 	});
 
 	describe('packages', () => {
+		describe('Preference package fields', () => {
+			it('sends export selection and collection inclusion', async () => {
+				fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+				await client.exportPackage({
+					projectIds: ['project'],
+					preferenceIds: ['id'],
+					includePreferences: true,
+				});
+				const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+				expect(JSON.parse(init.body as string)).toMatchObject({
+					preferenceIds: ['id'],
+					includePreferences: true,
+				});
+			});
+			it.each(['full', 'selection'])(
+				'encodes explicit removal and replacement for %s import',
+				async (mode) => {
+					fetchMock.mockResolvedValue(jsonResponse(200, { workflows: [] }));
+					const file = { buffer: Buffer.from('package'), filename: 'preferences.n8np' };
+					if (mode === 'full')
+						await client.importPackage(file, {
+							conflictPolicy: 'fail',
+							preferenceConflictPolicy: 'replace',
+							deletedPreferenceIds: ['remove'],
+						});
+					else
+						await client.importPackageSelection(file, {
+							selectedProjectId: 'project',
+							selectedWorkflowIds: [],
+							selectedPreferenceIds: ['keep'],
+							preferenceConflictPolicy: 'replace',
+							deletedPreferenceIds: ['remove'],
+						});
+					const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+					const form = init.body as FormData;
+					expect(form.get('preferenceConflictPolicy')).toBe('replace');
+					expect(form.get('deletedPreferenceIds')).toBe('["remove"]');
+					if (mode === 'selection') expect(form.get('selectedPreferenceIds')).toBe('["keep"]');
+				},
+			);
+		});
+
 		describe('promotions', () => {
 			it('promotes and applies through the environment routes', async () => {
 				const promoted = {

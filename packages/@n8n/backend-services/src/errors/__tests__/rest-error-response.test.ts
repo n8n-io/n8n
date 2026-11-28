@@ -7,6 +7,26 @@ import { AiPreferenceScopeFullError } from '../response-errors/ai-preference-sco
 import { serializeInternalRestError, serializePublicApiError } from '../rest-error-response';
 
 describe('rest-error-response', () => {
+	it('returns completed Preference results without saved content or unrelated metadata', () => {
+		const preference = {
+			id: '09c33210-d8be-43a8-859f-1fec0501c035',
+			scope: 'instance',
+			status: 'create',
+		};
+		const counts = { preferences: { created: 1, updated: 0, removed: 0, skipped: 0 } };
+		const descriptor = classifyRestError(
+			new ConflictError('Import stopped', undefined, {
+				preferences: [{ ...preference, content: 'Private content' }],
+				counts: { ...counts, internal: 'Private metadata' },
+				internal: 'Private metadata',
+			}),
+		);
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 409,
+			body: { message: 'Import stopped', preferences: [preference], counts },
+		});
+	});
+
 	it('serializes a ResponseError with a minimal public message', () => {
 		const descriptor = classifyRestError(new NotFoundError('x'));
 		expect(serializePublicApiError(descriptor)).toEqual({

@@ -7,6 +7,10 @@ import {
 	credentialUpdateScope,
 	resolveCredentialConflictPolicy,
 } from '../entities/credential/credential-conflict-policy';
+import {
+	PreferenceImporter,
+	type PreferenceImportPlan,
+} from '../entities/preference/preference.importer';
 import type {
 	CredentialBindingRequest,
 	CredentialUpdateScope,
@@ -35,6 +39,7 @@ import type {
 import { mergeBindings } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertProjectWritesAllowed } from './import-gates';
 import { toImportBlockedError } from './import-blocked.error';
+import { PreferenceImportError } from './preference-import.error';
 import {
 	needsBundledCredentialFiles,
 	needsBundledVariableValues,
@@ -66,6 +71,7 @@ import type { SerializedSkill } from '../spec/serialized/skill.schema';
 
 /** Everything an import will do, read before its first write. */
 export interface PackageImportPlan {
+	preferences?: PreferenceImportPlan;
 	request: ResolvedImportRequest;
 	manifest: PackageManifest;
 	projectPlan: ProjectImportPlan;
@@ -79,6 +85,7 @@ export interface PackageImportPlan {
 export class ProjectPackageImporter {
 	constructor(
 		private readonly packageParser: N8nPackageParser,
+		private readonly preferenceImporter: PreferenceImporter,
 		private readonly projectImporter: ProjectImporter,
 		private readonly importOrchestrator: ImportOrchestrator,
 		private readonly importPreflight: PackageImportPreflight,
@@ -168,6 +175,14 @@ export class ProjectPackageImporter {
 				.map((item) => item.sourceProjectId),
 		);
 
+		const preferences =
+			manifest.preferences !== undefined ||
+			request.selection?.deletedPreferenceIds?.length ||
+			request.deletedPreferenceIds?.length ||
+			request.selection?.selectedPreferenceIds?.length
+				? await this.preferenceImporter.plan(request, reader, manifest, [...pendingCreateIds])
+				: undefined;
+
 		// Plan and validate every project's contents before writing anything, so a blocking issue in
 		// any project leaves nothing behind — not folders, workflows, nor the project shells.
 		const inputs: ImportOrchestrationInput[] = [];
@@ -197,7 +212,14 @@ export class ProjectPackageImporter {
 		);
 		const scopes = selectedProjects.map((project, index) => ({ project, plan: plans[index] }));
 
-		return { request, manifest, projectPlan, scopes, issues };
+		return {
+			request,
+			manifest,
+			projectPlan,
+			scopes,
+			preferences,
+			issues: [...issues, ...(preferences?.issues ?? [])],
+		};
 	}
 
 	/** Writes a plan that has no issues. */
@@ -208,6 +230,8 @@ export class ProjectPackageImporter {
 		}
 
 		await this.importOrchestrator.assertCanUpdateCredentials(planned.map(({ plan }) => plan));
+
+		if (plan.preferences) await this.preferenceImporter.check(request, plan.preferences);
 
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan.items);
 
@@ -232,14 +256,23 @@ export class ProjectPackageImporter {
 			});
 		}
 
-		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
-			user: request.user,
-			publicApi: request.publicApi,
-			ctx: request.ctx,
-			content: applied.map(({ content }) => content),
-			policy: request.publishingPolicy,
-			subWorkflowRequirements: manifest.requirements?.workflows,
-		});
+		const preferences = plan.preferences
+			? await this.preferenceImporter.apply(request, plan.preferences)
+			: undefined;
+
+		const { workflows: published, agentOutcomes } = await this.importOrchestrator
+			.publishPackage({
+				user: request.user,
+				publicApi: request.publicApi,
+				ctx: request.ctx,
+				content: applied.map(({ content }) => content),
+				policy: request.publishingPolicy,
+				subWorkflowRequirements: manifest.requirements?.workflows,
+			})
+			.catch((error: unknown) => {
+				if (preferences) throw new PreferenceImportError(error, preferences);
+				throw error;
+			});
 
 		const workflows: ImportedWorkflowSummary[] = [];
 		const removedWorkflows: RemovedWorkflowSummary[] = [];
@@ -295,6 +328,7 @@ export class ProjectPackageImporter {
 		}
 
 		const result = buildImportResult({
+			preferences,
 			package: toPackageSummary(manifest),
 			agentOutcomes,
 			workflows,

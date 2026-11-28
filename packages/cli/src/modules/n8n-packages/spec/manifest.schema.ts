@@ -2,7 +2,7 @@ import { isSafeObjectKey } from '@n8n/api-types';
 import path from 'node:path';
 import { z } from 'zod';
 
-import { FORMAT_VERSION } from './constants';
+import { FORMAT_VERSION, PREFERENCES_FORMAT_VERSION } from './constants';
 import { packageRequirementsSchema } from './requirements.schema';
 
 export const manifestEntrySchema = z.object({
@@ -47,23 +47,41 @@ function assertNoDuplicateIds(
 	}
 }
 
+const manifestFieldsSchema = z.object({
+	packageFormatVersion: z.enum([FORMAT_VERSION, PREFERENCES_FORMAT_VERSION]),
+	preferences: z.array(manifestEntrySchema.extend({ id: z.string().uuid() })).optional(),
+	sourceN8nVersion: z.string().min(1),
+	sourceId: z.string().min(1),
+	workflows: z.array(workflowManifestEntrySchema).optional(),
+	agents: z.array(manifestEntrySchema).optional(),
+	skills: z.array(manifestEntrySchema).optional(),
+	folders: z.array(manifestEntrySchema).optional(),
+	projects: z.array(manifestEntrySchema).optional(),
+	credentials: z.array(manifestEntrySchema).optional(),
+	dataTables: z.array(manifestEntrySchema).optional(),
+	variables: z.array(manifestEntrySchema).optional(),
+	tags: z.array(manifestEntrySchema).optional(),
+	requirements: packageRequirementsSchema.optional(),
+});
+
 export const packageManifestSchema = z
-	.object({
-		packageFormatVersion: z.literal(FORMAT_VERSION),
-		sourceN8nVersion: z.string().min(1),
-		sourceId: z.string().min(1),
-		workflows: z.array(workflowManifestEntrySchema).optional(),
-		agents: z.array(manifestEntrySchema).optional(),
-		skills: z.array(manifestEntrySchema).optional(),
-		folders: z.array(manifestEntrySchema).optional(),
-		projects: z.array(manifestEntrySchema).optional(),
-		credentials: z.array(manifestEntrySchema).optional(),
-		dataTables: z.array(manifestEntrySchema).optional(),
-		variables: z.array(manifestEntrySchema).optional(),
-		tags: z.array(manifestEntrySchema).optional(),
-		requirements: packageRequirementsSchema.optional(),
-	})
+	.union([
+		manifestFieldsSchema.extend({ packageFormatVersion: z.literal(FORMAT_VERSION) }),
+		manifestFieldsSchema
+			.extend({ packageFormatVersion: z.literal(PREFERENCES_FORMAT_VERSION) })
+			.strict(),
+	])
 	.superRefine((manifest, ctx) => {
+		assertNoDuplicateIds(manifest.preferences, 'Preference', ctx);
+		if (
+			manifest.preferences !== undefined &&
+			manifest.packageFormatVersion !== PREFERENCES_FORMAT_VERSION
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Preferences require package format 3.',
+			});
+		}
 		assertNoDuplicateIds(manifest.workflows, 'workflow', ctx);
 		assertNoDuplicateIds(manifest.agents, 'Agent', ctx);
 		assertNoDuplicateIds(manifest.skills, 'skill', ctx);

@@ -19,6 +19,19 @@ export default class PackageImport extends BaseCommand {
 
 	static override flags = {
 		...BaseCommand.baseFlags,
+		preferenceConflictPolicy: Flags.option({
+			description:
+				'How to handle changed shared Preferences. Use replace to replace their content explicitly',
+			options: ['fail', 'skip', 'replace'] as const,
+			aliases: ['preference-conflict-policy'],
+		})(),
+		deletedPreferenceIds: Flags.string({
+			description: 'Destination shared Preference UUIDs to remove',
+			multiple: true,
+			delimiter: ',',
+			aliases: ['deleted-preference-ids'],
+		}),
+
 		file: Flags.string({ description: 'Path to the .n8np package file', required: true }),
 		projectId: Flags.string({
 			char: 'p',
@@ -165,6 +178,8 @@ export default class PackageImport extends BaseCommand {
 						projectId: flags.projectId,
 						folderId: flags.folderId,
 						conflictPolicy: flags.conflictPolicy,
+						preferenceConflictPolicy: flags.preferenceConflictPolicy,
+						deletedPreferenceIds: flags.deletedPreferenceIds,
 						publishingPolicy: flags.publishingPolicy,
 						idPolicy: flags.idPolicy,
 						missingNodeTypeMode: flags.missingNodeTypeMode,

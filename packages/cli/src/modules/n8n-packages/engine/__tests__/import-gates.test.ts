@@ -25,6 +25,70 @@ it('does not require workflow:import for a project-only package', () => {
 	).toEqual([]);
 });
 
+it.each([
+	{ preferences: [] },
+	{ preferences: [{ id: 'rule', name: 'Preference', target: 'preferences/rule' }] },
+])(
+	'does not require workflow:import for a Preference-only collection $preferences',
+	({ preferences }) => {
+		expect(
+			packageImportScopes({
+				packageFormatVersion: '3',
+				sourceN8nVersion: '2.0.0',
+				sourceId: 'source',
+				preferences,
+			}),
+		).toEqual([]);
+	},
+);
+
+it.each([{}, { credentials: [], workflows: [], agents: [], variables: [] }])(
+	'ignores empty requirements in a Preference-only package: %j',
+	(requirements) => {
+		expect(
+			packageImportScopes({
+				packageFormatVersion: '3',
+				sourceN8nVersion: '2.0.0',
+				sourceId: 'source',
+				preferences: [],
+				requirements,
+			}),
+		).toEqual([]);
+	},
+);
+
+it('keeps workflow:import when a Preference package has requirements', () => {
+	expect(
+		packageImportScopes({
+			packageFormatVersion: '3',
+			sourceN8nVersion: '2.0.0',
+			sourceId: 'source',
+			preferences: [],
+			requirements: {
+				nodeTypes: [
+					{
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						usedBy: [{ kind: 'workflow', id: 'workflow' }],
+					},
+				],
+			},
+		}),
+	).toEqual(['workflow:import']);
+});
+
+it('keeps workflow:import for loose content exported with Preferences', () => {
+	expect(
+		packageImportScopes({
+			packageFormatVersion: '3',
+			sourceN8nVersion: '2.0.0',
+			sourceId: 'source',
+			preferences: [{ id: 'rule', name: 'Preference', target: 'preferences/rule' }],
+			folders: [{ id: 'folder', name: 'Folder', target: 'folders/folder' }],
+		}),
+	).toEqual(['workflow:import']);
+});
+
 function workflowPlan(archiveTransition: 'archive' | 'unarchive' | null): WorkflowImportPlan {
 	const workflow = { id: 'workflow-1', name: 'Workflow' } as WorkflowEntity;
 	return {

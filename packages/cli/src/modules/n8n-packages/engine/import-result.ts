@@ -7,7 +7,7 @@ import type {
 	PreparedWorkflow,
 } from '../entities/workflow/workflow-import.types';
 import type { PackagePublishingResults } from '../entities/workflow/workflow-publisher';
-import { serializeBindings } from '../n8n-packages.types';
+import { serializeBindings, createBindings } from '../n8n-packages.types';
 import type {
 	RemovedFolderSummary,
 	RemovedWorkflowSummary,
@@ -76,6 +76,7 @@ export function toImportedWorkflowSummaries(
 }
 
 export function buildImportResult(input: {
+	preferences?: ImportResult['preferences'];
 	package: ImportPackageSummary;
 	agentOutcomes: AgentImportOutcome[];
 	workflows: ImportedWorkflowSummary[];
@@ -92,7 +93,15 @@ export function buildImportResult(input: {
 	return {
 		package: input.package,
 		agents: input.agentOutcomes.map(toImportedAgentSummary),
-		counts: { agents: countImportStatuses(input.agentOutcomes) },
+		...(input.preferences ? { preferences: input.preferences } : {}),
+		counts: {
+			agents: countImportStatuses(input.agentOutcomes),
+			...(input.preferences
+				? {
+						preferences: countPreferenceStatuses(input.preferences),
+					}
+				: {}),
+		},
 		workflows: input.workflows,
 		removedWorkflows: input.removedWorkflows,
 		removedFolders: input.removedFolders,
@@ -279,4 +288,34 @@ export function scopeCredentialBindingsToRequirements(
 
 	const requirementIds = new Set((requirements ?? []).map((requirement) => requirement.id));
 	return new Map([...bindings].filter(([sourceId]) => requirementIds.has(sourceId)));
+}
+
+export function emptyImportResult(
+	manifest: PackageManifest,
+	preferences?: ImportResult['preferences'],
+): ImportResult {
+	return buildImportResult({
+		package: toPackageSummary(manifest),
+		preferences,
+		agentOutcomes: [],
+		workflows: [],
+		removedWorkflows: [],
+		removedFolders: [],
+		folders: [],
+		projects: [],
+		bindings: createBindings(),
+		credentials: { matched: [], stubbed: [], seeded: [], incomplete: [], updated: [] },
+		dataTables: { matched: 0, created: 0, updated: 0 },
+		variables: { matched: [], created: [], stubbed: [], updated: [], missing: [] },
+		tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
+	});
+}
+
+export function countPreferenceStatuses(preferences: NonNullable<ImportResult['preferences']>) {
+	return {
+		created: preferences.filter(({ status }) => status === 'create').length,
+		updated: preferences.filter(({ status }) => status === 'update').length,
+		removed: preferences.filter(({ status }) => status === 'delete').length,
+		skipped: preferences.filter(({ status }) => status === 'skip').length,
+	};
 }

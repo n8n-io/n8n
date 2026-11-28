@@ -97,6 +97,8 @@ describe('package import command', () => {
 			filename: 'export.n8np',
 		});
 		expect(importPackage.mock.calls[0][1]).toStrictEqual({
+			preferenceConflictPolicy: undefined,
+			deletedPreferenceIds: undefined,
 			projectId: 'p-1',
 			folderId: 'f-1',
 			conflictPolicy: 'fail',
@@ -195,6 +197,22 @@ describe('package import command', () => {
 			await command.run();
 			return importPackage;
 		}
+
+		it('parses explicit Preference replacement and removals', async () => {
+			const id = 'b86d323f-c829-4cd9-877e-c34a80cb6dfa';
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--preference-conflict-policy=replace',
+				`--deleted-preference-ids=${id}`,
+			]);
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					preferenceConflictPolicy: 'replace',
+					deletedPreferenceIds: [id],
+				}),
+			);
+		});
 
 		it('applies the new-version default when the flag is omitted', async () => {
 			const importPackage = await runWithArgv(['--file=/tmp/export.n8np']);
