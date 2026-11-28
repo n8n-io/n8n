@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {
 	McpServerDetailResponse,
+	McpServerResponse,
 	McpServerToolCandidate,
 	McpServerToolDraftField,
 	McpServerToolResponse,
@@ -21,10 +22,20 @@ import {
 	getMcpServer,
 	listToolCandidates,
 	removeTool,
+	updateMcpServer,
 	updateTool,
 } from '../mcp-servers.api';
 import { getMcpServerPermissions } from '../mcp-servers.permissions';
-import McpServerToolRow from './McpServerToolRow.vue';
+import {
+	orderCapabilityRows,
+	VISIBLE_CAPABILITY_ROWS,
+	type CapabilityRowKind,
+} from './capabilities';
+import McpServerChipRow from './McpServerChipRow.vue';
+import McpServerDescriptionPanel from './McpServerDescriptionPanel.vue';
+import McpServerPanel from './McpServerPanel.vue';
+import McpServerToolChip from './McpServerToolChip.vue';
+import McpServerToolDialog from './McpServerToolDialog.vue';
 import McpWorkflowPickerDialog from './McpWorkflowPickerDialog.vue';
 
 /** The drafts after an add run at most this many at a time, so a save does not wait behind them. */
@@ -37,12 +48,13 @@ const props = defineProps<{
 	assistantAvailable?: boolean;
 	/** The Assistant panel is open beside the page. */
 	assistantOpen?: boolean;
-	/** A new value loads the tools again, after the Assistant changed the server. */
+	/** A new value loads the server again, after the Assistant changed it. */
 	refreshKey?: number;
 }>();
 
 const emit = defineEmits<{
 	'build-with-assistant': [];
+	'server-updated': [server: McpServerResponse];
 }>();
 
 const i18n = useI18n();
@@ -50,18 +62,22 @@ const toast = useToast();
 const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
-/** The first load and each reload: only the newest response sets the tools. */
+/** The first load and each reload: only the newest response sets the server. */
 const latestFetch = useLatestFetch();
 const style = useCssModule();
 
 const server = ref<McpServerDetailResponse | null>(null);
 const loading = ref(true);
+const descriptionRevision = ref(0);
 const pickerOpen = ref(false);
 const candidates = ref<McpServerToolCandidate[]>([]);
 const candidatesLoading = ref(false);
+const selectedToolId = ref<string | null>(null);
+/** Tracks the last `?expand=` value already opened so closing the modal does not reopen it. */
+const handledExpand = ref('');
 /** Tools that wait for their first draft, after the add. */
 const draftingIds = ref(new Set<string>());
-/** The tools that the latest reload added. Their rows show a short highlight. */
+/** The tools that the latest reload added. Their chips show a short highlight. */
 const highlightedIds = ref(new Set<string>());
 /** The fields of each tool for which a "Generate" call runs. */
 const generating = ref(new Map<string, Set<McpServerToolDraftField>>());
@@ -72,13 +88,48 @@ const canGenerate = computed(() => canUpdate.value && !!server.value?.toolDrafts
 const workflowTools = computed(
 	() => server.value?.tools.filter((tool) => tool.kind === 'workflow') ?? [],
 );
-/** `?expand=<tool name>` opens that tool row, for a deep link. */
+const orderedCapabilityRows = computed<CapabilityRowKind[]>(() =>
+	orderCapabilityRows(VISIBLE_CAPABILITY_ROWS, {
+		workflows: workflowTools.value.length,
+	}),
+);
+const selectedTool = computed(
+	() => server.value?.tools.find(({ id }) => id === selectedToolId.value) ?? null,
+);
+/** `?expand=<tool name>` opens that tool in the modal, for old deep links. */
 const expandName = computed(() =>
 	typeof route?.query.expand === 'string' ? route.query.expand : '',
 );
 
+watch(
+	[server, expandName],
+	([current, target]) => {
+		if (!target) {
+			handledExpand.value = '';
+			return;
+		}
+		if (!current || handledExpand.value === target) return;
+		const match = current.tools.find(({ toolName }) => toolName === target);
+		if (!match) return;
+		handledExpand.value = target;
+		selectedToolId.value = match.id;
+	},
+	{ immediate: true },
+);
+
 function workflowHref(workflowId: string) {
 	return router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId } }).href;
+}
+
+function toolWarningReasons(tool: McpServerToolResponse): string[] {
+	const reasons: string[] = [];
+	if (tool.brokenReason) {
+		reasons.push(i18n.baseText(`mcpServers.tools.broken.callout.${tool.brokenReason}`));
+	}
+	if (!draftingIds.value.has(tool.id) && tool.description.trim() === '') {
+		reasons.push(i18n.baseText('mcpServers.tools.row.missingDescription'));
+	}
+	return reasons;
 }
 
 function replaceTool(updated: McpServerToolResponse) {
@@ -113,18 +164,18 @@ async function load() {
 	}
 }
 
-/** Loads the tools again with no loading state, so the rows of the page stay in place. */
+/** Loads the server again with no loading state, so the panels stay in place. */
 async function reload() {
 	const isLatest = latestFetch.next();
 	try {
 		const next = await getMcpServer(rootStore.restApiContext, props.projectId, props.serverId);
 		if (!isLatest()) return;
-		// Without a list to compare with, as during the first load, no row is new.
+		// Without a list to compare with, as during the first load, no chip is new.
 		const known = server.value ? new Set(server.value.tools.map(({ id }) => id)) : undefined;
 		highlightedIds.value = new Set(
 			known ? next.tools.filter(({ id }) => !known.has(id)).map(({ id }) => id) : [],
 		);
-		// A tool that did not change keeps its object, so its row does not see a new tool.
+		// A tool that did not change keeps its object, so an open modal does not reset its fields.
 		const previous = new Map(server.value?.tools.map((tool) => [tool.id, tool]));
 		next.tools = next.tools.map((tool) => {
 			const old = previous.get(tool.id);
@@ -146,6 +197,30 @@ watch(
 	() => props.refreshKey,
 	async () => await reload(),
 );
+
+async function onDescription(description: string) {
+	const current = server.value;
+	if (!current) return;
+	try {
+		const updated = await updateMcpServer(
+			rootStore.restApiContext,
+			props.projectId,
+			props.serverId,
+			{ description },
+		);
+		if (server.value && updated.id === server.value.id) {
+			server.value = {
+				...server.value,
+				description: updated.description,
+				updatedAt: updated.updatedAt,
+			};
+		}
+		emit('server-updated', updated);
+	} catch (error) {
+		descriptionRevision.value++;
+		toast.showError(error, i18n.baseText('mcpServers.server.description.error'));
+	}
+}
 
 async function openPicker() {
 	pickerOpen.value = true;
@@ -180,7 +255,7 @@ async function onAdd(workflowIds: string[]) {
 	}
 }
 
-/** `not_available` gives the tool with its default text, so the row shows it in both cases. */
+/** `not_available` gives the tool with its default text, so the chip shows it in both cases. */
 async function requestDraft(tool: McpServerToolResponse, field?: McpServerToolDraftField) {
 	const { tool: drafted } = await draftTool(
 		rootStore.restApiContext,
@@ -194,7 +269,7 @@ async function requestDraft(tool: McpServerToolResponse, field?: McpServerToolDr
 }
 
 /**
- * Every new row shows the loading line at once. A small pool of workers takes the tools from a
+ * Every new chip shows a spinner at once. A small pool of workers takes the tools from a
  * queue. The failed drafts of one add give one toast.
  */
 async function draftNewTools(tools: McpServerToolResponse[]) {
@@ -271,6 +346,7 @@ async function onRemove(tool: McpServerToolResponse) {
 	try {
 		await removeTool(rootStore.restApiContext, props.projectId, props.serverId, tool.id);
 		if (server.value) server.value.tools = server.value.tools.filter(({ id }) => id !== tool.id);
+		if (selectedToolId.value === tool.id) selectedToolId.value = null;
 		// The toast title capitalizes its first letter, so the exact tool name goes in the message.
 		toast.showMessage({
 			type: 'success',
@@ -289,91 +365,92 @@ onMounted(load);
 	<div :class="$style.contents" data-test-id="mcp-server-contents">
 		<N8nLoading v-if="loading" :rows="3" />
 		<template v-else-if="server">
-			<div
-				v-if="server.tools.length === 0"
-				:class="$style.emptyBox"
-				data-test-id="mcp-server-empty-contents"
+			<McpServerDescriptionPanel
+				:model-value="server.description"
+				:can-update="canUpdate"
+				:revision="descriptionRevision"
+				@update:model-value="onDescription"
+			/>
+
+			<McpServerPanel
+				:header="i18n.baseText('mcpServers.server.capabilities.title')"
+				:description="i18n.baseText('mcpServers.server.capabilities.hint')"
+				data-test-id="mcp-server-capabilities-panel"
 			>
-				<template v-if="canBuildWithAssistant">
-					<div :class="$style.assistant" data-test-id="mcp-server-build-with-assistant">
-						<N8nHeading tag="h3" size="medium" bold>
+				<div :class="$style.rows" data-test-id="mcp-server-capabilities-rows">
+					<template v-for="row in orderedCapabilityRows" :key="row">
+						<template v-if="row === 'workflows'">
+							<McpServerChipRow
+								v-if="workflowTools.length > 0 || canUpdate"
+								:label="i18n.baseText('mcpServers.tools.section.workflows')"
+								:item-count="workflowTools.length"
+								:add-label="i18n.baseText('mcpServers.tools.addWorkflow')"
+								add-button-test-id="mcp-server-add-workflow"
+								add-button-attr="mcp-server-add-workflow"
+								:hide-add="!canUpdate"
+								data-test-id="mcp-server-row-workflows"
+								@add="openPicker"
+							>
+								<McpServerToolChip
+									v-for="tool in workflowTools"
+									:key="tool.id"
+									:tool="tool"
+									:drafting="draftingIds.has(tool.id)"
+									:highlighted="highlightedIds.has(tool.id)"
+									:warning-reasons="toolWarningReasons(tool)"
+									@click="selectedToolId = tool.id"
+								/>
+							</McpServerChipRow>
+							<N8nText
+								v-else
+								size="small"
+								color="text-light"
+								data-test-id="mcp-server-empty-workflows"
+							>
+								{{ i18n.baseText('mcpServers.tools.empty.workflows') }}
+							</N8nText>
+						</template>
+					</template>
+				</div>
+
+				<div
+					v-if="server.tools.length === 0 && canBuildWithAssistant"
+					:class="$style.assistantCard"
+					data-test-id="mcp-server-build-with-assistant"
+				>
+					<div :class="$style.assistantCopy">
+						<N8nHeading tag="h4" size="small" bold>
 							{{ i18n.baseText('mcpServers.assistant.build.title') }}
 						</N8nHeading>
-						<N8nText color="text-light" align="center">
-							{{ i18n.baseText('mcpServers.assistant.build.description') }}
-						</N8nText>
-						<N8nButton
-							variant="brand"
-							icon="n8n-assistant"
-							:label="i18n.baseText('mcpServers.assistant.build.button')"
-							:disabled="assistantOpen"
-							data-test-id="mcp-server-build-with-assistant-button"
-							data-attr="mcp-server-build-with-assistant"
-							@click="emit('build-with-assistant')"
-						/>
-					</div>
-					<div :class="$style.divider">
 						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('mcpServers.tools.empty.or') }}
-						</N8nText>
-					</div>
-				</template>
-				<N8nText v-else color="text-light" align="center">
-					{{ i18n.baseText('mcpServers.tools.empty.description') }}
-				</N8nText>
-				<N8nButton
-					v-if="canUpdate"
-					variant="outline"
-					icon="plus"
-					:label="i18n.baseText('mcpServers.tools.addWorkflow')"
-					data-test-id="mcp-server-add-workflow"
-					data-attr="mcp-server-add-workflow"
-					@click="openPicker"
-				/>
-			</div>
-
-			<section v-else :class="$style.section" data-test-id="mcp-server-section-workflows">
-				<div :class="$style.header">
-					<div :class="$style.title">
-						<N8nText tag="h3" bold>{{
-							i18n.baseText('mcpServers.tools.section.workflows')
-						}}</N8nText>
-						<N8nText color="text-light" data-test-id="mcp-server-tools-count">
-							{{ workflowTools.length }}
+							{{ i18n.baseText('mcpServers.assistant.build.description') }}
 						</N8nText>
 					</div>
 					<N8nButton
-						v-if="canUpdate"
-						variant="outline"
+						variant="brand"
 						size="small"
-						icon="plus"
-						:label="i18n.baseText('mcpServers.tools.addWorkflow')"
-						data-test-id="mcp-server-add-workflow"
-						data-attr="mcp-server-add-workflow"
-						@click="openPicker"
+						icon="n8n-assistant"
+						:label="i18n.baseText('mcpServers.assistant.build.button')"
+						:disabled="assistantOpen"
+						data-test-id="mcp-server-build-with-assistant-button"
+						data-attr="mcp-server-build-with-assistant"
+						@click="emit('build-with-assistant')"
 					/>
 				</div>
-				<div v-if="workflowTools.length" :class="$style.list">
-					<McpServerToolRow
-						v-for="tool in workflowTools"
-						:key="tool.id"
-						:tool="tool"
-						:can-update="canUpdate"
-						:can-generate="canGenerate"
-						:drafting="draftingIds.has(tool.id)"
-						:generating="generatingFields(tool.id)"
-						:workflow-href="tool.targetId ? workflowHref(tool.targetId) : null"
-						:initially-expanded="!!expandName && tool.toolName === expandName"
-						:highlighted="highlightedIds.has(tool.id)"
-						@update="onUpdate(tool, $event)"
-						@remove="onRemove(tool)"
-						@generate="onGenerate(tool, $event)"
-					/>
-				</div>
-				<N8nText v-else size="small" color="text-light">
-					{{ i18n.baseText('mcpServers.tools.empty.workflows') }}
-				</N8nText>
-			</section>
+			</McpServerPanel>
+
+			<McpServerToolDialog
+				:tool="selectedTool"
+				:can-update="canUpdate"
+				:can-generate="canGenerate"
+				:drafting="selectedTool ? draftingIds.has(selectedTool.id) : false"
+				:generating="selectedTool ? generatingFields(selectedTool.id) : []"
+				:workflow-href="selectedTool?.targetId ? workflowHref(selectedTool.targetId) : null"
+				@close="selectedToolId = null"
+				@update="selectedTool && onUpdate(selectedTool, $event)"
+				@remove="selectedTool && onRemove(selectedTool)"
+				@generate="selectedTool && onGenerate(selectedTool, $event)"
+			/>
 
 			<McpWorkflowPickerDialog
 				v-model:open="pickerOpen"
@@ -389,65 +466,38 @@ onMounted(load);
 <style lang="scss" module>
 .contents {
 	display: flex;
+	flex: 0 0 auto;
 	flex-direction: column;
-	gap: var(--spacing--xl);
-	padding-top: var(--spacing--xs);
+	gap: var(--spacing--lg);
+	width: 100%;
+	padding-bottom: var(--spacing--2xl);
 }
 
-.emptyBox {
+.rows {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	gap: var(--spacing--md);
-	padding: var(--spacing--2xl) var(--spacing--lg);
-	border: calc(var(--border-width) * 2) dashed var(--border-color);
-	border-radius: var(--radius--lg);
-}
-
-.assistant {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: var(--spacing--xs);
-}
-
-.divider {
-	display: flex;
-	align-items: center;
 	gap: var(--spacing--sm);
-	width: 60%;
-
-	&::before,
-	&::after {
-		content: '';
-		flex: 1;
-		border-top: var(--border);
-	}
+	width: 100%;
 }
 
-.section {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-}
-
-.header {
+.assistantCard {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--spacing--xs);
+	flex-wrap: wrap;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm) var(--spacing--md);
+	border: var(--border);
+	border-radius: var(--radius);
+	background-color: var(--background--subtle);
 }
 
-.title {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.list {
+.assistantCopy {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--5xs);
+	flex: 1;
+	min-width: 0;
 }
 
 .toastToolName {

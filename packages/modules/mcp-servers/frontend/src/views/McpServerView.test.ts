@@ -258,11 +258,11 @@ describe('McpServerView', () => {
 	});
 
 	describe('tabs', () => {
-		it('shows the tabs "Contents" and "Connections", with "Contents" open', async () => {
+		it('shows the tabs "Build" and "Access", with "Build" open', async () => {
 			await renderPage();
 
-			expect(screen.getByText('Contents')).toBeInTheDocument();
-			expect(await screen.findByText('Connections 0')).toBeInTheDocument();
+			expect(screen.getByText('Build')).toBeInTheDocument();
+			expect(await screen.findByText('Access 0')).toBeInTheDocument();
 			expect(screen.getByTestId('mcp-server-contents')).toBeInTheDocument();
 			expect(screen.queryByTestId('mcp-server-connections')).not.toBeInTheDocument();
 		});
@@ -289,7 +289,7 @@ describe('McpServerView', () => {
 
 			await renderPage();
 
-			expect(await screen.findByText('Connections 3')).toBeInTheDocument();
+			expect(await screen.findByText('Access 3')).toBeInTheDocument();
 		});
 
 		it('opens the connections on their own route', async () => {
@@ -303,7 +303,7 @@ describe('McpServerView', () => {
 		it('changes the route when a tab is selected', async () => {
 			await renderPage();
 
-			await userEvent.click(await screen.findByText('Connections 0'));
+			await userEvent.click(await screen.findByText('Access 0'));
 
 			expect(api.listMcpServerConnections).toHaveBeenCalledTimes(2);
 			expect(push).toHaveBeenCalledWith({
@@ -314,14 +314,37 @@ describe('McpServerView', () => {
 	});
 
 	describe('header', () => {
-		it('shows the name, the description, and the URL, with no project label', async () => {
+		it('shows the name, the URL with "Copy URL", "Share", and the menu, without the description or project label', async () => {
 			await renderPage();
 
 			expect(api.getMcpServer).toHaveBeenCalledWith(expect.anything(), 'project-1', server.id);
 			expect(screen.getByTestId('mcp-server-name')).toHaveTextContent('Sales tools');
-			expect(screen.getByTestId('mcp-server-description')).toHaveTextContent('Pipeline numbers');
 			expect(screen.getByTestId('mcp-server-url')).toHaveTextContent('/mcp-servers/sales-tools');
+			expect(screen.getByTestId('mcp-server-copy-url')).toHaveTextContent('Copy URL');
+			expect(screen.getByTestId('mcp-server-share-button')).toHaveTextContent('Share');
+			expect(screen.getByTestId('mcp-server-header')).not.toHaveTextContent('Pipeline numbers');
 			expect(screen.getByTestId('mcp-server-header')).not.toHaveTextContent('Marketing');
+		});
+
+		it('copies the URL from the header "Copy URL" button', async () => {
+			await renderPage();
+
+			await userEvent.click(screen.getByTestId('mcp-server-copy-url'));
+
+			expect(copy).toHaveBeenCalledWith('http://localhost:5678/mcp-servers/sales-tools');
+		});
+
+		it('copies the share link from the header "Share" button', async () => {
+			await renderPage(VIEWER);
+
+			await userEvent.click(screen.getByTestId('mcp-server-share-button'));
+
+			expect(copy).toHaveBeenCalledWith('http://localhost:5678/mcp-share/sales-tools');
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'success',
+				title: 'Share link copied',
+				message: 'Only members of the Marketing project can connect.',
+			});
 		});
 
 		it('renames the server from the dialog that a double-click on the title opens', async () => {
@@ -348,63 +371,6 @@ describe('McpServerView', () => {
 			await openMenuItem('Rename');
 
 			expect(await screen.findByTestId('rename-mcp-server-dialog')).toBeInTheDocument();
-		});
-
-		async function editDescription() {
-			await userEvent.click(
-				within(screen.getByTestId('mcp-server-description')).getByRole('button'),
-			);
-			const input = await waitFor(() => {
-				const textarea = screen.getByTestId('mcp-server-description').querySelector('textarea');
-				expect(textarea).toHaveFocus();
-				return textarea as HTMLTextAreaElement;
-			});
-			return input;
-		}
-
-		it('saves a description with line breaks when the field loses focus', async () => {
-			await renderPage();
-
-			const input = await editDescription();
-			await userEvent.clear(input);
-			await userEvent.type(input, 'For the revenue team{Enter}Ask before you send mail');
-			await userEvent.tab();
-
-			await waitFor(() =>
-				expect(api.updateMcpServer).toHaveBeenCalledWith(
-					expect.anything(),
-					'project-1',
-					server.id,
-					{ description: 'For the revenue team\nAsk before you send mail' },
-				),
-			);
-		});
-
-		it('saves an empty description', async () => {
-			await renderPage();
-
-			const input = await editDescription();
-			await userEvent.clear(input);
-			await userEvent.tab();
-
-			await waitFor(() =>
-				expect(api.updateMcpServer).toHaveBeenCalledWith(
-					expect.anything(),
-					'project-1',
-					server.id,
-					{ description: '' },
-				),
-			);
-		});
-
-		it('keeps the description when the builder presses Escape', async () => {
-			await renderPage();
-
-			const input = await editDescription();
-			await userEvent.type(input, ' and more{Escape}');
-
-			expect(screen.getByTestId('mcp-server-description')).toHaveTextContent('Pipeline numbers');
-			expect(api.updateMcpServer).not.toHaveBeenCalled();
 		});
 
 		it('deletes the server after the confirmation and goes back to the list', async () => {
@@ -462,7 +428,7 @@ describe('McpServerView', () => {
 			expect(copy).toHaveBeenCalledWith('http://localhost:5678/mcp-servers/sales-tools');
 		});
 
-		it('gives a project viewer no rename, no delete, and no description edit', async () => {
+		it('gives a project viewer no rename and no delete', async () => {
 			await renderPage(VIEWER);
 
 			await fireEvent.dblClick(screen.getByTestId('mcp-server-name'));
@@ -473,14 +439,9 @@ describe('McpServerView', () => {
 			expect(screen.queryByText('Rename')).not.toBeInTheDocument();
 			expect(screen.queryByText('Delete')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('rename-mcp-server-dialog')).not.toBeInTheDocument();
-			const description = screen.getByTestId('mcp-server-description');
-			expect(description).not.toHaveAttribute('role', 'button');
-			await userEvent.click(description);
-			expect(description.querySelector('input, textarea')).toBeNull();
-			expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
 		});
 
-		it('gives no rename, no delete, and no description edit on a read-only branch', async () => {
+		it('gives no rename and no delete on a read-only branch', async () => {
 			await renderPage(BUILDER, true);
 
 			await userEvent.click(screen.getByTestId('mcp-server-menu').querySelector('button')!);
@@ -488,7 +449,6 @@ describe('McpServerView', () => {
 			expect(await screen.findByText('Copy server URL')).toBeInTheDocument();
 			expect(screen.queryByText('Rename')).not.toBeInTheDocument();
 			expect(screen.queryByText('Delete')).not.toBeInTheDocument();
-			expect(screen.getByTestId('mcp-server-description')).not.toHaveAttribute('role', 'button');
 		});
 
 		it('closes the delete dialog when the route moves to another server', async () => {
