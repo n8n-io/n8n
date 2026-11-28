@@ -11,6 +11,14 @@ describe('Salesmate > Workflows', () => {
 
 	beforeAll(() => {
 		const mock = nock('https://apis.salesmate.io');
+		mock
+			.post('/v2/companies/search', { fields: ['name'], query: {} })
+			.query({ pageNo: 1, rows: 25 })
+			.reply(200, { Data: { data: [{ id: 2045 }], totalPages: 1 } });
+		mock
+			.post('/v2/deals/search', { fields: ['title'], query: {} })
+			.query({ rows: 5 })
+			.reply(200, { Data: { data: [{ id: 4210 }] } });
 		mock.post('/v1/companies').reply(200, { Data: { id: 2045 } });
 		mock.put('/v1/companies/2045').reply(200, { Data: { id: 2045 } });
 		mock.get('/v1/companies/2045').reply(200, { Data: { id: 2045 } });

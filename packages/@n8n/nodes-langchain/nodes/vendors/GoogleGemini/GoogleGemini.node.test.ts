@@ -595,6 +595,110 @@ describe('GoogleGemini Node', () => {
 				);
 			});
 
+			it('should parse fileSearchStoreNames with single quotes like the editor check', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'Search my files' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return { fileSearch: { fileSearchStoreNames: "['store1']" } };
+						case 'options':
+							return {};
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [{ content: { parts: [{ text: 'File search results.' }], role: 'model' } }],
+				});
+
+				await text.message.execute.call(executeFunctionsMock, 0);
+
+				expect(apiRequestMock).toHaveBeenCalledWith(
+					'POST',
+					requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
+					expect.objectContaining({
+						body: expect.objectContaining({
+							tools: expect.arrayContaining([{ fileSearch: { fileSearchStoreNames: ['store1'] } }]),
+						}),
+					}),
+				);
+			});
+
+			it('should reject fileSearchStoreNames that is false', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'Search my files' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return { fileSearch: { fileSearchStoreNames: false } };
+						case 'options':
+							return {};
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [{ content: { parts: [{ text: 'File search results.' }], role: 'model' } }],
+				});
+
+				await expect(text.message.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+					"'File Search Store Names' expects an array but we got 'false'",
+				);
+				expect(apiRequestMock).not.toHaveBeenCalled();
+			});
+
+			it('should send no fileSearchStoreNames when the value is blank', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'Search my files' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return { fileSearch: { fileSearchStoreNames: '' } };
+						case 'options':
+							return {};
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [{ content: { parts: [{ text: 'File search results.' }], role: 'model' } }],
+				});
+
+				await text.message.execute.call(executeFunctionsMock, 0);
+
+				expect(apiRequestMock).toHaveBeenCalledWith(
+					'POST',
+					requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
+					expect.objectContaining({
+						body: expect.objectContaining({
+							tools: expect.arrayContaining([{ fileSearch: {} }]),
+						}),
+					}),
+				);
+			});
+
 			it('should include File Search tool with metadataFilter when provided', async () => {
 				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
 					switch (parameter) {
@@ -609,7 +713,7 @@ describe('GoogleGemini Node', () => {
 						case 'builtInTools':
 							return {
 								fileSearch: {
-									fileSearchStoreNames: '["store1"]',
+									fileSearchStoreNames: ['store1'],
 									metadataFilter: 'author="Robert Graves"',
 								},
 							};

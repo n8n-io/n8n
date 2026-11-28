@@ -203,16 +203,6 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = '';
-	}
-	return result;
-}
-
 export function eventExists(currentEvents: string[], webhookEvents: string[]) {
 	for (const currentEvent of currentEvents) {
 		if (!webhookEvents.includes(currentEvent)) {

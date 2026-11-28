@@ -79,6 +79,36 @@ describe('Test QuickChart Node', () => {
 							},
 						],
 					],
+					LineJsonString: [
+						[
+							{
+								json: {
+									chart: {
+										type: 'line',
+										data: {
+											labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+											datasets: [
+												{
+													label: 'Free Users',
+													data: [1, 2, 3],
+													backgroundColor: '#121d6d77',
+													borderColor: '#e81010',
+													type: 'line',
+												},
+												{
+													label: 'Paid Users',
+													data: [1, 2, 3],
+													backgroundColor: '#0c0d0d96',
+													borderColor: '#e81010',
+													type: 'line',
+												},
+											],
+										},
+									},
+								},
+							},
+						],
+					],
 				},
 			},
 		},

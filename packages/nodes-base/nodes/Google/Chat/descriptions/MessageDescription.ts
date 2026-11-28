@@ -187,6 +187,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Message (JSON)',
 		name: 'messageJson',
 		type: 'json',
+		validateType: 'object',
 		required: true,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
@@ -371,6 +372,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Update Fields (JSON)',
 		name: 'updateFieldsJson',
 		type: 'json',
+		validateType: 'object',
 		required: true,
 		typeOptions: {
 			alwaysOpenEditWindow: true,

@@ -79,16 +79,6 @@ export async function freshdeskApiRequestAllItems(
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = [];
-	}
-	return result;
-}
-
 export function capitalize(s: string): string {
 	if (typeof s !== 'string') return '';
 	return s.charAt(0).toUpperCase() + s.slice(1);

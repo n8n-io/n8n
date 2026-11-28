@@ -21,8 +21,14 @@ describe('Customer.io > Workflows', () => {
 
 			const tracking = nock('https://track.customer.io/api/v1');
 			tracking.put('/customers/nathan@example.com', { email: 'nathan@example.com' }).reply(200, {});
+			tracking
+				.put('/customers/json@example.com', { email: 'json@example.com', plan: 'pro' })
+				.reply(200, {});
 			tracking.delete('/customers/cus_8812').reply(200, {});
 			tracking.post('/customers/cus_8812/events').reply(200, {});
+			tracking
+				.post('/customers/cus_9000/events', { name: 'signup', data: { plan: 'pro' } })
+				.reply(200, {});
 			tracking.post('/events').reply(200, {});
 			tracking.post('/segments/7/add_customers').reply(200, {});
 			tracking.post('/segments/7/remove_customers').reply(200, {});

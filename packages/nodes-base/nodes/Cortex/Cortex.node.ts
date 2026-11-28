@@ -268,11 +268,12 @@ export class Cortex implements INodeType {
 						let body: IDataObject;
 
 						if (isJSON) {
-							const entityJson = JSON.parse(this.getNodeParameter('objectData', i) as string);
+							const entityJson =
+								(this.getNodeParameter('objectData', i) as IDataObject | undefined) ?? {};
 
 							body = {
 								responderId,
-								label: getEntityLabel(entityJson as IDataObject),
+								label: getEntityLabel(entityJson),
 								dataType: `thehive:${entityType}`,
 								data: entityJson,
 								tlp: entityJson.tlp || 2,

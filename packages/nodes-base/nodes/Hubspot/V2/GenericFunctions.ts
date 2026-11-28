@@ -135,16 +135,6 @@ export async function getAllProperties(
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = '';
-	}
-	return result;
-}
-
 export function clean(obj: any) {
 	for (const propName in obj) {
 		if (obj[propName] === null || obj[propName] === undefined || obj[propName] === '') {

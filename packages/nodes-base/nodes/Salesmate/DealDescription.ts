@@ -653,6 +653,7 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filtersJson',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},

@@ -2,6 +2,80 @@
 	"name": "Mailchimp request URLs",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "member",
+				"operation": "create",
+				"list": "a1b2c3d4e5",
+				"email": "json@n8n.io",
+				"status": "subscribed",
+				"jsonParameters": true,
+				"options": {},
+				"mergeFieldsJson": "{\"FNAME\":\"Ada\"}",
+				"locationJson": "{\"latitude\":3,\"longitude\":4}",
+				"groupJson": "{\"int1\":true}"
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"id": "67e14d32-8126-5b30-b950-681139b77264",
+			"name": "member create JSON",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "create",
+				"list": "a1b2c3d4e5",
+				"email": "expression@n8n.io",
+				"status": "subscribed",
+				"jsonParameters": true,
+				"options": {},
+				"mergeFieldsJson": "={{ { \"FNAME\": \"Grace\" } }}",
+				"locationJson": "={{ { \"latitude\": 1, \"longitude\": 2 } }}",
+				"groupJson": "={{ { \"int2\": true } }}"
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"id": "ddb29fd9-241a-52cf-a7d5-ead60f858c15",
+			"name": "member create Expression",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "update",
+				"list": "a1b2c3d4e5",
+				"email": "nathan@n8n.io",
+				"jsonParameters": true,
+				"updateFields": {},
+				"mergeFieldsJson": "={{ { \"FNAME\": \"Grace\" } }}",
+				"locationJson": "={{ { \"latitude\": 1, \"longitude\": 2 } }}",
+				"groupJson": "={{ { \"int2\": true } }}"
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 3000],
+			"id": "9c4d1cbf-fb81-5bdf-b186-80fd0622ceaa",
+			"name": "member update Expression",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -424,6 +498,21 @@
 		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
+					{
+						"node": "member create JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "member create Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "member update Expression",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "listGroup getAll",
 						"type": "main",

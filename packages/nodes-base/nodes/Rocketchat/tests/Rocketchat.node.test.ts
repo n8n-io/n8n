@@ -10,6 +10,15 @@ const credentials = {
 };
 
 describe('RocketChat Node', () => {
+	for (const [channel, title] of [
+		['#json', 'Ada'],
+		['#expression', 'Grace'],
+	]) {
+		nock('https://chat.example.com/api/v1')
+			.post('/chat.postMessage', { channel, text: 'hello', attachments: [{ title }] })
+			.reply(200, { message: { _id: 'message2', msg: 'hello', rid: 'ROOM1' }, success: true });
+	}
+
 	nock('https://chat.example.com/api/v1')
 		.post('/chat.postMessage', {
 			channel: '#general',

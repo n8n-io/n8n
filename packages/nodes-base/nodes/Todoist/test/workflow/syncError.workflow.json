@@ -1,0 +1,45 @@
+{
+	"name": "Todoist Sync Invalid Commands",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "0b5e7c2a-4f1d-4e8a-9c3b-1a2b3c4d5e01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "sync",
+				"project": {
+					"__rl": true,
+					"mode": "id",
+					"value": "2302163813"
+				},
+				"commands": "={{ { \"type\": \"item_close\" } }}"
+			},
+			"id": "0b5e7c2a-4f1d-4e8a-9c3b-1a2b3c4d5e02",
+			"name": "V1 Task Sync Object",
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"todoistApi": {
+					"id": "1",
+					"name": "Todoist account"
+				}
+			},
+			"continueOnFail": true
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "V1 Task Sync Object", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {
+		"V1 Task Sync Object": [{ "json": { "error": "Invalid input for 'Sync Commands' [item 0]" } }]
+	}
+}

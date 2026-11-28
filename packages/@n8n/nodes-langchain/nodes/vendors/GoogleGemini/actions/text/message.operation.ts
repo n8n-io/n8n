@@ -5,9 +5,9 @@ import {
 	type INodeProperties,
 	NodeOperationError,
 	accumulateTokenUsage,
-	jsonParse,
 	requestPath,
 	updateDisplayOptions,
+	validateFieldType,
 	validateNodeParameters,
 } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
@@ -166,6 +166,7 @@ const properties: INodeProperties[] = [
 						description:
 							'The file search store names to use for the file search. File search stores are managed via Google AI Studio.',
 						type: 'json',
+						validateType: 'array',
 						default: '[]',
 						required: true,
 					},
@@ -486,15 +487,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			if (fileSearchOptions) {
 				const fileSearchStoreNamesRaw = fileSearchOptions.fileSearchStoreNames;
 				const metadataFilter = fileSearchOptions.metadataFilter;
-				let fileSearchStoreNames: string[] | undefined;
-				if (fileSearchStoreNamesRaw) {
-					const parsed = jsonParse(fileSearchStoreNamesRaw, {
-						errorMessage: 'Failed to parse file search store names',
-					});
-					if (Array.isArray(parsed)) {
-						fileSearchStoreNames = parsed;
-					}
+				// Core does not validate this nested field, so parse it like the editor check does
+				const validation = validateFieldType(
+					'File Search Store Names',
+					fileSearchStoreNamesRaw,
+					'array',
+					{ blankStringAsNull: true },
+				);
+				if (!validation.valid) {
+					throw new NodeOperationError(this.getNode(), validation.errorMessage, { itemIndex: i });
 				}
+				const fileSearchStoreNames = validation.newValue?.map(String);
 
 				tools.push({
 					fileSearch: {

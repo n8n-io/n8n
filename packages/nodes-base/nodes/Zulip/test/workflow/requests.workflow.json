@@ -2,6 +2,44 @@
 	"name": "Zulip Requests",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "stream",
+				"operation": "create",
+				"jsonParameters": true,
+				"additionalFieldsJson": "={{ { \"subscriptions\": '[{\"name\":\"alerts\"}]', \"invite_only\": true } }}"
+			},
+			"id": "597b7ac4-2e11-5f47-bb0f-beea97c7495f",
+			"name": "Stream Create Expression",
+			"type": "n8n-nodes-base.zulip",
+			"typeVersion": 1,
+			"position": [300, 2600],
+			"credentials": {
+				"zulipApi": {
+					"id": "1",
+					"name": "Zulip account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "stream",
+				"operation": "create",
+				"jsonParameters": true,
+				"additionalFieldsJson": "{\"subscriptions\": \"[{\\\"name\\\":\\\"news\\\"}]\"}"
+			},
+			"id": "94b6f97e-2486-5da4-bb39-ec227c0a59dc",
+			"name": "Stream Create JSON",
+			"type": "n8n-nodes-base.zulip",
+			"typeVersion": 1,
+			"position": [300, 2600],
+			"credentials": {
+				"zulipApi": {
+					"id": "1",
+					"name": "Zulip account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "trigger",
 			"name": "When clicking \"Execute Workflow\"",
@@ -290,6 +328,16 @@
 		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
+					{
+						"node": "Stream Create Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Stream Create JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Message Send Private",
 						"type": "main",

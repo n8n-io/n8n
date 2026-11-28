@@ -1,0 +1,185 @@
+{
+	"name": "MondayCom JSON column values Test",
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "boardItem",
+				"operation": "changeColumnValue",
+				"boardId": "9876543210",
+				"itemId": "1234567890",
+				"columnId": "text",
+				"value": "\"Hello\""
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 1,
+			"position": [200, 2200],
+			"id": "1003bf41-8ac7-51e9-ad61-126712d835d3",
+			"name": "Change Value Text",
+			"credentials": {
+				"mondayComApi": {
+					"id": "test-cred-1",
+					"name": "Monday.com Test"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "boardItem",
+				"operation": "addUpdate",
+				"itemId": "1234567890",
+				"value": "Hello"
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 1,
+			"position": [200, 2200],
+			"id": "a1880c8d-2594-5ecc-ad0e-b0861335533a",
+			"name": "Add Update",
+			"credentials": {
+				"mondayComApi": {
+					"id": "test-cred-1",
+					"name": "Monday.com Test"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "boardItem",
+				"operation": "changeColumnValue",
+				"boardId": "9876543210",
+				"itemId": "1234567890",
+				"columnId": "status",
+				"value": "={{ { \"label\": \"Stuck\" } }}"
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 1,
+			"position": [200, 2200],
+			"id": "f0c01e4a-d069-5fb2-80e7-48bd6a9af36f",
+			"name": "Change Value Expression",
+			"credentials": {
+				"mondayComApi": {
+					"id": "test-cred-1",
+					"name": "Monday.com Test"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "boardItem",
+				"operation": "changeColumnValue",
+				"boardId": "9876543210",
+				"itemId": "1234567890",
+				"columnId": "status",
+				"value": "{\"label\": \"Done\"}"
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 1,
+			"position": [200, 2200],
+			"id": "dc7861a2-e6f9-51a9-be5d-0925ea3bb2cd",
+			"name": "Change Value JSON",
+			"credentials": {
+				"mondayComApi": {
+					"id": "test-cred-1",
+					"name": "Monday.com Test"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-1",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "boardColumn",
+				"operation": "create",
+				"boardId": "9876543210",
+				"title": "Status",
+				"columnType": "status",
+				"additionalFields": {
+					"defaults": "{\"labels\": {\"1\": \"Done\"}}"
+				}
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "monday-column-create-json",
+			"name": "Create Column JSON",
+			"credentials": {
+				"mondayComApi": {
+					"id": "test-cred-1",
+					"name": "Monday.com Test"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "boardItem",
+				"operation": "changeMultipleColumnValues",
+				"boardId": "9876543210",
+				"itemId": "1234567890",
+				"columnValues": "={{ { \"status\": { \"label\": \"Done\" } } }}"
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 1,
+			"position": [200, 200],
+			"id": "monday-change-multiple-expression",
+			"name": "Change Multiple Expression",
+			"credentials": {
+				"mondayComApi": {
+					"id": "test-cred-1",
+					"name": "Monday.com Test"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "boardItem",
+				"operation": "create",
+				"boardId": "9876543210",
+				"groupId": "group1",
+				"name": "New item",
+				"additionalFields": {
+					"columnValues": "={{ { \"text\": \"Hello\" } }}"
+				}
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 1,
+			"position": [200, 400],
+			"id": "monday-item-create-expression",
+			"name": "Create Item Expression",
+			"credentials": {
+				"mondayComApi": {
+					"id": "test-cred-1",
+					"name": "Monday.com Test"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Change Value Text", "type": "main", "index": 0 },
+					{ "node": "Add Update", "type": "main", "index": 0 },
+					{ "node": "Change Value Expression", "type": "main", "index": 0 },
+					{ "node": "Change Value JSON", "type": "main", "index": 0 },
+					{ "node": "Create Column JSON", "type": "main", "index": 0 },
+					{ "node": "Change Multiple Expression", "type": "main", "index": 0 },
+					{ "node": "Create Item Expression", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Create Column JSON": [{ "json": { "id": "status" } }],
+		"Change Multiple Expression": [{ "json": { "id": "1234567890" } }],
+		"Create Item Expression": [{ "json": { "id": "1122334455" } }],
+		"Change Value JSON": [{ "json": { "id": "1234567890" } }],
+		"Change Value Expression": [{ "json": { "id": "1234567891" } }],
+		"Add Update": [{ "json": { "id": "555" } }],
+		"Change Value Text": [{ "json": { "id": "1234567892" } }]
+	}
+}

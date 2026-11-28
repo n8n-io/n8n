@@ -133,6 +133,7 @@ export class RetrieverWorkflow implements INodeType {
 				displayName: 'Workflow JSON',
 				name: 'workflowJson',
 				type: 'json',
+				validateType: 'object',
 				typeOptions: {
 					rows: 10,
 				},
@@ -335,21 +336,9 @@ export class RetrieverWorkflow implements INodeType {
 					baseMetadata.workflowId = workflowInfo.id;
 				} else if (source === 'parameter') {
 					// Read workflow from parameter
-					const workflowJson = this.executeFunctions.getNodeParameter(
-						'workflowJson',
-						itemIndex,
-					) as string;
-					try {
-						workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
-					} catch (error) {
-						throw new NodeOperationError(
-							this.executeFunctions.getNode(),
-							`The provided workflow is not valid JSON: "${(error as Error).message}"`,
-							{
-								itemIndex,
-							},
-						);
-					}
+					workflowInfo.code = this.executeFunctions.getNodeParameter('workflowJson', itemIndex) as
+						| IWorkflowBase
+						| undefined;
 
 					// same as current workflow
 					baseMetadata.workflowId = workflowProxy.$workflow.id;

@@ -1,0 +1,75 @@
+{
+	"name": "MondayCom changeColumnValue invalid value Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-1",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "boardItem",
+				"operation": "changeColumnValue",
+				"boardId": "9876543210",
+				"itemId": "1234567890",
+				"columnId": "status",
+				"value": "={{ $json.missing }}"
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "monday-change-value-undefined",
+			"name": "Change Value Undefined",
+			"credentials": {
+				"mondayComApi": {
+					"id": "test-cred-1",
+					"name": "Monday.com Test"
+				}
+			},
+			"continueOnFail": true
+		},
+		{
+			"parameters": {
+				"resource": "boardItem",
+				"operation": "changeColumnValue",
+				"boardId": "9876543210",
+				"itemId": "1234567890",
+				"columnId": "status",
+				"value": "={{ \"done\" }}"
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 1,
+			"position": [200, 200],
+			"id": "monday-change-value-text",
+			"name": "Change Value Text",
+			"credentials": {
+				"mondayComApi": {
+					"id": "test-cred-1",
+					"name": "Monday.com Test"
+				}
+			},
+			"continueOnFail": true
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Change Value Undefined", "type": "main", "index": 0 },
+					{ "node": "Change Value Text", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Change Value Undefined": [{ "json": { "error": "Custom Values must be a valid JSON" } }],
+		"Change Value Text": [{ "json": { "error": "Custom Values must be a valid JSON" } }]
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -1,0 +1,124 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-80, -680],
+			"id": "3c7e1f20-5a4b-4d6c-9e8f-0a1b2c3d4e01",
+			"name": "When clicking 'Test workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "chat",
+				"operation": "complete",
+				"model": "sonar",
+				"messages": {
+					"message": [
+						{
+							"content": "Chat JSON String"
+						}
+					]
+				},
+				"options": {
+					"responseFormat": "{\"type\": \"json_schema\"}",
+					"webSearchOptions": "{\"search_context_size\": \"high\"}"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.perplexity",
+			"typeVersion": 2,
+			"position": [-40, -380],
+			"id": "3c7e1f20-5a4b-4d6c-9e8f-0a1b2c3d4e02",
+			"name": "Chat JSON String",
+			"credentials": {
+				"perplexityApi": {
+					"id": "test",
+					"name": "Perplexity account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "chat",
+				"operation": "complete",
+				"model": "sonar",
+				"messages": {
+					"message": [
+						{
+							"content": "Chat JSON Expression"
+						}
+					]
+				},
+				"options": {
+					"responseFormat": "={{ { \"type\": \"json_schema\" } }}",
+					"webSearchOptions": "={{ { \"search_context_size\": \"low\" } }}"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.perplexity",
+			"typeVersion": 2,
+			"position": [-40, -180],
+			"id": "3c7e1f20-5a4b-4d6c-9e8f-0a1b2c3d4e03",
+			"name": "Chat JSON Expression",
+			"credentials": {
+				"perplexityApi": {
+					"id": "test",
+					"name": "Perplexity account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Test workflow'": {
+			"main": [
+				[
+					{
+						"node": "Chat JSON String",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Chat JSON Expression",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Chat JSON String": [
+			{
+				"json": {
+					"id": "chat_test123",
+					"model": "sonar",
+					"object": "chat.completion",
+					"choices": [
+						{
+							"index": 0,
+							"finish_reason": "stop",
+							"message": { "role": "assistant", "content": "Done." }
+						}
+					]
+				}
+			}
+		],
+		"Chat JSON Expression": [
+			{
+				"json": {
+					"id": "chat_test123",
+					"model": "sonar",
+					"object": "chat.completion",
+					"choices": [
+						{
+							"index": 0,
+							"finish_reason": "stop",
+							"message": { "role": "assistant", "content": "Done." }
+						}
+					]
+				}
+			}
+		]
+	}
+}

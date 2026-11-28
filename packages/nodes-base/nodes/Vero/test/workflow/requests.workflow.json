@@ -2,6 +2,50 @@
 	"name": "Vero Requests",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "event",
+				"operation": "track",
+				"id": "expr-1",
+				"email": "nathan@example.com",
+				"eventName": "signup",
+				"jsonParameters": true,
+				"dataAttributesJson": "={{ { \"plan\": \"team\" } }}",
+				"extraAttributesJson": "={{ { \"source\": \"n8n\" } }}"
+			},
+			"id": "a3b206e8-89fd-5e26-a938-0d53a8a9d7c6",
+			"name": "Event Track Expression",
+			"type": "n8n-nodes-base.vero",
+			"typeVersion": 1,
+			"position": [300, 3050],
+			"credentials": {
+				"veroApi": {
+					"id": "1",
+					"name": "Vero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "create",
+				"id": "json-1",
+				"jsonParameters": true,
+				"dataAttributesJson": "{\"plan\":\"pro\"}",
+				"additionalFields": {}
+			},
+			"id": "3478b6dd-d87a-58ed-93bb-6dffc672f902",
+			"name": "User Create JSON",
+			"type": "n8n-nodes-base.vero",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"credentials": {
+				"veroApi": {
+					"id": "1",
+					"name": "Vero account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "trigger",
 			"name": "When clicking \"Execute Workflow\"",
@@ -230,6 +274,16 @@
 		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
+					{
+						"node": "Event Track Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Create JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "User Create",
 						"type": "main",

@@ -33,6 +33,31 @@
 					"name": "Elasticsearch account"
 				}
 			}
+		},
+		{
+			"parameters": {
+				"resource": "document",
+				"operation": "getAll",
+				"indexId": "my-index",
+				"returnAll": false,
+				"limit": 10,
+				"simple": false,
+				"options": {
+					"query": "={{ { \"query\": { \"term\": { \"user.id\": \"$1\" } } } }}",
+					"queryParameters": "={{ ['jane'] }}"
+				}
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [200, 200],
+			"id": "elasticsearch-getAll-expression",
+			"name": "Elasticsearch Expression",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "elasticsearch-cred-id",
+					"name": "Elasticsearch account"
+				}
+			}
 		}
 	],
 	"pinData": {
@@ -47,6 +72,18 @@
 					}
 				}
 			}
+		],
+		"Elasticsearch Expression": [
+			{
+				"json": {
+					"_index": "my-index",
+					"_id": "doc2",
+					"_score": 1,
+					"_source": {
+						"user.id": "jane"
+					}
+				}
+			}
 		]
 	},
 	"connections": {
@@ -55,6 +92,11 @@
 				[
 					{
 						"node": "Elasticsearch",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Elasticsearch Expression",
 						"type": "main",
 						"index": 0
 					}

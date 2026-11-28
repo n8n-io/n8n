@@ -266,6 +266,7 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Custom Email Rules',
 					name: 'customEmailConfig',
 					type: 'string',
+					validateType: 'array',
 					default: '["UNSEEN"]',
 					description:
 						'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details.',
@@ -393,11 +394,7 @@ export class EmailReadImapV1 implements INodeType {
 
 		let searchCriteria: SearchCriteria[] = ['UNSEEN'];
 		if (options.customEmailConfig !== undefined) {
-			try {
-				searchCriteria = JSON.parse(options.customEmailConfig as string) as SearchCriteria[];
-			} catch (error) {
-				throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
-			}
+			searchCriteria = options.customEmailConfig as SearchCriteria[];
 			try {
 				// Compiled once here purely for the immediate feedback: a criterion that cannot
 				// compile fails the activation instead of the first arrival, hours later.

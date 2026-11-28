@@ -1,0 +1,76 @@
+{
+	"name": "Bubble JSON filters per item",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "5f0c8a1e-2b3d-4c4e-9f50-6a7b8c9d0e01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "{\n  \"items\": [\n    { \"name\": \"Jan\", \"filter\": [{ \"key\": \"name\", \"constraint_type\": \"equals\", \"value\": \"Jan\" }] },\n    { \"name\": \"Nathan\" }\n  ]\n}\n",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "5f0c8a1e-2b3d-4c4e-9f50-6a7b8c9d0e02",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "items",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "5f0c8a1e-2b3d-4c4e-9f50-6a7b8c9d0e03",
+			"name": "Split Out"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"typeName": "Customer",
+				"returnAll": false,
+				"limit": 1,
+				"jsonParameters": true,
+				"options": {
+					"filtersJson": "={{ $json.filter }}"
+				}
+			},
+			"type": "n8n-nodes-base.bubble",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"id": "5f0c8a1e-2b3d-4c4e-9f50-6a7b8c9d0e04",
+			"name": "Object > Get Many",
+			"credentials": {
+				"bubbleApi": {
+					"id": "1",
+					"name": "Bubble account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Object > Get Many": [
+			{ "json": { "_id": "1696851234567x123456789012345678" } },
+			{ "json": { "_id": "1696851234568x123456789012345679" } }
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+		},
+		"Edit Fields": {
+			"main": [[{ "node": "Split Out", "type": "main", "index": 0 }]]
+		},
+		"Split Out": {
+			"main": [[{ "node": "Object > Get Many", "type": "main", "index": 0 }]]
+		}
+	}
+}

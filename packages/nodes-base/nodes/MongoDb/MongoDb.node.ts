@@ -57,7 +57,7 @@ function resolveIndexDefinition(
 	itemIndex: number,
 ): Record<string, unknown> {
 	return parseAndResolveQueryParameters(
-		ctx.getNodeParameter('indexDefinition', itemIndex) as string,
+		ctx.getNodeParameter('indexDefinition', itemIndex),
 		ctx.getNodeParameter('indexDefinitionParameters', itemIndex, []),
 		node,
 		itemIndex,
@@ -285,7 +285,7 @@ export class MongoDb implements INodeType {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
 						const queryParameter = parseAndResolveQueryParameters(
-							this.getNodeParameter('query', i) as string,
+							this.getNodeParameter('query', i),
 							this.getNodeParameter('queryParameters', i, []),
 							node,
 							i,
@@ -321,7 +321,7 @@ export class MongoDb implements INodeType {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
 						const queryParameter = parseAndResolveQueryParameters(
-							this.getNodeParameter('query', i) as string,
+							this.getNodeParameter('query', i),
 							this.getNodeParameter('queryParameters', i, []),
 							node,
 							i,
@@ -353,7 +353,7 @@ export class MongoDb implements INodeType {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
 						const queryParameter = parseAndResolveQueryParameters(
-							this.getNodeParameter('query', i) as string,
+							this.getNodeParameter('query', i),
 							this.getNodeParameter('queryParameters', i, []),
 							node,
 							i,
@@ -375,7 +375,7 @@ export class MongoDb implements INodeType {
 						const projection =
 							options.projection &&
 							(parseAndResolveQueryParameters(
-								options.projection as string,
+								options.projection,
 								options.projectionParameters ?? [],
 								node,
 								i,
@@ -389,7 +389,7 @@ export class MongoDb implements INodeType {
 						const sort =
 							options.sort &&
 							(parseAndResolveQueryParameters(
-								options.sort as string,
+								options.sort,
 								options.sortParameters ?? [],
 								node,
 								i,

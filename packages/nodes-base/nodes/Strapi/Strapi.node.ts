@@ -9,15 +9,10 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { entryFields, entryOperations } from './EntryDescription';
-import {
-	getToken,
-	strapiApiRequest,
-	strapiApiRequestAllItems,
-	validateJSON,
-} from './GenericFunctions';
+import { getToken, strapiApiRequest, strapiApiRequestAllItems } from './GenericFunctions';
 import { removeTrailingSlash } from '../../utils/utilities';
 
 export class Strapi implements INodeType {
@@ -228,14 +223,7 @@ export class Strapi implements INodeType {
 							}
 							// Filter Option
 							if (options.where) {
-								const query = validateJSON(options.where as string);
-								if (query !== undefined) {
-									qs.filters = query;
-								} else {
-									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON', {
-										itemIndex: i,
-									});
-								}
+								qs.filters = options.where;
 							}
 							// Publication Option
 							if (options.publicationState) {
@@ -272,14 +260,7 @@ export class Strapi implements INodeType {
 							}
 							// Filter Option
 							if (options.where) {
-								const query = validateJSON(options.where as string);
-								if (query !== undefined) {
-									qs._where = query;
-								} else {
-									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON', {
-										itemIndex: i,
-									});
-								}
+								qs._where = options.where;
 							}
 							// Publication Option
 							if (options.publicationState) {

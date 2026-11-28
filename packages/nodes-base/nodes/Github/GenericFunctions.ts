@@ -121,16 +121,6 @@ export function isBase64(content: string) {
 	return base64regex.test(content);
 }
 
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = undefined;
-	}
-	return result;
-}
-
 /**
  * Validates a secret name against GitHub's naming rules, so an invalid name fails
  * before the public key lookup and encryption rather than as an opaque API error.

@@ -227,6 +227,7 @@ export const emailFields: INodeProperties[] = [
 		displayName: 'Variables (JSON)',
 		name: 'variablesJson',
 		type: 'string',
+		validateType: 'object',
 		displayOptions: {
 			show: {
 				resource: ['email'],
@@ -464,6 +465,7 @@ export const emailFields: INodeProperties[] = [
 		displayName: 'Variables (JSON)',
 		name: 'variablesJson',
 		type: 'string',
+		validateType: 'object',
 		displayOptions: {
 			show: {
 				resource: ['email'],

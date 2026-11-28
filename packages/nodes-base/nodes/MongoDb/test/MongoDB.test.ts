@@ -135,7 +135,7 @@ function mockQueryOperation(
 	operation: 'aggregate' | 'delete' | 'find',
 	options: IDataObject = {},
 	queryParameters: unknown[] = ['Alice', 30],
-	query = operation === 'aggregate'
+	query: unknown = operation === 'aggregate'
 		? '[{ "$match": { "name": "$1", "age": { "$gte": "$2" } } }]'
 		: '{ "name": "$1", "age": { "$gte": "$2" } }',
 ) {
@@ -149,7 +149,7 @@ function mockQueryOperation(
 				case 'collection':
 					return 'users';
 				case 'query':
-					return query;
+					return query as NodeParameterValueType;
 				case 'queryParameters':
 					return queryParameters;
 				case 'options':
@@ -640,6 +640,51 @@ describe('MongoDB CRUD Node', () => {
 				await node.execute.call(mockQueryOperation('find', {}, [null, 30]));
 
 				expect(findSpy).toHaveBeenCalledWith({ name: null, age: { $gte: 30 } });
+			});
+
+			it('accepts an evaluated query object in find', async () => {
+				const findSpy = vi.spyOn(Collection.prototype, 'find').mockReturnValue({
+					toArray: async () => [],
+				} as never);
+
+				await node.execute.call(
+					mockQueryOperation('find', {}, ['Alice', 30], { name: '$1', age: { $gte: '$2' } }),
+				);
+
+				expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+			});
+
+			it('accepts an evaluated pipeline array in aggregate', async () => {
+				const aggregateSpy = vi.spyOn(Collection.prototype, 'aggregate').mockReturnValue({
+					toArray: async () => [],
+				} as never);
+
+				await node.execute.call(
+					mockQueryOperation(
+						'aggregate',
+						{},
+						['Alice', 30],
+						[{ $match: { name: '$1', age: { $gte: '$2' } } }],
+					),
+				);
+
+				expect(aggregateSpy).toHaveBeenCalledWith([{ $match: expectedQuery }]);
+			});
+
+			it('accepts evaluated sort and projection objects', async () => {
+				const applied = mockFindCursor();
+
+				await node.execute.call(
+					mockQueryOperation('find', {
+						sort: { $1: -1 },
+						sortParameters: ['name'],
+						projection: { _id: 0, $1: 1 },
+						projectionParameters: ['email'],
+					}),
+				);
+
+				expect(applied.sort).toEqual({ name: -1 });
+				expect(applied.project).toEqual({ _id: 0, email: 1 });
 			});
 
 			it('resolves sort parameters into the sort field name', async () => {
@@ -1358,6 +1403,86 @@ describe('MongoDB CRUD Node', () => {
 					definition: { mappings: {} },
 					type: 'vectorSearch',
 				},
+			]);
+		});
+
+		testHarness.setupTest(
+			buildWorkflow({
+				parameters: {
+					operation: 'createSearchIndex',
+					resource: 'searchIndexes',
+					collection: 'foo',
+					indexType: 'vectorSearch',
+					indexDefinition: '={{ { "mappings": { "dynamic": true } } }}',
+					indexNameRequired: searchIndexName,
+				},
+				expectedResult: [{ json: { indexName: searchIndexName } }],
+			}),
+		);
+
+		it('accepts an index definition object from an expression', function () {
+			expect(calls[1]).toEqual([
+				{
+					name: searchIndexName,
+					definition: { mappings: { dynamic: true } },
+					type: 'vectorSearch',
+				},
+			]);
+		});
+	});
+
+	describe('query field', () => {
+		const queries: unknown[] = [];
+		const originalFind = Collection.prototype.find;
+		const originalAggregate = Collection.prototype.aggregate;
+		const cursor = { toArray: async () => [{ name: 'Alice' }] };
+		beforeAll(() => {
+			Collection.prototype.find = function (query: unknown) {
+				queries.push(query);
+				return cursor;
+			} as typeof Collection.prototype.find;
+			Collection.prototype.aggregate = function (pipeline: unknown) {
+				queries.push(pipeline);
+				return cursor;
+			} as typeof Collection.prototype.aggregate;
+		});
+		afterAll(() => {
+			Collection.prototype.find = originalFind;
+			Collection.prototype.aggregate = originalAggregate;
+		});
+
+		const expectedResult = [{ json: { name: 'Alice' } }];
+
+		testHarness.setupTest(
+			buildWorkflow({
+				parameters: { operation: 'find', collection: 'foo', query: '{ "name": "Alice" }' },
+				expectedResult,
+			}),
+		);
+
+		testHarness.setupTest(
+			buildWorkflow({
+				parameters: { operation: 'find', collection: 'foo', query: '{ name: "Bob" }' },
+				expectedResult,
+			}),
+		);
+
+		testHarness.setupTest(
+			buildWorkflow({
+				parameters: {
+					operation: 'aggregate',
+					collection: 'foo',
+					query: '={{ [{ "$match": { "name": "Carol" } }] }}',
+				},
+				expectedResult,
+			}),
+		);
+
+		it('passes the parsed query and pipeline to the driver', () => {
+			expect(queries).toEqual([
+				{ name: 'Alice' },
+				{ name: 'Bob' },
+				[{ $match: { name: 'Carol' } }],
 			]);
 		});
 	});

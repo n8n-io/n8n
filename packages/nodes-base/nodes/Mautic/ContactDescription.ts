@@ -170,6 +170,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Body',
 		name: 'bodyJson',
 		type: 'json',
+		validateType: 'object',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -502,6 +503,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Body',
 				name: 'bodyJson',
 				type: 'json',
+				validateType: 'object',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [true],

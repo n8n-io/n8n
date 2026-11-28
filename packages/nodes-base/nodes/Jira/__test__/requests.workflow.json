@@ -2,6 +2,96 @@
 	"name": "Jira request URLs",
 	"nodes": [
 		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issue",
+				"operation": "notify",
+				"issueKey": "NODE-123",
+				"jsonParameters": true,
+				"additionalFields": {},
+				"notificationRecipientsJson": "{\"reporter\":true}",
+				"notificationRecipientsRestrictionsJson": "{\"groups\":[{\"name\":\"dev\"}]}"
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 3000],
+			"id": "663428db-39c1-59fa-ac94-4e1dbd44cdc4",
+			"name": "Notify JSON",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issue",
+				"operation": "notify",
+				"issueKey": "NODE-123",
+				"jsonParameters": true,
+				"additionalFields": {},
+				"notificationRecipientsJson": "={{ { \"watchers\": true } }}",
+				"notificationRecipientsRestrictionsJson": "={{ { \"groups\": [{ \"name\": \"qa\" }] } }}"
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 3000],
+			"id": "bfc040c6-68f8-5828-a4b8-3558379ae275",
+			"name": "Notify Expression",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issueComment",
+				"operation": "add",
+				"issueKey": "NODE-123",
+				"jsonParameters": true,
+				"commentJson": "{\"type\":\"doc\",\"version\":1,\"content\":[{\"type\":\"paragraph\",\"content\":[]}]}",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 4200],
+			"id": "ef3bf328-f2a1-5170-9370-1b1b9e3ec7dd",
+			"name": "Add Comment JSON",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issueComment",
+				"operation": "add",
+				"issueKey": "NODE-123",
+				"jsonParameters": true,
+				"commentJson": "={{ { \"type\": \"doc\", \"version\": 1, \"content\": [] } }}",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 4200],
+			"id": "0630c0ae-638a-533c-99b7-4c5abdf491ff",
+			"name": "Add Comment Expression",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -585,6 +675,26 @@
 		"When clicking 'Execute workflow'": {
 			"main": [
 				[
+					{
+						"node": "Notify JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Notify Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Add Comment JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Add Comment Expression",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Create Issue",
 						"type": "main",

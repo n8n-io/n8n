@@ -294,6 +294,7 @@ For what a template cannot express, use the matching type for new and existing c
 		displayName: 'JSON',
 		name: 'jsonQuery',
 		type: 'json',
+		validateType: 'object',
 		displayOptions: {
 			show: {
 				sendQuery: [true],
@@ -385,6 +386,7 @@ For what a template cannot express, use the matching type for new and existing c
 		displayName: 'JSON',
 		name: 'jsonHeaders',
 		type: 'json',
+		validateType: 'object',
 		displayOptions: {
 			show: {
 				sendHeaders: [true],

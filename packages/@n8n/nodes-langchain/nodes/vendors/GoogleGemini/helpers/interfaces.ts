@@ -145,7 +145,7 @@ export interface BuiltInTools {
 	};
 	urlContext?: boolean;
 	fileSearch?: {
-		fileSearchStoreNames?: string;
+		fileSearchStoreNames?: string | string[];
 		metadataFilter?: string;
 	};
 	codeExecution?: boolean;

@@ -141,6 +141,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Content (JSON)',
 		name: 'content',
 		type: 'json',
+		validateType: 'object',
 		displayOptions: {
 			show: {
 				source: ['adminApi'],
@@ -158,6 +159,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Content (JSON)',
 		name: 'content',
 		type: 'json',
+		validateType: 'object',
 		displayOptions: {
 			show: {
 				source: ['adminApi'],
@@ -734,6 +736,7 @@ export const postFields: INodeProperties[] = [
 				displayName: 'Content (JSON)',
 				name: 'contentJson',
 				type: 'json',
+				validateType: 'object',
 				displayOptions: {
 					show: {
 						'/contentFormat': ['mobileDoc'],
@@ -747,6 +750,7 @@ export const postFields: INodeProperties[] = [
 				displayName: 'Content (JSON)',
 				name: 'contentJson',
 				type: 'json',
+				validateType: 'object',
 				displayOptions: {
 					show: {
 						'/contentFormat': ['lexical'],

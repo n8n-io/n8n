@@ -1,11 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { requestPath, requestUrl } from 'n8n-workflow';
 
-import {
-	rocketchatApiRequest,
-	rocketchatApiRequestAllItems,
-	validateJSON,
-} from '../GenericFunctions';
+import { rocketchatApiRequest, rocketchatApiRequestAllItems } from '../GenericFunctions';
 
 type RequestOptions = {
 	method?: string;
@@ -19,28 +15,6 @@ type RequestOptions = {
 describe('RocketChat > GenericFunctions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-	});
-
-	describe('validateJSON', () => {
-		it('should parse valid JSON object', () => {
-			const result = validateJSON('{"a":1}');
-			expect(result).toEqual({ a: 1 });
-		});
-
-		it('should parse valid JSON array', () => {
-			const result = validateJSON('[{"a":1}]');
-			expect(result).toEqual([{ a: 1 }]);
-		});
-
-		it('should return empty array on invalid JSON', () => {
-			const result = validateJSON('{invalid}');
-			expect(result).toEqual([]);
-		});
-
-		it('should return empty array when undefined', () => {
-			const result = validateJSON(undefined);
-			expect(result).toEqual([]);
-		});
 	});
 
 	describe('rocketchatApiRequest', () => {

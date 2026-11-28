@@ -1192,6 +1192,7 @@ export const issueFields: INodeProperties[] = [
 		displayName: 'Notification Recipients',
 		name: 'notificationRecipientsJson',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -1259,6 +1260,7 @@ export const issueFields: INodeProperties[] = [
 		displayName: 'Notification Recipients Restrictions',
 		name: 'notificationRecipientsRestrictionsJson',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},

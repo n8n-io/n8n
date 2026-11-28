@@ -96,6 +96,7 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Document Format (JSON)',
 		name: 'commentJson',
 		type: 'json',
+		validateType: 'object',
 		default: '',
 		displayOptions: {
 			show: {
@@ -399,6 +400,7 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Document Format (JSON)',
 		name: 'commentJson',
 		type: 'json',
+		validateType: 'object',
 		default: '',
 		displayOptions: {
 			show: {

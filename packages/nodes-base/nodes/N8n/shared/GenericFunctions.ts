@@ -15,7 +15,7 @@ import type {
 	RequestPath,
 	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_NODE } from '@n8n/constants';
 
@@ -136,17 +136,14 @@ export const getCursorPaginator = () => {
 };
 
 /**
- * A helper function to parse a node parameter as JSON and set it in the request body.
- * Throws a NodeOperationError is the content is not valid JSON or it cannot be set.
+ * A helper function to set a JSON node parameter in the request body.
  *
- * Currently, parameters with type 'json' are not validated automatically.
- * Also mapping the value for 'body.data' declaratively has it treated as a string,
+ * Mapping the value for 'body.data' declaratively has it treated as a string,
  * but some operations (e.g. POST /credentials) don't work unless it is set as an object.
- * To get the JSON-body operations to work consistently, we need to parse and set the body
- * manually.
+ * The parameter sets validateType 'object', so core parses a JSON string before this runs.
  *
- * @param parameterName The name of the node parameter to parse
- * @param setAsBodyProperty An optional property name to set the parsed data into
+ * @param parameterName The name of the node parameter to read
+ * @param setAsBodyProperty An optional property name to set the data into
  * @returns The requestOptions with its body replaced with the contents of the parameter
  */
 export const parseAndSetBodyJson = (
@@ -157,25 +154,16 @@ export const parseAndSetBodyJson = (
 		this: IExecuteSingleFunctions,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		try {
-			const rawData = this.getNodeParameter(parameterName, '{}') as string;
-			const parsedObject = JSON.parse(rawData);
+		const parsedObject =
+			(this.getNodeParameter(parameterName, {}) as IDataObject | undefined) ?? {};
 
-			// Set the parsed object to either as the request body directly, or as its sub-property
-			if (setAsBodyProperty === undefined) {
-				requestOptions.body = parsedObject;
-			} else {
-				requestOptions.body = Object.assign({}, requestOptions.body, {
-					[setAsBodyProperty]: parsedObject,
-				});
-			}
-		} catch (err) {
-			throw new NodeOperationError(
-				this.getNode(),
-				new Error(`The '${parameterName}' property must be valid JSON, but cannot be parsed`, {
-					cause: err,
-				}),
-			);
+		// Set the parsed object to either as the request body directly, or as its sub-property
+		if (setAsBodyProperty === undefined) {
+			requestOptions.body = parsedObject;
+		} else {
+			requestOptions.body = Object.assign({}, requestOptions.body, {
+				[setAsBodyProperty]: parsedObject,
+			});
 		}
 		return requestOptions;
 	};

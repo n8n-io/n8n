@@ -29,6 +29,27 @@
 					"name": "CloudFirestore OAuth2"
 				}
 			}
+		},
+		{
+			"parameters": {
+				"authentication": "googleFirebaseCloudFirestoreOAuth2Api",
+				"resource": "document",
+				"operation": "query",
+				"projectId": "test-project",
+				"database": "(default)",
+				"query": "={{ { \"structuredQuery\": { \"from\": [{ \"collectionId\": \"admins\" }] } } }}"
+			},
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1.1,
+			"position": [200, 200],
+			"id": "cloudFirestore-query-expression",
+			"name": "Query Documents Expression",
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "cloudFirestore-oauth-id",
+					"name": "CloudFirestore OAuth2"
+				}
+			}
 		}
 	],
 	"pinData": {
@@ -55,6 +76,17 @@
 					"active": true
 				}
 			}
+		],
+		"Query Documents Expression": [
+			{
+				"json": {
+					"_name": "projects/test-project/databases/(default)/documents/admins/admin1",
+					"_id": "admin1",
+					"_createTime": "2023-01-01T10:00:00.000Z",
+					"_updateTime": "2023-01-01T10:00:00.000Z",
+					"name": "Ada Admin"
+				}
+			}
 		]
 	},
 	"connections": {
@@ -63,6 +95,11 @@
 				[
 					{
 						"node": "Query Documents",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Query Documents Expression",
 						"type": "main",
 						"index": 0
 					}

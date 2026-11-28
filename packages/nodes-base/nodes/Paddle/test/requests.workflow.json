@@ -2,6 +2,45 @@
 	"name": "[TEST] Paddle requests",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "coupon",
+				"operation": "update",
+				"jsonParameters": true,
+				"additionalFieldsJson": "={{ { \"coupon_code\": \"EXPR10\", \"allowed_uses\": 5 } }}"
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [260, 2400],
+			"id": "8384e3ee-3460-5be3-84fb-4b265a437546",
+			"name": "Update Coupon JSON",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "getAll",
+				"returnAll": true,
+				"jsonParameters": true,
+				"additionalFieldsJson": "{\"subscription_id\":502198}"
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [260, 2000],
+			"id": "efd83439-440c-5d4f-a0fc-8b14b63e3345",
+			"name": "Get Payments JSON",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -297,6 +336,16 @@
 		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
+					{
+						"node": "Update Coupon JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Payments JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Create Coupon",
 						"type": "main",

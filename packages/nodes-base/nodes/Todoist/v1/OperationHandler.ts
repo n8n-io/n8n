@@ -1,6 +1,6 @@
 import type { IDataObject } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
-import { jsonParse, requestPath } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import type { Section, TodoistResponse } from './Service';
@@ -289,12 +289,11 @@ export class MoveHandler implements OperationHandler {
 
 export class SyncHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
-		const commandsJson = ctx.getNodeParameter('commands', itemIndex) as string;
 		const projectId = ctx.getNodeParameter('project', itemIndex, undefined, {
 			extractValue: true,
 		}) as number;
+		const commands = (ctx.getNodeParameter('commands', itemIndex) as Command[] | undefined) ?? [];
 		const sections = await getSectionIds(ctx, projectId);
-		const commands: Command[] = jsonParse(commandsJson);
 		const tempIdMapping = new Map<string, string>();
 
 		for (let i = 0; i < commands.length; i++) {

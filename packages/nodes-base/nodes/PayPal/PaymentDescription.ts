@@ -200,6 +200,7 @@ export const payoutFields: INodeProperties[] = [
 		displayName: 'Items',
 		name: 'itemsJson',
 		type: 'json',
+		validateType: 'array',
 		default: '',
 		typeOptions: {
 			alwaysOpenEditWindow: true,

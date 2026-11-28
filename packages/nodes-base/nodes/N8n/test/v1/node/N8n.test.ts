@@ -24,6 +24,31 @@ describe('Test N8n Node', () => {
 			.matchHeader('x-n8n-client', 'n8n-node')
 			.reply(201);
 
+		nock(baseUrl)
+			.post('/workflows', {
+				name: 'From JSON',
+				nodes: [],
+				settings: {},
+				connections: {},
+				staticData: null,
+			})
+			.reply(200, { id: 'wf-1' });
+		nock(baseUrl)
+			.put('/workflows/2002', {
+				name: 'From expression',
+				nodes: [],
+				settings: {},
+				connections: {},
+			})
+			.reply(200, { id: '2002' });
+		nock(baseUrl)
+			.post('/credentials', {
+				name: 'Acme API',
+				type: 'httpHeaderAuth',
+				data: { name: 'Authorization', value: 'Bearer abc' },
+			})
+			.reply(200, { id: 'cred-1' });
+
 		const { pinData: userPinData } = await import('./user.get.workflow.json');
 		nock(baseUrl)
 			.get('/users/123e4567-e89b-12d3-a456-426614174000')

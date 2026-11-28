@@ -17,6 +17,30 @@ describe('Ghost > Request URLs', () => {
 	beforeAll(() => {
 		const mock = nock('https://blog.example.com/ghost/api');
 		mock
+			.get('/v2/admin/posts/5f2a1b3c4d5e6f7a8b9c0d1f')
+			.times(2)
+			.query(true)
+			.reply(200, {
+				posts: [{ id: '5f2a1b3c4d5e6f7a8b9c0d1f', updated_at: '2025-09-01T10:00:00.000Z' }],
+			});
+		mock
+			.put('/v2/admin/posts/5f2a1b3c4d5e6f7a8b9c0d1f', {
+				posts: [
+					{
+						mobiledoc: '{"version":"0.3.1","sections":[]}',
+						updated_at: '2025-09-01T10:00:00.000Z',
+					},
+				],
+			})
+			.query(true)
+			.reply(200, { posts: [{ id: '5f2a1b3c4d5e6f7a8b9c0d1f' }] });
+		mock
+			.put('/v2/admin/posts/5f2a1b3c4d5e6f7a8b9c0d1f', {
+				posts: [{ lexical: '{"root":{"children":[]}}', updated_at: '2025-09-01T10:00:00.000Z' }],
+			})
+			.query(true)
+			.reply(200, { posts: [{ id: '5f2a1b3c4d5e6f7a8b9c0d1f' }] });
+		mock
 			.get('/v3/content/posts/5f2a1b3c4d5e6f7a8b9c0d1e')
 			.query(true)
 			.reply(200, {
@@ -69,6 +93,18 @@ describe('Ghost > Request URLs', () => {
 				],
 				meta: { pagination: { next: null } },
 			});
+		mock
+			.post('/v2/admin/posts', {
+				posts: [{ title: 'Lexical', lexical: '{"root":{"children":[]}}' }],
+			})
+			.query(true)
+			.reply(201, { posts: [{ id: '5f2a1b3c4d5e6f7a8b9c0d1e' }] });
+		mock
+			.post('/v2/admin/posts', {
+				posts: [{ title: 'Mobiledoc', mobiledoc: '{"version":"0.3.1","sections":[]}' }],
+			})
+			.query(true)
+			.reply(201, { posts: [{ id: '5f2a1b3c4d5e6f7a8b9c0d1e' }] });
 		mock
 			.post('/v2/admin/posts')
 			.query(true)

@@ -7,7 +7,6 @@ import type {
 	INodeExecutionData,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { KafkaV2 } from '../../v2/KafkaV2.node';
@@ -232,6 +231,30 @@ describe('KafkaV2 Node', () => {
 		expect(mockProducerDisconnect).toHaveBeenCalledTimes(1);
 	});
 
+	test('publishes with headers from the JSON headers parameter', async () => {
+		const params: IDataObject = {
+			options: {},
+			sendInputData: false,
+			useSchemaRegistry: false,
+			topic: 'test-topic',
+			jsonParameters: true,
+			useKey: false,
+			message: 'plain message',
+			headerParametersJson: { headerKey: 'headerValue' },
+		};
+
+		await new KafkaV2(baseDescription).execute.call(createExecuteFunctions(params, [{ json: {} }]));
+
+		expect(mockProducerSendBatch).toHaveBeenCalledWith({
+			topicMessages: [
+				{
+					messages: [{ headers: { headerKey: 'headerValue' }, key: null, value: 'plain message' }],
+					topic: 'test-topic',
+				},
+			],
+		});
+	});
+
 	test('maps acks off to 0 and falls back to the default timeout and compression when the options are unset', async () => {
 		const params: IDataObject = {
 			options: {},
@@ -360,7 +383,7 @@ describe('KafkaV2 Node', () => {
 			topic: 'test-topic',
 			jsonParameters: true,
 			useKey: false,
-			headerParametersJson: '{\n  "headerKey": "headerValue"\n}',
+			headerParametersJson: { headerKey: 'headerValue' },
 		};
 		const items: INodeExecutionData[] = [{ json: { success: true } }];
 
@@ -439,7 +462,7 @@ describe('KafkaV2 Node', () => {
 		const params: NodeParams = {
 			...sendParams,
 			jsonParameters: true,
-			headerParametersJson: '{"retries":3}',
+			headerParametersJson: { retries: 3 },
 		};
 
 		await expect(
@@ -448,22 +471,6 @@ describe('KafkaV2 Node', () => {
 
 		expect(mockProducerFactory).not.toHaveBeenCalled();
 		expect(mockProducerSendBatch).not.toHaveBeenCalled();
-	});
-
-	test('attributes malformed JSON headers to the failing item', async () => {
-		const params: NodeParams = {
-			...sendParams,
-			jsonParameters: true,
-			headerParametersJson: (i: number) => (i === 1 ? 'not json' : '{"ok":"yes"}'),
-		};
-
-		const error = await new KafkaV2(baseDescription).execute
-			.call(createExecuteFunctions(params, [{ json: {} }, { json: {} }]))
-			.catch((caught: unknown) => caught);
-
-		expect(error).toBeInstanceOf(NodeOperationError);
-		expect((error as NodeOperationError).message).toBe('Headers must be valid JSON');
-		expect((error as NodeOperationError).context.itemIndex).toBe(1);
 	});
 
 	test('disconnects and propagates the connect error when connect rejects', async () => {
@@ -530,25 +537,6 @@ describe('KafkaV2 Node', () => {
 		expect(mockProducerFactory).not.toHaveBeenCalled();
 	});
 
-	test('fails before the producer is built when the JSON headers are not valid JSON', async () => {
-		const params: NodeParams = {
-			options: {},
-			sendInputData: false,
-			useSchemaRegistry: false,
-			message: 'plain message',
-			topic: 'test-topic',
-			jsonParameters: true,
-			useKey: false,
-			headerParametersJson: 'not-json',
-		};
-
-		await expect(
-			new KafkaV2(baseDescription).execute.call(createExecuteFunctions(params, [{ json: {} }])),
-		).rejects.toThrow('Headers must be valid JSON');
-
-		expect(mockProducerFactory).not.toHaveBeenCalled();
-	});
-
 	test('should configure the schema registry from the selected credential', async () => {
 		const params: IDataObject = {
 			options: {},
@@ -560,7 +548,7 @@ describe('KafkaV2 Node', () => {
 			topic: 'cred-test-topic',
 			jsonParameters: true,
 			useKey: false,
-			headerParametersJson: '{\n  "headerKey": "headerValue"\n}',
+			headerParametersJson: { headerKey: 'headerValue' },
 		};
 		const items: INodeExecutionData[] = [{ json: { success: true } }];
 

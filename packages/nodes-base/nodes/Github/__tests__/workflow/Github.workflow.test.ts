@@ -102,6 +102,12 @@ describe('Github > Workflows', () => {
 				run_url: `https://api.github.com${repo}/actions/runs/123`,
 				html_url: 'https://github.com/acme-corp/billing-service/actions/runs/123',
 			});
+		github
+			.post(`${repo}/actions/workflows/ci.yml/dispatches`, {
+				ref: 'main',
+				inputs: { environment: 'production' },
+			})
+			.reply(204);
 		github.put(`${repo}/actions/workflows/ci.yml/enable`).reply(200, {});
 		github.get(`${repo}/actions/workflows/ci.yml`).reply(200, { id: 161335 });
 		github.get(`${repo}/actions/workflows/ci.yml/timing`).reply(200, { billable: {} });

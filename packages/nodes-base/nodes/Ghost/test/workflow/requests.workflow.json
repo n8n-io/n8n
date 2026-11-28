@@ -2,6 +2,96 @@
 	"name": "Ghost Requests",
 	"nodes": [
 		{
+			"parameters": {
+				"source": "adminApi",
+				"resource": "post",
+				"operation": "create",
+				"title": "Mobiledoc",
+				"contentFormat": "mobileDoc",
+				"content": "={{ { \"version\": \"0.3.1\", \"sections\": [] } }}",
+				"additionalFields": {}
+			},
+			"id": "9b86e289-5c6b-579a-b53d-d14988322cc6",
+			"name": "Admin Post Create Mobiledoc Expression",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 2600],
+			"credentials": {
+				"ghostAdminApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "adminApi",
+				"resource": "post",
+				"operation": "create",
+				"title": "Lexical",
+				"contentFormat": "lexical",
+				"content": "{\"root\": {\"children\": []}}",
+				"additionalFields": {}
+			},
+			"id": "af365c89-4146-5482-80da-b4d0e7331a3b",
+			"name": "Admin Post Create Lexical JSON",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 2600],
+			"credentials": {
+				"ghostAdminApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "adminApi",
+				"resource": "post",
+				"operation": "update",
+				"postId": "5f2a1b3c4d5e6f7a8b9c0d1f",
+				"contentFormat": "lexical",
+				"updateFields": {
+					"contentJson": "{\"root\":{\"children\":[]}}"
+				}
+			},
+			"id": "1aaa1799-deaa-52a7-960d-582da71f0aab",
+			"name": "Admin Post Update Lexical JSON",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 3350],
+			"credentials": {
+				"ghostAdminApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "adminApi",
+				"resource": "post",
+				"operation": "update",
+				"postId": "5f2a1b3c4d5e6f7a8b9c0d1f",
+				"contentFormat": "mobileDoc",
+				"updateFields": {
+					"contentJson": "={{ { \"version\": \"0.3.1\", \"sections\": [] } }}"
+				}
+			},
+			"id": "82b04052-62a6-551d-8b92-e509cb40910f",
+			"name": "Admin Post Update Mobiledoc Expression",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 3350],
+			"credentials": {
+				"ghostAdminApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "trigger",
 			"name": "When clicking 'Execute Workflow'",
@@ -311,6 +401,26 @@
 		"When clicking 'Execute Workflow'": {
 			"main": [
 				[
+					{
+						"node": "Admin Post Create Mobiledoc Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Admin Post Create Lexical JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Admin Post Update Lexical JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Admin Post Update Mobiledoc Expression",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Content Post Get",
 						"type": "main",

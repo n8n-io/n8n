@@ -2,6 +2,27 @@
 	"name": "PayPal Requests",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "payout",
+				"operation": "create",
+				"senderBatchId": "Payouts_2024_100008",
+				"jsonParameters": true,
+				"itemsJson": "={{ [{ \"recipient_type\": \"EMAIL\", \"receiver\": \"grace@example.com\" }] }}",
+				"additionalFields": {}
+			},
+			"id": "ea8d2a16-e55a-5f51-b462-afa565e8b5db",
+			"name": "Payout Create Expression",
+			"type": "n8n-nodes-base.payPal",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"credentials": {
+				"payPalApi": {
+					"id": "1",
+					"name": "PayPal account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "trigger",
 			"name": "When clicking \"Execute Workflow\"",
@@ -109,6 +130,11 @@
 		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
+					{
+						"node": "Payout Create Expression",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Payout Create",
 						"type": "main",

@@ -8,7 +8,7 @@ import type {
 	RequestPath,
 	WithRequestTarget,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError, requestUrl } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function cockpitApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -51,7 +51,7 @@ export function createDataFromParameters(
 
 	if (dataFieldsAreJson) {
 		// Parameters are defined as JSON
-		return jsonParse(this.getNodeParameter('dataFieldsJson', itemIndex, '{}') as string);
+		return (this.getNodeParameter('dataFieldsJson', itemIndex) as IDataObject | undefined) ?? {};
 	}
 
 	// Parameters are defined in UI

@@ -39,6 +39,38 @@
 					"name": "Azure Cosmos DB account "
 				}
 			}
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "query",
+				"container": {
+					"__rl": true,
+					"value": "newId",
+					"mode": "list",
+					"cachedResultName": "newId"
+				},
+				"query": "SELECT * FROM c WHERE c.projectId = $1 AND c.startDate = $2",
+				"options": {
+					"queryOptions": {
+						"queryParametersJson": "={{ [\"P12223\", 1737062400000] }}"
+					}
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureCosmosDb",
+			"typeVersion": 1,
+			"position": [160, 100],
+			"id": "0dc90797-8211-457c-a673-b7df28139de9",
+			"name": "queryItemsExpressionParam",
+			"retryOnFail": false,
+			"alwaysOutputData": true,
+			"credentials": {
+				"microsoftAzureCosmosDbSharedKeyApi": {
+					"id": "exampleId",
+					"name": "Azure Cosmos DB account "
+				}
+			}
 		}
 	],
 	"connections": {
@@ -49,6 +81,11 @@
 						"node": "queryItemsNumericParam",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "queryItemsExpressionParam",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -56,6 +93,15 @@
 	},
 	"pinData": {
 		"queryItemsNumericParam": [
+			{
+				"json": {
+					"id": "User1",
+					"projectId": "P12223",
+					"startDate": 1737062400000
+				}
+			}
+		],
+		"queryItemsExpressionParam": [
 			{
 				"json": {
 					"id": "User1",

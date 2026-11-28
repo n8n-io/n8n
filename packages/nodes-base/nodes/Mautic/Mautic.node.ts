@@ -16,7 +16,7 @@ import { companyContactFields, companyContactOperations } from './CompanyContact
 import { companyFields, companyOperations } from './CompanyDescription';
 import { contactFields, contactOperations } from './ContactDescription';
 import { contactSegmentFields, contactSegmentOperations } from './ContactSegmentDescription';
-import { mauticApiRequest, mauticApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { mauticApiRequest, mauticApiRequestAllItems } from './GenericFunctions';
 import { segmentEmailFields, segmentEmailOperations } from './SegmentEmailDescription';
 
 export class Mautic implements INodeType {
@@ -643,7 +643,7 @@ export class Mautic implements INodeType {
 							body.position = this.getNodeParameter('position', i) as string;
 							body.title = this.getNodeParameter('title', i) as string;
 						} else {
-							const json = validateJSON(this.getNodeParameter('bodyJson', i) as string);
+							const json = this.getNodeParameter('bodyJson', i) as IDataObject | undefined;
 							if (json !== undefined) {
 								body = { ...json };
 							} else {
@@ -763,12 +763,7 @@ export class Mautic implements INodeType {
 							body.title = updateFields.title as string;
 						}
 						if (updateFields.bodyJson) {
-							const json = validateJSON(updateFields.bodyJson as string);
-							if (json !== undefined) {
-								body = { ...json };
-							} else {
-								throw new NodeOperationError(this.getNode(), 'Invalid JSON', { itemIndex: i });
-							}
+							body = { ...(updateFields.bodyJson as IDataObject) };
 						}
 						if (updateFields.ipAddress) {
 							body.ipAddress = updateFields.ipAddress as string;

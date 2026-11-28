@@ -8,10 +8,19 @@ import {
 } from '@n8n/ai-utilities';
 import { createResultError } from '@n8n/utils/result';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
+import { SupplyDataContext } from 'n8n-core';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type {
+	ILoadOptionsFunctions,
+	INode,
+	INodeTypes,
+	ISupplyDataFunctions,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
@@ -286,7 +295,7 @@ describe('LmChatAwsBedrock', () => {
 							topP: 0.9,
 							maxRetries: 5,
 							latency: 'optimized',
-							additionalModelRequestFields: '{"top_k": 50}',
+							additionalModelRequestFields: { top_k: 50 },
 							guardrail: {
 								values: {
 									guardrailIdentifier: 'gr-123',
@@ -355,25 +364,11 @@ describe('LmChatAwsBedrock', () => {
 				expect(clientConfig).not.toHaveProperty('maxAttempts');
 			});
 
-			it('throws a UserError when additionalModelRequestFields is invalid JSON', async () => {
-				const ctx = setupMockContext();
-				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-					if (paramName === 'model') return 'amazon.nova-pro-v1:0';
-					if (paramName === 'options') return { additionalModelRequestFields: 'not json' };
-					return undefined;
-				});
-
-				const call = node.supplyData.call(ctx, 0);
-				await expect(call).rejects.toThrow(UserError);
-				await expect(call).rejects.toThrow('Additional Model Request Fields must be valid JSON');
-				expect(MockedChatBedrockConverse).not.toHaveBeenCalled();
-			});
-
 			it('does not forward additionalModelRequestFields when left as the default empty object', async () => {
 				const ctx = setupMockContext();
 				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'model') return 'amazon.nova-pro-v1:0';
-					if (paramName === 'options') return { additionalModelRequestFields: '{}' };
+					if (paramName === 'options') return { additionalModelRequestFields: {} };
 					return undefined;
 				});
 
@@ -696,6 +691,50 @@ describe('LmChatAwsBedrock', () => {
 
 				await expect(node.supplyData.call(ctx, 0)).rejects.toBe(filterError);
 			});
+		});
+	});
+
+	describe('additional model request fields through core', () => {
+		it.each([
+			{ case: 'a JSON string', additionalModelRequestFields: '{"top_k": 50}' },
+			{ case: 'an expression', additionalModelRequestFields: '={{ { "top_k": 50 } }}' },
+		])('sends the fields from $case', async ({ additionalModelRequestFields }) => {
+			setupMockContext();
+			const coreNode: INode = {
+				...mockNode,
+				typeVersion: 1.2,
+				parameters: { model: 'amazon.nova-pro-v1:0', options: { additionalModelRequestFields } },
+			};
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(node);
+			const workflow = new Workflow({
+				nodes: [coreNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+			const ctx = new SupplyDataContext(
+				workflow,
+				coreNode,
+				mock<IWorkflowExecuteAdditionalData>({
+					webhookWaitingBaseUrl: 'https://example.com/webhook-waiting',
+					formWaitingBaseUrl: 'https://example.com/form-waiting',
+				}),
+				'manual',
+				createRunExecutionData(),
+				0,
+				[],
+				{ main: [[{ json: {} }]] },
+				NodeConnectionTypes.AiLanguageModel,
+				{ node: coreNode, data: {}, source: null },
+				[],
+			);
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatBedrockConverse).toHaveBeenCalledWith(
+				expect.objectContaining({ additionalModelRequestFields: { top_k: 50 } }),
+			);
 		});
 	});
 

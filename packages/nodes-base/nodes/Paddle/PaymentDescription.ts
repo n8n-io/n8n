@@ -80,6 +80,7 @@ export const paymentFields: INodeProperties[] = [
 		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},

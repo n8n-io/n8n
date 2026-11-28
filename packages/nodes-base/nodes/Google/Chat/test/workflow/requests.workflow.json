@@ -2,6 +2,49 @@
 	"name": "Google Chat request URLs",
 	"nodes": [
 		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "message",
+				"operation": "update",
+				"messageId": "spaces/AAAAx1y2z3/messages/Kp2qR7sT9uV.Kp2qR7sT9uV",
+				"jsonParameters": true,
+				"updateFieldsJson": "={{ { \"text\": \"Updated from an expression\" } }}"
+			},
+			"type": "n8n-nodes-base.googleChat",
+			"typeVersion": 1,
+			"position": [1540, 2000],
+			"id": "45c7d669-fbb8-5af7-8b8b-3fdfff038c77",
+			"name": "Update Message Expression",
+			"credentials": {
+				"googleChatOAuth2Api": {
+					"id": "gchat-cred-1",
+					"name": "Google Chat account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "message",
+				"operation": "create",
+				"spaceId": "spaces/AAAAx1y2z3",
+				"jsonParameters": true,
+				"messageJson": "{\"text\":\"Sent from JSON\"}",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.googleChat",
+			"typeVersion": 1,
+			"position": [1100, 2000],
+			"id": "9a153cc5-9a5a-5eb1-b9ee-eefd28ec3bb8",
+			"name": "Create Message JSON",
+			"credentials": {
+				"googleChatOAuth2Api": {
+					"id": "gchat-cred-1",
+					"name": "Google Chat account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -258,6 +301,16 @@
 		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
+					{
+						"node": "Update Message Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Message JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Get Space",
 						"type": "main",

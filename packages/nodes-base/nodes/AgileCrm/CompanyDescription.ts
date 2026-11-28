@@ -266,6 +266,7 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Filters (JSON)',
 		name: 'filterJson',
 		type: 'string',
+		validateType: 'object',
 		displayOptions: {
 			show: {
 				resource: ['company'],
@@ -349,6 +350,7 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -661,6 +663,7 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},

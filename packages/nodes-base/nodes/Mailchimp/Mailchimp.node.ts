@@ -15,7 +15,6 @@ import {
 	mailchimpApiRequest,
 	mailchimpApiRequestAllItems,
 	toPathValue,
-	validateJSON,
 } from './GenericFunctions';
 
 const Statuses = {
@@ -535,6 +534,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Merge Fields',
 				name: 'mergeFieldsJson',
 				type: 'json',
+				validateType: 'object',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -551,6 +551,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Location',
 				name: 'locationJson',
 				type: 'json',
+				validateType: 'object',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -619,6 +620,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Interest Groups',
 				name: 'groupJson',
 				type: 'json',
+				validateType: 'object',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -1193,6 +1195,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Merge Fields',
 				name: 'mergeFieldsJson',
 				type: 'json',
+				validateType: 'object',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -1209,6 +1212,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Location',
 				name: 'locationJson',
 				type: 'json',
+				validateType: 'object',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -1225,6 +1229,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Interest Groups',
 				name: 'groupJson',
 				type: 'json',
+				validateType: 'object',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -1801,11 +1806,13 @@ export class Mailchimp implements INodeType {
 								body.interests = groups;
 							}
 						} else {
-							const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
-							const mergeFieldsJson = validateJSON(
-								this.getNodeParameter('mergeFieldsJson', i) as string,
-							);
-							const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
+							const locationJson = this.getNodeParameter('locationJson', i) as
+								| IDataObject
+								| undefined;
+							const mergeFieldsJson = this.getNodeParameter('mergeFieldsJson', i) as
+								| IDataObject
+								| undefined;
+							const groupJson = this.getNodeParameter('groupJson', i) as IDataObject | undefined;
 							if (locationJson) {
 								body.location = locationJson;
 							}
@@ -1991,11 +1998,13 @@ export class Mailchimp implements INodeType {
 								}
 							}
 						} else {
-							const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
-							const mergeFieldsJson = validateJSON(
-								this.getNodeParameter('mergeFieldsJson', i) as string,
-							);
-							const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
+							const locationJson = this.getNodeParameter('locationJson', i) as
+								| IDataObject
+								| undefined;
+							const mergeFieldsJson = this.getNodeParameter('mergeFieldsJson', i) as
+								| IDataObject
+								| undefined;
+							const groupJson = this.getNodeParameter('groupJson', i) as IDataObject | undefined;
 
 							if (locationJson) {
 								body.location = locationJson;

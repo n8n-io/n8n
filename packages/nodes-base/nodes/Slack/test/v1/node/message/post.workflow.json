@@ -2,6 +2,79 @@
 	"name": "slack tests",
 	"nodes": [
 		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "message",
+				"operation": "post",
+				"channel": "C08514ZPKB8",
+				"text": "json message",
+				"otherOptions": {},
+				"jsonParameters": true,
+				"attachmentsJson": "[{\"text\":\"Ada\"}]",
+				"blocksJson": "[{\"type\":\"divider\"}]"
+			},
+			"id": "d2424d5e-caf3-51fc-8321-f20076f13468",
+			"name": "Slack JSON",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [1040, 2360],
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account 2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "message",
+				"operation": "post",
+				"channel": "C08514ZPKB8",
+				"text": "expression message",
+				"otherOptions": {},
+				"jsonParameters": true,
+				"attachmentsJson": "={{ [{ \"text\": \"Grace\" }] }}",
+				"blocksJson": "={{ [{ \"type\": \"divider\" }] }}"
+			},
+			"id": "996f8213-8e8b-55e9-9a8a-9a0bd499c420",
+			"name": "Slack Expression",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [1040, 2360],
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account 2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "message",
+				"operation": "update",
+				"channelId": "C08514ZPKB8",
+				"text": "updated message",
+				"ts": "1734322671.726339",
+				"jsonParameters": true,
+				"updateFields": {},
+				"attachmentsJson": "={{ [{ \"text\": \"Grace\" }] }}",
+				"blocksJson": "={{ [{ \"type\": \"divider\" }] }}"
+			},
+			"id": "d706b5fd-a7b1-5a72-8521-d66d89124f6a",
+			"name": "Slack Update Expression",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [1040, 2360],
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account 2"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "e679c883-1839-47dc-9511-8f7dc370e6b0",
 			"name": "When clicking 'Test workflow'",
@@ -83,6 +156,21 @@
 		"When clicking 'Test workflow'": {
 			"main": [
 				[
+					{
+						"node": "Slack JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Slack Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Slack Update Expression",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Slack",
 						"type": "main",

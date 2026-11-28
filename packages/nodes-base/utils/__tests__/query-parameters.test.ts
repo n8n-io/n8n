@@ -148,6 +148,21 @@ describe('parseAndResolveQueryParameters', () => {
 		);
 	});
 
+	it('accepts a query that is already an object or an array', () => {
+		expect(parseAndResolveQueryParameters({ name: '$1', age: 30 }, ['Alice'], mockNode, 0)).toEqual(
+			{ name: 'Alice', age: 30 },
+		);
+		expect(
+			parseAndResolveQueryParameters([{ $match: { name: '$1' } }], ['Alice'], mockNode, 0),
+		).toEqual([{ $match: { name: 'Alice' } }]);
+	});
+
+	it('throws when the query is empty', () => {
+		expect(() => parseAndResolveQueryParameters(undefined, [], mockNode, 0)).toThrow(
+			"Invalid JSON in 'Query'",
+		);
+	});
+
 	describe('dollar strings', () => {
 		const escape = { escapeDollarStrings: true };
 

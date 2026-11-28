@@ -2,6 +2,46 @@
 	"name": "Magento 2 request URLs",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "product",
+				"operation": "getAll",
+				"limit": 2,
+				"filterType": "json",
+				"filterJson": "={{ { \"search_criteria\": { \"sort_orders\": [{ \"field\": \"name\", \"direction\": \"ASC\" }] } } }}"
+			},
+			"id": "f593d8ce-df31-5d9d-b16b-8973433d2e8c",
+			"name": "Get Products Expression",
+			"type": "n8n-nodes-base.magento2",
+			"typeVersion": 1,
+			"position": [240, 3120],
+			"credentials": {
+				"magento2Api": {
+					"id": "1",
+					"name": "Magento 2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "order",
+				"operation": "getAll",
+				"limit": 2,
+				"filterType": "json",
+				"filterJson": "{\"search_criteria\":{\"filter_groups\":[{\"filters\":[{\"field\":\"status\",\"value\":\"pending\"}]}]}}"
+			},
+			"id": "e4ad4cef-0a61-5476-837e-d747217372e0",
+			"name": "Get Orders JSON",
+			"type": "n8n-nodes-base.magento2",
+			"typeVersion": 1,
+			"position": [240, 2640],
+			"credentials": {
+				"magento2Api": {
+					"id": "1",
+					"name": "Magento 2 account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "a1d3c5e7-0000-4000-8000-000000000001",
 			"name": "When clicking \"Execute Workflow\"",
@@ -285,6 +325,16 @@
 		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
+					{
+						"node": "Get Products Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Orders JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Get Customer",
 						"type": "main",

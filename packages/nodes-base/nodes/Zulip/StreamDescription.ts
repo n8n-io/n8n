@@ -67,6 +67,7 @@ export const streamFields: INodeProperties[] = [
 		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -340,6 +341,7 @@ export const streamFields: INodeProperties[] = [
 		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},

@@ -71,16 +71,6 @@ export async function salesmateApiRequestAllItems(
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = undefined;
-	}
-	return result;
-}
-
 /**
  * Converts data from the Salesmate format into a simple object
  *

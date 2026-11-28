@@ -1,12 +1,15 @@
+import { TriggerContext } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
 	INode,
 	INodeTypeBaseDescription,
+	INodeTypes,
 	ITriggerFunctions,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, Workflow } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -234,14 +237,8 @@ describe('EmailReadImapV2', () => {
 	});
 
 	describe('custom email config', () => {
-		it('rejects config that is not JSON on activation', async () => {
-			await expect(startTrigger({ customEmailConfig: 'not json' })).rejects.toThrow(
-				'Custom email config is not valid JSON.',
-			);
-		});
-
 		it('rejects a criterion that cannot compile on activation, not on the first arrival', async () => {
-			await expect(startTrigger({ customEmailConfig: '[["SMALLER", "abc"]]' })).rejects.toThrow(
+			await expect(startTrigger({ customEmailConfig: [['SMALLER', 'abc']] })).rejects.toThrow(
 				'IMAP search criterion "SMALLER" needs a whole number, got "abc".',
 			);
 		});
@@ -250,8 +247,51 @@ describe('EmailReadImapV2', () => {
 			connectMock.mockResolvedValue(createConnection());
 
 			await expect(
-				startTrigger({ customEmailConfig: '["UNSEEN", ["FROM", "a@b.co"]]' }),
+				startTrigger({ customEmailConfig: ['UNSEEN', ['FROM', 'a@b.co']] }),
 			).resolves.toBeDefined();
+		});
+	});
+
+	describe('custom email config through core', () => {
+		it.each([
+			{ case: 'a JSON string', customEmailConfig: '["SEEN", ["FROM", "a@b.co"]]' },
+			{ case: 'an expression', customEmailConfig: '={{ ["SEEN", ["FROM", "a@b.co"]] }}' },
+		])('searches with the criteria from $case', async ({ customEmailConfig }) => {
+			const nodeType = new EmailReadImapV2(baseDescription);
+			const node: INode = {
+				id: 'email-trigger',
+				name: 'Email Trigger (IMAP)',
+				type: 'n8n-nodes-base.emailReadImap',
+				typeVersion: 2,
+				position: [0, 0],
+				parameters: {
+					mailbox: 'INBOX',
+					postProcessAction: 'nothing',
+					options: { customEmailConfig },
+				},
+			};
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+			const workflow = new Workflow({ nodes: [node], connections: {}, active: true, nodeTypes });
+			const context = new TriggerContext(
+				workflow,
+				node,
+				mock<IWorkflowExecuteAdditionalData>(),
+				'trigger',
+				'activate',
+				vi.fn(),
+				vi.fn(),
+			);
+			vi.spyOn(context, 'getCredentials').mockResolvedValue(credentials);
+			const connection = createConnection();
+			connectMock.mockResolvedValueOnce(connection);
+
+			await nodeType.trigger.call(context);
+			await arrive(connection, 'unknown');
+
+			expect(fetched).toHaveBeenCalledWith(
+				expect.objectContaining({ searchCriteria: ['SEEN', ['FROM', 'a@b.co']] }),
+			);
 		});
 	});
 

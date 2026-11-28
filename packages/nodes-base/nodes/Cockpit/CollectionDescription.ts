@@ -112,6 +112,7 @@ export const collectionFields: INodeProperties[] = [
 				displayName: 'Filter Query',
 				name: 'filter',
 				type: 'json',
+				validateType: 'object',
 				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -152,6 +153,7 @@ export const collectionFields: INodeProperties[] = [
 				displayName: 'Sort Query',
 				name: 'sort',
 				type: 'json',
+				validateType: 'object',
 				default: '',
 				placeholder: '{"price": -1}',
 				description:
@@ -194,6 +196,7 @@ export const collectionFields: INodeProperties[] = [
 		displayName: 'Entry Data',
 		name: 'dataFieldsJson',
 		type: 'json',
+		validateType: 'object',
 		default: '',
 		typeOptions: {
 			alwaysOpenEditWindow: true,

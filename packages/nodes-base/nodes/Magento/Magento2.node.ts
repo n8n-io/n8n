@@ -20,7 +20,6 @@ import {
 	magentoApiRequestAllItems,
 	sort,
 	toPathValue,
-	validateJSON,
 } from './GenericFunctions';
 import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 import { orderFields, orderOperations } from './OrderDescription';
@@ -421,14 +420,9 @@ export class Magento2 implements INodeType {
 							const matchType = this.getNodeParameter('matchType', i) as string;
 							qs = getFilterQuery(Object.assign(filters, { matchType }, sortOption));
 						} else if (filterType === 'json') {
-							const filterJson = this.getNodeParameter('filterJson', i) as string;
-							if (validateJSON(filterJson) !== undefined) {
-								qs = JSON.parse(filterJson);
-							} else {
-								throw new NodeApiError(this.getNode(), {
-									message: 'Filter (JSON) must be a valid json',
-								});
-							}
+							qs = (this.getNodeParameter('filterJson', i) as Search | undefined) ?? {
+								search_criteria: {},
+							};
 						} else {
 							qs = {
 								search_criteria: {},
@@ -600,14 +594,9 @@ export class Magento2 implements INodeType {
 							const matchType = this.getNodeParameter('matchType', i) as string;
 							qs = getFilterQuery(Object.assign(filters, { matchType }, sortOption));
 						} else if (filterType === 'json') {
-							const filterJson = this.getNodeParameter('filterJson', i) as string;
-							if (validateJSON(filterJson) !== undefined) {
-								qs = JSON.parse(filterJson);
-							} else {
-								throw new NodeApiError(this.getNode(), {
-									message: 'Filter (JSON) must be a valid json',
-								});
-							}
+							qs = (this.getNodeParameter('filterJson', i) as Search | undefined) ?? {
+								search_criteria: {},
+							};
 						} else {
 							qs = {
 								search_criteria: {},
@@ -722,14 +711,9 @@ export class Magento2 implements INodeType {
 							const matchType = this.getNodeParameter('matchType', i) as string;
 							qs = getFilterQuery(Object.assign(filters, { matchType }, sortOption));
 						} else if (filterType === 'json') {
-							const filterJson = this.getNodeParameter('filterJson', i) as string;
-							if (validateJSON(filterJson) !== undefined) {
-								qs = JSON.parse(filterJson);
-							} else {
-								throw new NodeApiError(this.getNode(), {
-									message: 'Filter (JSON) must be a valid json',
-								});
-							}
+							qs = (this.getNodeParameter('filterJson', i) as Search | undefined) ?? {
+								search_criteria: {},
+							};
 						} else {
 							qs = {
 								search_criteria: {},

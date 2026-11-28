@@ -2,6 +2,46 @@
 	"name": "Salesforce Request URLs",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "flow",
+				"operation": "invoke",
+				"apiName": "Expression_Flow",
+				"jsonParameters": true,
+				"variablesJson": "={{ { \"orderId\": \"A-2\" } }}"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1.1,
+			"position": [300, 8400],
+			"id": "08423c33-0d7a-5e33-97e9-724b43ef56a9",
+			"name": "Flow > Invoke Expression",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "flow",
+				"operation": "invoke",
+				"apiName": "Json_Flow",
+				"jsonParameters": true,
+				"variablesJson": "{\"orderId\": \"A-1\"}"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1.1,
+			"position": [300, 8400],
+			"id": "7ad558ce-852e-5bde-8f1f-1ffbfbc7e1f5",
+			"name": "Flow > Invoke JSON",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -678,6 +718,16 @@
 		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
+					{
+						"node": "Flow > Invoke Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Flow > Invoke JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Lead > Create",
 						"type": "main",

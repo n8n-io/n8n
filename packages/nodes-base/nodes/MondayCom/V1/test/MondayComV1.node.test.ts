@@ -1,5 +1,6 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
+import { isDeepStrictEqual } from 'node:util';
 
 describe('MondayCom', () => {
 	const mondayApiUrl = 'https://api.monday.com';
@@ -254,6 +255,93 @@ describe('MondayCom', () => {
 
 		new NodeTestHarness().setupTests({
 			workflowFiles: ['get.workflow.json'],
+		});
+	});
+
+	describe('JSON column values - sends a JSON string and an expression object', () => {
+		const hasVariables = (expected: Record<string, unknown>) => (body: Record<string, unknown>) =>
+			isDeepStrictEqual(body.variables, expected);
+
+		beforeAll(() => {
+			const api = nock(mondayApiUrl);
+			api
+				.post(
+					'/v2/',
+					hasVariables({
+						boardId: '9876543210',
+						title: 'Status',
+						columnType: 'status',
+						defaults: '{"labels":{"1":"Done"}}',
+					}),
+				)
+				.reply(200, { data: { create_column: { id: 'status' } } });
+			api
+				.post(
+					'/v2/',
+					hasVariables({
+						boardId: '9876543210',
+						itemId: '1234567890',
+						columnValues: '{"status":{"label":"Done"}}',
+					}),
+				)
+				.reply(200, { data: { change_multiple_column_values: { id: '1234567890' } } });
+			api
+				.post(
+					'/v2/',
+					hasVariables({
+						boardId: '9876543210',
+						groupId: 'group1',
+						itemName: 'New item',
+						columnValues: '{"text":"Hello"}',
+					}),
+				)
+				.reply(200, { data: { create_item: { id: '1122334455' } } });
+			api
+				.post(
+					'/v2/',
+					hasVariables({
+						boardId: '9876543210',
+						itemId: '1234567890',
+						columnId: 'status',
+						value: '{"label":"Done"}',
+					}),
+				)
+				.reply(200, { data: { change_column_value: { id: '1234567890' } } });
+			api
+				.post(
+					'/v2/',
+					hasVariables({
+						boardId: '9876543210',
+						itemId: '1234567890',
+						columnId: 'status',
+						value: '{"label":"Stuck"}',
+					}),
+				)
+				.reply(200, { data: { change_column_value: { id: '1234567891' } } });
+			api
+				.post(
+					'/v2/',
+					hasVariables({
+						boardId: '9876543210',
+						itemId: '1234567890',
+						columnId: 'text',
+						value: '"Hello"',
+					}),
+				)
+				.reply(200, { data: { change_column_value: { id: '1234567892' } } });
+			api
+				.post('/v2/', hasVariables({ itemId: '1234567890', value: 'Hello' }))
+				.reply(200, { data: { create_update: { id: '555' } } });
+		});
+
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['columnValues.workflow.json'],
+		});
+	});
+
+	describe('boardItem:changeColumnValue - throws when the value is not valid JSON', () => {
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['changeColumnValueError.workflow.json'],
 		});
 	});
 

@@ -1,6 +1,34 @@
 import { nodesConfig } from '@n8n/oxlint-config/nodes';
 import { defineConfig } from 'oxlint';
 
+// A json parameter must set validateType, so that an expression can return an
+// object or an array. Remove a folder from the list when its findings are fixed.
+const jsonValidateTypePending = [
+	'nodes/Amqp/**',
+	'nodes/Beeminder/**',
+	'nodes/Confluence/**',
+	'nodes/Databricks/**',
+	'nodes/Discord/**',
+	'nodes/Elastic/**',
+	'nodes/ExecuteWorkflow/**',
+	'nodes/Google/CloudStorage/**',
+	'nodes/GraphQL/**',
+	'nodes/HttpRequest/**',
+	'nodes/KoBoToolbox/**',
+	'nodes/MessageAnAgent/**',
+	'nodes/Microsoft/AzureCosmosDb/**',
+	'nodes/Microsoft/Dataverse/**',
+	'nodes/Microsoft/Excel/**',
+	'nodes/Microsoft/ExcelSharePoint/**',
+	'nodes/Misp/**',
+	'nodes/MondayCom/**',
+	'nodes/N8n/**',
+	'nodes/Oracle/**',
+	'nodes/RespondToWebhook/**',
+	'nodes/TheHive/**',
+	'nodes/TheHiveProject/**',
+];
+
 export default defineConfig({
 	extends: [nodesConfig],
 	options: { typeAware: true },
@@ -56,6 +84,20 @@ export default defineConfig({
 		{
 			files: ['nodes/**/*.ts'],
 			rules: { 'n8n-nodes-base/node-filename-against-convention': 'off' },
+		},
+		{
+			files: ['nodes/**/*.ts'],
+			excludeFiles: [
+				'**/*.test.ts',
+				'**/test/**',
+				'**/tests/**',
+				'**/__test__/**',
+				'**/__tests__/**',
+				// Simulate is deprecated and gets no more fixes.
+				'nodes/Simulate/**',
+				...jsonValidateTypePending,
+			],
+			rules: { 'n8n-local-rules/require-json-validate-type': 'error' },
 		},
 		{
 			files: ['**/*.test.ts', '**/test/**/*.ts'],

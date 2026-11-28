@@ -954,13 +954,7 @@ export class ClickUp implements INodeType {
 							name,
 						};
 						if (additionalFields.customFieldsJson) {
-							const customFields = validateJSON(additionalFields.customFieldsJson as string);
-							if (customFields === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Custom Fields: Invalid JSON', {
-									itemIndex: i,
-								});
-							}
-							body.custom_fields = customFields;
+							body.custom_fields = additionalFields.customFieldsJson as IDataObject[];
 						}
 						if (additionalFields.content) {
 							body.content = additionalFields.content as string;

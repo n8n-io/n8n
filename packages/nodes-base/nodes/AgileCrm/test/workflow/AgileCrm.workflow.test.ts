@@ -37,7 +37,8 @@ describe('AgileCrm > Workflows', () => {
 		mock.delete(`/contacts/${contactId}`).reply(200, {});
 		mock
 			.post('/filters/filter/dynamic-filter', {
-				filterJson: '{"contact_type":"PERSON"}',
+				filterJson:
+					'{"contact_type":"PERSON","rules":[{"LHS":"tags","CONDITION":"EQUALS","RHS":"lead"}]}',
 				page_size: '2',
 			})
 			.reply(200, [contact]);

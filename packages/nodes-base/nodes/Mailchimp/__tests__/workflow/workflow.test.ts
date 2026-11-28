@@ -1,4 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import isMatch from 'lodash/isMatch';
 import nock from 'nock';
 
 describe('Mailchimp > Workflows', () => {
@@ -19,7 +20,30 @@ describe('Mailchimp > Workflows', () => {
 	const member = { id: 'm1', email_address: email };
 	const campaign = { id: campaignId, status: 'save' };
 
+	const expressionFields = {
+		merge_fields: { FNAME: 'Grace' },
+		location: { latitude: 1, longitude: 2 },
+		interests: { int2: true },
+	};
+
 	beforeAll(() => {
+		nock('https://us19.api.mailchimp.com/3.0')
+			.post(`/lists/${listId}/members`, (body) =>
+				isMatch(body, {
+					email_address: 'json@n8n.io',
+					merge_fields: { FNAME: 'Ada' },
+					location: { latitude: 3, longitude: 4 },
+					interests: { int1: true },
+				}),
+			)
+			.reply(200, member)
+			.post(`/lists/${listId}/members`, (body) =>
+				isMatch(body, { email_address: 'expression@n8n.io', ...expressionFields }),
+			)
+			.reply(200, member)
+			.put(`/lists/${listId}/members/${email}`, (body) => isMatch(body, expressionFields))
+			.reply(200, member);
+
 		nock('https://us19.api.mailchimp.com/3.0')
 			.get(`/lists/${listId}/interest-categories/${categoryId}/interests`)
 			.query({ count: 5 })

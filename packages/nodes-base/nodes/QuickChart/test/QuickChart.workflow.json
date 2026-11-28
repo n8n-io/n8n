@@ -113,6 +113,45 @@
 			"typeVersion": 1,
 			"position": [1220, 400],
 			"id": "6c8e1463-c384-4f5c-9de3-d7e052b02b0a"
+		},
+		{
+			"parameters": {
+				"chartType": "line",
+				"labelsUi": {
+					"labelsValues": [
+						{
+							"label": "Q1"
+						},
+						{
+							"label": "Q2"
+						},
+						{
+							"label": "Q3"
+						},
+						{
+							"label": "Q4"
+						}
+					]
+				},
+				"data": "[1, 2, 3]",
+				"chartOptions": {
+					"backgroundColor": "#f93636ff",
+					"devicePixelRatio": 2,
+					"format": "png",
+					"height": 300,
+					"width": 500
+				},
+				"datasetOptions": {
+					"backgroundColor": "={{ $json[\"backgroundColor\"] }}",
+					"borderColor": "#e81010",
+					"label": "={{ $json[\"label\"] }}"
+				}
+			},
+			"name": "LineJsonString",
+			"type": "n8n-nodes-base.quickChart",
+			"typeVersion": 1,
+			"position": [1220, 600],
+			"id": "0b1f5c7e-3a2d-4e8f-9c61-7d2e4f8a1b03"
 		}
 	],
 	"connections": {
@@ -137,6 +176,11 @@
 					},
 					{
 						"node": "Doughnut",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "LineJsonString",
 						"type": "main",
 						"index": 0
 					}

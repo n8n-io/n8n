@@ -1,0 +1,87 @@
+{
+	"name": "Paddle user JSON parameters",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "6d3f1a2b-0000-4000-8000-000000000001",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 1,
+				"jsonParameters": true,
+				"additionalFieldsJson": "{\"state\": \"active\"}"
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "6d3f1a2b-0000-4000-8000-000000000002",
+			"name": "Get Users JSON",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 1,
+				"jsonParameters": true,
+				"additionalFieldsJson": "={{ { \"plan_id\": 9876 } }}"
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "6d3f1a2b-0000-4000-8000-000000000003",
+			"name": "Get Users Expression",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Users JSON": [
+			{
+				"json": {
+					"subscription_id": 502198,
+					"plan_id": 9876,
+					"user_id": 425123,
+					"user_email": "nathan@example.com",
+					"state": "active"
+				}
+			}
+		],
+		"Get Users Expression": [
+			{
+				"json": {
+					"subscription_id": 502198,
+					"plan_id": 9876,
+					"user_id": 425123,
+					"user_email": "nathan@example.com",
+					"state": "active"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Get Users JSON", "type": "main", "index": 0 }]]
+		},
+		"Get Users JSON": {
+			"main": [[{ "node": "Get Users Expression", "type": "main", "index": 0 }]]
+		}
+	}
+}

@@ -80,6 +80,7 @@ export const responderFields: INodeProperties[] = [
 		displayName: 'Entity Object (JSON)',
 		name: 'objectData',
 		type: 'string',
+		validateType: 'object',
 		required: true,
 		displayOptions: {
 			show: {

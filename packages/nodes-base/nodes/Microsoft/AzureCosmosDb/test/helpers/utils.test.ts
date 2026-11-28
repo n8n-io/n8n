@@ -295,6 +295,19 @@ describe('validateQueryParameters', () => {
 			]);
 		});
 
+		test('should accept an evaluated array', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1, $2')
+				.mockReturnValueOnce({ queryParametersJson: ['012345', 5] });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: '012345' },
+				{ name: '@Param2', value: 5 },
+			]);
+		});
+
 		test('should preserve null value', async () => {
 			mockExecuteSingleFunctions.getNodeParameter
 				.mockReturnValueOnce('$1')

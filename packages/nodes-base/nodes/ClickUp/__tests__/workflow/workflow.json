@@ -2,6 +2,56 @@
 	"name": "ClickUp request URLs",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "task",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"name": "JSON task",
+				"additionalFields": {
+					"customFieldsJson": "[{\"id\":\"field-1\",\"value\":\"Ada\"}]"
+				}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 6600],
+			"id": "a39c7350-a6bc-5006-b779-7b9b6da20726",
+			"name": "task create JSON",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"name": "Expression task",
+				"additionalFields": {
+					"customFieldsJson": "={{ [{ \"id\": \"field-2\", \"value\": \"Grace\" }] }}"
+				}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 6600],
+			"id": "e987aa22-d82d-552e-ae04-5bb24b2c2679",
+			"name": "task create Expression",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -1829,6 +1879,16 @@
 		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
+					{
+						"node": "task create JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "task create Expression",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "checklist create",
 						"type": "main",

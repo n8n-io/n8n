@@ -166,13 +166,14 @@ const properties: INodeProperties[] = [
 				displayName: 'Reasoning',
 				name: 'reasoning',
 				type: 'json',
+				validateType: 'object',
 				default: '',
 				description: 'Reasoning configuration object (e.g. {"effort": "high"})',
 				routing: {
 					send: {
 						type: 'body',
 						property: 'reasoning',
-						value: '={{ JSON.parse($value) }}',
+						value: '={{ typeof $value === "string" ? JSON.parse($value) : $value }}',
 					},
 				},
 			},
@@ -180,6 +181,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Response Format',
 				name: 'responseFormat',
 				type: 'json',
+				validateType: 'object',
 				default: '',
 				description:
 					'JSON schema for structured output. Set type to "json_schema" with a schema property.',
@@ -187,7 +189,7 @@ const properties: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'response_format',
-						value: '={{ JSON.parse($value) }}',
+						value: '={{ typeof $value === "string" ? JSON.parse($value) : $value }}',
 					},
 				},
 			},
@@ -195,6 +197,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Tools',
 				name: 'tools',
 				type: 'json',
+				validateType: 'array',
 				default: '',
 				placeholder: 'e.g. [{"type":"web_search"},{"type":"fetch_url"}]',
 				description: 'Array of tool objects to make available to the agent',
@@ -202,7 +205,7 @@ const properties: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'tools',
-						value: '={{ JSON.parse($value) }}',
+						value: '={{ typeof $value === "string" ? JSON.parse($value) : $value }}',
 					},
 				},
 			},

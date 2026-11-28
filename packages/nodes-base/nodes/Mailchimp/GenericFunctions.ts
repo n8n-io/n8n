@@ -112,16 +112,6 @@ export async function mailchimpApiRequestAllItems(
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = '';
-	}
-	return result;
-}
-
 export const campaignFieldsMetadata = [
 	'*',
 	'campaigns.id',

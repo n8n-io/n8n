@@ -390,16 +390,7 @@ export class MondayComV1 implements INodeType {
 						};
 
 						if (additionalFields.defaults) {
-							try {
-								JSON.parse(additionalFields.defaults as string);
-							} catch (error) {
-								throw new NodeOperationError(this.getNode(), 'Defauls must be a valid JSON', {
-									itemIndex: i,
-								});
-							}
-							body.variables.defaults = JSON.stringify(
-								JSON.parse(additionalFields.defaults as string),
-							);
+							body.variables.defaults = JSON.stringify(additionalFields.defaults);
 						}
 
 						responseData = await mondayComApiRequest.call(this, body);
@@ -518,7 +509,7 @@ export class MondayComV1 implements INodeType {
 						const boardId = this.getNodeParameter('boardId', i);
 						const itemId = this.getNodeParameter('itemId', i);
 						const columnId = this.getNodeParameter('columnId', i) as string;
-						const value = this.getNodeParameter('value', i) as string;
+						const value = this.getNodeParameter('value', i);
 
 						const body: IGraphqlBody = {
 							query: `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
@@ -533,14 +524,22 @@ export class MondayComV1 implements INodeType {
 							},
 						};
 
+						if (value === undefined) {
+							throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON', {
+								itemIndex: i,
+							});
+						}
+
 						try {
-							JSON.parse(value);
+							// A string holds JSON text. An expression can return the value itself.
+							body.variables.value = JSON.stringify(
+								typeof value === 'string' ? JSON.parse(value) : value,
+							);
 						} catch (error) {
 							throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON', {
 								itemIndex: i,
 							});
 						}
-						body.variables.value = JSON.stringify(JSON.parse(value));
 
 						responseData = await mondayComApiRequest.call(this, body);
 						responseData = responseData.data.change_column_value;
@@ -548,7 +547,8 @@ export class MondayComV1 implements INodeType {
 					if (operation === 'changeMultipleColumnValues') {
 						const boardId = this.getNodeParameter('boardId', i);
 						const itemId = this.getNodeParameter('itemId', i);
-						const columnValues = this.getNodeParameter('columnValues', i) as string;
+						const columnValues =
+							(this.getNodeParameter('columnValues', i) as IDataObject | undefined) ?? {};
 
 						const body: IGraphqlBody = {
 							query: `mutation ($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
@@ -562,14 +562,7 @@ export class MondayComV1 implements INodeType {
 							},
 						};
 
-						try {
-							JSON.parse(columnValues);
-						} catch (error) {
-							throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON', {
-								itemIndex: i,
-							});
-						}
-						body.variables.columnValues = JSON.stringify(JSON.parse(columnValues));
+						body.variables.columnValues = JSON.stringify(columnValues);
 
 						responseData = await mondayComApiRequest.call(this, body);
 						responseData = responseData.data.change_multiple_column_values;
@@ -594,16 +587,7 @@ export class MondayComV1 implements INodeType {
 						};
 
 						if (additionalFields.columnValues) {
-							try {
-								JSON.parse(additionalFields.columnValues as string);
-							} catch (error) {
-								throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON', {
-									itemIndex: i,
-								});
-							}
-							body.variables.columnValues = JSON.stringify(
-								JSON.parse(additionalFields.columnValues as string),
-							);
+							body.variables.columnValues = JSON.stringify(additionalFields.columnValues);
 						}
 
 						responseData = await mondayComApiRequest.call(this, body);

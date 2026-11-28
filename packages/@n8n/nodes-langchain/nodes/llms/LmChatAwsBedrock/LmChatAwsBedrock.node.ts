@@ -9,14 +9,12 @@ import {
 import type { DocumentType } from '@smithy/types';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 import {
-	jsonParse,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { UserError } from '@n8n/errors';
 
 import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
@@ -270,6 +268,7 @@ export class LmChatAwsBedrock implements INodeType {
 						displayName: 'Additional Model Request Fields',
 						name: 'additionalModelRequestFields',
 						default: '{}',
+						validateType: 'object',
 						description:
 							'Model-family-specific inference parameters passed through as JSON (e.g. Claude <code>top_k</code>/<code>thinking</code>, Nova <code>inferenceConfig</code>/<code>reasoningConfig</code>, Cohere penalties). See the <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html">AWS model parameters docs</a>.',
 						type: 'json',
@@ -354,7 +353,7 @@ export class LmChatAwsBedrock implements INodeType {
 			topP?: number;
 			maxRetries?: number;
 			timeout?: number;
-			additionalModelRequestFields?: string;
+			additionalModelRequestFields?: { [key: string]: DocumentType };
 			latency?: PerformanceConfigLatency;
 			guardrail?: {
 				values?: {
@@ -402,17 +401,9 @@ export class LmChatAwsBedrock implements INodeType {
 			};
 		}
 
-		const additionalFields = options.additionalModelRequestFields?.trim();
-		if (additionalFields && additionalFields !== '{}') {
-			let parsed: DocumentType;
-			try {
-				parsed = jsonParse<DocumentType>(additionalFields);
-			} catch {
-				throw new UserError('Additional Model Request Fields must be valid JSON', {
-					level: 'warning',
-				});
-			}
-			modelConfig.additionalModelRequestFields = parsed;
+		const additionalFields = options.additionalModelRequestFields;
+		if (additionalFields && Object.keys(additionalFields).length > 0) {
+			modelConfig.additionalModelRequestFields = additionalFields;
 		}
 
 		const model = new ChatBedrockConverse(modelConfig);

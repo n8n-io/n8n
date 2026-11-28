@@ -36,6 +36,20 @@ describe('Bubble > Workflows', () => {
 				.reply(200, {
 					response: { results: [{ _id: '1696851234568x123456789012345679' }], remaining: 0 },
 				});
+			mock
+				.get('/obj/customer')
+				.query({
+					constraints: '[{"key":"name","constraint_type":"equals","value":"Nathan"}]',
+					limit: 1,
+				})
+				.reply(200, { response: { results: [{ _id: objectId }], remaining: 0 } });
+			mock
+				.get('/obj/customer')
+				.query({
+					constraints: '[{"key":"name","constraint_type":"equals","value":"Jan"}]',
+					limit: 2,
+				})
+				.reply(200, { response: { results: [{ _id: objectId }], remaining: 0 } });
 			mock.patch(`/obj/customer/${objectId}`, { name: 'Nathan' }).reply(204);
 			mock.delete(`/obj/customer/${objectId}`).reply(204);
 		});
@@ -74,6 +88,30 @@ describe('Bubble > Workflows', () => {
 				hosting: 'selfHosted',
 			},
 			'self-hosted.workflow.json',
+		);
+	});
+
+	describe('JSON filters for each item', () => {
+		beforeAll(() => {
+			const mock = nock('https://acme-crm.bubbleapps.io/api/1.1');
+			mock
+				.get('/obj/customer')
+				.query({
+					constraints: '[{"key":"name","constraint_type":"equals","value":"Jan"}]',
+					limit: 1,
+				})
+				.reply(200, { response: { results: [{ _id: objectId }], remaining: 0 } });
+			mock
+				.get('/obj/customer')
+				.query({ limit: 1 })
+				.reply(200, {
+					response: { results: [{ _id: '1696851234568x123456789012345679' }], remaining: 0 },
+				});
+		});
+
+		setupTests(
+			{ appName: 'acme-crm', domain: '', environment: 'live', hosting: 'bubbleHosted' },
+			'filters-per-item.workflow.json',
 		);
 	});
 });

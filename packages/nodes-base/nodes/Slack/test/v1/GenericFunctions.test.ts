@@ -5,7 +5,6 @@ import {
 	slackApiRequest,
 	slackApiRequestAllItems,
 	toMultiOptionsCsv,
-	validateJSON,
 } from '../../V1/GenericFunctions';
 import type * as _importType0 from 'n8n-workflow';
 
@@ -212,18 +211,6 @@ describe('Slack V1 > GenericFunctions', () => {
 			expect(toMultiOptionsCsv(null)).toBe('');
 			expect(toMultiOptionsCsv('')).toBe('');
 			expect(toMultiOptionsCsv([])).toBe('');
-		});
-	});
-
-	describe('validateJSON', () => {
-		it('should return undefined for invalid JSON', () => {
-			const result = validateJSON('{invalid:json}');
-			expect(result).toBeUndefined();
-		});
-
-		it('should return parsed object for valid JSON', () => {
-			const result = validateJSON('{"key":"value"}');
-			expect(result).toEqual({ key: 'value' });
 		});
 	});
 });

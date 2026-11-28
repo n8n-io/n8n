@@ -240,6 +240,7 @@ export const ticketFields: INodeProperties[] = [
 		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -461,6 +462,7 @@ export const ticketFields: INodeProperties[] = [
 		displayName: 'Update Fields',
 		name: 'updateFieldsJson',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},

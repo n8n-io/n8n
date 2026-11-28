@@ -5,9 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
-import { bubbleApiRequest, bubbleApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { bubbleApiRequest, bubbleApiRequestAllItems } from './GenericFunctions';
 import { objectFields, objectOperations } from './ObjectDescription';
 
 export class Bubble implements INodeType {
@@ -129,20 +129,15 @@ export class Bubble implements INodeType {
 					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
 					const options = this.getNodeParameter('options', i);
 
+					// qs is shared across items, so drop the constraints of the previous item.
+					delete qs.constraints;
 					if (!jsonParameters) {
 						if (options.filters) {
 							const { filter } = options.filters as IDataObject;
 							qs.constraints = JSON.stringify(filter);
 						}
-					} else {
-						const filter = options.filtersJson as string;
-						const data = validateJSON(filter);
-						if (data === undefined) {
-							throw new NodeOperationError(this.getNode(), 'Filters must be a valid JSON', {
-								itemIndex: i,
-							});
-						}
-						qs.constraints = JSON.stringify(data);
+					} else if (options.filtersJson !== undefined) {
+						qs.constraints = JSON.stringify(options.filtersJson);
 					}
 
 					if (options.sort) {

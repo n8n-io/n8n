@@ -416,6 +416,7 @@ export const objectFields: INodeProperties[] = [
 				displayName: 'Filters (JSON)',
 				name: 'filtersJson',
 				type: 'json',
+				validateType: 'array',
 				default: '',
 				displayOptions: {
 					show: {

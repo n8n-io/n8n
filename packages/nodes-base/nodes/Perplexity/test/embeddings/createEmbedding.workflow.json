@@ -1,6 +1,46 @@
 {
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "embedding",
+				"operation": "createContextualized",
+				"model": "pplx-embed-context-v1-4b",
+				"input": "={{ [[\"d\"], [\"e\", \"f\"]] }}",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.perplexity",
+			"typeVersion": 2,
+			"position": [-40, 1620],
+			"id": "57e69985-e48f-55d3-ae05-f82949cf4324",
+			"name": "Contextualized Expression",
+			"credentials": {
+				"perplexityApi": {
+					"id": "test",
+					"name": "Perplexity account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "embedding",
+				"operation": "createContextualized",
+				"model": "pplx-embed-context-v1-4b",
+				"input": "[[\"a\", \"b\"], [\"c\"]]",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.perplexity",
+			"typeVersion": 2,
+			"position": [-40, 1620],
+			"id": "d566d1d8-cc15-56b9-a4e8-5c0642778b45",
+			"name": "Contextualized JSON String",
+			"credentials": {
+				"perplexityApi": {
+					"id": "test",
+					"name": "Perplexity account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -34,6 +74,16 @@
 			"main": [
 				[
 					{
+						"node": "Contextualized Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contextualized JSON String",
+						"type": "main",
+						"index": 0
+					},
+					{
 						"node": "Create Embedding",
 						"type": "main",
 						"index": 0
@@ -43,6 +93,12 @@
 		}
 	},
 	"pinData": {
+		"Contextualized JSON String": [
+			{ "json": { "object": "list", "model": "pplx-embed-context-v1-4b" } }
+		],
+		"Contextualized Expression": [
+			{ "json": { "object": "list", "model": "pplx-embed-context-v1-4b" } }
+		],
 		"Create Embedding": [
 			{
 				"json": {

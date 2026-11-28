@@ -20,7 +20,6 @@ import {
 	githubApiRequest,
 	githubApiRequestAllItems,
 	isBase64,
-	validateJSON,
 	validateSecretName,
 } from './GenericFunctions';
 import { getRefs, getRepositories, getUsers, getWorkflows } from './SearchFunctions';
@@ -815,6 +814,7 @@ export class Github implements INodeType {
 				displayName: 'Inputs',
 				name: 'inputs',
 				type: 'json',
+				validateType: 'object',
 				default: '{}',
 				displayOptions: {
 					show: {
@@ -2531,10 +2531,7 @@ export class Github implements INodeType {
 			}) as string;
 			const ref = this.getNodeParameter('ref', 0, '', { extractValue: true }) as string;
 
-			const inputs = validateJSON(this.getNodeParameter('inputs', 0) as string) as IDataObject;
-			if (!inputs) {
-				throw new NodeOperationError(this.getNode(), 'Inputs: Invalid JSON');
-			}
+			const inputs = (this.getNodeParameter('inputs', 0) as IDataObject | undefined) ?? {};
 
 			// Resolved before dispatching so a misconfigured wait limit doesn't leave an
 			// already-triggered GitHub workflow with nothing waiting on it
@@ -3219,15 +3216,7 @@ export class Github implements INodeType {
 						const ref = this.getNodeParameter('ref', i, '', { extractValue: true }) as string;
 						body.ref = ref;
 
-						const inputs = validateJSON(
-							this.getNodeParameter('inputs', i) as string,
-						) as IDataObject;
-						if (inputs === undefined) {
-							throw new NodeOperationError(this.getNode(), 'Inputs: Invalid JSON', {
-								itemIndex: i,
-							});
-						}
-						body.inputs = inputs;
+						body.inputs = (this.getNodeParameter('inputs', i) as IDataObject | undefined) ?? {};
 						if (this.getNodeParameter('options.returnRunDetails', i, false)) {
 							body.return_run_details = true;
 						}

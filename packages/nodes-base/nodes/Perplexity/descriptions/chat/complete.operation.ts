@@ -352,6 +352,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Response Format',
 				name: 'responseFormat',
 				type: 'json',
+				validateType: 'object',
 				default: '',
 				description:
 					'JSON schema for structured output. Set type to "json_schema" with a schema property.',
@@ -364,7 +365,7 @@ const properties: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'response_format',
-						value: '={{ JSON.parse($value) }}',
+						value: '={{ typeof $value === "string" ? JSON.parse($value) : $value }}',
 					},
 				},
 			},
@@ -574,6 +575,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Web Search Options',
 				name: 'webSearchOptions',
 				type: 'json',
+				validateType: 'object',
 				default: '',
 				description: 'Advanced web search configuration object',
 				displayOptions: {
@@ -585,7 +587,7 @@ const properties: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'web_search_options',
-						value: '={{ JSON.parse($value) }}',
+						value: '={{ typeof $value === "string" ? JSON.parse($value) : $value }}',
 					},
 				},
 			},

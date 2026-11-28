@@ -1,4 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import isEqual from 'lodash/isEqual';
 import nock from 'nock';
 
 describe('Mailjet', () => {
@@ -17,6 +18,26 @@ describe('Mailjet', () => {
 		beforeAll(() => {
 			const mock = nock('https://api.mailjet.com');
 
+			mock
+				.post(
+					'/v3.1/send',
+					(body) =>
+						body.Messages[0].Subject === 'JSON Email' &&
+						isEqual(body.Messages[0].Variables, { name: 'Nathan' }),
+				)
+				.reply(200, {
+					Messages: [{ Status: 'success', To: [{ Email: 'recipient@example.com' }] }],
+				});
+			mock
+				.post(
+					'/v3.1/send',
+					(body) =>
+						body.Messages[0].TemplateID === 4812346 &&
+						isEqual(body.Messages[0].Variables, { plan: 'pro' }),
+				)
+				.reply(200, {
+					Messages: [{ Status: 'success', To: [{ Email: 'recipient@example.com' }] }],
+				});
 			mock
 				.post('/v3.1/send', (body) => body.Messages[0].Subject === 'Test Email')
 				.reply(200, {

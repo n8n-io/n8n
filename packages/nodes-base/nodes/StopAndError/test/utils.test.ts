@@ -3,21 +3,21 @@ import { createErrorFromParameters } from '../utils';
 describe('createErrorFromParameters', () => {
 	describe('Error Message Type', () => {
 		it('should return simple message for errorMessage type', () => {
-			const result = createErrorFromParameters('errorMessage', 'Simple error message');
+			const result = createErrorFromParameters('Simple error message');
 
 			expect(result.message).toBe('Simple error message');
 			expect(result.options).toBeUndefined();
 		});
 
 		it('should handle empty error message', () => {
-			const result = createErrorFromParameters('errorMessage', '');
+			const result = createErrorFromParameters('');
 
 			expect(result.message).toBe('');
 			expect(result.options).toBeUndefined();
 		});
 
 		it('should handle whitespace-only error message', () => {
-			const result = createErrorFromParameters('errorMessage', '   ');
+			const result = createErrorFromParameters('   ');
 
 			expect(result.message).toBe('   ');
 			expect(result.options).toBeUndefined();
@@ -26,12 +26,12 @@ describe('createErrorFromParameters', () => {
 
 	describe('Error Object Type', () => {
 		it('should extract message from error object', () => {
-			const errorObject = JSON.stringify({
+			const errorObject = {
 				message: 'Custom error message',
 				code: '404',
-			});
+			};
 
-			const result = createErrorFromParameters('errorObject', errorObject);
+			const result = createErrorFromParameters(errorObject);
 
 			expect(result.message).toBe('Custom error message');
 			expect(result.options?.level).toBe('error');
@@ -42,24 +42,24 @@ describe('createErrorFromParameters', () => {
 		});
 
 		it('should use description when message is not available', () => {
-			const errorObject = JSON.stringify({
+			const errorObject = {
 				description: 'Detailed error description',
 				code: '500',
-			});
+			};
 
-			const result = createErrorFromParameters('errorObject', errorObject);
+			const result = createErrorFromParameters(errorObject);
 
 			expect(result.message).toBe('Detailed error description');
 			expect(result.options?.description).toBe('Detailed error description');
 		});
 
 		it('should use error property when message and description are not available', () => {
-			const errorObject = JSON.stringify({
+			const errorObject = {
 				error: 'Something went wrong',
 				code: '400',
-			});
+			};
 
-			const result = createErrorFromParameters('errorObject', errorObject);
+			const result = createErrorFromParameters(errorObject);
 
 			expect(result.message).toBe('Something went wrong');
 			expect(result.options?.description).toBeUndefined();
@@ -70,23 +70,23 @@ describe('createErrorFromParameters', () => {
 				code: '404',
 				status: 'not found',
 			};
-			const errorObject = JSON.stringify(errorObjectData);
+			const errorObject = errorObjectData;
 
-			const result = createErrorFromParameters('errorObject', errorObject);
+			const result = createErrorFromParameters(errorObject);
 
 			expect(result.message).toBe(`Error: ${JSON.stringify(errorObjectData)}`);
 			expect(result.options?.metadata).toEqual(errorObjectData);
 		});
 
 		it('should include type and description in options when available', () => {
-			const errorObject = JSON.stringify({
+			const errorObject = {
 				message: 'Main error',
 				description: 'Detailed description',
 				type: 'ValidationError',
 				code: '400',
-			});
+			};
 
-			const result = createErrorFromParameters('errorObject', errorObject);
+			const result = createErrorFromParameters(errorObject);
 
 			expect(result.message).toBe('Main error');
 			expect(result.options?.description).toBe('Detailed description');
@@ -104,23 +104,22 @@ describe('createErrorFromParameters', () => {
 				},
 				code: 'DB_001',
 			};
-			const errorObject = JSON.stringify(errorObjectData);
+			const errorObject = errorObjectData;
 
-			const result = createErrorFromParameters('errorObject', errorObject);
+			const result = createErrorFromParameters(errorObject);
 
 			expect(result.message).toBe('Database error');
 			expect(result.options?.metadata).toEqual(errorObjectData);
 		});
 
-		it('should handle object with null and undefined values', () => {
-			const errorObject = JSON.stringify({
+		it('should handle object with null values', () => {
+			const errorObject = {
 				message: 'Test message',
 				description: null,
-				type: undefined,
 				code: '200',
-			});
+			};
 
-			const result = createErrorFromParameters('errorObject', errorObject);
+			const result = createErrorFromParameters(errorObject);
 
 			expect(result.message).toBe('Test message');
 			expect(result.options?.description).toBeUndefined();
@@ -128,24 +127,24 @@ describe('createErrorFromParameters', () => {
 		});
 
 		it('should prioritize message over description and error', () => {
-			const errorObject = JSON.stringify({
+			const errorObject = {
 				message: 'Primary message',
 				description: 'Secondary description',
 				error: 'Tertiary error',
-			});
+			};
 
-			const result = createErrorFromParameters('errorObject', errorObject);
+			const result = createErrorFromParameters(errorObject);
 
 			expect(result.message).toBe('Primary message');
 		});
 
 		it('should prioritize description over error when message is not available', () => {
-			const errorObject = JSON.stringify({
+			const errorObject = {
 				description: 'Primary description',
 				error: 'Secondary error',
-			});
+			};
 
-			const result = createErrorFromParameters('errorObject', errorObject);
+			const result = createErrorFromParameters(errorObject);
 
 			expect(result.message).toBe('Primary description');
 			expect(result.options?.description).toBe('Primary description');
@@ -153,14 +152,8 @@ describe('createErrorFromParameters', () => {
 	});
 
 	describe('Invalid JSON Handling', () => {
-		it('should throw error for invalid JSON in errorObject type', () => {
-			expect(() => {
-				createErrorFromParameters('errorObject', '{invalid json}');
-			}).toThrow();
-		});
-
 		it('should handle empty JSON object', () => {
-			const result = createErrorFromParameters('errorObject', '{}');
+			const result = createErrorFromParameters({});
 
 			expect(result.message).toBe('Error: {}');
 			expect(result.options?.metadata).toEqual({});
@@ -173,32 +166,32 @@ describe('createErrorFromParameters', () => {
 				message: 'Validation failed',
 				errors: ['Field required', 'Invalid format'],
 			};
-			const errorObject = JSON.stringify(errorObjectData);
+			const errorObject = errorObjectData;
 
-			const result = createErrorFromParameters('errorObject', errorObject);
+			const result = createErrorFromParameters(errorObject);
 
 			expect(result.message).toBe('Validation failed');
 			expect(result.options?.metadata).toEqual(errorObjectData);
 		});
 
 		it('should handle empty string values in message fields', () => {
-			const errorObject = JSON.stringify({
+			const errorObject = {
 				message: '',
 				description: 'Fallback description',
-			});
+			};
 
-			const result = createErrorFromParameters('errorObject', errorObject);
+			const result = createErrorFromParameters(errorObject);
 
 			expect(result.message).toBe('Fallback description');
 		});
 
 		it('should handle whitespace-only string values in message fields', () => {
-			const errorObject = JSON.stringify({
+			const errorObject = {
 				message: '   ',
 				description: 'Fallback description',
-			});
+			};
 
-			const result = createErrorFromParameters('errorObject', errorObject);
+			const result = createErrorFromParameters(errorObject);
 
 			expect(result.message).toBe('   ');
 		});

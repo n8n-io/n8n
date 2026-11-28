@@ -76,7 +76,7 @@ function parseQueryParameters(
  *
  */
 export function parseAndResolveQueryParameters(
-	query: string,
+	query: unknown,
 	rawParameters: unknown,
 	node: INode,
 	itemIndex: number,
@@ -93,9 +93,13 @@ export function parseAndResolveQueryParameters(
 		preserveDollarStringsInFields?: string[];
 	} = {},
 ): unknown {
-	const parsedQuery = jsonParse<unknown>(query, {
-		errorMessage: `Invalid JSON in '${label}'`,
-	});
+	// The query is already parsed when it comes from an expression or a field with validateType
+	const parsedQuery =
+		typeof query === 'object' && query !== null
+			? query
+			: jsonParse<unknown>(typeof query === 'string' ? query : '', {
+					errorMessage: `Invalid JSON in '${label}'`,
+				});
 	const parameters = parseQueryParameters(rawParameters, node, itemIndex, label);
 
 	if (rejectNull) {

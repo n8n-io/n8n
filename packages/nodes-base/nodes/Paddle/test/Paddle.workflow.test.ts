@@ -13,13 +13,20 @@ const user = {
 	state: 'active',
 };
 
-describe('Paddle > Workflows', () => {
-	const credentials = {
-		paddleApi: { vendorId: '12345', vendorAuthCode: 'fake-auth-code', sandbox: false },
-	};
+const credentials = {
+	paddleApi: { vendorId: '12345', vendorAuthCode: 'fake-auth-code', sandbox: false },
+};
+const auth = { vendor_id: '12345', vendor_auth_code: 'fake-auth-code' };
 
+describe('Paddle > Workflows', () => {
 	beforeAll(() => {
 		const mock = nock('https://vendors.paddle.com/api');
+		mock
+			.post('/2.0/subscription/payments', { subscription_id: 502198, ...auth })
+			.reply(200, { success: true, response: [payment] });
+		mock
+			.post('/2.1/product/update_coupon', { coupon_code: 'EXPR10', allowed_uses: 5, ...auth })
+			.reply(200, { success: true, response: { updated: 1 } });
 		mock
 			.post('/2.1/product/create_coupon')
 			.reply(200, { success: true, response: { coupon_codes: ['SAVE10'] } });
@@ -43,6 +50,24 @@ describe('Paddle > Workflows', () => {
 	new NodeTestHarness().setupTests({
 		credentials,
 		workflowFiles: ['requests.workflow.json'],
-		customAssertions: () => expect(nock.isDone()).toBe(true),
+		customAssertions: () => expect(nock.pendingMocks()).toEqual([]),
+	});
+});
+
+describe('Paddle > User JSON parameters', () => {
+	beforeAll(() => {
+		const mock = nock('https://vendors.paddle.com/api');
+		mock
+			.post('/2.0/subscription/users', { state: 'active', results_per_page: 1, ...auth })
+			.reply(200, { success: true, response: [user] });
+		mock
+			.post('/2.0/subscription/users', { plan_id: 9876, results_per_page: 1, ...auth })
+			.reply(200, { success: true, response: [user] });
+	});
+
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['userJsonParameters.workflow.json'],
+		customAssertions: () => expect(nock.pendingMocks()).toEqual([]),
 	});
 });

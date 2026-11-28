@@ -1,7 +1,15 @@
 import { readFile as fsReadFile } from 'fs/promises';
-import { mockDeep, type DeepMockProxy } from 'vitest-mock-extended';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { ExecuteContext } from 'n8n-core';
+import { mock, mockDeep, type DeepMockProxy } from 'vitest-mock-extended';
+import type {
+	IExecuteFunctions,
+	INode,
+	INodeTypes,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+import { createRunExecutionData, Workflow } from 'n8n-workflow';
 
+import { ExecuteWorkflow } from './ExecuteWorkflow.node';
 import { getWorkflowInfo } from './GenericFunctions';
 
 vi.mock('fs/promises', () => ({ readFile: vi.fn() }));
@@ -58,6 +66,60 @@ describe('ExecuteWorkflow node - GenericFunctions', () => {
 				await expect(getWorkflowInfo.call(executeFunctionsMock, 'localFile', 0)).rejects.toThrow(
 					'The file "/existing/dir/missing.json" could not be found, [item 0]',
 				);
+			});
+		});
+
+		describe('when source is parameter', () => {
+			it('should use the workflow object from the parameter', async () => {
+				const workflow = { name: 'Sub-workflow', nodes: [], connections: {} };
+				executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 1 } as INode);
+				executeFunctionsMock.getNodeParameter.mockReturnValue(workflow);
+
+				await expect(getWorkflowInfo.call(executeFunctionsMock, 'parameter', 0)).resolves.toEqual({
+					code: workflow,
+				});
+			});
+
+			it.each([
+				{
+					case: 'a JSON string',
+					workflowJson: '{"name": "Sub-workflow", "nodes": [], "connections": {}}',
+				},
+				{
+					case: 'an expression',
+					workflowJson: '={{ { "name": "Sub-workflow", "nodes": [], "connections": {} } }}',
+				},
+			])('should read the workflow from $case through core', async ({ workflowJson }) => {
+				const node: INode = {
+					id: 'execute-workflow',
+					name: 'Execute Workflow',
+					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion: 1.4,
+					position: [0, 0],
+					parameters: { source: 'parameter', workflowJson },
+				};
+				const nodeTypes = mock<INodeTypes>();
+				nodeTypes.getByNameAndVersion.mockReturnValue(new ExecuteWorkflow());
+				const workflow = new Workflow({ nodes: [node], connections: {}, active: false, nodeTypes });
+				const context = new ExecuteContext(
+					workflow,
+					node,
+					mock<IWorkflowExecuteAdditionalData>({
+						webhookWaitingBaseUrl: 'https://example.com/webhook-waiting',
+						formWaitingBaseUrl: 'https://example.com/form-waiting',
+					}),
+					'manual',
+					createRunExecutionData(),
+					0,
+					[],
+					{ main: [[{ json: {} }]] },
+					{ node, data: {}, source: null },
+					[],
+				);
+
+				await expect(getWorkflowInfo.call(context, 'parameter', 0)).resolves.toEqual({
+					code: { name: 'Sub-workflow', nodes: [], connections: {} },
+				});
 			});
 		});
 	});

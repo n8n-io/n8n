@@ -16,12 +16,7 @@ import { oldVersionNotice } from '@utils/descriptions';
 
 import { channelFields, channelOperations } from './ChannelDescription';
 import { fileFields, fileOperations } from './FileDescription';
-import {
-	slackApiRequest,
-	slackApiRequestAllItems,
-	toMultiOptionsCsv,
-	validateJSON,
-} from './GenericFunctions';
+import { slackApiRequest, slackApiRequestAllItems, toMultiOptionsCsv } from './GenericFunctions';
 import { messageFields, messageOperations } from './MessageDescription';
 import type { IAttachment } from './MessageInterface';
 import { reactionFields, reactionOperations } from './ReactionDescription';
@@ -896,22 +891,14 @@ export class SlackV1 implements INodeType {
 								body.blocks = blocks;
 							}
 						} else {
-							const attachmentsJson = this.getNodeParameter('attachmentsJson', i, '') as string;
-							const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
-							if (attachmentsJson !== '' && validateJSON(attachmentsJson) === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Attachments it is not a valid json', {
-									itemIndex: i,
-								});
-							}
-							if (blocksJson !== '' && validateJSON(blocksJson) === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json', {
-									itemIndex: i,
-								});
-							}
-							if (attachmentsJson !== '') {
+							const attachmentsJson = this.getNodeParameter('attachmentsJson', i, '') as
+								| IDataObject[]
+								| '';
+							const blocksJson = this.getNodeParameter('blocksJson', i, '') as IDataObject[] | '';
+							if (attachmentsJson) {
 								body.attachments = attachmentsJson;
 							}
-							if (blocksJson !== '') {
+							if (blocksJson) {
 								body.blocks = blocksJson;
 							}
 						}
@@ -962,26 +949,15 @@ export class SlackV1 implements INodeType {
 
 						const jsonParameters = this.getNodeParameter('jsonParameters', i, false);
 						if (jsonParameters) {
-							const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
-
-							if (blocksJson !== '' && validateJSON(blocksJson) === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json', {
-									itemIndex: i,
-								});
-							}
-							if (blocksJson !== '') {
+							const blocksJson = this.getNodeParameter('blocksJson', i, '') as IDataObject[] | '';
+							if (blocksJson) {
 								body.blocks = blocksJson;
 							}
 
-							const attachmentsJson = this.getNodeParameter('attachmentsJson', i, '') as string;
-
-							if (attachmentsJson !== '' && validateJSON(attachmentsJson) === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Attachments it is not a valid json', {
-									itemIndex: i,
-								});
-							}
-
-							if (attachmentsJson !== '') {
+							const attachmentsJson = this.getNodeParameter('attachmentsJson', i, '') as
+								| IDataObject[]
+								| '';
+							if (attachmentsJson) {
 								body.attachments = attachmentsJson;
 							}
 						}

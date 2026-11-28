@@ -102,6 +102,7 @@ const createOperation: INodeProperties[] = [
 		displayName: 'Data',
 		name: 'data',
 		type: 'json',
+		validateType: 'object',
 		default: '',
 		placeholder:
 			'// e.g. for n8nApi \n{\n  "apiKey": "my-n8n-api-key",\n  "baseUrl": "https://<name>.app.n8n.cloud/api/v1",\n}',

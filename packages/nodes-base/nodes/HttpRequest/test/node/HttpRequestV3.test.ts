@@ -778,7 +778,7 @@ describe('HttpRequestV3', () => {
 				params: {
 					sendQuery: true,
 					specifyQuery: 'json',
-					jsonQuery: '{"key": "value"}',
+					jsonQuery: { key: 'value' },
 					'queryParameters.parameters': [],
 				},
 			},
@@ -787,7 +787,7 @@ describe('HttpRequestV3', () => {
 				params: {
 					sendHeaders: true,
 					specifyHeaders: 'json',
-					jsonHeaders: '{"X-Custom": "header"}',
+					jsonHeaders: { 'X-Custom': 'header' },
 					'headerParameters.parameters': [],
 				},
 			},
@@ -818,6 +818,47 @@ describe('HttpRequestV3', () => {
 			expect(result).toBeDefined();
 		});
 
+		it('should send query and headers from evaluated objects', async () => {
+			const params: Record<string, unknown> = {
+				sendQuery: true,
+				specifyQuery: 'json',
+				jsonQuery: { key: 'value' },
+				'queryParameters.parameters': [],
+				sendHeaders: true,
+				specifyHeaders: 'json',
+				jsonHeaders: { 'X-Custom': 'header' },
+				'headerParameters.parameters': [],
+			};
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return params[paramName];
+				}
+			});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			});
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					qs: { key: 'value' },
+					headers: expect.objectContaining({ 'X-Custom': 'header' }),
+				}),
+			);
+		});
+
 		it.each([
 			{
 				field: 'body',
@@ -827,26 +868,6 @@ describe('HttpRequestV3', () => {
 					specifyBody: 'json',
 					jsonBody: '{"invalid: json}',
 					'bodyParameters.parameters': [],
-				},
-			},
-			{
-				field: 'query',
-				fieldName: 'JSON Query Parameters',
-				params: {
-					sendQuery: true,
-					specifyQuery: 'json',
-					jsonQuery: '{not valid}',
-					'queryParameters.parameters': [],
-				},
-			},
-			{
-				field: 'headers',
-				fieldName: 'JSON Headers',
-				params: {
-					sendHeaders: true,
-					specifyHeaders: 'json',
-					jsonHeaders: 'not json at all',
-					'headerParameters.parameters': [],
 				},
 			},
 		])(

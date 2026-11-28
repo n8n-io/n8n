@@ -2,6 +2,52 @@
 	"name": "Todoist Requests",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "task",
+				"operation": "sync",
+				"project": {
+					"__rl": true,
+					"mode": "id",
+					"value": "2302163813"
+				},
+				"commands": "={{ [{ \"type\": \"item_uncomplete\", \"args\": { \"id\": \"7025491739\" } }] }}"
+			},
+			"id": "c7b8e29a-7b57-597a-9f33-d08aa167c23a",
+			"name": "V1 Task Sync Expression",
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"credentials": {
+				"todoistApi": {
+					"id": "1",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "sync",
+				"project": {
+					"__rl": true,
+					"mode": "id",
+					"value": "2302163813"
+				},
+				"commands": "[{\"type\": \"item_close\", \"args\": {\"id\": \"7025491738\"}}]"
+			},
+			"id": "3efb6067-cfba-5c59-aeec-13b3c172c7f8",
+			"name": "V1 Task Sync JSON",
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"credentials": {
+				"todoistApi": {
+					"id": "1",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "trigger",
 			"name": "When clicking \"Execute Workflow\"",
@@ -161,6 +207,16 @@
 		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
+					{
+						"node": "V1 Task Sync Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Task Sync JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "V1 Task Get",
 						"type": "main",

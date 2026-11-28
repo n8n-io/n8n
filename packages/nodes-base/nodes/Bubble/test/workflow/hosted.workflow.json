@@ -2,6 +2,52 @@
 	"name": "Bubble hosted request URLs",
 	"nodes": [
 		{
+			"parameters": {
+				"operation": "getAll",
+				"typeName": "Customer",
+				"returnAll": false,
+				"limit": 2,
+				"jsonParameters": true,
+				"options": {
+					"filtersJson": "={{ [{ \"key\": \"name\", \"constraint_type\": \"equals\", \"value\": \"Jan\" }] }}"
+				}
+			},
+			"type": "n8n-nodes-base.bubble",
+			"typeVersion": 1,
+			"position": [220, 2600],
+			"id": "cc0fc9e8-105f-5c26-8bad-ac01d60ac2de",
+			"name": "Object > Get Many Expression",
+			"credentials": {
+				"bubbleApi": {
+					"id": "1",
+					"name": "Bubble account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"typeName": "Customer",
+				"returnAll": false,
+				"limit": 1,
+				"jsonParameters": true,
+				"options": {
+					"filtersJson": "[{\"key\":\"name\",\"constraint_type\":\"equals\",\"value\":\"Nathan\"}]"
+				}
+			},
+			"type": "n8n-nodes-base.bubble",
+			"typeVersion": 1,
+			"position": [220, 2600],
+			"id": "6293519c-1ca3-5e23-8b69-4ba4a61a9700",
+			"name": "Object > Get Many JSON",
+			"credentials": {
+				"bubbleApi": {
+					"id": "1",
+					"name": "Bubble account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -119,6 +165,16 @@
 		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
+					{
+						"node": "Object > Get Many Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Object > Get Many JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Object > Create",
 						"type": "main",

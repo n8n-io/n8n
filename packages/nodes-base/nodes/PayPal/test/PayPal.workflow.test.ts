@@ -15,7 +15,7 @@ describe('PayPal > Workflows', () => {
 
 	beforeAll(() => {
 		const api = nock('https://api-m.paypal.com/v1');
-		api.post('/oauth2/token', 'grant_type=client_credentials').times(6).reply(200, {
+		api.post('/oauth2/token', 'grant_type=client_credentials').times(7).reply(200, {
 			access_token: 'fake-access-token',
 		});
 
@@ -27,6 +27,12 @@ describe('PayPal > Workflows', () => {
 			.post('/payments/payouts', {
 				sender_batch_header: { sender_batch_id: 'Payouts_2024_100007' },
 				items: [{ recipient_type: 'EMAIL', receiver: 'nathan@example.com' }],
+			})
+			.reply(201, batch);
+		authed
+			.post('/payments/payouts', {
+				sender_batch_header: { sender_batch_id: 'Payouts_2024_100008' },
+				items: [{ recipient_type: 'EMAIL', receiver: 'grace@example.com' }],
 			})
 			.reply(201, batch);
 		authed

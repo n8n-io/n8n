@@ -397,6 +397,7 @@ export const documentFields: INodeProperties[] = [
 				description:
 					'Query in the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html">Elasticsearch Query DSL</a>. Use $1, $2, and so on as complete values to reference Query Parameters below.',
 				type: 'json',
+				validateType: 'object',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},

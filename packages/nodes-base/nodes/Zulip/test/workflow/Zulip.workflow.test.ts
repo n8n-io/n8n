@@ -20,6 +20,15 @@ describe('Zulip > Workflows', () => {
 		mock
 			.post('/messages', { type: 'private', to: 'nathan@example.com', content: 'Hello' })
 			.reply(200, { result: 'success', id: 42 });
+		mock
+			.post('/users/me/subscriptions', { subscriptions: '[{"name":"news"}]' })
+			.reply(200, success);
+		mock
+			.post('/users/me/subscriptions', {
+				subscriptions: '[{"name":"alerts"}]',
+				invite_only: 'true',
+			})
+			.reply(200, success);
 		mock.get('/messages/42').reply(200, { result: 'success', raw_content: 'Hello' });
 		mock.patch('/messages/42', { content: 'Hi' }).reply(200, success);
 		mock.delete('/messages/42').reply(200, success);

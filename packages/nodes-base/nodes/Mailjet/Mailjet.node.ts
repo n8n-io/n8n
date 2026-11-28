@@ -7,11 +7,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { emailFields, emailOperations } from './EmailDescription';
 import type { IMessage } from './GenericFunctions';
-import { mailjetApiRequest, validateJSON } from './GenericFunctions';
+import { mailjetApiRequest } from './GenericFunctions';
 import { smsFields, smsOperations } from './SmsDescription';
 export class Mailjet implements INodeType {
 	description: INodeTypeDescription = {
@@ -134,16 +134,8 @@ export class Mailjet implements INodeType {
 						}
 
 						if (jsonParameters) {
-							const variablesJson = this.getNodeParameter('variablesJson', i) as string;
-							const parsedJson = validateJSON(variablesJson);
-							if (parsedJson === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									"Parameter 'Variables (JSON)' has a invalid JSON",
-									{ itemIndex: i },
-								);
-							}
-							body.Variables = parsedJson;
+							body.Variables =
+								(this.getNodeParameter('variablesJson', i) as IDataObject | undefined) ?? {};
 						} else {
 							const variables =
 								((this.getNodeParameter('variablesUi', i) as IDataObject)
@@ -235,16 +227,8 @@ export class Mailjet implements INodeType {
 						}
 
 						if (jsonParameters) {
-							const variablesJson = this.getNodeParameter('variablesJson', i) as string;
-							const parsedJson = validateJSON(variablesJson);
-							if (parsedJson === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									"Parameter 'Variables (JSON)' has a invalid JSON",
-									{ itemIndex: i },
-								);
-							}
-							body.Variables = parsedJson;
+							body.Variables =
+								(this.getNodeParameter('variablesJson', i) as IDataObject | undefined) ?? {};
 						} else {
 							const variables =
 								((this.getNodeParameter('variablesUi', i) as IDataObject)

@@ -2,6 +2,92 @@
 	"name": "Mautic Requests (Credentials)",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "create",
+				"jsonParameters": true,
+				"bodyJson": "{\"email\":\"ada@example.com\"}",
+				"additionalFields": {},
+				"options": {}
+			},
+			"id": "dbbccc23-5940-5739-9f5a-c5ba78aa639f",
+			"name": "Contact Create JSON",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300, 2750],
+			"credentials": {
+				"mauticApi": {
+					"id": "1",
+					"name": "Mautic account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "create",
+				"jsonParameters": true,
+				"bodyJson": "={{ { \"email\": \"grace@example.com\" } }}",
+				"additionalFields": {},
+				"options": {}
+			},
+			"id": "e2782bb2-c5db-547c-af62-84f5671e9657",
+			"name": "Contact Create Expression",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300, 2750],
+			"credentials": {
+				"mauticApi": {
+					"id": "1",
+					"name": "Mautic account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "update",
+				"contactId": "35",
+				"jsonParameters": true,
+				"updateFields": {
+					"bodyJson": "{\"firstname\":\"Ada\"}"
+				}
+			},
+			"id": "2a11a4da-0bb2-5d36-b54d-d8f8fcfdcad4",
+			"name": "Contact Update JSON",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300, 2750],
+			"credentials": {
+				"mauticApi": {
+					"id": "1",
+					"name": "Mautic account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "update",
+				"contactId": "35",
+				"jsonParameters": true,
+				"updateFields": {
+					"bodyJson": "={{ { \"firstname\": \"Grace\" } }}"
+				}
+			},
+			"id": "93c8a268-31cf-5714-b1a5-3534eaf1c22e",
+			"name": "Contact Update Expression",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [300, 2750],
+			"credentials": {
+				"mauticApi": {
+					"id": "1",
+					"name": "Mautic account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "trigger",
 			"name": "When clicking \"Execute Workflow\"",
@@ -490,6 +576,26 @@
 		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
+					{
+						"node": "Contact Create JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Create Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Update JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Update Expression",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Company Get",
 						"type": "main",
