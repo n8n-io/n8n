@@ -285,14 +285,17 @@ export class MigrationExecutor {
 
 		// start transaction if its not started yet
 		let transactionStartedByUs = false;
-		if (this.transaction === 'all' && !queryRunner.isTransactionActive) {
-			await queryRunner.beforeMigration();
-			await queryRunner.startTransaction();
-			transactionStartedByUs = true;
-		}
+		let beforeMigrationCalled = false;
 
 		// run all pending migrations in a sequence
 		try {
+			if (this.transaction === 'all' && !queryRunner.isTransactionActive) {
+				await queryRunner.beforeMigration();
+				beforeMigrationCalled = true;
+				await queryRunner.startTransaction();
+				transactionStartedByUs = true;
+			}
+
 			for (const migration of pendingMigrations) {
 				if (this.fake) {
 					// directly insert migration record into the database if it is fake
@@ -304,6 +307,7 @@ export class MigrationExecutor {
 
 				if (migration.transaction && !queryRunner.isTransactionActive) {
 					await queryRunner.beforeMigration();
+					beforeMigrationCalled = true;
 					await queryRunner.startTransaction();
 					transactionStartedByUs = true;
 				}
@@ -323,7 +327,9 @@ export class MigrationExecutor {
 						// commit transaction if we started it
 						if (migration.transaction && transactionStartedByUs) {
 							await queryRunner.commitTransaction();
+							transactionStartedByUs = false;
 							await queryRunner.afterMigration();
+							beforeMigrationCalled = false;
 						}
 					})
 					.then(() => {
@@ -340,15 +346,22 @@ export class MigrationExecutor {
 			// commit transaction if we started it
 			if (this.transaction === 'all' && transactionStartedByUs) {
 				await queryRunner.commitTransaction();
+				transactionStartedByUs = false;
 				await queryRunner.afterMigration();
+				beforeMigrationCalled = false;
 			}
 		} catch (err) {
 			// rollback transaction if we started it
-			if (transactionStartedByUs) {
+			if (transactionStartedByUs && queryRunner.isTransactionActive) {
 				try {
 					// we throw original error even if rollback thrown an error
 					await queryRunner.rollbackTransaction();
 				} catch (rollbackError) {}
+			}
+			if (beforeMigrationCalled) {
+				try {
+					await queryRunner.afterMigration();
+				} catch (afterMigrationError) {}
 			}
 
 			throw err;
@@ -415,18 +428,27 @@ export class MigrationExecutor {
 		);
 		this.connection.logger.logSchemaBuild(`Now reverting it...`);
 
-		// start transaction if its not started yet
+		const disableForeignKeys = migrationToRevert.instance?.withFKsDisabled === true;
 		let transactionStartedByUs = false;
-		if (this.transaction !== 'none' && !queryRunner.isTransactionActive) {
-			await queryRunner.startTransaction();
-			transactionStartedByUs = true;
-		}
+		let beforeMigrationCalled = false;
 
 		try {
-			if (!this.fake) {
+			// Run beforeMigration before starting the transaction so SQLite can toggle PRAGMA foreign_keys.
+			// Only do this for migrations that set withFKsDisabled so ordinary reverts keep foreign keys
+			// enabled and ON DELETE CASCADE continues to fire.
+			if (!this.fake && disableForeignKeys && !queryRunner.isTransactionActive) {
 				await queryRunner.beforeMigration();
+				beforeMigrationCalled = true;
+			}
+
+			// start transaction if its not started yet
+			if (this.transaction !== 'none' && !queryRunner.isTransactionActive) {
+				await queryRunner.startTransaction();
+				transactionStartedByUs = true;
+			}
+
+			if (!this.fake) {
 				await migrationToRevert.instance!.down(queryRunner);
-				await queryRunner.afterMigration();
 			}
 
 			await this.deleteExecutedMigration(queryRunner, migrationToRevert);
@@ -437,14 +459,27 @@ export class MigrationExecutor {
 			);
 
 			// commit transaction if we started it
-			if (transactionStartedByUs) await queryRunner.commitTransaction();
+			if (transactionStartedByUs) {
+				await queryRunner.commitTransaction();
+				transactionStartedByUs = false;
+			}
+
+			if (beforeMigrationCalled) {
+				await queryRunner.afterMigration();
+				beforeMigrationCalled = false;
+			}
 		} catch (err) {
 			// rollback transaction if we started it
-			if (transactionStartedByUs) {
+			if (transactionStartedByUs && queryRunner.isTransactionActive) {
 				try {
 					// we throw original error even if rollback thrown an error
 					await queryRunner.rollbackTransaction();
 				} catch (rollbackError) {}
+			}
+			if (beforeMigrationCalled) {
+				try {
+					await queryRunner.afterMigration();
+				} catch (afterMigrationError) {}
 			}
 
 			throw err;

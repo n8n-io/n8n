@@ -5,10 +5,10 @@ import { AddCoalesceOwnerMisfirePolicy1786666615643 as BaseMigration } from '../
  * on the way up as well as down. `scheduled_task` references it with ON DELETE CASCADE,
  * so the recreate's DROP would cascade and wipe queued tasks.
  *
- * Only the rollback needs this flag: for `up`, TypeORM's own `beforeMigration` hook
- * already issues `PRAGMA foreign_keys = OFF` before the migration transaction opens. On
- * the rollback path it issues that pragma inside the transaction, where SQLite ignores
- * it, so this flag keeps the drop local to `scheduled_job` on that path.
+ * Only the rollback needs this flag: for `up`, TypeORM's `beforeMigration` hook already
+ * issues `PRAGMA foreign_keys = OFF` before the migration transaction opens. On rollback,
+ * `MigrationExecutor` issues that pragma before the transaction only when `withFKsDisabled`
+ * is set, so this flag keeps the drop local to `scheduled_job` on that path.
  */
 export class AddCoalesceOwnerMisfirePolicy1786666615643 extends BaseMigration {
 	withFKsDisabled = true as const;

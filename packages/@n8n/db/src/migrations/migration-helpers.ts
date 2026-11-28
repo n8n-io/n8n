@@ -70,6 +70,20 @@ const runDisablingForeignKeys = async (
 	const { dbType, queryRunner } = context;
 	if (dbType !== 'sqlite')
 		throw new UnexpectedError('Disabling transactions only available in sqlite');
+	if (queryRunner.isTransactionActive) {
+		// TypeORM already called beforeMigration (PRAGMA foreign_keys = OFF) and opened
+		// the transaction that will also commit the migrations table write atomically.
+		const rows = (await queryRunner.query('PRAGMA foreign_keys')) as
+			| Array<{ foreign_keys: number }>
+			| undefined;
+		if (rows?.[0]?.foreign_keys === 1) {
+			throw new UnexpectedError(
+				`Migration "${context.migrationName}" requires foreign keys to be disabled before starting a transaction`,
+			);
+		}
+		await fn.call(migration, context);
+		return;
+	}
 	await queryRunner.query('PRAGMA foreign_keys=OFF');
 	await queryRunner.startTransaction();
 	try {
@@ -210,15 +224,6 @@ export const wrapMigration = (migration: Migration) => {
 	}
 	prototype.__n8n_wrapped = true;
 	const { up, down } = migration.prototype;
-	// When withFKsDisabled is set as an instance property (class field), it
-	// won't be on the prototype at wrap-time. A getter defers the check to
-	// when TypeORM reads `transaction` on the already-constructed instance.
-	Object.defineProperty(migration.prototype, 'transaction', {
-		get(this: BaseMigration) {
-			return this.withFKsDisabled ? false : undefined;
-		},
-		configurable: true,
-	});
 
 	if (up) {
 		Object.assign(migration.prototype, {

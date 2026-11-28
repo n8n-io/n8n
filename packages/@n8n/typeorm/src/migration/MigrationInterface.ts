@@ -18,6 +18,12 @@ export interface MigrationInterface {
 	transaction?: boolean;
 
 	/**
+	 * Optional flag to disable foreign keys before starting the transaction on SQLite.
+	 * Only migrations that set this flag disable foreign keys during `undoLastMigration`.
+	 */
+	withFKsDisabled?: boolean;
+
+	/**
 	 * Run the migrations.
 	 */
 	up(queryRunner: QueryRunner): Promise<any>;
