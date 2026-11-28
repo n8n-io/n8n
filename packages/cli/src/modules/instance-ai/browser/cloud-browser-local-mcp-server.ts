@@ -89,8 +89,9 @@ const START_SESSION_MCP_TOOL: McpTool = mcpToolSchema.parse({
 	description:
 		'Open a new cloud browser session and load a URL in it. ' +
 		'Call this once, before you use any other browser tool, or when another browser tool tells you to. ' +
-		'IMPORTANT: this closes the current browser session. All open pages, sign-ins and cookies are lost. ' +
-		'To go to a different URL in the current session, use browser_navigate.',
+		'This closes the current browser session: its open pages, sign-ins and cookies are lost. ' +
+		'To go to a different URL in the current session, use browser_navigate. ' +
+		'The result includes a snapshot of the page, with refs for its elements.',
 	inputSchema: {
 		type: 'object',
 		properties: {

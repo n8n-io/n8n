@@ -1,6 +1,7 @@
 import { wrapUntrustedData, type ExecutionOptions } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import {
+	CLOUD_BROWSER_SUMMARY_MAX_LENGTH,
 	CloudBrowserTaskStorage,
 	createInstanceAiTraceContext,
 	orchestratorAgentId,
@@ -42,12 +43,6 @@ import {
 
 /** Same role as the cloud browser agent's. It names the task's events and its untrusted result. */
 const CLOUD_BROWSER_AGENT_ROLE = 'cloud-browser';
-
-/**
- * Longest task summary the orchestrator gets. The agent writes a few sentences, so this only cuts
- * a report that repeats too much page content.
- */
-const TASK_SUMMARY_MAX_LENGTH = 4000;
 
 /** How often the main that runs a task records that it is still alive. */
 export const TASK_ALIVE_INTERVAL_MS = 5 * 60 * 1000;
@@ -624,6 +619,24 @@ export class InstanceAiCloudBrowserTaskService {
 }
 
 /**
+ * The task's summary, cleaned for the prompt, and a note when it was cut. The agent's prompt
+ * states the length limit, so a cut is rare. The note goes outside the untrusted block, so the
+ * orchestrator does not present a partial answer as complete.
+ */
+function taskSummaryLines(summary: string | undefined): string[] {
+	const text = sanitisePromptText(scrubSecretsInText(summary ?? ''), Number.POSITIVE_INFINITY);
+	const lines = [
+		wrapUntrustedData(text.slice(0, CLOUD_BROWSER_SUMMARY_MAX_LENGTH), CLOUD_BROWSER_AGENT_ROLE),
+	];
+	if (text.length > CLOUD_BROWSER_SUMMARY_MAX_LENGTH) {
+		lines.push(
+			`The report was cut after ${CLOUD_BROWSER_SUMMARY_MAX_LENGTH} of its ${text.length} characters. Tell the user that the end is missing.`,
+		);
+	}
+	return lines;
+}
+
+/**
  * The follow-up message that tells the orchestrator how its tasks ended. The UI never shows it:
  * `internal-messages.ts` strips the block, and the trailing follow-up marker hides the rest.
  * Each summary is the agent's own report, which can repeat content from the pages it visited,
@@ -636,16 +649,13 @@ function buildTasksCompletedMessage(tasks: CloudBrowserTaskRecord[]): string {
 	const entries = tasks.flatMap((task) => [
 		`<task taskId="${task.taskId}" outcome="${task.outcome ?? 'failed'}">`,
 		`Title: ${sanitisePromptText(scrubSecretsInText(task.title))}`,
-		wrapUntrustedData(
-			sanitisePromptText(scrubSecretsInText(task.summary ?? ''), TASK_SUMMARY_MAX_LENGTH),
-			CLOUD_BROWSER_AGENT_ROLE,
-		),
+		...taskSummaryLines(task.summary),
 		'</task>',
 	]);
 	return [
 		CLOUD_BROWSER_TASK_COMPLETED_OPEN_TAG,
 		'Virtual browser tasks that ended. This is an automated report, not a message from the user. ' +
-			'Tell the user what each task found, or why it did not finish, in a few sentences.',
+			'Tell the user what each task found or did, or why it did not finish.',
 		...entries,
 		CLOUD_BROWSER_TASK_COMPLETED_CLOSE_TAG,
 		'',

@@ -32,8 +32,9 @@ export const cloudBrowserTaskInputSchema = z.object({
 		.trim()
 		.min(1)
 		.describe(
-			'What to do in the browser, with every detail the browser agent needs: the site, the data ' +
-				'to find or enter, and what to report back. The browser agent cannot see this conversation. ' +
+			'What to do in the browser: the site, what to find or do, and what to report back. ' +
+				'The browser agent cannot see this conversation, so include the details it needs, but ' +
+				'keep to what the user asked. Do not add data or pages they did not ask for. ' +
 				'If the user wants results as seen from a specific country, name the country.',
 		),
 	startUrl: z
@@ -81,7 +82,8 @@ export function createStartCloudBrowserTaskTool(start: StartCloudBrowserTask) {
 		.description(
 			'Do a task on a website in a virtual browser. The task runs in the background with its own ' +
 				'browser, so you can keep talking to the user. Do not wait for it: you get the result ' +
-				'when it ends. Write a complete goal, because the browser agent cannot see this conversation.',
+				'when it ends. The browser agent cannot see this conversation, so give it the details it ' +
+				'needs, and ask for no more than the request needs.',
 		)
 		.input(cloudBrowserTaskInputSchema)
 		.handler(async (input: CloudBrowserTaskInput) => await start(input))
