@@ -130,7 +130,7 @@ watch(
 			<N8nButton
 				variant="ghost"
 				size="small"
-				icon="sparkle"
+				icon="sparkles"
 				:class="$style.differentButton"
 				data-testid="agent-test-scenarios-different-btn"
 				data-attr="agent-test-scenarios-different-btn"
@@ -173,7 +173,7 @@ watch(
 				<N8nButton
 					variant="solid"
 					size="medium"
-					icon="sparkle"
+					icon="sparkles"
 					:class="$style.writeButton"
 					data-testid="agent-test-scenarios-write-btn"
 					data-attr="agent-test-scenarios-write-btn"
