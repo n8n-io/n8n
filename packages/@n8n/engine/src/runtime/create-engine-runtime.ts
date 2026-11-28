@@ -53,6 +53,15 @@ import { createEngineServer, type EngineServerDeps } from '../server';
 export const ENGINE_ROLES = ['api', 'orchestrator', 'step-worker'] as const;
 export type EngineRole = (typeof ENGINE_ROLES)[number];
 
+/** Lets the host observe the engine. The runtime calls each member once. */
+export interface EngineRuntimeInstrumentation {
+	/**
+	 * Wraps the stores that the runtime builds. The runtime and the external
+	 * dependencies use only the result.
+	 */
+	wrapStores(stores: EngineStores): EngineStores;
+}
+
 export interface EngineRuntimeOptions {
 	/**
 	 * The roles this process runs. Defaults to all of them. `api` serves `/api`,
@@ -113,6 +122,8 @@ export interface EngineRuntimeOptions {
 	 * The orchestrator role runs the sweeper. Needs `deleteExecutionFiles`.
 	 */
 	retention?: ExecutionRetentionPolicy;
+	/** Absent, the runtime uses the stores as it builds them. */
+	instrumentation?: EngineRuntimeInstrumentation;
 }
 
 /** A built engine, ready for a host to serve. */
@@ -150,6 +161,7 @@ export function createEngineRuntime({
 	staleness,
 	reconciliationIntervalMs = DEFAULT_RECONCILIATION_INTERVAL_MS,
 	retention,
+	instrumentation,
 }: EngineRuntimeOptions): EngineRuntime {
 	// An empty value is how an unset environment variable usually arrives.
 	const resumeSecret = givenResumeSecret || undefined;
@@ -179,7 +191,9 @@ export function createEngineRuntime({
 	if (staleness !== undefined) assertValidStalenessThresholds(staleness);
 
 	const { orchestration: orchestrationQueue, step: stepQueue } = queues;
-	const { executionStore, stepStore, executionViewStore } = createStores(dataSource, staleness);
+	const builtStores = createStores(dataSource, staleness);
+	const { executionStore, stepStore, executionViewStore } =
+		instrumentation?.wrapStores(builtStores) ?? builtStores;
 	// Built once, not per handler: the factory must not run twice.
 	const dependencies =
 		externalDependencies?.({ executionStore, stepStore, executionViewStore }) ?? {};

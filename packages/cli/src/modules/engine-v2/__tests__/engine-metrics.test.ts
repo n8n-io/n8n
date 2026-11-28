@@ -1,10 +1,60 @@
 import type { DbPoolStats } from '@n8n/db';
+import type {
+	EngineStores,
+	EngineWorkQueues,
+	ExecutionStore,
+	IStepExecutor,
+	OrchestrationMessage,
+	StepMessage,
+	WorkQueue,
+} from '@n8n/engine';
 import { Registry } from 'prom-client';
+import { mock } from 'vitest-mock-extended';
 
 import { createEngineMetrics } from '../engine-metrics';
 
-const valueOf = async (registry: Registry, name: string) =>
-	(await registry.getSingleMetric(name)?.get())?.values[0]?.value;
+type Labels = Record<string, string>;
+
+/** The value of one series, picked by its full name and its labels. */
+const valueOf = async (
+	registry: Registry,
+	metric: string,
+	series = metric,
+	labels: Labels = {},
+): Promise<number | undefined> => {
+	const values = (await registry.getSingleMetric(metric)?.get())?.values ?? [];
+	return values.find(
+		(value) =>
+			((value as { metricName?: string }).metricName ?? metric) === series &&
+			Object.entries(labels).every(([key, label]) => value.labels[key] === label),
+	)?.value;
+};
+
+/** Plain stores, like the runtime builds them, so a spread keeps every store. */
+const plainStores = (executionStore = mock<ExecutionStore>()): EngineStores => ({
+	executionStore,
+	stepStore: mock<EngineStores['stepStore']>(),
+	executionViewStore: mock<EngineStores['executionViewStore']>(),
+});
+
+const fakeQueue = <TMessage>(size = 0) => {
+	let handler: ((message: TMessage) => Promise<void>) | undefined;
+	const queue = mock<WorkQueue<TMessage>>();
+	queue.start.mockImplementation((consumer) => {
+		handler = consumer;
+	});
+	queue.size.mockResolvedValue(size);
+	return {
+		queue,
+		deliver: async (message: TMessage) => {
+			if (!handler) throw new Error('no consumer started');
+			await handler(message);
+		},
+	};
+};
+
+const settled: OrchestrationMessage = { type: 'step:settled', executionId: 'e1', stepId: 's1' };
+const ready: StepMessage = { type: 'step:ready', executionId: 'e1', stepId: 's1' };
 
 describe('createEngineMetrics', () => {
 	describe('registerPool', () => {
@@ -43,18 +93,298 @@ describe('createEngineMetrics', () => {
 
 			expect(await valueOf(registry, 'n8n_engine_db_pool_requests_pending')).toBe(3);
 		});
+	});
 
-		it('removes its gauges when unregistered, so a new pool can register', async () => {
+	describe('wrapQueues', () => {
+		const wrap = (sizes = { orchestration: 0, step: 0 }, now?: () => number) => {
 			const registry = new Registry();
-			const metrics = createEngineMetrics({ registry, prefix: 'n8n_' });
-			const unregister = metrics.registerPool(() => ({ active: 0, idle: 0, waiting: 0 }), 10);
+			const metrics = createEngineMetrics({ registry, prefix: 'n8n_', now });
+			const orchestration = fakeQueue<OrchestrationMessage>(sizes.orchestration);
+			const step = fakeQueue<StepMessage>(sizes.step);
+			const queues: EngineWorkQueues = { orchestration: orchestration.queue, step: step.queue };
+			const wrapped = metrics.wrapQueues(queues);
+			return { registry, metrics, orchestration, step, queues, wrapped };
+		};
 
-			unregister();
+		it('counts a message as in flight while its handler runs', async () => {
+			const { registry, wrapped, step } = wrap();
+			let duringRun: number | undefined;
+			wrapped.step.start(async () => {
+				duringRun = await valueOf(registry, 'n8n_engine_queue_in_flight', undefined, {
+					queue: 'step',
+				});
+			});
+
+			await step.deliver(ready);
+
+			expect(duringRun).toBe(1);
+			expect(
+				await valueOf(registry, 'n8n_engine_queue_in_flight', undefined, { queue: 'step' }),
+			).toBe(0);
+		});
+
+		it('counts a message out and records its time when its handler throws', async () => {
+			const { registry, wrapped, orchestration } = wrap();
+			wrapped.orchestration.start(async () => {
+				throw new Error('handler failed');
+			});
+
+			await expect(orchestration.deliver(settled)).rejects.toThrow('handler failed');
+
+			expect(
+				await valueOf(registry, 'n8n_engine_queue_in_flight', undefined, {
+					queue: 'orchestration',
+				}),
+			).toBe(0);
+			expect(
+				await valueOf(
+					registry,
+					'n8n_engine_handler_engine_time_seconds',
+					'n8n_engine_handler_engine_time_seconds_count',
+					{ queue: 'orchestration', type: 'step:settled' },
+				),
+			).toBe(1);
+		});
+
+		it('records the engine time of each message by queue and type', async () => {
+			let clock = 1000;
+			const { registry, wrapped, orchestration } = wrap(undefined, () => clock);
+			wrapped.orchestration.start(async () => {
+				clock += 3;
+			});
+
+			await orchestration.deliver(settled);
+
+			const series = { queue: 'orchestration', type: 'step:settled' };
+			const metric = 'n8n_engine_handler_engine_time_seconds';
+			expect(await valueOf(registry, metric, `${metric}_count`, series)).toBe(1);
+			expect(await valueOf(registry, metric, `${metric}_sum`, series)).toBeCloseTo(0.003, 4);
+			expect(await registry.metrics()).toContain('le="0.0025"');
+		});
+
+		it('leaves the time in the v1 shim out of the engine time', async () => {
+			let clock = 1000;
+			const { registry, metrics, wrapped, step } = wrap(undefined, () => clock);
+			const shim = mock<IStepExecutor>();
+			shim.execute.mockImplementation(async () => {
+				await Promise.resolve();
+				clock += 100;
+				return {} as Awaited<ReturnType<IStepExecutor['execute']>>;
+			});
+			const wrappedShim = metrics.wrapStepExecutor(shim);
+			wrapped.step.start(async () => {
+				clock += 30;
+				await wrappedShim.execute(mock());
+				clock += 5;
+			});
+
+			await step.deliver(ready);
+			await step.deliver(ready);
+
+			const metric = 'n8n_engine_handler_engine_time_seconds';
+			expect(
+				await valueOf(registry, metric, `${metric}_sum`, { queue: 'step', type: 'step:ready' }),
+			).toBeCloseTo(0.07, 4);
+		});
+
+		it('counts the step data load inside the v1 shim as engine time', async () => {
+			let clock = 1000;
+			const { registry, metrics, wrapped, step } = wrap(undefined, () => clock);
+			const loadStepData = metrics.countAsEngineTime(async () => {
+				await Promise.resolve();
+				clock += 15;
+			});
+			const shim = mock<IStepExecutor>();
+			shim.execute.mockImplementation(async () => {
+				await loadStepData();
+				clock += 100;
+				return {} as Awaited<ReturnType<IStepExecutor['execute']>>;
+			});
+			const wrappedShim = metrics.wrapStepExecutor(shim);
+			wrapped.step.start(async () => {
+				clock += 30;
+				await wrappedShim.execute(mock());
+				clock += 5;
+			});
+
+			await step.deliver(ready);
+
+			const metric = 'n8n_engine_handler_engine_time_seconds';
+			expect(
+				await valueOf(registry, metric, `${metric}_sum`, { queue: 'step', type: 'step:ready' }),
+			).toBeCloseTo(0.05, 4);
+		});
+
+		it('keeps the shim time of each message apart when messages run at the same time', async () => {
+			let clock = 1000;
+			const { registry, metrics, wrapped, step } = wrap(undefined, () => clock);
+			let releaseShim = () => {};
+			const shimDone = new Promise<void>((resolve) => {
+				releaseShim = resolve;
+			});
+			let releaseSecond = () => {};
+			const secondDone = new Promise<void>((resolve) => {
+				releaseSecond = resolve;
+			});
+			const shim = mock<IStepExecutor>();
+			shim.execute.mockImplementation(async () => {
+				await shimDone;
+				return {} as Awaited<ReturnType<IStepExecutor['execute']>>;
+			});
+			const wrappedShim = metrics.wrapStepExecutor(shim);
+			wrapped.step.start(async (message) => {
+				if (message.stepId === 'first') {
+					clock += 10;
+					await wrappedShim.execute(mock());
+				} else {
+					clock += 20;
+					await secondDone;
+				}
+			});
+
+			const first = step.deliver({ ...ready, stepId: 'first' });
+			const second = step.deliver({ ...ready, stepId: 'second' });
+			clock += 100;
+			releaseShim();
+			await first;
+			releaseSecond();
+			await second;
+
+			// first: 130 ms in its handler, 120 ms of it in the shim, so 10 ms. second: 120 ms, no shim.
+			const metric = 'n8n_engine_handler_engine_time_seconds';
+			const buckets = ((await registry.getSingleMetric(metric)?.get())?.values ?? []).filter(
+				(value) => (value as { metricName?: string }).metricName === `${metric}_bucket`,
+			);
+			const atMost = (le: number) => buckets.find((value) => value.labels.le === le)?.value;
+			expect(atMost(0.005)).toBe(0);
+			expect(atMost(0.01)).toBe(1);
+			expect(atMost(0.1)).toBe(1);
+			expect(atMost(0.25)).toBe(2);
+		});
+
+		it('reports the queue depth from each queue', async () => {
+			const { registry } = wrap({ orchestration: 2, step: 7 });
+
+			expect(
+				await valueOf(registry, 'n8n_engine_queue_depth', undefined, { queue: 'orchestration' }),
+			).toBe(2);
+			expect(await valueOf(registry, 'n8n_engine_queue_depth', undefined, { queue: 'step' })).toBe(
+				7,
+			);
+		});
+
+		it('drops the depth of a queue it cannot read in time, and keeps the other series', async () => {
+			const { registry, orchestration, step } = wrap({ orchestration: 2, step: 7 });
+			await registry.metrics();
+			orchestration.queue.size.mockRejectedValue(new Error('Redis is down'));
+			step.queue.size.mockReturnValue(new Promise(() => {}));
+			vi.useFakeTimers();
+			try {
+				const scrape = registry.metrics();
+				await vi.advanceTimersByTimeAsync(1000);
+				const output = await scrape;
+
+				expect(output).not.toContain('n8n_engine_queue_depth{');
+				expect(output).toContain('n8n_engine_queue_in_flight{queue="step"} 0');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('keeps publish, stop and size of the queue it wraps', async () => {
+			const { wrapped, step } = wrap({ orchestration: 0, step: 4 });
+
+			await wrapped.step.publish(ready);
+			await wrapped.step.stop();
+
+			expect(step.queue.publish).toHaveBeenCalledWith(ready);
+			expect(step.queue.stop).toHaveBeenCalled();
+			expect(await wrapped.step.size()).toBe(4);
+		});
+	});
+
+	describe('wrapStores', () => {
+		const wrap = () => {
+			const registry = new Registry();
+			const executionStore = mock<ExecutionStore>();
+			const stores = plainStores(executionStore);
+			const wrapped = createEngineMetrics({ registry, prefix: 'n8n_' }).wrapStores(stores);
+			const finished = async (status: string) =>
+				await valueOf(registry, 'n8n_engine_executions_finished_total', undefined, { status });
+			return { executionStore, stores, wrapped, finished };
+		};
+
+		it('reports every terminal status from zero', async () => {
+			const { finished } = wrap();
+
+			expect(await finished('completed')).toBe(0);
+			expect(await finished('failed')).toBe(0);
+			expect(await finished('cancelled')).toBe(0);
+		});
+
+		it('counts an execution that its finish write ended, by status', async () => {
+			const { executionStore, wrapped, finished } = wrap();
+			executionStore.finishExecution.mockResolvedValue({ finishedAt: new Date() });
+
+			await wrapped.executionStore.finishExecution('e1', 'failed');
+
+			expect(executionStore.finishExecution).toHaveBeenCalledWith('e1', 'failed');
+			expect(await finished('failed')).toBe(1);
+			expect(await finished('completed')).toBe(0);
+		});
+
+		it('counts nothing when another write ended the execution first', async () => {
+			const { executionStore, wrapped, finished } = wrap();
+			executionStore.finishExecution.mockResolvedValue(null);
+			executionStore.cancelExecution.mockResolvedValue(null);
+
+			await wrapped.executionStore.finishExecution('e1', 'completed');
+			await wrapped.executionStore.cancelExecution('e1');
+
+			expect(await finished('completed')).toBe(0);
+			expect(await finished('cancelled')).toBe(0);
+		});
+
+		it('counts an execution that its cancel ended as cancelled', async () => {
+			const { executionStore, wrapped, finished } = wrap();
+			executionStore.cancelExecution.mockResolvedValue({ finishedAt: new Date() });
+
+			await wrapped.executionStore.cancelExecution('e1');
+
+			expect(await finished('cancelled')).toBe(1);
+		});
+
+		it('leaves the other stores and the other execution store methods as they are', async () => {
+			const { executionStore, stores, wrapped, finished } = wrap();
+			executionStore.transitionStatus.mockImplementation(async function (this: unknown) {
+				return this === executionStore;
+			});
+
+			expect(await wrapped.executionStore.transitionStatus('e1', 'queued', 'running')).toBe(true);
+			expect(await finished('completed')).toBe(0);
+			expect(wrapped.stepStore).toBe(stores.stepStore);
+			expect(wrapped.executionViewStore).toBe(stores.executionViewStore);
+		});
+	});
+
+	describe('unregister', () => {
+		it('removes every series, so a new runtime can register them again', async () => {
+			const registry = new Registry();
+			const register = () => {
+				const metrics = createEngineMetrics({ registry, prefix: 'n8n_' });
+				metrics.registerPool(() => ({ active: 0, idle: 0, waiting: 0 }), 10);
+				metrics.wrapQueues({
+					orchestration: fakeQueue<OrchestrationMessage>().queue,
+					step: fakeQueue<StepMessage>().queue,
+				});
+				metrics.wrapStores(plainStores());
+				return metrics;
+			};
+
+			register().unregister();
 
 			expect(await registry.getMetricsAsJSON()).toEqual([]);
-			expect(() =>
-				metrics.registerPool(() => ({ active: 0, idle: 0, waiting: 0 }), 10),
-			).not.toThrow();
+			expect(register).not.toThrow();
 		});
 	});
 });

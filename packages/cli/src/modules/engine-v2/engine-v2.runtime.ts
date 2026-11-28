@@ -8,6 +8,7 @@ import type {
 	EngineRuntime,
 	EngineWorkQueues,
 	ExecutionResponseSender,
+	IStepExecutor,
 	LifecycleEventCallback,
 } from '@n8n/engine';
 import {
@@ -39,6 +40,7 @@ import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneTransport } from './control-plane/engine-control-plane-transport';
 import { EngineCredentialsClient } from './credentials/engine-credentials-client';
 import { EngineWorkflowResolveClient } from './workflow-resolve/engine-workflow-resolve-client';
+import type { EngineMetrics } from './engine-metrics';
 import { EngineMtls } from './engine-mtls';
 import { RemoteCredentialsHelper } from './credentials/remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from './data-tables/remote-data-table-proxy-provider';
@@ -71,8 +73,8 @@ export class EngineV2Runtime {
 
 	private engine?: EngineRuntime;
 
-	/** Removes the pool gauges, so a later `init()` can register them again. */
-	private unregisterPoolMetrics?: () => void;
+	/** Set when the host passes a registry. */
+	private metrics?: EngineMetrics;
 
 	private server?: Server;
 
@@ -147,16 +149,16 @@ export class EngineV2Runtime {
 	}
 
 	private async initMetrics({ metricsRegistry }: EngineV2RuntimeOptions): Promise<void> {
+		if (!metricsRegistry) return;
+
 		const { prefix, includeDbPoolMetrics } = this.metricsConfig;
-		if (!metricsRegistry || !includeDbPoolMetrics) return;
+		const { createEngineMetrics } = await import('./engine-metrics.js');
+		this.metrics = createEngineMetrics({ registry: metricsRegistry, prefix });
+		if (!includeDbPoolMetrics) return;
 
 		const dataSource = this.dataSource;
 		assert(dataSource, 'Engine v2 cannot report a pool without a data source');
-		const { createEngineMetrics } = await import('./engine-metrics.js');
-		this.unregisterPoolMetrics = createEngineMetrics({
-			registry: metricsRegistry,
-			prefix,
-		}).registerPool(() => readPoolStats(dataSource), this.engineConfig.databasePoolSize);
+		this.metrics.registerPool(() => readPoolStats(dataSource), this.engineConfig.databasePoolSize);
 	}
 
 	private initEngine({
@@ -170,6 +172,7 @@ export class EngineV2Runtime {
 		const stopping = new AbortController();
 		this.stopping = stopping;
 		const runsApi = (roles ?? ENGINE_ROLES).includes('api');
+		const metrics = this.metrics;
 
 		const retention = retentionPolicyFromHours({
 			enabled: this.executionsConfig.pruneData,
@@ -189,7 +192,8 @@ export class EngineV2Runtime {
 			logger: this.logger,
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,
-			queues,
+			queues: metrics ? metrics.wrapQueues(queues) : queues,
+			instrumentation: metrics ? { wrapStores: (stores) => metrics.wrapStores(stores) } : undefined,
 			retention,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: lifecycleEventSender
@@ -200,21 +204,36 @@ export class EngineV2Runtime {
 					await this.binaryDataService.deleteMany([
 						FileLocation.ofExecution(workflowId, executionId),
 					]),
-				v1StepExecutor: new V1StepExecutor({
-					nodeTypes: this.nodeTypes,
-					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
-					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
-					...this.resumeMinters(),
-					resolveSubWorkflow: async (request) =>
-						await this.workflowResolveClient.resolve(
-							{ kind: 'sub-workflow', ...request },
-							stopping.signal,
+				v1StepExecutor: this.withMetrics(
+					new V1StepExecutor({
+						nodeTypes: this.nodeTypes,
+						additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
+						// Engine database reads, so they count as engine time.
+						loadStepData: this.countAsEngineTime(
+							createEngineStepDataLoader(executionStore, stepStore),
 						),
-				}),
+						...this.resumeMinters(),
+						resolveSubWorkflow: async (request) =>
+							await this.workflowResolveClient.resolve(
+								{ kind: 'sub-workflow', ...request },
+								stopping.signal,
+							),
+					}),
+				),
 			}),
 		});
 		// Stored first, so the rollback can stop a queue that began consuming before `start()` threw.
 		this.engine.start();
+	}
+
+	private withMetrics(executor: IStepExecutor): IStepExecutor {
+		return this.metrics ? this.metrics.wrapStepExecutor(executor) : executor;
+	}
+
+	private countAsEngineTime<TArgs extends unknown[], TResult>(
+		work: (...args: TArgs) => Promise<TResult>,
+	): (...args: TArgs) => Promise<TResult> {
+		return this.metrics ? this.metrics.countAsEngineTime(work) : work;
 	}
 
 	private resumeMinters(): Pick<
@@ -286,6 +305,8 @@ export class EngineV2Runtime {
 		const shutdownTasks = [
 			async () => await this.closeServer(),
 			async () => await this.stopEngine(),
+			// Before the data source goes, so a scrape never reads a destroyed pool.
+			async () => this.unregisterMetrics(),
 			async () => await this.destroyDataSource(),
 		];
 
@@ -321,10 +342,12 @@ export class EngineV2Runtime {
 		this.stopping = undefined;
 	}
 
-	private async destroyDataSource(): Promise<void> {
-		this.unregisterPoolMetrics?.();
-		this.unregisterPoolMetrics = undefined;
+	private unregisterMetrics(): void {
+		this.metrics?.unregister();
+		this.metrics = undefined;
+	}
 
+	private async destroyDataSource(): Promise<void> {
 		if (!this.dataSource) return;
 
 		if (this.dataSource.isInitialized) await this.dataSource.destroy();

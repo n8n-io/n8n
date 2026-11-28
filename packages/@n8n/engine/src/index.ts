@@ -1,5 +1,10 @@
 export { createEngineRuntime, ENGINE_ROLES } from './runtime';
-export type { EngineRole, EngineRuntime, EngineRuntimeOptions } from './runtime';
+export type {
+	EngineRole,
+	EngineRuntime,
+	EngineRuntimeInstrumentation,
+	EngineRuntimeOptions,
+} from './runtime';
 
 export type { EngineLogger } from './logging';
 

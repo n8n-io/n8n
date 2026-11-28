@@ -620,7 +620,60 @@ describe('EngineV2Runtime', () => {
 				includeDbPoolMetrics: false,
 			}).init({ ...initOptions(), metricsRegistry: registry });
 
-			expect(await registry.getMetricsAsJSON()).toEqual([]);
+			expect(registry.getSingleMetric('n8n_engine_db_pool_connections_max')).toBeUndefined();
+			expect(registry.getSingleMetric('n8n_engine_queue_depth')).toBeDefined();
+		});
+
+		const engineOptions = () =>
+			mocks.createEngineRuntime.mock.calls[0][0] as {
+				queues: unknown;
+				instrumentation?: { wrapStores: (stores: unknown) => unknown };
+			};
+
+		it('runs the engine on queues, stores and a v1 step executor that record metrics when it has a registry', async () => {
+			const registry = new Registry();
+			const options = { ...initOptions(), metricsRegistry: registry };
+
+			await newRuntime().init(options);
+
+			expect(engineOptions().queues).not.toBe(options.queues);
+			expect(registry.getSingleMetric('n8n_engine_queue_depth')).toBeDefined();
+			const finishExecution = vi.fn().mockResolvedValue({ finishedAt: new Date() });
+			const stores = engineOptions().instrumentation?.wrapStores({
+				executionStore: { finishExecution },
+				stepStore: {},
+				executionViewStore: {},
+			}) as {
+				executionStore: { finishExecution: (id: string, status: string) => Promise<unknown> };
+			};
+			await stores.executionStore.finishExecution('e1', 'completed');
+			expect(finishExecution).toHaveBeenCalledWith('e1', 'completed');
+			expect(await registry.metrics()).toContain(
+				'n8n_engine_executions_finished_total{status="completed"} 1',
+			);
+			const executor = externalDependencies({ executionStore: {}, stepStore: {} })
+				.v1StepExecutor as { execute: (request: unknown) => Promise<unknown> };
+			expect(executor).not.toBe(mocks.v1StepExecutor);
+			await executor.execute('request');
+			expect(mocks.v1StepExecutor.execute).toHaveBeenCalledWith('request');
+			const { loadStepData } = mocks.V1StepExecutor.mock.calls[0][0] as unknown as {
+				loadStepData: (context: unknown) => Promise<unknown>;
+			};
+			expect(loadStepData).not.toBe(mocks.stepDataLoader);
+			await loadStepData('context');
+			expect(mocks.stepDataLoader).toHaveBeenCalledWith('context');
+		});
+
+		it('runs the engine on what it builds, unwrapped, without a registry', async () => {
+			const options = initOptions();
+
+			await newRuntime().init(options);
+
+			expect(engineOptions().queues).toBe(options.queues);
+			expect(engineOptions().instrumentation).toBeUndefined();
+			expect(externalDependencies({ executionStore: {}, stepStore: {} }).v1StepExecutor).toBe(
+				mocks.v1StepExecutor,
+			);
 		});
 
 		it('registers the pool again when init runs after a rollback', async () => {
