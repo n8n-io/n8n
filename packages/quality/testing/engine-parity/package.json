@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Generates random workflows, runs each one on engine v1 and engine v2, and compares the results",
   "scripts": {
-    "clean": "rimraf .turbo",
+    "clean": "rimraf .turbo parity-failures",
     "typecheck": "tsc --noEmit",
     "format": "biome format --write .",
     "format:check": "biome ci .",
@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --watch",
-    "test:parity": "vitest run --config vitest.parity.config.ts"
+    "test:parity": "vitest run --config vitest.parity.config.ts",
+    "parity:replay": "tsx src/replay.ts"
   },
   "dependencies": {
     "@n8n/engine": "workspace:*",
@@ -35,6 +36,7 @@
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },
