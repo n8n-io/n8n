@@ -26,6 +26,7 @@ describe('extractUrl', () => {
 
 	it.each([
 		['Docs: https://docs.n8n.io.', 'https://docs.n8n.io'],
+		['Visit https://example.com, then come back', 'https://example.com'],
 		['Visit https://example.com., then come back', 'https://example.com'],
 		['File at https://example.com/data.csv;', 'https://example.com/data.csv'],
 		['The link is this: https://example.com/a: it works', 'https://example.com/a'],
@@ -48,6 +49,7 @@ describe('extractUrl', () => {
 			'https://en.wikipedia.org/wiki/Rust_(language)',
 		],
 		['(see https://example.com/?q=:)&page=2)', 'https://example.com/?q=:)&page=2'],
+		['(see https://example.com/a)(b))', 'https://example.com/a)(b)'],
 	])('leaves out a closing parenthesis that the URL does not open in %j', (text, url) => {
 		expect(extractUrl(text)).toBe(url);
 	});
@@ -69,6 +71,7 @@ describe('extractUrl', () => {
 		'https://example.com/path?q=1#hash',
 		'https://example.com/?q=:)&page=2',
 		'https://example.com/a)b',
+		'https://example.com/a)(b)',
 		'https://en.wikipedia.org/wiki/C_(programming_language)',
 		"https://en.wikipedia.org/wiki/Kids'_Choice_Awards",
 		'https://en.wikipedia.org/wiki/Washington,_D.C._(disambiguation)',

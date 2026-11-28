@@ -7,8 +7,19 @@ const DELIMITERS = /[<>"]/;
 // At the end of a URL, these characters usually belong to the sentence.
 const SENTENCE_PUNCTUATION = '.,;:!?';
 
-function count(text: string, char: string): number {
-	return text.split(char).length - 1;
+/**
+ * Gives the indexes of the `)` characters that the URL does not open.
+ */
+function findUnmatchedClosings(url: string): Set<number> {
+	const unmatchedClosings = new Set<number>();
+	let openParentheses = 0;
+	for (let index = 0; index < url.length; index++) {
+		if (url[index] === '(') openParentheses++;
+		if (url[index] !== ')') continue;
+		if (openParentheses > 0) openParentheses--;
+		else unmatchedClosings.add(index);
+	}
+	return unmatchedClosings;
 }
 
 /**
@@ -16,12 +27,11 @@ function count(text: string, char: string): number {
  * end of the URL. Characters in the middle of the URL stay.
  */
 function trimEnd(url: string): string {
+	const unmatchedClosings = findUnmatchedClosings(url);
 	let end = url.length;
-	let unmatchedClosings = count(url, ')') - count(url, '(');
 	while (end > 0) {
-		const char = url[end - 1];
-		if (char === ')' && unmatchedClosings > 0) unmatchedClosings--;
-		else if (!SENTENCE_PUNCTUATION.includes(char)) break;
+		const isUnmatchedClosing = unmatchedClosings.has(end - 1);
+		if (!isUnmatchedClosing && !SENTENCE_PUNCTUATION.includes(url[end - 1])) break;
 		end--;
 	}
 	return url.slice(0, end);
