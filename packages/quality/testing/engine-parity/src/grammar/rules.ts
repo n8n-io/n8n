@@ -23,6 +23,8 @@ export interface ParityRules {
 		loops: boolean;
 		/** `onError: continueErrorOutput` (the `errorOutput` combinator). */
 		errorOutputs: boolean;
+		/** More than one trigger. One of them fires. */
+		multiTrigger: boolean;
 	};
 	expressions: {
 		/** The part of node references that name a node that did not run. From 0 to 1. */
@@ -53,7 +55,7 @@ const base: Omit<ParityRules, 'name'> = {
 	nodes: ['set.manual', 'set.raw', 'if.condition', 'merge.append', 'splitOut', 'noOp'],
 	combinators: ['chain', 'branch', 'fanOut', 'merge'],
 	limits: { depth: 4, nodes: 12, width: 3, items: 5 },
-	features: { loops: false, errorOutputs: false },
+	features: { loops: false, errorOutputs: false, multiTrigger: false },
 	expressions: { ghostRate: 0.05 },
 	severity: { L3: 'warning', L4: 'warning' },
 };
@@ -91,6 +93,11 @@ export const ruleSets: Record<string, ParityRules> = {
 		name: 'subWorkflows',
 		nodes: [...base.nodes, 'executeWorkflow'],
 		combinators: ['chain', 'branch', 'merge', 'subWorkflow'],
+	},
+	multiTrigger: {
+		...base,
+		name: 'multiTrigger',
+		features: { ...base.features, multiTrigger: true },
 	},
 };
 

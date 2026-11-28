@@ -3,7 +3,7 @@ import fc from 'fast-check';
 import { compile } from '../compile/to-sdk';
 import { allowedEntries } from './catalog';
 import type { CatalogEntry, GenContext } from './catalog';
-import { blockSize, lowerBlock, newLowerState } from './combinators';
+import { blockSize, connect, lowerBlock, newLowerState } from './combinators';
 import type { Block, LowerState, NodeDraft, PlacedNode } from './combinators';
 import { triggerItemsArb } from './data';
 import type { IrEdge, IrItem, IrNode, IrWorkflow, ParityCase } from './ir';
@@ -14,10 +14,16 @@ import type { ParityRules } from './rules';
 export interface GeneratedCase {
 	main: Block;
 	items: IrItem[];
+	/** More triggers. Each one has its own branch, or connects into a node of the main flow. */
+	extraTriggers: Array<{ block: Block | null; attach: number | null }>;
+	/** Which trigger fires, modulo the count of triggers. 0 is the main trigger. */
+	fired: number;
 }
 
 const MAIN_TRIGGER = 'Trigger';
 const SUB_TRIGGER = 'Sub Trigger';
+
+const pick = fc.double({ min: 0, max: 1, maxExcluded: true, noNaN: true });
 
 function draftArb(entries: CatalogEntry[], ctx: GenContext): fc.Arbitrary<NodeDraft> {
 	return fc.oneof(
@@ -133,11 +139,35 @@ export function blockArb(rules: ParityRules): fc.Arbitrary<Block> {
 
 export function generatedCaseArb(rules: ParityRules): fc.Arbitrary<GeneratedCase> {
 	const block = blockArb(rules);
+	const nodeChain = fc
+		.array(
+			draftArb(allowedEntries(rules.nodes, 'plain'), { rules }).map(
+				(node): Block => ({ kind: 'node', node }),
+			),
+			{ minLength: 1, maxLength: 2 },
+		)
+		.map((blocks): Block => ({ kind: 'chain', blocks }));
+
 	return fc.record({
 		// The main trigger counts as one node.
 		main: block.filter((main) => blockSize(main) <= rules.limits.nodes - 1),
 		items: triggerItemsArb(rules.limits.items),
+		extraTriggers: rules.features.multiTrigger
+			? fc.array(
+					fc.record({
+						block: fc.option(nodeChain, { nil: null }),
+						attach: fc.option(pick, { nil: null }),
+					}),
+					{ maxLength: 2 },
+				)
+			: fc.constant([]),
+		fired: fc.nat({ max: 2 }),
 	});
+}
+
+function pickFrom<T>(list: T[], fraction: number): T | undefined {
+	if (list.length === 0) return undefined;
+	return list[Math.min(list.length - 1, Math.floor(fraction * list.length))];
 }
 
 function descendants(key: string, edges: IrEdge[]): Set<string> {
@@ -211,9 +241,23 @@ export function toIr(generated: GeneratedCase): IrWorkflow {
 		{ ends: [{ from: MAIN_TRIGGER, out: 0 }], upstream: [MAIN_TRIGGER] },
 		state,
 	);
+	const mainNodes = state.nodes.map((node) => node.key);
+
 	const triggers: IrNode[] = [
 		{ key: MAIN_TRIGGER, catalogId: 'trigger.manual', params: {}, via: 'trigger' },
 	];
+	generated.extraTriggers.forEach((extra, i) => {
+		const key = `${MAIN_TRIGGER} ${i + 2}`;
+		triggers.push({ key, catalogId: 'trigger.manual', params: {}, via: 'trigger' });
+		const target = extra.attach === null ? undefined : pickFrom(mainNodes, extra.attach);
+		if (target !== undefined) {
+			connect(state, [{ from: key, out: 0 }], target, 0);
+		} else if (extra.block) {
+			lowerBlock(extra.block, { ends: [{ from: key, out: 0 }], upstream: [key] }, state);
+		}
+	});
+
+	const triggerKeys = triggers.map((trigger) => trigger.key);
 	const subWorkflows = lowerSubWorkflows(state);
 	const { edges } = state;
 	const nodes = toIrNodes(state.nodes, edges);
@@ -223,7 +267,7 @@ export function toIr(generated: GeneratedCase): IrWorkflow {
 		nodes,
 		edges,
 		triggerItems: generated.items,
-		firedTrigger: MAIN_TRIGGER,
+		firedTrigger: triggerKeys[generated.fired % triggerKeys.length],
 		...(Object.keys(subWorkflows).length > 0 ? { subWorkflows } : {}),
 	};
 }

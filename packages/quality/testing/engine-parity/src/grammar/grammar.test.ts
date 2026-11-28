@@ -58,7 +58,7 @@ describe('grammar', () => {
 		expect(second).toEqual(first);
 	});
 
-	it.each(['smoke', 'branching', 'loops', 'code', 'subWorkflows'])(
+	it.each(['smoke', 'branching', 'loops', 'code', 'subWorkflows', 'multiTrigger'])(
 		'makes eligible workflows with valid ports for the "%s" rule set',
 		(name) => {
 			const cases = sample(name);
@@ -142,7 +142,7 @@ describe('grammar', () => {
 		expect([...modes].sort()).toEqual([false, true]);
 	});
 
-	it.each(['code', 'subWorkflows'])(
+	it.each(['code', 'subWorkflows', 'multiTrigger'])(
 		'makes cases that the SDK can print as code for the "%s" rule set',
 		(name) => {
 			for (const parityCase of sample(name, 3, 20)) {
