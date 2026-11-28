@@ -88,6 +88,7 @@ defineExpose({
 			<template #left-actions>
 				<ToolsSelector
 					:class="$style.toolsButton"
+					telemetry-source="chat_hub_tools"
 					:checked-tool-ids="checkedToolIds"
 					:custom-agent-id="customAgentId"
 					:disabled="messagingState !== 'idle' || !isToolsSelectable"

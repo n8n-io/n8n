@@ -134,6 +134,7 @@ const toggleLabel = computed(() =>
 
 		<div :class="$style.actions">
 			<RestrictedNodePopover
+				telemetry-source="chat_hub_tools_manager"
 				v-if="restriction"
 				:node-type-name="nodeType.displayName"
 				:restriction="restriction"

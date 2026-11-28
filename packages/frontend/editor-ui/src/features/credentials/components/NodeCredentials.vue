@@ -1809,6 +1809,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						{{ entryPlaceholder(type.name) }}
 					</span>
 					<CredentialTypeRestrictedMarker
+						telemetry-source="node_credentials"
 						v-if="typeRestrictions[type.name]"
 						placement="field"
 						:name="credentialTypeNames[type.name]"
@@ -1984,6 +1985,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 											}}
 										</N8nText>
 										<CredentialTypeRestrictedMarker
+											telemetry-source="node_credentials"
 											v-if="openedCredentialSelectTypes.has(type.name) && row.restriction"
 											:name="row.option.typeDisplayName"
 											:restriction="row.restriction"
@@ -2055,6 +2057,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					</div>
 
 					<CredentialTypeRestrictedMarker
+						telemetry-source="node_credentials"
 						v-if="selectedTypeRestrictions[type.name]"
 						placement="field"
 						:name="selectedTypeRestrictions[type.name].displayName"
@@ -2136,6 +2139,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 			</N8nInputLabel>
 		</div>
 		<ContactAdminModal
+			telemetry-source="node_credentials"
 			v-model:open="isContactAdminOpen"
 			kind="credential"
 			:type-name="contactAdmin.subject"

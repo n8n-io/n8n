@@ -32,6 +32,46 @@ const kind = z
 
 const projectId = z.string().optional().describe('Absent at instance scope');
 
+/**
+ * Where the editor showed a type restriction. The components that pass it type their prop with
+ * `RestrictedTypeSurface`, so the prop and this schema share one list.
+ */
+const RESTRICTED_TYPE_SURFACES = [
+	'node_creator',
+	'command_bar',
+	'ndv',
+	'setup_panel',
+	'template',
+	'tools_connection',
+	'chat_hub_tools',
+	'chat_hub_tool_settings',
+	'chat_hub_tools_manager',
+	'chat_hub_agent_editor',
+	'agent_model_selector',
+	'agent_tool_config',
+	'agent_chat',
+	'credential_select',
+	'credential_select_modal',
+	'node_credentials',
+	'credential_card',
+	'credential_edit',
+	'transfer_dialog',
+] as const;
+export type RestrictedTypeSurface = (typeof RESTRICTED_TYPE_SURFACES)[number];
+
+const surface = z
+	.enum(RESTRICTED_TYPE_SURFACES)
+	.describe('Where in the editor the user met the restriction');
+
+const restrictionScope = z
+	.enum(['instance', 'project'])
+	.nullable()
+	.describe('Which scope restricts the type. Null when the editor does not know it');
+
+const contactAudience = z
+	.enum(['instance', 'project'])
+	.describe('Whose admins the dialog asks the user to contact');
+
 const ruleCounts = {
 	rule_count: z.number(),
 	allow_rule_count: z.number(),
@@ -173,6 +213,48 @@ export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Active workflows that use the type. Null when the review could not load the counts',
 				),
+		}),
+	},
+	USER_OPENED_RESTRICTED_TYPE_DETAILS: {
+		name: 'User opened restricted type details',
+		description:
+			'The card that explains why a node or credential type is restricted opened in the editor. The card opens on hover or focus of the restricted item, so this measures attention, not only clicks. Fires at most once for each mounted card. A card that opens only because a list selected its row, for example the first search result, does not fire it.',
+		properties: z.object({
+			kind,
+			scope: restrictionScope,
+			source: surface,
+		}),
+	},
+	USER_OPENED_CONTACT_ADMIN_DIALOG: {
+		name: 'User opened contact admin dialog',
+		description:
+			'The dialog that lists the admins who can change a type availability policy opened. Fires once each time the dialog opens, from any surface.',
+		properties: z.object({
+			kind,
+			audience: contactAudience,
+			source: surface,
+			restricted_type_count: z
+				.number()
+				.describe('How many restricted types the request names. More than 1 for a bulk request'),
+		}),
+	},
+	USER_CLICKED_ADMIN_EMAIL: {
+		name: 'User clicked admin email',
+		description:
+			'The user clicked the email link of an admin in the contact admin dialog. This is the point where a user asks an admin to change a type availability policy.',
+		properties: z.object({
+			kind,
+			audience: contactAudience,
+			source: surface,
+			admin_count: z.number().describe('How many admins the dialog listed'),
+		}),
+	},
+	USER_CLICKED_REPLACE_RESTRICTED_NODE: {
+		name: 'User clicked replace restricted node',
+		description:
+			'The user chose to replace a restricted node from its node details view, instead of asking an admin for access.',
+		properties: z.object({
+			scope: restrictionScope,
 		}),
 	},
 });

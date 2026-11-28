@@ -4,12 +4,14 @@ import { computed, useTemplateRef } from 'vue';
 import RestrictedNodePopover from './RestrictedNodePopover.vue';
 import type { OptionalVerdict } from '../composables/useNodeTypeRestriction';
 import type { ContactAudience, RestrictedTypeKind } from '../type-availability-policies.constants';
+import type { RestrictedTypeSurface } from '../type-availability-policies.telemetry';
 
 withDefaults(
 	defineProps<{
 		nodeTypeName: string;
 		restriction?: OptionalVerdict;
 		kind?: RestrictedTypeKind;
+		telemetrySource: RestrictedTypeSurface;
 	}>(),
 	{ restriction: undefined, kind: 'node' },
 );
@@ -31,6 +33,7 @@ const row = computed(() => rootRef.value?.closest<HTMLElement>('[role="menuitem"
 			:kind="kind"
 			:node-type-name="nodeTypeName"
 			:restriction="restriction"
+			:telemetry-source="telemetrySource"
 			:anchor="row"
 			@contact-admin="(audience) => emit('contactAdmin', audience)"
 		/>

@@ -33,6 +33,7 @@ describe('CredentialTypeRestrictedMarker', () => {
 						h(CredentialTypeRestrictedMarker, {
 							name: 'Slack API',
 							restriction: { name: 'slackApi', available: false, scope: 'project' },
+							telemetrySource: 'credential_select',
 							onContactAdmin,
 						}),
 					]),
@@ -66,6 +67,7 @@ describe('CredentialTypeRestrictedMarker', () => {
 				placement: 'field',
 				scopeLabel: 'Restricted nodes',
 				description: 'Every node is blocked.',
+				telemetrySource: 'node_credentials',
 			},
 			attachTo: document.body,
 		});

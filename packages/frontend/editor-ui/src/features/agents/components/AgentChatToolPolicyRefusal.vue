@@ -55,6 +55,7 @@ onMounted(() => {
 			{{ i18n.baseText(contactCopy.action) }}
 		</N8nLink>
 		<ContactAdminModal
+			telemetry-source="agent_chat"
 			v-model:open="isContactAdminOpen"
 			:type-name="adminSubject"
 			:kind="adminSubjectKind"
