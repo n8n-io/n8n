@@ -2583,8 +2583,6 @@ const instanceAiPermissionsSchema = z.object({
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 	executeNode: instanceAiPermissionModeSchema,
-	mcpRead: instanceAiPermissionModeSchema,
-	mcpWrite: instanceAiPermissionModeSchema,
 	createPreference: instanceAiPermissionModeSchema,
 	createSkill: instanceAiPermissionModeSchema,
 	updateSkill: instanceAiPermissionModeSchema,
@@ -2614,8 +2612,6 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
 	executeNode: 'require_approval',
-	mcpRead: 'always_allow',
-	mcpWrite: 'require_approval',
 	// The save_user_preference tool writes first and lets the user edit or undo
 	// from the chat card, so there is no approval step for require_approval to
 	// gate. always_allow is the only workable default; blocked is the feature off.
@@ -2647,8 +2643,6 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions> = new Set([
 	'fetchUrl',
 	'webSearch',
-	'mcpRead',
-	'mcpWrite',
 	'publishWorkflow',
 	'createCredential',
 	'deleteCredential',
