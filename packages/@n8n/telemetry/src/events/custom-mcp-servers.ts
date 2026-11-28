@@ -149,6 +149,21 @@ export const CUSTOM_MCP_SERVERS_TELEMETRY = defineTelemetryEvents({
 				),
 		}),
 	},
+	USER_CHANGED_CUSTOM_MCP_SERVER_URL: {
+		name: 'User changed custom MCP server URL',
+		description:
+			'A builder changed the URL of a custom MCP server, which ended its active connections.',
+		properties: z.object({
+			server_id: serverId,
+			user_id: userId,
+			connection_count: z
+				.number()
+				.int()
+				.min(0)
+				.describe('Number of active connections that ended when the URL changed'),
+			...builderSource,
+		}),
+	},
 	USER_DELETED_CUSTOM_MCP_SERVER: {
 		name: 'User deleted custom MCP server',
 		description: 'A builder deleted a custom MCP server.',

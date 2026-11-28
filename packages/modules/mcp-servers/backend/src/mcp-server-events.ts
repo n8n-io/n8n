@@ -22,6 +22,7 @@ export type McpServerToolDraftStatus =
 
 export interface McpServerEventMap {
 	'mcp-server-created': McpServerActor & { serverId: string; projectId: string };
+	'mcp-server-url-changed': McpServerActor & { serverId: string; connectionCount: number };
 	'mcp-server-deleted': McpServerActor & { serverId: string; projectId: string };
 	'mcp-server-tool-added': McpServerActor & {
 		serverId: string;

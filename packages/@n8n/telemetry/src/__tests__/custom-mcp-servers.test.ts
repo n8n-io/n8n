@@ -8,6 +8,7 @@ const builderEvents = [
 	events.USER_DRAFTED_TOOL_OF_CUSTOM_MCP_SERVER,
 	events.USER_BLOCKED_PERSON_FROM_CUSTOM_MCP_SERVER,
 	events.USER_RESTORED_ACCESS_TO_CUSTOM_MCP_SERVER,
+	events.USER_CHANGED_CUSTOM_MCP_SERVER_URL,
 	events.USER_DELETED_CUSTOM_MCP_SERVER,
 ];
 const clientEvents = [
@@ -22,11 +23,11 @@ const sharePageEvents = [
 ];
 
 describe('custom MCP server events', () => {
-	it('has the seven backend events of the build spec, the draft event, and the two share page events', () => {
+	it('has the backend events of the build spec, the draft event, the URL change event, and the two share page events', () => {
 		expect(Object.values(events)).toEqual(
 			expect.arrayContaining([...backendEvents, ...sharePageEvents]),
 		);
-		expect(Object.keys(events)).toHaveLength(10);
+		expect(Object.keys(events)).toHaveLength(11);
 	});
 
 	it.each(backendEvents.map((event) => [event.name, event]))(
@@ -123,5 +124,22 @@ describe('custom MCP server events', () => {
 				duration_ms: 120,
 			}),
 		).toBeNull();
+	});
+
+	it('accepts a URL change with the connection count, and refuses a negative count', () => {
+		const changed = {
+			server_id: 'server-1',
+			user_id: 'user-1',
+			connection_count: 3,
+			source: 'ui',
+		};
+
+		expect(getEventValidationError(events.USER_CHANGED_CUSTOM_MCP_SERVER_URL, changed)).toBeNull();
+		expect(
+			getEventValidationError(events.USER_CHANGED_CUSTOM_MCP_SERVER_URL, {
+				...changed,
+				connection_count: -1,
+			}),
+		).not.toBeNull();
 	});
 });

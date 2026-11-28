@@ -77,7 +77,10 @@ export class McpServersController {
 	@ProjectScope(MCP_SERVER_ACTION_SCOPES.update)
 	async update(req: ServerRequest, _res: unknown, @Body dto: UpdateMcpServerDto) {
 		await this.flagGate.assertEnabled();
-		return await this.service.update(req.params.projectId, req.params.serverId, dto);
+		return await this.service.update(req.params.projectId, req.params.serverId, dto, {
+			userId: req.user.id,
+			source: 'ui',
+		});
 	}
 
 	@Delete('/:serverId')

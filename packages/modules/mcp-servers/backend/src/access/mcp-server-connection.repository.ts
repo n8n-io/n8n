@@ -95,4 +95,10 @@ export class McpServerConnectionRepository {
 			.delete(McpServerConnection, { serverId, userId });
 		return result.affected ?? 0;
 	}
+
+	/** Deletes every connection on the server, for example when its URL changes. */
+	async deleteForServer(serverId: string, ctx: OperationContext = {}): Promise<number> {
+		const result = await this.table.managerFor(ctx).delete(McpServerConnection, { serverId });
+		return result.affected ?? 0;
+	}
 }

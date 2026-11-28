@@ -427,6 +427,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'app-interacted': (event) => this.appInteracted(event),
 			'app-bindings-changed': (event) => this.appBindingsChanged(event),
 			'mcp-server-created': (event) => this.mcpServerCreated(event),
+			'mcp-server-url-changed': (event) => this.mcpServerUrlChanged(event),
 			'mcp-server-deleted': (event) => this.mcpServerDeleted(event),
 			'mcp-server-tool-added': (event) => this.mcpServerToolAdded(event),
 			'mcp-server-tool-called': (event) => this.mcpServerToolCalled(event),
@@ -643,6 +644,22 @@ export class TelemetryEventRelay extends EventRelay {
 			server_id: serverId,
 			project_id: projectId,
 			user_id: userId,
+			source,
+			thread_id: threadId,
+		});
+	}
+
+	private mcpServerUrlChanged({
+		serverId,
+		userId,
+		connectionCount,
+		source,
+		threadId,
+	}: RelayEventMap['mcp-server-url-changed']) {
+		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CHANGED_CUSTOM_MCP_SERVER_URL, {
+			server_id: serverId,
+			user_id: userId,
+			connection_count: connectionCount,
 			source,
 			thread_id: threadId,
 		});

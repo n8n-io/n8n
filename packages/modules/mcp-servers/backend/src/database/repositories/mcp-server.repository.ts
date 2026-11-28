@@ -11,6 +11,7 @@ import { ConflictError } from '@n8n/errors';
 import { DataSource, In, IsNull } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
+import { McpServerReservedSlug } from '../entities/mcp-server-reserved-slug.entity';
 import { McpServer } from '../entities/mcp-server.entity';
 
 class McpServerTable extends BaseRepository<McpServer> {
@@ -30,7 +31,7 @@ export type McpServerProject = { name: string; type: ProjectType };
 
 export type McpServerWithProject = { server: McpServer; project: McpServerProject };
 
-/** `reserved`: a deleted server used the slug. A slug never goes back to the pool. */
+/** `reserved`: a deleted server used the slug, or a server moved away from it. A slug never goes back to the pool. */
 export type McpServerSlugStatus = 'free' | 'taken' | 'reserved';
 
 /** The servers that `deletedAt` marks as deleted are hidden from every method, except the slug check. */
@@ -43,17 +44,22 @@ export class McpServerRepository {
 	}
 
 	async create(row: NewMcpServer, ctx: OperationContext = {}): Promise<McpServer> {
-		const manager = this.table.managerFor(ctx);
-		const server = manager.create(McpServer, { ...row, id: uuidv7(), deletedAt: null });
-		try {
-			await manager.insert(McpServer, server);
-		} catch (error) {
-			if (isUniqueConstraintError(error)) {
-				throw new ConflictError('Another MCP server uses this URL. Choose another URL.');
+		return await this.table.runInTransaction(ctx, async (manager) => {
+			const server = manager.create(McpServer, { ...row, id: uuidv7(), deletedAt: null });
+			try {
+				await manager.insert(McpServer, server);
+			} catch (error) {
+				if (isUniqueConstraintError(error)) {
+					throw new ConflictError('Another MCP server uses this URL. Choose another URL.');
+				}
+				throw error;
 			}
-			throw error;
-		}
-		return await manager.findOneByOrFail(McpServer, { id: server.id });
+			// Check after the insert so a concurrent URL change cannot slip the old slug in between.
+			if (await manager.existsBy(McpServerReservedSlug, { slug: row.slug })) {
+				throw new ConflictError('This URL is reserved. Choose another URL.');
+			}
+			return await manager.findOneByOrFail(McpServer, { id: server.id });
+		});
 	}
 
 	async findInProject(
@@ -103,11 +109,14 @@ export class McpServerRepository {
 	}
 
 	async slugStatus(slug: string, ctx: OperationContext = {}): Promise<McpServerSlugStatus> {
-		const server = await this.table
-			.managerFor(ctx)
-			.findOne(McpServer, { select: ['id', 'deletedAt'], where: { slug } });
-		if (!server) return 'free';
-		return server.deletedAt ? 'reserved' : 'taken';
+		const manager = this.table.managerFor(ctx);
+		const server = await manager.findOne(McpServer, {
+			select: ['id', 'deletedAt'],
+			where: { slug },
+		});
+		if (server) return server.deletedAt ? 'reserved' : 'taken';
+		const reserved = await manager.existsBy(McpServerReservedSlug, { slug });
+		return reserved ? 'reserved' : 'free';
 	}
 
 	async update(
@@ -124,6 +133,43 @@ export class McpServerRepository {
 			});
 			if (!result.affected) return null;
 			return await manager.findOneBy(McpServer, where);
+		});
+	}
+
+	/**
+	 * Moves a server from `oldSlug` to `newSlug` and keeps `oldSlug` reserved for this server.
+	 * Rejects a slug that another server uses or that is already reserved.
+	 */
+	async changeSlug(
+		projectId: string,
+		serverId: string,
+		oldSlug: string,
+		newSlug: string,
+		changes: McpServerChanges,
+		ctx: OperationContext = {},
+	): Promise<McpServer | null> {
+		return await this.table.runInTransaction(ctx, async (manager) => {
+			const where = { id: serverId, projectId, slug: oldSlug, deletedAt: IsNull() };
+			let affected = 0;
+			try {
+				const result = await manager.update(McpServer, where, {
+					...changes,
+					slug: newSlug,
+					updatedAt: new Date(),
+				});
+				affected = result.affected ?? 0;
+			} catch (error) {
+				if (isUniqueConstraintError(error)) {
+					throw new ConflictError('Another MCP server uses this URL. Choose another URL.');
+				}
+				throw error;
+			}
+			if (!affected) return null;
+			if (await manager.existsBy(McpServerReservedSlug, { slug: newSlug })) {
+				throw new ConflictError('This URL is reserved. Choose another URL.');
+			}
+			await manager.insert(McpServerReservedSlug, { slug: oldSlug, serverId });
+			return await manager.findOneBy(McpServer, { id: serverId, projectId, deletedAt: IsNull() });
 		});
 	}
 

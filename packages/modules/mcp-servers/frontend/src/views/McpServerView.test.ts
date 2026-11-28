@@ -19,6 +19,7 @@ const api = vi.hoisted(() => ({
 	updateMcpServer: vi.fn(),
 	deleteMcpServer: vi.fn(),
 	listMcpServerConnections: vi.fn(),
+	checkMcpServerSlug: vi.fn(),
 }));
 vi.mock('../mcp-servers.api', () => api);
 
@@ -135,6 +136,7 @@ describe('McpServerView', () => {
 		}));
 		api.deleteMcpServer.mockResolvedValue(undefined);
 		api.listMcpServerConnections.mockResolvedValue({ connections: [], blocks: [] });
+		api.checkMcpServerSlug.mockResolvedValue({ available: true, reason: null });
 	});
 
 	afterEach(() => {
@@ -348,6 +350,140 @@ describe('McpServerView', () => {
 			await openMenuItem('Rename');
 
 			expect(await screen.findByTestId('rename-mcp-server-dialog')).toBeInTheDocument();
+		});
+
+		it('changes the URL from the rename dialog, updates the page URL, and reloads connections', async () => {
+			await renderPage();
+
+			await openMenuItem('Rename');
+			await screen.findByTestId('rename-mcp-server-dialog');
+			expect(screen.queryByTestId('rename-mcp-server-slug')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('rename-mcp-server-change-url'));
+			const slugInput = await screen.findByTestId('rename-mcp-server-slug');
+			expect(slugInput).toHaveValue('sales-tools');
+			expect(screen.queryByTestId('rename-mcp-server-connections-warning')).not.toBeInTheDocument();
+
+			await userEvent.clear(slugInput);
+			await userEvent.type(slugInput, 'Revenue Tools!');
+			expect(slugInput).toHaveValue('revenue-tools-');
+			expect(screen.getByTestId('rename-mcp-server-url')).toHaveTextContent(
+				'/mcp-servers/revenue-tools',
+			);
+			await waitFor(() =>
+				expect(api.checkMcpServerSlug).toHaveBeenLastCalledWith(
+					expect.anything(),
+					'project-1',
+					'revenue-tools',
+				),
+			);
+			await waitFor(() => expect(screen.getByTestId('rename-mcp-server-submit')).toBeEnabled());
+
+			await userEvent.click(screen.getByTestId('rename-mcp-server-submit'));
+
+			expect(api.updateMcpServer).toHaveBeenCalledWith(expect.anything(), 'project-1', server.id, {
+				slug: 'revenue-tools',
+			});
+			await waitFor(() =>
+				expect(screen.getByTestId('mcp-server-url')).toHaveTextContent(
+					'/mcp-servers/revenue-tools',
+				),
+			);
+			// Mount load + dialog open refresh + post-change reload.
+			expect(api.listMcpServerConnections).toHaveBeenCalledTimes(3);
+		});
+
+		it.each([
+			['taken', 'This URL is already taken.'],
+			['reserved', 'A server used this URL before. It stays reserved, so pick another one.'],
+		] as const)('blocks saving a URL that is %s in the rename dialog', async (reason, message) => {
+			api.checkMcpServerSlug.mockResolvedValue({ available: false, reason });
+			await renderPage();
+
+			await openMenuItem('Rename');
+			await userEvent.click(await screen.findByTestId('rename-mcp-server-change-url'));
+			const slugInput = await screen.findByTestId('rename-mcp-server-slug');
+			await userEvent.clear(slugInput);
+			await userEvent.type(slugInput, 'old-tools');
+
+			await waitFor(() =>
+				expect(screen.getByTestId('rename-mcp-server-slug-error')).toHaveTextContent(message),
+			);
+			expect(screen.getByTestId('rename-mcp-server-submit')).toBeDisabled();
+		});
+
+		it('shows the empty-URL error when the URL field has no Latin letter or digit', async () => {
+			await renderPage();
+
+			await openMenuItem('Rename');
+			await userEvent.click(await screen.findByTestId('rename-mcp-server-change-url'));
+			const slugInput = await screen.findByTestId('rename-mcp-server-slug');
+			await userEvent.clear(slugInput);
+
+			expect(screen.getByTestId('rename-mcp-server-slug-error')).toHaveTextContent(
+				'The URL needs at least one Latin letter or digit.',
+			);
+			expect(screen.getByTestId('rename-mcp-server-submit')).toBeDisabled();
+		});
+
+		it('shows the active-connections warning before saving a URL change, counting distinct unblocked people', async () => {
+			const usedAt = '2026-11-24T10:00:00.000Z';
+			const base = {
+				firstName: 'Tom',
+				lastName: 'Becker',
+				email: 'tom@acme.com',
+				firstUsedAt: usedAt,
+				lastUsedAt: usedAt,
+			};
+			api.listMcpServerConnections.mockResolvedValue({
+				connections: [
+					{ ...base, userId: 'user-1', oauthClientId: 'cursor', clientName: 'Cursor' },
+					{ ...base, userId: 'user-1', oauthClientId: 'claude-code', clientName: 'Claude Code' },
+					{ ...base, userId: 'user-2', oauthClientId: 'cursor', clientName: 'Cursor' },
+					{ ...base, userId: 'user-3', oauthClientId: 'cursor', clientName: 'Cursor' },
+				],
+				// user-3 is blocked, so only user-1 and user-2 are actively connected (2 people).
+				blocks: [{ ...base, userId: 'user-3', blockedById: null, blockedAt: usedAt }],
+			});
+			await renderPage();
+
+			await openMenuItem('Rename');
+			await userEvent.click(await screen.findByTestId('rename-mcp-server-change-url'));
+
+			expect(await screen.findByTestId('rename-mcp-server-connections-warning')).toHaveTextContent(
+				'2 people are connected. Their AI clients stop working. Each person must add the new URL and sign in again.',
+			);
+		});
+
+		it('keeps the rename dialog open and shows the conflict error when Save answers 409', async () => {
+			api.updateMcpServer.mockRejectedValue(new ResponseError('Conflict', { httpStatusCode: 409 }));
+			await renderPage();
+
+			await openMenuItem('Rename');
+			await userEvent.click(await screen.findByTestId('rename-mcp-server-change-url'));
+			const slugInput = await screen.findByTestId('rename-mcp-server-slug');
+			await userEvent.clear(slugInput);
+			await userEvent.type(slugInput, 'taken-now');
+			await waitFor(() => expect(screen.getByTestId('rename-mcp-server-submit')).toBeEnabled());
+
+			api.checkMcpServerSlug.mockResolvedValue({ available: false, reason: 'reserved' });
+			await userEvent.click(screen.getByTestId('rename-mcp-server-submit'));
+
+			await waitFor(() =>
+				expect(screen.getByTestId('rename-mcp-server-slug-error')).toHaveTextContent(
+					'A server used this URL before. It stays reserved, so pick another one.',
+				),
+			);
+			expect(screen.getByTestId('rename-mcp-server-dialog')).toBeInTheDocument();
+			expect(screen.getByTestId('rename-mcp-server-submit')).toBeDisabled();
+		});
+
+		it('shows the tooltip "Copy URL" on the URL copy button', async () => {
+			await renderPage();
+
+			await userEvent.hover(screen.getByTestId('mcp-server-copy-url'));
+
+			expect(await screen.findByTestId('tooltip-content')).toHaveTextContent(/^Copy URL$/);
 		});
 
 		async function editDescription() {

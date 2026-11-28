@@ -247,7 +247,12 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 		await service.delete({ serverId: SERVER_ID });
 
 		expect(access.resolveProjectId).toHaveBeenNthCalledWith(1, ['mcpServer:update'], undefined);
-		expect(servers.update).toHaveBeenCalledWith('bound', SERVER_ID, { name: 'Campaign Tools' });
+		expect(servers.update).toHaveBeenCalledWith(
+			'bound',
+			SERVER_ID,
+			{ name: 'Campaign Tools' },
+			actor,
+		);
 		expect(access.resolveProjectId).toHaveBeenNthCalledWith(2, ['mcpServer:delete'], undefined);
 		expect(servers.delete).toHaveBeenCalledWith('bound', SERVER_ID, actor);
 	});

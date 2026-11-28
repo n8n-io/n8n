@@ -7195,5 +7195,25 @@ describe('TelemetryEventRelay', () => {
 				},
 			);
 		});
+
+		it('tracks a URL change with the server and the count of connections', () => {
+			mcpEventService.emit('mcp-server-url-changed', {
+				serverId: 'server-1',
+				userId: 'user-1',
+				connectionCount: 4,
+				source: 'ui',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CHANGED_CUSTOM_MCP_SERVER_URL,
+				{
+					server_id: 'server-1',
+					user_id: 'user-1',
+					connection_count: 4,
+					source: 'ui',
+					thread_id: undefined,
+				},
+			);
+		});
 	});
 });

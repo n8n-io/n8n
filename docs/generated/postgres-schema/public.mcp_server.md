@@ -8,7 +8,7 @@
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Creator. NULL after the user is deleted |
 | deletedAt | timestamp(3) with time zone |  | true |  |  | Soft delete. NULL for a server that is not deleted |
 | description | text | ''::text | false |  |  | Clients get it as the MCP instructions |
-| id | uuid |  | false | [public.mcp_server_block](public.mcp_server_block.md) [public.mcp_server_connection](public.mcp_server_connection.md) [public.mcp_server_tool](public.mcp_server_tool.md) |  | UUIDv7, made by the application |
+| id | uuid |  | false | [public.mcp_server_block](public.mcp_server_block.md) [public.mcp_server_connection](public.mcp_server_connection.md) [public.mcp_server_reserved_slug](public.mcp_server_reserved_slug.md) [public.mcp_server_tool](public.mcp_server_tool.md) |  | UUIDv7, made by the application |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | slug | varchar(128) |  | false |  |  | Path segment of the server URL. It never changes. A deleted server keeps it, until its project is deleted |
@@ -46,6 +46,7 @@ erDiagram
 "public.mcp_server" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.mcp_server_block" }o--|| "public.mcp_server" : "FOREIGN KEY (#quot;serverId#quot;) REFERENCES mcp_server(id) ON DELETE CASCADE"
 "public.mcp_server_connection" }o--|| "public.mcp_server" : "FOREIGN KEY (#quot;serverId#quot;) REFERENCES mcp_server(id) ON DELETE CASCADE"
+"public.mcp_server_reserved_slug" }o--|| "public.mcp_server" : "FOREIGN KEY (#quot;serverId#quot;) REFERENCES mcp_server(id) ON DELETE CASCADE"
 "public.mcp_server_tool" }o--|| "public.mcp_server" : "FOREIGN KEY (#quot;serverId#quot;) REFERENCES mcp_server(id) ON DELETE CASCADE"
 "public.mcp_server" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
@@ -91,6 +92,11 @@ erDiagram
   varchar oauthClientId FK
   uuid serverId FK
   uuid userId FK
+}
+"public.mcp_server_reserved_slug" {
+  timestamp_3__with_time_zone reservedAt
+  uuid serverId FK
+  varchar_128_ slug
 }
 "public.mcp_server_tool" {
   timestamp_3__with_time_zone createdAt

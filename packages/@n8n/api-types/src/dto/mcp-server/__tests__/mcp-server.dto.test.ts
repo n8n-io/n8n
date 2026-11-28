@@ -27,9 +27,10 @@ describe('MCP server DTOs', () => {
 		expect(CreateMcpServerDto.safeParse({ name: 'Sales tools', slug }).success).toBe(false);
 	});
 
-	it('does not accept a slug in an update, because a slug never changes', () => {
+	it('accepts a valid slug in an update and rejects an invalid one', () => {
 		expect(UpdateMcpServerDto.safeParse({ name: 'New name' }).success).toBe(true);
-		expect(UpdateMcpServerDto.safeParse({ slug: 'new-slug' }).success).toBe(false);
+		expect(UpdateMcpServerDto.safeParse({ slug: 'new-slug' }).success).toBe(true);
+		expect(UpdateMcpServerDto.safeParse({ slug: 'New Slug' }).success).toBe(false);
 	});
 
 	it.each(['get_pipeline_summary', 'tool2', 'a'.repeat(64)])(

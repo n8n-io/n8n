@@ -18,7 +18,7 @@ export const MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH = 2000;
 
 export const mcpServerNameSchema = z.string().trim().min(1).max(MCP_SERVER_NAME_MAX_LENGTH);
 
-/** Path segment of the server URL `/mcp-servers/<slug>`. It never changes after the create. */
+/** Path segment of the server URL `/mcp-servers/<slug>`. */
 export const mcpServerSlugSchema = z
 	.string()
 	.trim()
@@ -154,7 +154,7 @@ export const mcpServerShareSchema = z.discriminatedUnion('canConnect', [
 ]);
 export type McpServerShare = z.infer<typeof mcpServerShareSchema>;
 
-/** `reserved`: a deleted server used the slug. Its URL never points to another server. */
+/** `reserved`: a deleted server used the slug, or a server moved away from it. Its URL never points to another server. */
 export const mcpServerSlugAvailabilitySchema = z.object({
 	available: z.boolean(),
 	reason: z.enum(['taken', 'reserved']).nullable(),
