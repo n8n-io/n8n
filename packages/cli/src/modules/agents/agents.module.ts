@@ -31,6 +31,12 @@ export class AgentsModule implements ModuleInterface {
 		);
 		registerKnowledgeSandboxProvider();
 
+		// Registers the Gym only when it is selected. The instance AI module registers the LLM mock otherwise.
+		const { registerGymSimulationBackend } = await import(
+			'./simulation/gym/register-gym-simulation-backend.js'
+		);
+		registerGymSimulationBackend();
+
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.
 		await import('./agent-workflow-tool-resume.service.js');
