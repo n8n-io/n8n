@@ -1,3 +1,4 @@
+import type { WorkflowStatisticsData } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { WorkflowStatistics } from '@n8n/db';
 import { StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
@@ -9,13 +10,6 @@ import type { IWorkflowStatisticsDataLoaded } from '@/interfaces';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { StatisticsRequest } from './workflow-statistics.types';
-
-interface WorkflowStatisticsData<T> {
-	productionSuccess: T;
-	productionError: T;
-	manualSuccess: T;
-	manualError: T;
-}
 
 @RestController('/workflow-stats')
 export class WorkflowStatisticsController {
