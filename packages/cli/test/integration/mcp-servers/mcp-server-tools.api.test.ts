@@ -7,8 +7,14 @@ import {
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
+import {
+	clearMcpServerTables,
+	createMcpServer,
+	createMcpServerTool,
+	findMcpServerTools,
+	softDeleteMcpServer,
+} from '@n8n/backend-module-mcp-servers/testing';
 import { EventService, PostHogClient } from '@n8n/backend-services';
-import { McpServer, McpServerTool } from '@n8n/backend-module-mcp-servers';
 import type { Project, User } from '@n8n/db';
 import {
 	SharedWorkflowRepository,
@@ -17,7 +23,6 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { v7 as uuidv7 } from 'uuid';
 
@@ -75,15 +80,13 @@ function enableFlag(on = true) {
 
 async function createServer(inProject = project) {
 	const id = uuidv7();
-	await Container.get(DataSource)
-		.getRepository(McpServer)
-		.insert({
-			id,
-			projectId: inProject.id,
-			name: 'Marketing tools',
-			slug: `marketing-tools-${id.slice(-8)}`,
-			description: 'Campaign numbers for the marketing team.',
-		});
+	await createMcpServer({
+		id,
+		projectId: inProject.id,
+		name: 'Marketing tools',
+		slug: `marketing-tools-${id.slice(-8)}`,
+		description: 'Campaign numbers for the marketing team.',
+	});
 	return id;
 }
 
@@ -107,7 +110,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['McpServerTool', 'McpServer', 'WorkflowEntity', 'SharedWorkflow']);
+	await clearMcpServerTables();
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
 	project = await createTeamProject('Marketing');
 	await linkUserToProject(admin, project, 'project:admin');
 	await linkUserToProject(editor, project, 'project:editor');
@@ -576,8 +580,7 @@ describe('access', () => {
 			const other = await createTeamProject('Other', owner);
 			const otherServerId = await createServer(other);
 			const otherToolId = uuidv7();
-			const tools = Container.get(DataSource).getRepository(McpServerTool);
-			await tools.insert({
+			await createMcpServerTool({
 				id: otherToolId,
 				serverId: otherServerId,
 				kind: 'workflow',
@@ -589,7 +592,7 @@ describe('access', () => {
 			});
 
 			expect((await send(editor, call(otherServerId, otherToolId))).status).toBe(404);
-			expect(await tools.findBy({ serverId: otherServerId })).toEqual([
+			expect(await findMcpServerTools(otherServerId)).toEqual([
 				expect.objectContaining({
 					id: otherToolId,
 					toolName: 'other_tool',
@@ -645,17 +648,13 @@ describe('access', () => {
 
 	it('keeps the tools of a deleted server out of reach', async () => {
 		const { serverId, toolId } = await setup();
-		await Container.get(DataSource)
-			.getRepository(McpServer)
-			.update(serverId, { deletedAt: new Date() });
+		await softDeleteMcpServer({ id: serverId });
 
 		await testServer.authAgentFor(editor).get(base(serverId)).expect(404);
 		await testServer
 			.authAgentFor(editor)
 			.delete(`${base(serverId)}/tools/${toolId}`)
 			.expect(404);
-		expect(await Container.get(DataSource).getRepository(McpServerTool).countBy({ serverId })).toBe(
-			1,
-		);
+		expect((await findMcpServerTools(serverId)).length).toBe(1);
 	});
 });

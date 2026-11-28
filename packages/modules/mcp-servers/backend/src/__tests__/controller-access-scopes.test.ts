@@ -4,7 +4,7 @@ import { Container } from '@n8n/di';
 import { McpServerToolsController } from '../controllers/mcp-server-tools.controller';
 import { McpServersListController } from '../controllers/mcp-servers-list.controller';
 import { McpServersController } from '../controllers/mcp-servers.controller';
-import { McpServerRuntimeController } from '../runtime/mcp-server-runtime.controller';
+import { McpServerRuntimeController } from '../controllers/mcp-server-runtime.controller';
 
 function routesOf(controller: object) {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(

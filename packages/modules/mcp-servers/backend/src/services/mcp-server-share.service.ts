@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 import type { McpServer } from '../database/entities/mcp-server.entity';
 import { McpServerRepository } from '../database/repositories/mcp-server.repository';
 import { McpServerToolsService } from './mcp-server-tools.service';
-import { McpServerProtectedResource } from '../runtime/mcp-server-protected-resource';
+import { McpServerProtectedResource } from './mcp-server-protected-resource.service';
 
 /**
  * The share page of a server. Anyone with the link sees how to connect. Only a person who can

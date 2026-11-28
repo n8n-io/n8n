@@ -14,13 +14,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	BadRequestError,
-	ConflictError,
-	NotFoundError,
-	PaymentRequiredError,
-	ServiceUnavailableError,
-} from '@n8n/errors';
+import { BadRequestError, PaymentRequiredError } from '@n8n/errors';
 
 import type { McpServerTool } from '../database/entities/mcp-server-tool.entity';
 import type { McpServer } from '../database/entities/mcp-server.entity';
@@ -30,15 +24,24 @@ import {
 	type NewWorkflowTool,
 } from '../database/repositories/mcp-server-tool.repository';
 import { McpServerRepository } from '../database/repositories/mcp-server.repository';
-import type { McpServerActor, McpServerToolDraftStatus } from '../mcp-server-events';
-import { TextDraftPort, type TextDraftResult } from '../tools/text-draft-port';
-import { buildToolDraftPrompt, parseToolDraftAnswer, type ToolDraft } from '../tools/tool-draft';
-import { toToolName, uniqueToolName } from '../tools/tool-name';
+import { McpServerNotFoundError } from '../errors/mcp-server-not-found.error';
+import { McpServerToolDraftUnavailableError } from '../errors/mcp-server-tool-draft-unavailable.error';
+import { McpServerToolNameTakenError } from '../errors/mcp-server-tool-name-taken.error';
+import { McpServerToolNotFoundError } from '../errors/mcp-server-tool-not-found.error';
+import { McpServerWorkflowToolTakenError } from '../errors/mcp-server-workflow-tool-taken.error';
+import { TextDraftPort, type TextDraftResult } from '../ports/text-draft.port';
 import {
 	WorkflowToolPort,
 	type WorkflowToolListItem,
 	type WorkflowToolRefusal,
-} from '../tools/workflow-tool-port';
+} from '../ports/workflow-tool.port';
+import type { McpServerActor, McpServerToolDraftStatus } from '../utils/mcp-server-events';
+import {
+	buildToolDraftPrompt,
+	parseToolDraftAnswer,
+	type ToolDraft,
+} from '../utils/mcp-server-tool-draft';
+import { toToolName, uniqueToolName } from '../utils/mcp-server-tool-name';
 
 /** A page of tool candidates, for a caller that cannot take every workflow of the project. */
 export interface McpServerToolCandidatePage {
@@ -268,7 +271,7 @@ export class McpServerToolsService {
 		const newTools: NewWorkflowTool[] = [];
 		for (const workflowId of new Set(workflowIds)) {
 			if (added.has(workflowId)) {
-				throw new ConflictError(`The server already has the workflow "${workflowId}" as a tool.`);
+				throw new McpServerWorkflowToolTakenError(workflowId);
 			}
 			const described = await this.workflows.describe(projectId, workflowId);
 			if (!described.callable) {
@@ -320,7 +323,7 @@ export class McpServerToolsService {
 					draftSource,
 				})
 			: tool;
-		if (!updated) throw new NotFoundError('Tool not found');
+		if (!updated) throw new McpServerToolNotFoundError();
 		return toToolResponse(updated, await this.brokenReason(projectId, updated));
 	}
 
@@ -378,7 +381,7 @@ export class McpServerToolsService {
 			result = await this.textDrafts.draft(user, prompt);
 		} catch {
 			track('model_failed');
-			throw new ServiceUnavailableError('The n8n Assistant could not write a draft. Try again.');
+			throw new McpServerToolDraftUnavailableError();
 		}
 		if (result.status === 'not_available') {
 			track('not_available');
@@ -399,7 +402,7 @@ export class McpServerToolsService {
 				error: answer.error,
 			});
 			track('invalid_answer');
-			throw new ServiceUnavailableError(answer.error);
+			throw new McpServerToolDraftUnavailableError(answer.error);
 		}
 		const updated = await this.saveDraft(tool, answer.draft);
 		track('drafted');
@@ -419,10 +422,11 @@ export class McpServerToolsService {
 			}
 			try {
 				const updated = await this.tools.updateInServer(tool.serverId, tool.id, changes);
-				if (!updated) throw new NotFoundError('Tool not found');
+				if (!updated) throw new McpServerToolNotFoundError();
 				return updated;
 			} catch (error) {
-				if (!(error instanceof ConflictError) || attempt >= DRAFT_SAVE_ATTEMPTS) throw error;
+				if (!(error instanceof McpServerToolNameTakenError) || attempt >= DRAFT_SAVE_ATTEMPTS)
+					throw error;
 			}
 		}
 	}
@@ -434,7 +438,7 @@ export class McpServerToolsService {
 
 	private async findServer(projectId: string, serverId: string): Promise<McpServer> {
 		const server = isId(serverId) ? await this.servers.findInProject(projectId, serverId) : null;
-		if (!server) throw new NotFoundError('MCP server not found');
+		if (!server) throw new McpServerNotFoundError();
 		return server;
 	}
 
@@ -445,7 +449,7 @@ export class McpServerToolsService {
 	): Promise<McpServerTool> {
 		const server = await this.findServer(projectId, serverId);
 		const tool = isId(toolId) ? await this.tools.findInServer(server.id, toolId) : null;
-		if (!tool) throw new NotFoundError('Tool not found');
+		if (!tool) throw new McpServerToolNotFoundError();
 		return tool;
 	}
 

@@ -3,7 +3,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Post, ProjectScope, RestController } from '@n8n/decorators';
 
 import { CustomMcpServersFlagGate } from '../services/custom-mcp-servers-flag-gate';
-import { McpServerAccessService } from './mcp-server-access.service';
+import { McpServerAccessService } from '../services/mcp-server-access.service';
 
 type ServerRequest = AuthenticatedRequest<{ projectId: string; serverId: string }>;
 type PersonRequest = AuthenticatedRequest<{ projectId: string; serverId: string; userId: string }>;

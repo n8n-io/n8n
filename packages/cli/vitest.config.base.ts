@@ -66,6 +66,10 @@ const alias = {
 		__dirname,
 		'../modules/workflow-builder/backend/src/index.ts',
 	),
+	'@n8n/backend-module-mcp-servers/testing': path.resolve(
+		__dirname,
+		'../modules/mcp-servers/backend/src/testing/index.ts',
+	),
 	'@n8n/backend-module-mcp-servers/module': path.resolve(
 		__dirname,
 		'../modules/mcp-servers/backend/src/mcp-servers.module.ts',

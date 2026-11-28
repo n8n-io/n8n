@@ -1,12 +1,17 @@
-import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import { ModuleRegistry } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import {
-	McpServer,
-	McpServerBlock,
-	McpServerConnection,
-	McpServerTool,
-} from '@n8n/backend-module-mcp-servers';
+	clearMcpServerTables,
+	createMcpServer,
+	createMcpServerBlock,
+	createMcpServerConnection,
+	createMcpServerTool,
+	findMcpServer,
+	findMcpServerBlocks,
+	findMcpServerConnections,
+	findMcpServerTools,
+} from '@n8n/backend-module-mcp-servers/testing';
+import { createTeamProject } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
@@ -18,7 +23,7 @@ import * as utils from '../shared/utils/';
 utils.setupTestServer({ endpointGroups: ['mcp-servers'], modules: ['mcp-servers'] });
 
 beforeEach(async () => {
-	await testDb.truncate(['McpServerTool', 'McpServer']);
+	await clearMcpServerTables();
 });
 
 describe('mcp-servers module', () => {
@@ -28,16 +33,15 @@ describe('mcp-servers module', () => {
 
 	it('stores a server and its tools in the module tables', async () => {
 		const project = await createTeamProject();
-		const dataSource = Container.get(DataSource);
 		const serverId = uuidv7();
 
-		await dataSource.getRepository(McpServer).insert({
+		await createMcpServer({
 			id: serverId,
 			projectId: project.id,
 			name: 'Sales tools',
 			slug: 'sales-tools',
 		});
-		await dataSource.getRepository(McpServerTool).insert({
+		await createMcpServerTool({
 			id: uuidv7(),
 			serverId,
 			kind: 'workflow',
@@ -46,8 +50,8 @@ describe('mcp-servers module', () => {
 			toolData: { region: 'emea' },
 		});
 
-		const server = await dataSource.getRepository(McpServer).findOneByOrFail({ id: serverId });
-		const [tool] = await dataSource.getRepository(McpServerTool).findBy({ serverId });
+		const server = await findMcpServer(serverId);
+		const [tool] = await findMcpServerTools(serverId);
 		expect(server).toMatchObject({ slug: 'sales-tools', description: '', deletedAt: null });
 		expect(tool).toMatchObject({
 			draftSource: 'defaults',
@@ -63,7 +67,7 @@ describe('mcp-servers module', () => {
 		const serverId = uuidv7();
 		const oauthClientId = uuidv7();
 
-		await dataSource.getRepository(McpServer).insert({
+		await createMcpServer({
 			id: serverId,
 			projectId: project.id,
 			name: 'Sales tools',
@@ -78,20 +82,16 @@ describe('mcp-servers module', () => {
 			.values({ id: oauthClientId, name: 'Claude Code', redirectUris: '[]', grantTypes: '[]' })
 			.execute();
 
-		await dataSource.getRepository(McpServerConnection).insert({
+		await createMcpServerConnection({
 			serverId,
 			userId: member.id,
 			oauthClientId,
 			clientName: 'Claude Code',
 		});
-		await dataSource
-			.getRepository(McpServerBlock)
-			.insert({ serverId, userId: member.id, blockedById: null });
+		await createMcpServerBlock({ serverId, userId: member.id, blockedById: null });
 
-		const connection = await dataSource
-			.getRepository(McpServerConnection)
-			.findOneByOrFail({ serverId });
-		const block = await dataSource.getRepository(McpServerBlock).findOneByOrFail({ serverId });
+		const [connection] = await findMcpServerConnections(serverId);
+		const [block] = await findMcpServerBlocks(serverId);
 		expect(connection.firstUsedAt).toBeInstanceOf(Date);
 		expect(connection.lastUsedAt).toBeInstanceOf(Date);
 		expect(block.blockedAt).toBeInstanceOf(Date);

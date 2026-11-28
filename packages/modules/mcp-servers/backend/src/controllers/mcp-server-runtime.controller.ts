@@ -12,12 +12,15 @@ import { Container } from '@n8n/di';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Request, Response } from 'express';
 
-import { McpServerConnectionRecorder } from '../access/mcp-server-connection-recorder';
 import type { McpServer } from '../database/entities/mcp-server.entity';
 import { McpServersConfig } from '../mcp-servers.config';
-import { MCP_SERVERS_PATH, McpServerProtectedResource } from './mcp-server-protected-resource';
-import type { McpServerCaller } from './mcp-server-runtime.service';
-import { McpServerRuntimeService } from './mcp-server-runtime.service';
+import { McpServerConnectionRecorder } from '../services/mcp-server-connection-recorder.service';
+import {
+	MCP_SERVERS_PATH,
+	McpServerProtectedResource,
+} from '../services/mcp-server-protected-resource.service';
+import type { McpServerCaller } from '../services/mcp-server-runtime.service';
+import { McpServerRuntimeService } from '../services/mcp-server-runtime.service';
 
 type RuntimeRequest = Request<{ slug: string }>;
 

@@ -1,3 +1,9 @@
+import {
+	clearMcpServerTables,
+	createMcpServer,
+	createMcpServerTool,
+	softDeleteMcpServer,
+} from '@n8n/backend-module-mcp-servers/testing';
 import { EventService, PostHogClient } from '@n8n/backend-services';
 import {
 	createActiveWorkflow,
@@ -6,10 +12,8 @@ import {
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { McpServer, McpServerTool } from '@n8n/backend-module-mcp-servers';
 import { GLOBAL_MEMBER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { v7 as uuidv7 } from 'uuid';
 import type { MockInstance } from 'vitest';
@@ -53,7 +57,7 @@ function setFlag(on: boolean) {
 
 async function createServer(slug: string, projectId: string) {
 	const id = uuidv7();
-	await Container.get(DataSource).getRepository(McpServer).insert({
+	await createMcpServer({
 		id,
 		projectId,
 		name: 'Sales tools',
@@ -64,25 +68,21 @@ async function createServer(slug: string, projectId: string) {
 }
 
 async function deleteServer(slug: string) {
-	await Container.get(DataSource)
-		.getRepository(McpServer)
-		.update({ slug }, { deletedAt: new Date() });
+	await softDeleteMcpServer({ slug });
 }
 
 async function addTool(serverId: string, toolName: string, targetId: string, position: number) {
-	await Container.get(DataSource)
-		.getRepository(McpServerTool)
-		.insert({
-			id: uuidv7(),
-			serverId,
-			kind: 'workflow',
-			targetId,
-			toolName,
-			description: `Description of ${toolName}`,
-			draftSource: 'defaults',
-			toolData: null,
-			position,
-		});
+	await createMcpServerTool({
+		id: uuidv7(),
+		serverId,
+		kind: 'workflow',
+		targetId,
+		toolName,
+		description: `Description of ${toolName}`,
+		draftSource: 'defaults',
+		toolData: null,
+		position,
+	});
 }
 
 const PUBLIC_FIELDS = [
@@ -103,7 +103,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['McpServerTool', 'McpServer', 'WorkflowEntity', 'SharedWorkflow']);
+	await clearMcpServerTables();
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
 	project = await createTeamProject('Marketing');
 	await linkUserToProject(member, project, 'project:editor');
 	await linkUserToProject(viewer, project, 'project:viewer');
