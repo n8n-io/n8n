@@ -63,6 +63,10 @@ export class LiveWebhooks implements IWebhookManager {
 
 	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
 		const webhook = await this.findWebhook(path, httpMethod);
+		// The request path can contain concrete values for dynamic segments
+		// (user/123) while the node stores the template (user/:id). Match the
+		// registered template instead of the request path.
+		const configuredPath = webhook.webhookPath;
 
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: webhook.workflowId },
@@ -75,7 +79,7 @@ export class LiveWebhooks implements IWebhookManager {
 		const nodes = workflowData?.activeVersion?.nodes;
 		const webhookNode = nodes?.find(
 			({ type, parameters, typeVersion, webhookId }) =>
-				(parameters?.path === path &&
+				(parameters?.path === configuredPath &&
 					(parameters?.httpMethod ?? 'GET') === httpMethod &&
 					'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion)) ||
 				// Chat Trigger has doesn't have configurable path and is always using POST, so

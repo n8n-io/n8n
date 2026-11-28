@@ -341,23 +341,25 @@ export class TestWebhooks implements IWebhookManager {
 	}
 
 	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
-		const allKeys = await this.registrations.getAllKeys();
-
-		const webhookKey = allKeys.find((key) => key.includes(path) && key.startsWith(httpMethod));
-
-		if (!webhookKey) return;
-
-		const registration = await this.registrations.get(webhookKey);
+		// getRegistrationsFromPath resolves dynamic templates (user/:id) from a
+		// concrete request path (user/123), unlike a raw key lookup.
+		const registrations = await this.getRegistrationsFromPath(path);
+		const registration = registrations.find(
+			(candidate) =>
+				candidate.webhook.httpMethod === httpMethod &&
+				this.getActiveWebhookFromRegistration(path, candidate),
+		);
 
 		if (!registration) return;
 
 		const { workflowEntity } = registration;
-
 		const workflow = this.toWorkflow(workflowEntity);
+		// The node stores the template, not the concrete request path.
+		const configuredPath = registration.webhook.path;
 
 		const webhookNode = Object.values(workflow.nodes).find(
 			({ type, parameters, typeVersion }) =>
-				parameters?.path === path &&
+				parameters?.path === configuredPath &&
 				(parameters?.httpMethod ?? 'GET') === httpMethod &&
 				'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion),
 		);
