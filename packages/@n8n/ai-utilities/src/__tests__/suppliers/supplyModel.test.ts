@@ -6,6 +6,7 @@ import { supplyModel } from 'src/suppliers/supplyModel';
 import * as failedAttemptHandler from 'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
 import * as httpProxyAgent from 'src/utils/http-proxy-agent';
 import * as n8nLlmTracing from 'src/utils/n8n-llm-tracing';
+import * as traceHeadersFetch from 'src/utils/trace-headers-fetch';
 
 const { mockLangchainAdapterInstance } = vi.hoisted(() => ({
 	mockLangchainAdapterInstance: { __brand: 'LangchainChatModelAdapter' },
@@ -20,7 +21,10 @@ vi.mock('@langchain/openai', () => ({
 
 vi.mock('src/utils/http-proxy-agent', () => ({
 	getProxyAgent: vi.fn().mockReturnValue({ __agent: true }),
-	aiClientFetch: vi.fn(),
+}));
+
+vi.mock('src/utils/trace-headers-fetch', () => ({
+	createAiClientFetch: vi.fn().mockReturnValue(vi.fn()),
 }));
 
 vi.mock('src/utils/n8n-llm-tracing', () => ({
@@ -42,7 +46,7 @@ vi.mock('src/adapters/langchain-chat-model', () => ({
 const ChatOpenAI = vi.mocked(openai.ChatOpenAI);
 const LangchainChatModelAdapter = vi.mocked(langchainChatModelAdapter.LangchainChatModelAdapter);
 const getProxyAgent = vi.mocked(httpProxyAgent.getProxyAgent);
-const aiClientFetch = vi.mocked(httpProxyAgent.aiClientFetch);
+const createAiClientFetch = vi.mocked(traceHeadersFetch.createAiClientFetch);
 const makeN8nLlmFailedAttemptHandler = vi.mocked(
 	failedAttemptHandler.makeN8nLlmFailedAttemptHandler,
 );
@@ -84,13 +88,14 @@ describe('supplyModel', () => {
 					model: 'gpt-4',
 					apiKey: 'test-key',
 					configuration: expect.objectContaining({
-						fetch: aiClientFetch,
+						fetch: createAiClientFetch.mock.results[0].value,
 						baseURL: 'https://api.openai.com',
 					}),
 					onFailedAttempt: expect.any(Function),
 					callbacks: [expect.any(Object)],
 				}),
 			);
+			expect(createAiClientFetch).toHaveBeenCalledWith(mockCtx);
 			expect(makeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(mockCtx, undefined);
 			expect(N8nLlmTracing).toHaveBeenCalledWith(mockCtx);
 			expect(LangchainChatModelAdapter).not.toHaveBeenCalled();

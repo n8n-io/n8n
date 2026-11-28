@@ -79,7 +79,10 @@ describe('getSuppliedModelOptions', () => {
 		ctx = mock<ISupplyDataFunctions>({
 			getNode: () => mock<INode>({ name: 'Acme Chat Model', type: 'n8n-nodes-acme.lmChatAcme' }),
 			getNextRunIndex: () => 0,
-			helpers: { getSecureEgressFilter: () => passthroughEgressFilter },
+			helpers: {
+				getSecureEgressFilter: () => passthroughEgressFilter,
+				getTraceHeaders: () => ({}),
+			},
 		});
 		vi.mocked(ctx.addInputData).mockImplementation((_type, data) => {
 			if (Array.isArray(data)) recordedData.push(data);
