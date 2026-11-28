@@ -143,7 +143,10 @@ import { createUndoUserPreferenceTool } from './tools/undo-user-preference.tool'
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createUpdateFolderTool } from './tools/update-folder.tool';
 import { createUpdateUserPreferenceTool } from './tools/update-user-preference.tool';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL } from './tools/workflow-builder/constants';
+import {
+	MAX_WORKFLOW_CODE_LENGTH,
+	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
+} from './tools/workflow-builder/constants';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
 import { createExploreNodeResourcesTool } from './tools/workflow-builder/explore-node-resources.tool';
@@ -1099,7 +1102,17 @@ export class McpService {
 		);
 		registerIfAllowed(exploreNodeResourcesTool);
 
-		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
+		const maxWorkflowCodeLength =
+			typeof this.mcpConfig.maxWorkflowCodeLength === 'number'
+				? this.mcpConfig.maxWorkflowCodeLength
+				: MAX_WORKFLOW_CODE_LENGTH;
+
+		const validateTool = createValidateWorkflowCodeTool(
+			user,
+			this.telemetry,
+			this.nodeTypes,
+			maxWorkflowCodeLength,
+		);
 		registerIfAllowed(validateTool);
 
 		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
@@ -1116,7 +1129,10 @@ export class McpService {
 			this.projectRepository,
 			dataTableOps,
 			this.aiGatewayService,
-			uninstalledNodeOptions,
+			{
+				...uninstalledNodeOptions,
+				maxWorkflowCodeLength,
+			},
 			this.logger,
 			this.postSaveMetrics,
 			ctx,

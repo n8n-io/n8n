@@ -1,4 +1,4 @@
-import { Config, Env } from '@n8n/config';
+import { Config, Env, positiveIntSchema } from '@n8n/config';
 import { z } from 'zod';
 
 /** Normalized to origin + path without a trailing slash; query and fragment are dropped. */
@@ -57,4 +57,13 @@ export class McpConfig {
 	 */
 	@Env('N8N_MCP_COMMUNITY_NODE_DISCOVERY_ENABLED')
 	communityNodeDiscoveryEnabled: boolean = true;
+
+	/**
+	 * Maximum length, in characters, of workflow code accepted by the
+	 * `validate_workflow` and `create_workflow_from_code` MCP tools. Raise this
+	 * value if you generate large workflows through MCP. Higher values increase
+	 * main-process memory and CPU usage while parsing Workflow SDK code.
+	 */
+	@Env('N8N_MCP_MAX_WORKFLOW_CODE_LENGTH', positiveIntSchema)
+	maxWorkflowCodeLength: number = 300_000;
 }

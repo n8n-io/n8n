@@ -10,6 +10,7 @@ describe('McpConfig', () => {
 	afterEach(() => {
 		delete process.env.N8N_MCP_SERVER_RATE_LIMIT;
 		delete process.env.N8N_MCP_BASE_URL;
+		delete process.env.N8N_MCP_MAX_WORKFLOW_CODE_LENGTH;
 	});
 
 	it('applies the documented default limit', () => {
@@ -68,6 +69,27 @@ describe('McpConfig', () => {
 				process.env.N8N_MCP_BASE_URL = value;
 
 				expect(Container.get(McpConfig).baseUrl).toBe('');
+			},
+		);
+	});
+
+	describe('maxWorkflowCodeLength', () => {
+		it('defaults to 300_000 characters', () => {
+			expect(Container.get(McpConfig).maxWorkflowCodeLength).toBe(300_000);
+		});
+
+		it('reads a positive integer override from its environment variable', () => {
+			process.env.N8N_MCP_MAX_WORKFLOW_CODE_LENGTH = '600000';
+
+			expect(Container.get(McpConfig).maxWorkflowCodeLength).toBe(600_000);
+		});
+
+		it.each(['0', '-1', 'abc', '1.5'])(
+			'falls back to the default when given an invalid value (%s)',
+			(value) => {
+				process.env.N8N_MCP_MAX_WORKFLOW_CODE_LENGTH = value;
+
+				expect(Container.get(McpConfig).maxWorkflowCodeLength).toBe(300_000);
 			},
 		);
 	});

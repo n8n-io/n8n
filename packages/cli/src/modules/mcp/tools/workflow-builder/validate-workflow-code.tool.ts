@@ -13,14 +13,17 @@ import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-ch
 import { CODE_BUILDER_VALIDATE_TOOL, MAX_WORKFLOW_CODE_LENGTH } from './constants';
 import { validateScheduleTriggerIntervals } from './schedule-trigger-validation';
 
-const inputSchema = {
-	code: z
-		.string()
-		.max(MAX_WORKFLOW_CODE_LENGTH)
-		.describe(
-			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must include the workflow export. Max ${MAX_WORKFLOW_CODE_LENGTH} characters.`,
-		),
-} satisfies z.ZodRawShape;
+const buildInputSchema = (maxWorkflowCodeLength: number) =>
+	({
+		code: z
+			.string()
+			.max(maxWorkflowCodeLength)
+			.describe(
+				`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must include the workflow export. Max ${maxWorkflowCodeLength} characters.`,
+			),
+	}) satisfies z.ZodRawShape;
+
+type ValidateWorkflowCodeInputSchema = ReturnType<typeof buildInputSchema>;
 
 const outputSchema = {
 	valid: z.boolean().describe('Whether the workflow code is valid'),
@@ -56,12 +59,13 @@ export const createValidateWorkflowCodeTool = (
 	user: User,
 	telemetry: TelemetryProxy,
 	nodeTypes: INodeTypes,
-): ToolDefinition<typeof inputSchema> => ({
+	maxWorkflowCodeLength: number = MAX_WORKFLOW_CODE_LENGTH,
+): ToolDefinition<ValidateWorkflowCodeInputSchema> => ({
 	name: CODE_BUILDER_VALIDATE_TOOL.toolName,
 	config: {
 		description:
 			'Validate n8n Workflow SDK code. Required before creating or updating workflows from code. If you have not already read get_workflow_sdk_reference, call that first; guessing SDK syntax commonly creates invalid workflows.',
-		inputSchema,
+		inputSchema: buildInputSchema(maxWorkflowCodeLength),
 		outputSchema,
 		annotations: {
 			title: CODE_BUILDER_VALIDATE_TOOL.displayTitle,
