@@ -25,7 +25,7 @@ const credentials = {
 };
 
 describe('Splunk v2 > Workflows', () => {
-	beforeAll(() => {
+	beforeEach(() => {
 		const api = nock(baseUrl);
 
 		api
@@ -92,6 +92,8 @@ describe('Splunk v2 > Workflows', () => {
 			.reply(200, xmlFeed('/services/authentication/users/nathan'));
 	});
 
+	afterEach(() => nock.cleanAll());
+
 	new NodeTestHarness().setupTests({
 		credentials,
 		workflowFiles: ['requests-v2.workflow.json'],
@@ -100,7 +102,7 @@ describe('Splunk v2 > Workflows', () => {
 });
 
 describe('Splunk v1 > Workflows', () => {
-	beforeAll(() => {
+	beforeEach(() => {
 		const api = nock(baseUrl);
 
 		api
@@ -142,6 +144,8 @@ describe('Splunk v1 > Workflows', () => {
 			.post('/services/authentication/users//nathan')
 			.reply(200, xmlFeed('/services/authentication/users/nathan'));
 	});
+
+	afterEach(() => nock.cleanAll());
 
 	new NodeTestHarness().setupTests({
 		credentials,
