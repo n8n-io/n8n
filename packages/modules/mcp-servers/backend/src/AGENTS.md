@@ -18,7 +18,7 @@ token storage. Those live in `packages/cli` behind ports.
 
 ```
 src/
-  index.ts                  public API: the only import path for other packages
+  index.ts                  public API: main package export for other packages
   mcp-servers.module.ts     entrypoint (`./module` export): ports, controllers, entities
   mcp-servers.config.ts     environment configuration (`McpServersConfig`)
   AGENTS.md                 this guide
@@ -39,30 +39,32 @@ Put a file in the folder of its role. Keep the n8n file infixes: `.controller.ts
 
 ## Layers
 
-| Layer                    | Can import                                                                      | Cannot import             |
-| ------------------------ | ------------------------------------------------------------------------------- | ------------------------- |
-| `controllers/`           | services, errors, DTOs from `@n8n/api-types`                                    | repositories              |
-| `services/`              | services, ports, repositories, utils, errors                                    | controllers               |
-| `ports/`                 | only types from `@n8n/api-types`, `@n8n/db`, and `utils/` (no implementation)   | services, repositories    |
-| `database/repositories/` | entities, errors, `@n8n/db`, `@n8n/typeorm`                                     | services                  |
-| `database/entities/`     | `@n8n/db`, `@n8n/typeorm`, types from `@n8n/api-types`                          | other files of the module |
-| `utils/`, `errors/`      | `@n8n/api-types`, shared packages, type-only imports from `ports/`, each other  | DI, I/O, repositories     |
+| Layer                    | Can import                                                                                            | Cannot import             |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------- |
+| `controllers/`           | services, errors, DTOs from `@n8n/api-types`                                                          | repositories              |
+| `services/`              | services, ports, repositories, utils, errors                                                          | controllers               |
+| `ports/`                 | only types from `@n8n/api-types`, `@n8n/db`, `utils/`, and sibling `ports/` files (no implementation) | services, repositories    |
+| `database/repositories/` | entities, errors, `@n8n/db`, `@n8n/typeorm`                                                           | services                  |
+| `database/entities/`     | `@n8n/db`, `@n8n/typeorm`, types from `@n8n/api-types`                                                | other files of the module |
+| `utils/`, `errors/`      | `@n8n/api-types`, shared packages, type-only imports from `ports/`, each other                        | DI, I/O, repositories     |
 
 Follow these package boundary rules:
 
 - Never import from `packages/cli` or from the `n8n` package.
 - Never import an adapter in this package. Only `packages/cli/src/modules/modules.manifest.ts` knows both sides.
 - Declare each workspace and third-party dependency in `package.json`.
-- Export APIs for other packages only from `src/index.ts`.
-- Keep the module entrypoint in the `./module` export. Do not export `McpServersModule` from `src/index.ts`, because importing it runs the `@BackendModule` decorator.
+- Export the main runtime API for other packages only from `src/index.ts`. Keep the module entrypoint in `./module` (`mcp-servers.module.ts`) and external test fixtures in `./testing` (`src/testing/index.ts`).
+- Do not export `McpServersModule` from `src/index.ts`, because importing it runs the `@BackendModule` decorator.
 - Use dynamic imports inside `mcp-servers.module.ts`. This keeps disabled modules unloaded.
 - Keep `@n8n/typeorm` imports in entity and repository files. Each repository composes a file-private `BaseRepository` table and exposes only use-case methods. Never extend `BaseRepository` on an exported repository class.
 
 ## Public API
 
-`src/index.ts` is the only runtime import path for other packages. It never exports
-`McpServersModule`, controllers, repositories, or database entities. `__tests__/index.test.ts`
-pins its export list and checks that importing it does not register the module.
+This package exposes three entrypoints in `package.json`:
+
+- `@n8n/backend-module-mcp-servers` (`src/index.ts`): the main runtime API for other packages. It never exports `McpServersModule`, controllers, repositories, or database entities. `__tests__/index.test.ts` pins its export list and checks that importing it does not register the module.
+- `@n8n/backend-module-mcp-servers/module` (`src/mcp-servers.module.ts`): the module loader entrypoint. Only `packages/cli/src/modules/modules.manifest.ts` imports it.
+- `@n8n/backend-module-mcp-servers/testing` (`src/testing/index.ts`): fixtures for tests outside this package. Only test files import it.
 
 ### Exports of `@n8n/backend-module-mcp-servers` (`src/index.ts`)
 

@@ -7,6 +7,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { v7 as uuidv7 } from 'uuid';
 
 import { McpServerToolNameTakenError } from '../../errors/mcp-server-tool-name-taken.error';
@@ -135,8 +136,12 @@ export class McpServerToolRepository {
 	/** Inserts a tool row with only the given columns, so database defaults apply. For test fixtures. */
 	async insertFixture(row: McpServerToolFixtureRow): Promise<McpServerTool> {
 		const id = row.id ?? uuidv7();
-		const entity = this.table.manager.create(McpServerTool, { kind: 'workflow', ...row, id });
-		await this.table.manager.save(McpServerTool, entity);
+		// `toolData` is a free-form JSON column, which QueryDeepPartialEntity cannot express.
+		await this.table.manager.insert(McpServerTool, {
+			kind: 'workflow',
+			...row,
+			id,
+		} as QueryDeepPartialEntity<McpServerTool>);
 		return await this.table.manager.findOneByOrFail(McpServerTool, { id });
 	}
 
