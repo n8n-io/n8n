@@ -19,6 +19,7 @@ import {
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { AgentApiHelper } from './agent-api-helper';
+import { AppApiHelper } from './app-api-helper';
 import { CommunityPackagesApiHelper } from './community-packages-api-helper';
 import { DataTableApiHelper } from './data-table-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
@@ -82,6 +83,7 @@ export class ApiHelpers {
 	credentials: CredentialApiHelper;
 	dataTables: DataTableApiHelper;
 	agents: AgentApiHelper;
+	apps: AppApiHelper;
 	skills: SkillsApiHelper;
 	dynamicCredentials: DynamicCredentialApiHelper;
 	variables: VariablesApiHelper;
@@ -116,6 +118,7 @@ export class ApiHelpers {
 		this.credentials = new CredentialApiHelper(this);
 		this.dataTables = new DataTableApiHelper(this);
 		this.agents = new AgentApiHelper(this);
+		this.apps = new AppApiHelper(this);
 		this.skills = new SkillsApiHelper(this);
 		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);

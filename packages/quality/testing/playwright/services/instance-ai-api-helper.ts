@@ -24,31 +24,59 @@ export class InstanceAiApiHelper {
 		agentId: string;
 		name: string;
 	}): Promise<void> {
-		const path = `/rest/instance-ai/threads/${target.threadId}`;
+		await this.createArtifactThread({
+			threadId: target.threadId,
+			projectId: target.projectId,
+			metadata: { instanceAiAgentBuilderTarget: target },
+			tab: { type: 'agent', id: target.agentId, projectId: target.projectId, name: target.name },
+		});
+	}
+
+	async createAppArtifactThread(target: {
+		threadId: string;
+		projectId: string;
+		appId: string;
+		name: string;
+	}): Promise<void> {
+		await this.createArtifactThread({
+			threadId: target.threadId,
+			projectId: target.projectId,
+			metadata: {
+				instanceAiAppTargets: [
+					{ appId: target.appId, projectId: target.projectId, name: target.name },
+				],
+			},
+			tab: { type: 'app', id: target.appId, projectId: target.projectId, name: target.name },
+		});
+	}
+
+	private async createArtifactThread(options: {
+		threadId: string;
+		projectId: string;
+		metadata: Record<string, unknown>;
+		tab: { type: 'agent' | 'app'; id: string; projectId: string; name: string };
+	}): Promise<void> {
+		const path = `/rest/instance-ai/threads/${options.threadId}`;
 		const created = await this.api.request.post('/rest/instance-ai/threads', {
-			data: { threadId: target.threadId, projectId: target.projectId, source: 'playwright' },
+			data: { threadId: options.threadId, projectId: options.projectId, source: 'playwright' },
 		});
 		if (!created.ok())
 			throw new TestError(`Failed to create Assistant thread: ${created.status()}`);
 		const updated = await this.api.request.patch(path, {
-			data: { metadata: { instanceAiAgentBuilderTarget: target } },
+			data: { metadata: options.metadata },
 		});
-		if (!updated.ok()) throw new TestError(`Failed to bind agent artifact: ${updated.status()}`);
-		const tab = {
-			type: 'agent',
-			id: target.agentId,
-			projectId: target.projectId,
-			name: target.name,
-		};
+		if (!updated.ok())
+			throw new TestError(`Failed to bind ${options.tab.type} artifact: ${updated.status()}`);
 		const tabs = await this.api.request.put(`${path}/tabs`, {
 			data: {
-				tabs: [tab],
+				tabs: [options.tab],
 				closedTabs: [],
-				activeTab: { type: 'agent', id: target.agentId },
+				activeTab: { type: options.tab.type, id: options.tab.id },
 				previewOpen: true,
 			},
 		});
-		if (!tabs.ok()) throw new TestError(`Failed to open agent artifact: ${tabs.status()}`);
+		if (!tabs.ok())
+			throw new TestError(`Failed to open ${options.tab.type} artifact: ${tabs.status()}`);
 	}
 
 	/**

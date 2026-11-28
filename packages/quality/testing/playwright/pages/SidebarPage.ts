@@ -201,16 +201,29 @@ export class SidebarPage extends BasePage {
 	}
 
 	async expand() {
+		await this.setExpanded(true);
+	}
+
+	async collapse() {
+		await this.setExpanded(false);
+	}
+
+	private async setExpanded(expanded: boolean) {
 		// The account row is on every sidebar, so it marks the sidebar as rendered.
 		await expect(this.getAccountMenuTrigger()).toBeVisible();
 
 		const logo = this.container.getByTestId('n8n-logo');
 		const isExpanded = await logo.isVisible();
 
-		if (!isExpanded) {
+		if (isExpanded !== expanded) {
 			const collapseButton = this.container.locator('#toggle-sidebar-button');
 			await expect(collapseButton).toBeVisible();
 			await collapseButton.click();
+			if (expanded) {
+				await expect(logo).toBeVisible();
+			} else {
+				await expect(logo).toBeHidden();
+			}
 		}
 	}
 }
