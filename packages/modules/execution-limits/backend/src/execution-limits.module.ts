@@ -1,5 +1,4 @@
 import { LicenseState } from '@n8n/backend-common';
-import { ProjectMutationHooksProxy } from '@n8n/backend-services';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -16,20 +15,6 @@ export class ExecutionLimitsModule implements ModuleInterface {
 
 		Container.get(FoldStepRegistry).register(Container.get(ExecutionLimitUsageFoldStep));
 
-		// Registered without a licence: a limit set under an earlier licence still exists.
-		const hooks = Container.get(ProjectMutationHooksProxy);
-		hooks.registerProvider({
-			beforeProjectDeleted: async ({ projectId, userId, loginId }, ctx) => {
-				const { ExecutionLimitsService } = await import('./execution-limits.service.js');
-				return await Container.get(ExecutionLimitsService).removeLimitOfDeletedProject(
-					projectId,
-					userId,
-					loginId,
-					ctx,
-				);
-			},
-		});
-
 		if (!Container.get(LicenseState).isExecutionLimitsLicensed()) return;
 
 		// Loaded before the process takes work, so the first read already has the limits.
@@ -38,13 +23,6 @@ export class ExecutionLimitsModule implements ModuleInterface {
 
 		// Workers register it too: the runs they admit do not count, so it stops before any read.
 		await import('./execution-limit.check.js');
-
-		hooks.registerProvider({
-			afterTeamProjectCreated: async (projectId) => {
-				const { ExecutionLimitsService } = await import('./execution-limits.service.js');
-				await Container.get(ExecutionLimitsService).applyDefaultLimitToNewProject(projectId);
-			},
-		});
 
 		// A worker does not admit runs, so it needs no usage.
 		const { InstanceSettings } = await import('n8n-core');
@@ -67,11 +45,19 @@ export class ExecutionLimitsModule implements ModuleInterface {
 		const { ExecutionLimitInstanceUsage } = await import(
 			'./execution-limit-instance-usage.entity.js'
 		);
+		const { ExecutionLimitPolicy } = await import('./execution-limit-policy.entity.js');
+		const { ExecutionLimitPolicyAssignment } = await import(
+			'./execution-limit-policy-assignment.entity.js'
+		);
+		const { ExecutionLimitPolicyGroupAssignment } = await import(
+			'./execution-limit-policy-group-assignment.entity.js'
+		);
 		const { ExecutionLimitUsage } = await import('./execution-limit-usage.entity.js');
-		const { ProjectExecutionLimit } = await import('./project-execution-limit.entity.js');
 
 		return [
-			ProjectExecutionLimit,
+			ExecutionLimitPolicy,
+			ExecutionLimitPolicyAssignment,
+			ExecutionLimitPolicyGroupAssignment,
 			ExecutionLimitUsage,
 			ExecutionLimitInstanceUsage,
 			ExecutionLimitAudit,

@@ -87,6 +87,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_ledger_parked](execution_ledger_parked.md) | 20 |  | table |
 | [execution_limit_audit](execution_limit_audit.md) | 8 |  | table |
 | [execution_limit_instance_usage](execution_limit_instance_usage.md) | 5 |  | table |
+| [execution_limit_policy](execution_limit_policy.md) | 5 |  | table |
+| [execution_limit_policy_assignment](execution_limit_policy_assignment.md) | 3 |  | table |
+| [execution_limit_policy_group_assignment](execution_limit_policy_group_assignment.md) | 3 |  | table |
 | [execution_limit_usage](execution_limit_usage.md) | 6 |  | table |
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 7 |  | table |
@@ -137,7 +140,6 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [poller_state](poller_state.md) | 7 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
 | [project](project.md) | 9 |  | table |
-| [project_execution_limit](project_execution_limit.md) | 4 |  | table |
 | [project_pool_settings](project_pool_settings.md) | 4 |  | table |
 | [project_relation](project_relation.md) | 5 |  | table |
 | [project_secrets_provider_access](project_secrets_provider_access.md) | 5 |  | table |
@@ -345,6 +347,9 @@ erDiagram
 "execution_annotations" }o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "execution_data" |o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "execution_entity" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"execution_limit_policy_assignment" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"execution_limit_policy_assignment" |o--|| "execution_limit_policy" : "FOREIGN KEY (policyId) REFERENCES execution_limit_policy (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"execution_limit_policy_group_assignment" |o--|| "execution_limit_policy" : "FOREIGN KEY (policyId) REFERENCES execution_limit_policy (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "execution_metadata" }o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "folder" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "folder" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -412,7 +417,6 @@ erDiagram
 "poller_state" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "processed_data" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project" }o--o| "user" : "FOREIGN KEY (creatorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"project_execution_limit" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_pool_settings" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_relation" }o--|| "role" : "FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "project_relation" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1384,6 +1388,23 @@ erDiagram
   INTEGER startedCount
   datetime_3_ updatedAt
 }
+"execution_limit_policy" {
+  datetime_3_ createdAt
+  varchar id PK
+  INTEGER maxExecutions
+  varchar_128_ name
+  datetime_3_ updatedAt
+}
+"execution_limit_policy_assignment" {
+  datetime_3_ createdAt
+  varchar policyId PK
+  varchar_36_ projectId PK
+}
+"execution_limit_policy_group_assignment" {
+  datetime_3_ createdAt
+  varchar_32_ group PK
+  varchar policyId PK
+}
 "execution_limit_usage" {
   INTEGER blockedCount
   date day PK
@@ -1864,12 +1885,6 @@ erDiagram
   varchar_36_ id PK
   varchar_255_ name
   varchar_36_ type
-  datetime_3_ updatedAt
-}
-"project_execution_limit" {
-  datetime_3_ createdAt
-  INTEGER maxExecutions
-  varchar_36_ projectId PK
   datetime_3_ updatedAt
 }
 "project_pool_settings" {

@@ -6,9 +6,9 @@ import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { latestWins } from '@n8n/utils/promise/latest-wins';
 
+import { ExecutionLimitPolicyRepository } from './execution-limit-policy.repository';
 import { ExecutionLimitSettingsStore } from './execution-limit-settings.store';
 import type { ApplicableLimits } from './execution-limits.types';
-import { ProjectExecutionLimitRepository } from './project-execution-limit.repository';
 
 export const REFRESH_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;
 
@@ -39,7 +39,7 @@ export class ExecutionLimitsSnapshot {
 
 	constructor(
 		private readonly settingsStore: ExecutionLimitSettingsStore,
-		private readonly projectLimitRepository: ProjectExecutionLimitRepository,
+		private readonly policyRepository: ExecutionLimitPolicyRepository,
 		private readonly publisher: Publisher,
 		private readonly logger: Logger,
 	) {
@@ -103,18 +103,19 @@ export class ExecutionLimitsSnapshot {
 	private readonly loadLatest = latestWins(async () => {
 		const [settings, projectLimits] = await Promise.all([
 			this.settingsStore.read({}),
-			this.projectLimitRepository.findAll({}),
+			this.policyRepository.findProjectLimits({}),
 		]);
+		const projectMaxExecutions = new Map(
+			projectLimits.map(({ projectId, maxExecutions }) => [projectId, maxExecutions]),
+		);
 
 		this.loaded = {
 			settings,
-			projectMaxExecutions: new Map(
-				projectLimits.map(({ projectId, maxExecutions }) => [projectId, maxExecutions]),
-			),
+			projectMaxExecutions,
 			limitedScopes: {
 				periodUnit: settings.periodUnit,
 				hasInstanceLimit: settings.instanceMaxExecutions !== null,
-				limitedProjectIds: new Set(projectLimits.map(({ projectId }) => projectId)),
+				limitedProjectIds: new Set(projectMaxExecutions.keys()),
 			},
 		};
 	});

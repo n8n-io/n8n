@@ -12,10 +12,10 @@ import { UnexpectedError } from '@n8n/errors';
 import { DataSource, LessThan, type ObjectLiteral } from '@n8n/typeorm';
 
 import { ExecutionLimitInstanceUsage } from './execution-limit-instance-usage.entity';
+import { ExecutionLimitPolicyAssignment } from './execution-limit-policy-assignment.entity';
 import type { InstanceUsageDelta, UsageDeltas } from './execution-limit-usage.deltas';
 import { ExecutionLimitUsage } from './execution-limit-usage.entity';
 import { NO_USAGE, type UsageTotals } from './execution-usage';
-import { ProjectExecutionLimit } from './project-execution-limit.entity';
 
 class UsageTable<Entity extends ObjectLiteral> extends BaseRepository<Entity> {}
 
@@ -113,7 +113,7 @@ export class ExecutionLimitUsageRepository {
 	}
 
 	/**
-	 * The usage of each project that has a limit, in one query. A project with no usage
+	 * The usage of each project that has a policy, in one query. A project with no usage
 	 * row in the range is not in the result. Reads `execution_limit_usage` only.
 	 */
 	async sumUsageOfLimitedProjects(
@@ -122,7 +122,7 @@ export class ExecutionLimitUsageRepository {
 		ctx: OperationContext,
 	): Promise<Map<string, UsageTotals>> {
 		const rows = await this.sumRows<TotalsRow & { projectId: string }>(
-			`SELECT u."projectId" AS "projectId", ${TOTALS} FROM ${this.escapedName(ExecutionLimitUsage)} u INNER JOIN ${this.escapedName(ProjectExecutionLimit)} l ON l."projectId" = u."projectId" WHERE ${COUNTED_DAYS} GROUP BY u."projectId"`,
+			`SELECT u."projectId" AS "projectId", ${TOTALS} FROM ${this.escapedName(ExecutionLimitUsage)} u WHERE ${COUNTED_DAYS} AND EXISTS (SELECT 1 FROM ${this.escapedName(ExecutionLimitPolicyAssignment)} a WHERE a."projectId" = u."projectId") GROUP BY u."projectId"`,
 			[firstDay, lastDay],
 			ctx,
 		);

@@ -55,9 +55,9 @@
 			"reason": "Governance config attached to the project, not user data; dropped via FK cascade. Transferring it could not work anyway: a destination project may already own a scope of the same kind, which uq_type_availability_policy_scope_project rejects."
 		},
 		{
-			"name": "ProjectExecutionLimit",
-			"path": "packages/modules/execution-limits/backend/src/project-execution-limit.entity.ts",
-			"reason": "Governance config attached to the project, not user data; dropped via FK cascade. Transferring it could not work anyway: a destination project may already have its own cap, which the primary key rejects."
+			"name": "ExecutionLimitPolicyAssignment",
+			"path": "packages/modules/execution-limits/backend/src/execution-limit-policy-assignment.entity.ts",
+			"reason": "Governance config attached to the project, not user data; dropped via FK cascade. An admin assigns a policy to the destination project."
 		},
 		{
 			"name": "Variables",

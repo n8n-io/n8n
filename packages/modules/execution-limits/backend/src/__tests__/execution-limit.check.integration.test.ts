@@ -4,15 +4,45 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
+import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
+import { ExecutionLimitPolicy } from '../execution-limit-policy.entity';
 import { ExecutionLimitPolicyCheck } from '../execution-limit.check';
 import { ExecutionLimitsService } from '../execution-limits.service';
 import { ExecutionLimitsSnapshot } from '../execution-limits-snapshot';
 import { ExecutionUsageCache } from '../execution-usage-cache';
 import { toUtcDay } from '../execution-usage-period';
 import { ExecutionUsageService } from '../execution-usage.service';
+import { assignPolicyToProject, insertPolicy } from './policy-rows';
 
 describe('ExecutionLimitPolicyCheck with a database', () => {
+	const admit = async (projectId: string) => {
+		const licenseState = mock<LicenseState>();
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
+		const check = new ExecutionLimitPolicyCheck(
+			Container.get(ExecutionLimitsService),
+			Container.get(ExecutionUsageService),
+			licenseState,
+			Container.get(Logger),
+		);
+
+		return await check.onExecutionAdmission({
+			artifact: { kind: 'workflow', id: 'wf-1', name: 'Nightly sync' },
+			projectId,
+			mode: 'trigger',
+			source: null,
+			engine: 'v1',
+		});
+	};
+
+	const usageRow = (startedCount: number) => ({
+		day: toUtcDay(new Date()),
+		entityType: 'workflow' as const,
+		startedCount,
+		blockedCount: 0,
+		updatedAt: new Date(),
+	});
+
 	beforeAll(async () => {
 		await testModules.loadModules(['execution-limits'], {
 			'execution-limits': async () => await import('../execution-limits.module.js'),
@@ -20,48 +50,56 @@ describe('ExecutionLimitPolicyCheck with a database', () => {
 		await testDb.init();
 	});
 
+	beforeEach(async () => {
+		const dataSource = Container.get(DataSource);
+		await dataSource.getRepository(ExecutionLimitUsage).clear();
+		await dataSource.getRepository(ExecutionLimitInstanceUsage).clear();
+		await dataSource.getRepository(ExecutionLimitPolicy).delete({});
+		await testDb.truncate(['Project', 'Settings']);
+	});
+
 	afterAll(async () => {
 		await testDb.terminate();
 	});
 
-	it('refuses a run from the loaded usage, after the usage rows are gone', async () => {
+	it('refuses a run from the loaded instance usage, after the usage rows are gone', async () => {
 		const project = await createTeamProject();
-		const limitsService = Container.get(ExecutionLimitsService);
-		await limitsService.updateSettings({ periodUnit: 'month', instanceMaxExecutions: 1000 }, null);
-		await limitsService.setProjectLimits([{ projectId: project.id, maxExecutions: 5 }], null);
-		const usageRows = Container.get(DataSource).getRepository(ExecutionLimitUsage);
-		await usageRows.insert({
-			projectId: project.id,
-			day: toUtcDay(new Date()),
-			entityType: 'workflow',
-			startedCount: 5,
-			blockedCount: 0,
-			updatedAt: new Date(),
-		});
+		await Container.get(ExecutionLimitsService).updateSettings(
+			{ periodUnit: 'month', instanceMaxExecutions: 5 },
+			null,
+		);
+		const usageRows = Container.get(DataSource).getRepository(ExecutionLimitInstanceUsage);
+		await usageRows.insert(usageRow(5));
 		await Container.get(ExecutionLimitsSnapshot).reload();
 		await Container.get(ExecutionUsageCache).refresh();
 
 		// A refusal now can only come from memory.
 		await usageRows.clear();
 
-		const licenseState = mock<LicenseState>();
-		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
-		const check = new ExecutionLimitPolicyCheck(
-			limitsService,
-			Container.get(ExecutionUsageService),
-			licenseState,
-			Container.get(Logger),
-		);
-		const { violations } = await check.onExecutionAdmission({
-			artifact: { kind: 'workflow', id: 'wf-1', name: 'Nightly sync' },
-			projectId: project.id,
-			mode: 'trigger',
-			source: null,
-			engine: 'v1',
-		});
+		const { violations } = await admit(project.id);
 
 		expect(violations).toEqual([
-			expect.objectContaining({ scope: 'project', projectId: project.id, limit: 5, usage: 5 }),
+			expect.objectContaining({ scope: 'instance', projectId: project.id, limit: 5, usage: 5 }),
 		]);
+	});
+
+	it('refuses a run of a project with a policy at its limit and allows a project with none', async () => {
+		const [limited, free] = [await createTeamProject(), await createTeamProject()];
+		await assignPolicyToProject(await insertPolicy({ maxExecutions: 5 }), limited.id);
+		const usageRows = Container.get(DataSource).getRepository(ExecutionLimitUsage);
+		await usageRows.insert([
+			{ ...usageRow(5), projectId: limited.id },
+			{ ...usageRow(50), projectId: free.id },
+		]);
+		await Container.get(ExecutionLimitsSnapshot).reload();
+		await Container.get(ExecutionUsageCache).refresh();
+
+		// A refusal now can only come from memory.
+		await usageRows.clear();
+
+		expect((await admit(limited.id)).violations).toEqual([
+			expect.objectContaining({ scope: 'project', projectId: limited.id, limit: 5, usage: 5 }),
+		]);
+		expect((await admit(free.id)).violations).toEqual([]);
 	});
 });

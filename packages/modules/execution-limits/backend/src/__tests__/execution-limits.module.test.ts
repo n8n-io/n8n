@@ -8,12 +8,14 @@ import { InstanceSettings } from 'n8n-core';
 
 import { ExecutionLimitAudit } from '../execution-limit-audit.entity';
 import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
+import { ExecutionLimitPolicy } from '../execution-limit-policy.entity';
+import { ExecutionLimitPolicyAssignment } from '../execution-limit-policy-assignment.entity';
+import { ExecutionLimitPolicyGroupAssignment } from '../execution-limit-policy-group-assignment.entity';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
 import { ExecutionLimitUsagePruningTask } from '../execution-limit-usage-pruning.task';
 import { ExecutionUsageCache } from '../execution-usage-cache';
 import { ExecutionLimitsModule } from '../execution-limits.module';
 import { ExecutionLimitsSnapshot } from '../execution-limits-snapshot';
-import { ProjectExecutionLimit } from '../project-execution-limit.entity';
 
 const registeredCheckNames = () =>
 	Container.get(PolicyCheckMetadata)
@@ -99,11 +101,13 @@ describe('ExecutionLimitsModule', () => {
 		expect(onInitDone).toHaveBeenCalledTimes(1);
 	});
 
-	it('owns the project limit entity, the two usage entities and the audit entity', async () => {
+	it('owns the policy entities, the two usage entities and the audit entity', async () => {
 		const module = new ExecutionLimitsModule();
 
 		expect(await module.entities()).toEqual([
-			ProjectExecutionLimit,
+			ExecutionLimitPolicy,
+			ExecutionLimitPolicyAssignment,
+			ExecutionLimitPolicyGroupAssignment,
 			ExecutionLimitUsage,
 			ExecutionLimitInstanceUsage,
 			ExecutionLimitAudit,

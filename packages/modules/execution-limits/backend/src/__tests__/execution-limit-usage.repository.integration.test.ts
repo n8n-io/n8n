@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import { DataSource, type Repository } from '@n8n/typeorm';
 
 import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
+import { ExecutionLimitPolicy } from '../execution-limit-policy.entity';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
 import { ExecutionLimitUsageFoldStep } from '../execution-limit-usage.fold-step';
 import { ExecutionLimitUsageRepository } from '../execution-limit-usage.repository';
@@ -11,6 +12,7 @@ import { ExecutionLimitsService } from '../execution-limits.service';
 import { ExecutionUsageCache } from '../execution-usage-cache';
 import { ExecutionUsageService } from '../execution-usage.service';
 import { ledgerRow } from './ledger-rows';
+import { assignPolicyToProject, insertPolicy } from './policy-rows';
 
 const FIRST_DAY = '2026-11-16';
 const LAST_DAY = '2026-11-22';
@@ -40,12 +42,12 @@ describe('ExecutionLimitUsageRepository reads', () => {
 		...overrides,
 	});
 
+	const addPolicy = async (projectId: string, maxExecutions = 100) =>
+		await assignPolicyToProject(await insertPolicy({ maxExecutions }), projectId);
+
 	const limitProject = async (maxExecutions = 100) => {
 		const project = await createTeamProject();
-		await Container.get(ExecutionLimitsService).setProjectLimits(
-			[{ projectId: project.id, maxExecutions }],
-			null,
-		);
+		await addPolicy(project.id, maxExecutions);
 		return project.id;
 	};
 
@@ -62,7 +64,8 @@ describe('ExecutionLimitUsageRepository reads', () => {
 	beforeEach(async () => {
 		await usage.clear();
 		await instanceUsage.clear();
-		// The delete of a project also deletes its limit.
+		// The delete of a project or a policy also deletes its assignments.
+		await Container.get(DataSource).getRepository(ExecutionLimitPolicy).delete({});
 		await testDb.truncate(['Project', 'Settings']);
 	});
 
@@ -191,6 +194,17 @@ describe('ExecutionLimitUsageRepository reads', () => {
 				lastCountedAt: UPDATED_AT,
 			});
 			expect(totals.get(limitedB)).toMatchObject({ startedCount: 2, blockedCount: 0 });
+		});
+
+		it('sums a project with two policies one time', async () => {
+			const projectId = await limitProject();
+			await addPolicy(projectId, 200);
+			await usage.insert(projectRow({ projectId, startedCount: 5 }));
+
+			const totals = await repository.sumUsageOfLimitedProjects(FIRST_DAY, LAST_DAY, {});
+
+			expect([...totals.keys()]).toEqual([projectId]);
+			expect(totals.get(projectId)).toMatchObject({ startedCount: 5 });
 		});
 
 		it('leaves out a limited project that has no usage row in the range', async () => {

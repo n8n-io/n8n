@@ -33,6 +33,13 @@ the usage in memory, and a timer reloads it every 5 seconds. The count can be up
 about 10 seconds old. If a reload fails, the last count stays in use until a reload
 succeeds or the period ends, so it can be older.
 
+## Limit policies
+
+A project gets its limit from the policies in `execution_limit_policy` that are assigned to
+it in `execution_limit_policy_assignment`. Each project counts its own executions. If a
+project has several policies, the lowest maximum applies. The period and the instance limit
+are in the `features.executionLimits` settings row.
+
 ## Limit check
 
 `ExecutionLimitPolicyCheck` runs at the `executionAdmission` policy point. `init` registers
