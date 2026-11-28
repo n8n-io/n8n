@@ -12,6 +12,7 @@ import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 const meta = {
 	title: 'Core/Button',
 	component: N8nButton,
+	tags: ['visual'],
 	argTypes: {
 		variant: {
 			control: 'select',
@@ -73,6 +74,14 @@ export const Default: Story = {
 		size: 'medium',
 		loading: false,
 		default: 'Button',
+	},
+	parameters: {
+		visual: {
+			states: [
+				{ name: 'hover', action: 'hover', selector: 'button' },
+				{ name: 'focus', action: 'focus', selector: 'button' },
+			],
+		},
 	},
 };
 

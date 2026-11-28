@@ -163,6 +163,126 @@ Run these commands from this directory.
 | `pnpm lint`      | It lints `src`. `pnpm lint:fix` applies the fixes.                     |
 | `pnpm clean`     | It removes `dist` and `.turbo`.                                        |
 
+### Visual tests
+
+The visual tests render stories in a real Chromium and compare a screenshot of each story
+with a reference image. Each story runs two times: once in the light theme and once in the
+dark theme. The tests live in `@n8n/storybook` (`vitest.visual.config.ts` and
+`.storybook/visual-setup.ts`). The jsdom unit tests do not change.
+
+#### Run the tests
+
+The tests need a running Docker engine. `pnpm test:visual` starts the browser in the
+pinned Playwright container (`mcr.microsoft.com/playwright`). Vitest runs on your computer
+and connects to that browser. So every screenshot comes from the same Linux Chromium and the
+same fonts, on any computer and in CI. You do not have to install a browser or build the
+package first.
+
+```sh
+pnpm --filter @n8n/storybook test:visual
+```
+
+The first run downloads the image, which is large, and needs network access. Each run also
+downloads the `playwright` package in the container.
+
+A failed test writes the actual image and a diff image to
+`packages/frontend/@n8n/storybook/.vitest/visual/<story directory>/<story file>/`.
+
+Run the tests only with `pnpm --filter @n8n/storybook test:visual`. `vitest.visual.config.ts`
+stops with an error when it runs without the container, for example from an IDE extension.
+
+#### Compare a change with a local baseline
+
+Git keeps no reference images, and you never commit them. The tests compare your change with
+a local baseline that you make on your computer:
+
+1. On `master`, run `pnpm --filter @n8n/storybook test:visual -u`. It writes a reference
+   image for each screenshot to `packages/frontend/@n8n/storybook/.vitest/visual/references/`.
+   `.gitignore` keeps that directory out of Git.
+2. Switch to your branch and run `pnpm --filter @n8n/storybook test:visual`. Each failed test
+   shows a changed or new screenshot. Look at the actual and diff images in `.vitest/visual/`.
+3. To accept the change in your baseline, run `pnpm --filter @n8n/storybook test:visual -u`
+   again. This changes only `.vitest/visual/references/`.
+
+The image names are the story id, the state name if there is one, and the theme, with single
+hyphens: the `Default` story of `Core/Button` (id `core-button--default`) gives
+`core-button-default-light-chromium-linux.png` and `core-button-default-hover-light-chromium-linux.png`.
+
+Arguments go to Vitest, so `pnpm --filter @n8n/storybook test:visual N8nButton -u` updates
+the baseline of one component. Put the file filter before `-u`, because `-u` reads the next
+word as its value. To keep the baseline in another directory, set `N8N_VISUAL_REFERENCE_DIR`
+to an absolute path.
+
+No CI job runs the visual tests yet. A later change adds a job that renders the base branch
+and your branch, and compares them.
+
+When you update `playwright` in the catalog, set `PLAYWRIGHT_IMAGE` in
+`@n8n/storybook/scripts/run-visual-tests.ts` to the same version and digest. Then make a new
+baseline with `test:visual -u`. Until the two versions are the same, `pnpm test:visual` stops
+with an error.
+
+If a run stops and leaves a container, remove it:
+
+```sh
+docker rm -f $(docker ps -aq --filter label=n8n.visual-tests=1)
+```
+
+#### Add a component to the visual tests
+
+Add the `visual` tag to the meta of the stories file. Write the tag as the literal string
+`'visual'`, because the test config looks for it to find the files to load.
+
+```ts
+const meta = {
+	title: 'Core/Button',
+	component: N8nButton,
+	tags: ['visual'],
+} satisfies Meta<typeof N8nButton>;
+```
+
+Each story in the file then gets a screenshot. To keep one story out, give it the
+`'!visual'` tag, and write a comment that gives the reason:
+
+```ts
+export const Clock: Story = {
+	// The story shows the current time, so the screenshot changes on each run.
+	tags: ['!visual'],
+};
+```
+
+Make each story deterministic. Use fixed data, not random values. The tests turn off
+transitions, animations, and the text caret. They also fix `Date` at `2026-01-01T12:00:00Z`, so
+`new Date()` and `Date.now()` give the same value on each run. Timers such as `setTimeout` stay
+real.
+
+#### Add states with `parameters.visual`
+
+`parameters.visual` on a story or a meta controls the screenshots:
+
+| Field    | Value                                                                                                                                                                                                                                                                                                                         |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `target` | `'canvas'` (default) takes a screenshot of the story root. `'viewport'` takes a screenshot of the full 1200 × 900 page. Use `'viewport'` for overlays that render in `body`, such as dialogs, tooltips, and dropdowns.                                                                                                       |
+| `states` | One more screenshot for each entry: `{ name, action, selector }`. `action: 'hover'` moves the real pointer over the element. `action: 'focus'` moves the keyboard focus to the element with Tab, so `:focus-visible` applies. `selector` is a CSS selector in the story canvas. The screenshot name has the state name between the story id and the theme. |
+
+```ts
+export const Default: Story = {
+	args: { label: 'Button' },
+	parameters: {
+		visual: {
+			states: [
+				{ name: 'hover', action: 'hover', selector: 'button' },
+				{ name: 'focus', action: 'focus', selector: 'button' },
+			],
+		},
+	},
+};
+```
+
+For an open state, add a story that reuses an existing story. Give it a `play` function
+that opens the overlay and waits until it is visible. Set `target: 'viewport'`. The
+`…Open` stories in `N8nDialog/Dialog.stories.ts` are examples. The open stories also show
+in Storybook.
+
 ## Pack and publish
 
 **Pack with `pnpm pack`. Never `npm pack`.**
