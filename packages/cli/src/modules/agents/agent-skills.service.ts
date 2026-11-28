@@ -320,6 +320,10 @@ export class AgentSkillsService {
 				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, ctx, {
 					...moveOptions,
 					nameAfterMove: updated.name,
+					contentAfterMove: {
+						instructions: updated.instructions,
+						references: updated.references ?? [],
+					},
 				});
 			}
 			if (pinned) {

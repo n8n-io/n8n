@@ -43,7 +43,12 @@ enableAutoUnmount(afterEach);
 async function mountEditor(props: Record<string, unknown> = {}) {
 	const onUpdate = vi.fn();
 	const wrapper = mount(AgentSkillMarkdownEditor, {
-		props: { modelValue: 'Intro', 'onUpdate:modelValue': onUpdate, ...props },
+		props: {
+			modelValue: 'Intro',
+			mentionProjectId: 'p1',
+			'onUpdate:modelValue': onUpdate,
+			...props,
+		},
 		global: { stubs: { SkillWorkflowMentionPicker: PickerStub } },
 		attachTo: document.body,
 	});
@@ -287,6 +292,30 @@ describe('AgentSkillMarkdownEditor', () => {
 	it('leaves the editor unchanged when the flag is off', async () => {
 		flag.enabled = false;
 		const { wrapper, editor } = await mountEditor();
+
+		await typeMentionTrigger(editor);
+
+		expect(wrapper.findComponent(PickerStub).exists()).toBe(false);
+		expect(editor.getMarkdown()).toBe('Intro @');
+	});
+
+	it('does not open the workflow list in an instance skill, and keeps its mentions', async () => {
+		const open = vi.spyOn(window, 'open').mockReturnValue(null);
+		const { wrapper, editor } = await mountEditor({
+			modelValue: MENTION_BODY,
+			mentionProjectId: undefined,
+		});
+
+		expect(wrapper.findComponent(PickerStub).exists()).toBe(false);
+		clickMention(editor);
+		expect(open).toHaveBeenCalledWith('/base/workflow/wf1', '_blank');
+		editor.commands.setTextSelection(MENTION_END);
+		expect(pressKey(editor, 'Backspace')).toBe(true);
+		open.mockRestore();
+	});
+
+	it('types a plain @ in an instance skill', async () => {
+		const { wrapper, editor } = await mountEditor({ mentionProjectId: undefined });
 
 		await typeMentionTrigger(editor);
 

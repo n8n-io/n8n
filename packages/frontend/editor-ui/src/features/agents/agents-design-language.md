@@ -290,14 +290,20 @@ only once, as the direct tool. The skill chip then names it in an
 `Already attached as a tool` tooltip.
 
 In the skill editor, the Workflows section of the file list shows a note icon
-at the end of a mentioned workflow when a caller cannot run it, when the
-workflow is outside the project of a project skill, or when the skill is an
-instance skill. The icon opens a tooltip on hover and on keyboard focus, with
+at the end of a mentioned workflow when a caller cannot run it, or when the
+workflow is outside the project of the skill. The icon opens a tooltip on hover and on keyboard focus, with
 one line for each note. Notes are information, not errors: they never block a
 save. A workflow that is archived, deleted, or that the user cannot read has
 one note only. The not found note does not say whether the workflow exists.
 When an agent opens the skill, the notes that block that agent (archived, not
 found, no supported trigger, not published) show behind a warning icon instead.
+
+Only project skills can use workflows. In an instance skill, the add workflow
+button stays visible but is disabled, with the note `Workflows can be added
+only to project scoped skills.` Typing `@` does not open the workflow list. When a saved
+project skill mentions workflows, the scope menu disables the other scopes,
+with a note that tells the user to remove the workflows first. The saved scope
+stays enabled.
 
 ## Modal patterns
 

@@ -3,6 +3,7 @@ import {
 	createTeamProject,
 	createWorkflow,
 	getPersonalProject,
+	linkUserToProject,
 	mockInstance,
 	shareWorkflowWithProjects,
 	testDb,
@@ -80,7 +81,7 @@ describe('AgentSkillWorkflowAccessService', () => {
 
 	async function createSkillMentioning(
 		workflows: Array<Pick<IWorkflowDb, 'id' | 'name'>>,
-		projectId: string | null = null,
+		projectId: string | null,
 	) {
 		const mentions = workflows.map(({ id, name }) =>
 			formatSkillWorkflowMention({ workflowId: id, name }),
@@ -103,13 +104,10 @@ describe('AgentSkillWorkflowAccessService', () => {
 		await shareWorkflowWithProjects(shared, [{ project: agentProject }]);
 		const outside = await createWorkflow({ name: 'Outside' }, otherProject);
 		const archived = await createWorkflow({ name: 'Archived', isArchived: true }, otherProject);
-		const skillId = await createSkillMentioning([
-			owned,
-			shared,
-			outside,
-			archived,
-			{ id: 'deletedWorkflowId', name: 'Deleted' },
-		]);
+		const skillId = await createSkillMentioning(
+			[owned, shared, outside, archived, { id: 'deletedWorkflowId', name: 'Deleted' }],
+			agentProject.id,
+		);
 		const agentId = await createAgent(agentProject.id);
 
 		await expect(
@@ -122,7 +120,7 @@ describe('AgentSkillWorkflowAccessService', () => {
 		const shared = await createWorkflow({ name: 'Shared' }, otherProject);
 		await shareWorkflowWithProjects(shared, [{ project: personalProject }]);
 		const outside = await createWorkflow({ name: 'Outside' }, otherProject);
-		const skillId = await createSkillMentioning([shared, outside]);
+		const skillId = await createSkillMentioning([shared, outside], personalProject.id);
 		const agentId = await createAgent(personalProject.id);
 
 		await expect(
@@ -133,7 +131,8 @@ describe('AgentSkillWorkflowAccessService', () => {
 	it('lists only the outside workflows that the user can read', async () => {
 		const readable = await createWorkflow({ name: 'Readable' }, member);
 		const unreadable = await createWorkflow({ name: 'Unreadable' }, otherProject);
-		const skillId = await createSkillMentioning([readable, unreadable]);
+		await linkUserToProject(member, agentProject, 'project:editor');
+		const skillId = await createSkillMentioning([readable, unreadable], agentProject.id);
 		const agentId = await createAgent(agentProject.id);
 
 		await expect(
@@ -143,7 +142,7 @@ describe('AgentSkillWorkflowAccessService', () => {
 
 	it('reads the skill version that the agent draft pins', async () => {
 		const outside = await createWorkflow({ name: 'Outside' }, otherProject);
-		const skillId = await createSkillMentioning([outside]);
+		const skillId = await createSkillMentioning([outside], agentProject.id);
 		const pinnedVersion = await findLatestSkillVersion(skillId);
 		await Container.get(SkillService).saveTrusted(
 			skillId,
@@ -170,7 +169,7 @@ describe('AgentSkillWorkflowAccessService', () => {
 	it('lists nothing when workflows in skills are off', async () => {
 		flagGate.isEnabled.mockResolvedValue(false);
 		const outside = await createWorkflow({ name: 'Outside' }, otherProject);
-		const skillId = await createSkillMentioning([outside]);
+		const skillId = await createSkillMentioning([outside], agentProject.id);
 		const agentId = await createAgent(agentProject.id);
 
 		await expect(
@@ -189,7 +188,7 @@ describe('AgentSkillWorkflowAccessService', () => {
 	});
 
 	it('answers like a missing agent when the agent is not in the project', async () => {
-		const skillId = await createSkillMentioning([]);
+		const skillId = await createSkillMentioning([], null);
 		const agentId = await createAgent(otherProject.id);
 
 		await expect(

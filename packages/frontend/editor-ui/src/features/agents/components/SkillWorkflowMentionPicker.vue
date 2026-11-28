@@ -93,11 +93,14 @@ const items = computed<Array<DropdownMenuItemProps<string, SkillWorkflowMention>
 	];
 });
 
-const emptyText = computed(() =>
-	hasError.value
-		? i18n.baseText('agents.builder.skills.workflowMentions.loadError')
-		: i18n.baseText('agents.builder.skills.workflowMentions.noResults'),
-);
+const emptyText = computed(() => {
+	if (hasError.value) return i18n.baseText('agents.builder.skills.workflowMentions.loadError');
+	return props.projectName
+		? i18n.baseText('agents.builder.skills.workflowMentions.noResultsInProject', {
+				interpolate: { project: props.projectName },
+			})
+		: i18n.baseText('agents.builder.skills.workflowMentions.noResults');
+});
 
 let isMenuOpen = props.open;
 

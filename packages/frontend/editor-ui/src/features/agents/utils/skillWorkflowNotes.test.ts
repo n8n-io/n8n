@@ -24,8 +24,8 @@ const workflow = (
 	sharedWithProjects: sharedWith.map(project),
 });
 
-const PROJECT_SKILL = { instanceSkill: false, availableToMCP: false };
-const MCP_SKILL = { instanceSkill: false, availableToMCP: true };
+const PROJECT_SKILL = { availableToMCP: false };
+const MCP_SKILL = { availableToMCP: true };
 const HUB_PROJECT_SKILL = { ...PROJECT_SKILL, projectId: 'p1' };
 
 describe('getSkillWorkflowNotes', () => {
@@ -53,12 +53,6 @@ describe('getSkillWorkflowNotes', () => {
 			workflow([node(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)], { published: false }),
 			PROJECT_SKILL,
 			['unpublished'],
-		],
-		[
-			'an instance skill',
-			workflow([node(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)]),
-			{ instanceSkill: true, availableToMCP: false },
-			['instanceAccess'],
 		],
 		[
 			'MCP with a production trigger',

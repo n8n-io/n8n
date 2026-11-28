@@ -408,6 +408,36 @@ describe('AgentSkillsService', () => {
 			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 		});
 
+		it('checks the content of the same save when it moves the skill', async () => {
+			const agent = givenAgent({
+				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+				skills: { skill_a: skill },
+			});
+			skillRefs.availabilityOf.mockResolvedValue('instance');
+			skillAccess.assertCanMove.mockResolvedValue({ projectId: null });
+
+			await service.updateSkill(
+				agentId,
+				projectId,
+				'skill_a',
+				{ instructions: 'Plain.' },
+				context,
+				undefined,
+				undefined,
+				'project',
+			);
+
+			expect(skillRefs.setAvailability).toHaveBeenCalledWith(
+				agent,
+				'skill_a',
+				'project',
+				expect.anything(),
+				expect.objectContaining({
+					contentAfterMove: { instructions: 'Plain.', references: [] },
+				}),
+			);
+		});
+
 		it('refuses to change where the skill can be added without the delete permission', async () => {
 			givenAgent({
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },

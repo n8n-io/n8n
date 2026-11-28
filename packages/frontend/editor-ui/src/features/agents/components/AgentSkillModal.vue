@@ -12,6 +12,7 @@ import {
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	formatSkillWorkflowMention,
 	MCP_SKILLS_EXTENSION_FLAG,
+	parseAgentSkillWorkflowMentions,
 	skillNameKey,
 	type AgentSkillAvailability,
 	type ProjectIcon,
@@ -590,7 +591,6 @@ const selectedScopeSkill = computed(() => {
 		projectIcon: selectedScope.value?.projectIcon ?? saved?.projectIcon ?? null,
 	};
 });
-const mentionsInInstanceSkill = computed(() => selectedScopeSkill.value.scope === 'instance');
 const mentionsAvailableToMcp = computed(() =>
 	showAvailableToMCP.value
 		? availableToMCP.value
@@ -612,6 +612,39 @@ const scopeEditable = computed(
 		scopeChoices.value.length > 1 &&
 		(showScope.value ? canChangeScope.value && !isSaving.value : showAvailabilitySelect.value),
 );
+
+const savedScopeValue = computed(() => {
+	if (!isEditing.value) return selectedScopeValue.value;
+	return showScope.value ? props.data.initialScope : savedTarget.value;
+});
+
+const scopeLockedByWorkflows = computed(
+	() =>
+		savedScopeValue.value !== undefined &&
+		savedScopeValue.value !== 'instance' &&
+		posthog.isVariantEnabled(
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		) &&
+		parseAgentSkillWorkflowMentions(skill.value).length > 0,
+);
+
+const scopeBlockedReasons = computed(() => {
+	const reasons = new Map<string, string>();
+	if (!scopeLockedByWorkflows.value) return reasons;
+	for (const { value } of scopeChoices.value) {
+		if (value === savedScopeValue.value) continue;
+		reasons.set(
+			`scope:${value}`,
+			i18n.baseText(
+				value === 'instance'
+					? 'agents.builder.skills.workflowMentions.scope.instanceBlocked'
+					: 'agents.builder.skills.workflowMentions.scope.projectBlocked',
+			),
+		);
+	}
+	return reasons;
+});
 
 function onScopeChoice(value: string) {
 	if (!scopeEditable.value) return;
@@ -640,6 +673,7 @@ function scopeItems(testIdPrefix: string): Array<DropdownMenuItemProps<string>> 
 			label: choice.label,
 			icon: scopeItemIcon(choice),
 			checked: choice.value === selectedScopeValue.value,
+			disabled: scopeBlockedReasons.value.has(`scope:${choice.value}`),
 			testId: `${testIdPrefix}${choice.value}`,
 		}));
 }
@@ -1581,6 +1615,15 @@ function onRemove() {
 							item.label
 						}}</span>
 					</N8nTooltip>
+					<N8nTooltip
+						v-else-if="scopeBlockedReasons.has(item.id)"
+						:content="scopeBlockedReasons.get(item.id)"
+						placement="right"
+					>
+						<span :class="ui.class" :data-testid="`${item.testId}-blocked-reason`">{{
+							item.label
+						}}</span>
+					</N8nTooltip>
 					<span v-else :class="ui.class">{{ item.label }}</span>
 				</template>
 				<template #item-trailing="{ item }">
@@ -1829,7 +1872,6 @@ function onRemove() {
 						:skill="comparedSkill"
 						:selected-path="selectedPath"
 						:change-counts="diffCounts"
-						:instance-skill="mentionsInInstanceSkill"
 						:available-to-mcp="mentionsAvailableToMcp"
 						:agent-context="!!props.data.agentId"
 						read-only
@@ -1851,7 +1893,6 @@ function onRemove() {
 						:invalid-paths="visibleInvalidReferencePaths"
 						:mention-project-id="mentionProjectId"
 						:mention-project-name="mentionProjectName"
-						:instance-skill="mentionsInInstanceSkill"
 						:available-to-mcp="mentionsAvailableToMcp"
 						:agent-context="!!props.data.agentId"
 						:outside-project-workflow-ids="displayedOutsideProjectWorkflowIds"

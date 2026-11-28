@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 import { useRouter } from 'vue-router';
 import { parseAgentSkillWorkflowMentions, type SkillWorkflowMention } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -42,7 +42,6 @@ const props = withDefaults(
 		changeCounts?: Record<string, FileChange>;
 		mentionProjectId?: string;
 		mentionProjectName?: string;
-		instanceSkill?: boolean;
 		availableToMcp?: boolean;
 		outsideProjectWorkflowIds?: string[];
 		agentContext?: boolean;
@@ -53,7 +52,6 @@ const props = withDefaults(
 		invalidPaths: () => [],
 		mentionProjectId: undefined,
 		mentionProjectName: undefined,
-		instanceSkill: false,
 		availableToMcp: false,
 		outsideProjectWorkflowIds: () => [],
 		agentContext: false,
@@ -80,6 +78,10 @@ const workflowMentionsEnabled = computed(() =>
 	),
 );
 const addWorkflowOpen = ref(false);
+const projectSkillsOnlyId = useId();
+const showProjectSkillsOnly = computed(
+	() => props.mentionProjectId === undefined && !props.readOnly,
+);
 const mentionedWorkflows = computed(() => parseAgentSkillWorkflowMentions(props.skill));
 const mentionedWorkflowIds = computed(() =>
 	mentionedWorkflows.value.map(({ workflowId }) => workflowId),
@@ -93,7 +95,6 @@ const NOTE_TEXT_KEYS: Record<SkillWorkflowNote, BaseTextKey> = {
 	mcpUnavailable: 'agents.builder.skills.workflowMentions.note.mcpUnavailable',
 	unpublished: 'agents.builder.skills.workflowMentions.note.unpublished',
 	outsideProject: 'agents.builder.skills.workflowMentions.note.outsideProject',
-	instanceAccess: 'agents.builder.skills.workflowMentions.note.instanceAccess',
 };
 const workflowRows = computed(() =>
 	mentionedWorkflows.value.map((workflow) => {
@@ -102,7 +103,6 @@ const workflowRows = computed(() =>
 			data === undefined
 				? []
 				: getSkillWorkflowNotes(data, {
-						instanceSkill: props.instanceSkill,
 						availableToMCP: props.availableToMcp,
 						projectId: props.agentContext ? undefined : props.mentionProjectId,
 					});
@@ -115,13 +115,11 @@ const workflowRows = computed(() =>
 			: [];
 		const isWarning = (note: SkillWorkflowNote) =>
 			props.agentContext && AGENT_BLOCKING_NOTES.includes(note);
-		const isCoveredByWarning = (note: SkillWorkflowNote) =>
-			note === 'instanceAccess' && outsideProjectWarnings.length > 0;
 		const toText = (note: SkillWorkflowNote) => i18n.baseText(NOTE_TEXT_KEYS[note]);
 		return {
 			...workflow,
 			warnings: [...outsideProjectWarnings, ...allNotes.filter(isWarning).map(toText)],
-			notes: allNotes.filter((note) => !isWarning(note) && !isCoveredByWarning(note)).map(toText),
+			notes: allNotes.filter((note) => !isWarning(note)).map(toText),
 		};
 	}),
 );
@@ -255,8 +253,27 @@ function testIdForPath(path: string) {
 				<N8nText size="small" color="text-light" :class="$style.sectionTitle">
 					{{ i18n.baseText('agents.builder.skills.workflowMentions.title') }}
 				</N8nText>
+				<N8nTooltip
+					v-if="showProjectSkillsOnly"
+					as-child
+					:content="i18n.baseText('agents.builder.skills.workflowMentions.projectSkillsOnly')"
+					placement="top"
+				>
+					<N8nButton
+						:class="$style.addReference"
+						variant="ghost"
+						size="xsmall"
+						icon-only
+						icon="plus"
+						disabled
+						focusable-when-disabled
+						:aria-label="i18n.baseText('agents.builder.skills.workflowMentions.add')"
+						:aria-describedby="projectSkillsOnlyId"
+						data-testid="skill-workflow-mention-disabled"
+					/>
+				</N8nTooltip>
 				<SkillWorkflowMentionPicker
-					v-if="!props.readOnly"
+					v-else-if="!props.readOnly"
 					v-model:open="addWorkflowOpen"
 					mode="button"
 					:project-id="props.mentionProjectId"
@@ -266,7 +283,17 @@ function testIdForPath(path: string) {
 				/>
 			</div>
 			<N8nText
-				v-if="mentionedWorkflows.length === 0"
+				v-if="showProjectSkillsOnly"
+				:id="projectSkillsOnlyId"
+				size="small"
+				color="text-light"
+				:class="$style.sectionTitle"
+				data-testid="agent-skill-workflows-project-only"
+			>
+				{{ i18n.baseText('agents.builder.skills.workflowMentions.projectSkillsOnly') }}
+			</N8nText>
+			<N8nText
+				v-else-if="mentionedWorkflows.length === 0"
 				size="small"
 				color="text-light"
 				:class="$style.sectionTitle"

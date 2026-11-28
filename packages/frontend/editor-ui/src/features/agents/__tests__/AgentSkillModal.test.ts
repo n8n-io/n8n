@@ -2071,6 +2071,70 @@ describe('AgentSkillModal', () => {
 	});
 });
 
+describe('AgentSkillModal with workflows in skills', () => {
+	const scopeOptions = [
+		{ value: 'project:team-1', label: 'Marketing', icon: 'layers' as const },
+		{ value: 'project:team-2', label: 'Sales', icon: 'layers' as const },
+		{ value: 'instance', label: 'Global', icon: 'globe' as const },
+	];
+
+	beforeEach(() => {
+		mockedStore(usePostHog).isVariantEnabled = vi.fn(
+			(name: string, variant: string) =>
+				name === '152_workflows_in_skills' && variant === 'variant',
+		);
+		mockedStore(useWorkflowsListStore).searchWorkflows = vi.fn().mockResolvedValue([]);
+	});
+
+	function renderSettingsSkill(instructions: string, initialScope = 'project:team-1') {
+		return renderModal({
+			skillId: 's1',
+			skill: { ...SAVED_SKILL, instructions },
+			settings: { scopeOptions, initialScope },
+		});
+	}
+
+	it('disables the other scopes of a project skill with workflows, with a note', async () => {
+		const { findByTestId, getByTestId } = renderSettingsSkill('Run [Report](n8n://workflow/wf1).');
+
+		expect(await findByTestId('agent-skill-menu-scope-option-instance')).toBeDisabled();
+		expect(getByTestId('agent-skill-menu-scope-option-project:team-2')).toBeDisabled();
+		expect(getByTestId('agent-skill-menu-scope-option-instance-blocked-reason')).toHaveTextContent(
+			'Global',
+		);
+	});
+
+	it('keeps the other scopes of a project skill without workflows', async () => {
+		const { findByTestId, getByTestId, queryByTestId } = renderSettingsSkill('Keep it short.');
+
+		expect(await findByTestId('agent-skill-menu-scope-option-instance')).toBeEnabled();
+		expect(getByTestId('agent-skill-menu-scope-option-project:team-2')).toBeEnabled();
+		expect(
+			queryByTestId('agent-skill-menu-scope-option-instance-blocked-reason'),
+		).not.toBeInTheDocument();
+	});
+
+	it('keeps the saved scope enabled after a pending move and a new workflow', async () => {
+		const { findByTestId, getByTestId } = renderSettingsSkill('Keep it short.');
+		await fireEvent.click(await findByTestId('agent-skill-menu-scope-option-project:team-2'));
+
+		await fireEvent.update(
+			getByTestId('agent-skill-instructions-editor'),
+			'Run [Report](n8n://workflow/wf1).',
+		);
+
+		expect(getByTestId('agent-skill-menu-scope-option-project:team-1')).toBeEnabled();
+		expect(getByTestId('agent-skill-menu-scope-option-instance')).toBeDisabled();
+	});
+
+	it('disables the add workflow button of an instance skill', async () => {
+		const { findByTestId, queryByTestId } = renderSettingsSkill('Keep it short.', 'instance');
+
+		expect(await findByTestId('skill-workflow-mention-disabled')).toBeDisabled();
+		expect(queryByTestId('skill-workflow-mention-button')).not.toBeInTheDocument();
+	});
+});
+
 describe('AgentSkillModal from Settings', () => {
 	it('opens at the form when the caller starts manually, with no Back and a default name', async () => {
 		const getDefaultName = vi.fn().mockResolvedValue('New skill 2');
