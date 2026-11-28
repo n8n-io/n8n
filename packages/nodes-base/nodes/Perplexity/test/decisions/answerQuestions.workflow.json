@@ -1,0 +1,109 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-80, -680],
+			"id": "a9105e3d-172b-411e-8c06-767a3ce1003a",
+			"name": "When clicking 'Test workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "decision",
+				"operation": "answerQuestions",
+				"state": "The headphones sound great, but the battery stopped charging after two weeks.",
+				"questions": {
+					"values": [
+						{
+							"name": "defect",
+							"type": "noul",
+							"instructions": "Does the review report a product defect?"
+						},
+						{
+							"name": "sentiment",
+							"type": "choice",
+							"instructions": "What is the overall sentiment of the review?",
+							"criteria": "{\"positive\": \"Mostly satisfied\", \"mixed\": \"Praise and complaints in one review\", \"negative\": \"Mostly dissatisfied\"}"
+						},
+						{
+							"name": "severity",
+							"type": "score",
+							"instructions": "How severe is the reported problem?",
+							"criteria": "[\"Cosmetic\", \"Inconvenient\", \"Product unusable\"]"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.perplexity",
+			"typeVersion": 3,
+			"position": [140, -680],
+			"id": "decision-node-v3",
+			"name": "Decision",
+			"credentials": {
+				"perplexityApi": {
+					"id": "test",
+					"name": "Perplexity account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Test workflow'": {
+			"main": [
+				[
+					{
+						"node": "Decision",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Decision": [
+			{
+				"json": {
+					"model": "pplx-decider-latest",
+					"answers": {
+						"defect": {
+							"type": "noul",
+							"noul": 0.9424522889347015
+						},
+						"sentiment": {
+							"type": "choice",
+							"choice": "mixed",
+							"confidence": 0.9255246944002182,
+							"probabilities": {
+								"positive": 0.020649883775315993,
+								"mixed": 0.9503497962668123,
+								"negative": 0.02900031995787183
+							}
+						},
+						"severity": {
+							"type": "score",
+							"score": 1.7838686319784252,
+							"confidence": 0.7838686319784252,
+							"legend": {
+								"0": "Cosmetic",
+								"1": "Inconvenient",
+								"2": "Product unusable"
+							},
+							"probabilities": {
+								"0": 0.008423954913615923,
+								"1": 0.199283458194343,
+								"2": 0.7922925868920411
+							}
+						}
+					},
+					"usage": {
+						"input_tokens": 367,
+						"output_tokens": 3
+					}
+				}
+			}
+		]
+	}
+}
