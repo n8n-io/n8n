@@ -19,6 +19,25 @@ export const includeLinkToWorkflowOption: INodeProperties = {
 };
 
 /**
+ * Shared by `channelMessage:create`, `channelMessage:reply` and `chatMessage:create`. The card
+ * replaces the plain message, so `message`, the mentions fields and the workflow-link option hide
+ * themselves while it is selected.
+ */
+export const adaptiveCardField: INodeProperties = {
+	displayName: 'Adaptive Card',
+	name: 'adaptiveCard',
+	required: true,
+	type: 'json',
+	default: '',
+	description: 'The Adaptive Card JSON to send. The card root must have "type": "AdaptiveCard".',
+	displayOptions: {
+		show: {
+			contentType: ['adaptiveCard'],
+		},
+	},
+};
+
+/**
  * Users only, for `chatMessage:create`. A chat is not team-scoped, so there is no team to scope
  * team tags to; the channel operations use `channelMentionsField`. Safe to spread:
  * `updateDisplayOptions` merges into a fresh object rather than mutating this one.

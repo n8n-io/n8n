@@ -3,12 +3,14 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import {
+	adaptiveCardField,
 	channelMentionsField,
 	channelRLC,
 	includeLinkToWorkflowOption,
 	mentionPlacementOption,
 	teamRLC,
 } from '../../descriptions';
+import { buildAdaptiveCardMessage } from '../../helpers/adaptiveCard';
 import type { MentionPlacement } from '../../helpers/utils';
 import { prepareMessage, resolveMentions } from '../../helpers/utils';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
@@ -41,9 +43,13 @@ const properties: INodeProperties[] = [
 				name: 'HTML',
 				value: 'html',
 			},
+			{
+				name: 'Adaptive Card',
+				value: 'adaptiveCard',
+			},
 		],
 		default: 'text',
-		description: 'Whether the reply is plain text or HTML',
+		description: 'Whether the reply is plain text, HTML or an Adaptive Card',
 	},
 	{
 		displayName: 'Message',
@@ -55,15 +61,50 @@ const properties: INodeProperties[] = [
 		typeOptions: {
 			rows: 2,
 		},
+		displayOptions: {
+			hide: {
+				contentType: ['adaptiveCard'],
+			},
+		},
 	},
-	channelMentionsField,
+	adaptiveCardField,
+	{
+		...channelMentionsField,
+		displayOptions: {
+			hide: {
+				contentType: ['adaptiveCard'],
+			},
+		},
+	},
 	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
 		placeholder: 'Add option',
 		default: {},
-		options: [includeLinkToWorkflowOption, mentionPlacementOption],
+		displayOptions: {
+			hide: {
+				contentType: ['adaptiveCard'],
+			},
+		},
+		options: [
+			{
+				...includeLinkToWorkflowOption,
+				displayOptions: {
+					hide: {
+						'/contentType': ['adaptiveCard'],
+					},
+				},
+			},
+			{
+				...mentionPlacementOption,
+				displayOptions: {
+					hide: {
+						'/contentType': ['adaptiveCard'],
+					},
+				},
+			},
+		],
 	},
 ];
 
@@ -93,10 +134,30 @@ export async function execute(
 	const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
 	const messageId = this.getNodeParameter('messageId', i) as string;
 	const contentType = this.getNodeParameter('contentType', i) as string;
-	const message = this.getNodeParameter('message', i) as string;
 	// Destructuring default matches `create`: only an unset option falls back to
 	// on, any explicit value keeps its own truthiness.
-	const { includeLinkToWorkflow = true, mentionPlacement } = this.getNodeParameter('options', i);
+	const { includeLinkToWorkflow = true, mentionPlacement } = this.getNodeParameter(
+		'options',
+		i,
+		{},
+	);
+
+	const endpoint = buildTeamsPath.call(this, [
+		'/beta/teams/',
+		{ id: teamId },
+		'/channels/',
+		{ id: channelId },
+		'/messages/',
+		{ id: messageId },
+		'/replies',
+	]);
+
+	if (contentType === 'adaptiveCard') {
+		const body = buildAdaptiveCardMessage.call(this, this.getNodeParameter('adaptiveCard', i), i);
+		return await microsoftApiRequest.call(this, 'POST', endpoint, body);
+	}
+
+	const message = this.getNodeParameter('message', i) as string;
 
 	const mentions = await resolveMentions.call(this, i, teamId);
 
@@ -109,16 +170,6 @@ export async function execute(
 		mentions,
 		(mentionPlacement as MentionPlacement) || 'start',
 	);
-
-	const endpoint = buildTeamsPath.call(this, [
-		'/beta/teams/',
-		{ id: teamId },
-		'/channels/',
-		{ id: channelId },
-		'/messages/',
-		{ id: messageId },
-		'/replies',
-	]);
 
 	return await microsoftApiRequest.call(this, 'POST', endpoint, body);
 }
