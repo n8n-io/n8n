@@ -32,6 +32,27 @@ export const CORE_WORKSPACE_TOOL_NAMES: ReadonlySet<string> = new Set([
 	'workspace_execute_command',
 ]);
 
+/** The names of every tool that `createWorkspaceTools` can return. */
+export const WORKSPACE_TOOL_NAMES: ReadonlySet<string> = new Set([
+	'workspace_read_file',
+	'workspace_read_files',
+	'workspace_read_tool_result',
+	'workspace_str_replace_file',
+	'workspace_write_file',
+	'workspace_edit_files',
+	'workspace_list_files',
+	'workspace_file_stat',
+	'workspace_mkdir',
+	'workspace_delete_file',
+	'workspace_append_file',
+	'workspace_copy_file',
+	'workspace_move_file',
+	'workspace_rmdir',
+	'workspace_execute_command',
+	'workspace_list_processes',
+	'workspace_kill_process',
+]);
+
 export function createWorkspaceTools(workspace: WorkspaceLike): BuiltTool[] {
 	const tools: BuiltTool[] = [];
 

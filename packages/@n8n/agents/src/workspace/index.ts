@@ -10,7 +10,11 @@ export { BaseFilesystem } from './filesystem/base-filesystem';
 
 export { BaseSandbox } from './sandbox/base-sandbox';
 
-export { CORE_WORKSPACE_TOOL_NAMES, createWorkspaceTools } from './tools/workspace-tools';
+export {
+	CORE_WORKSPACE_TOOL_NAMES,
+	WORKSPACE_TOOL_NAMES,
+	createWorkspaceTools,
+} from './tools/workspace-tools';
 export { callLifecycle } from './lifecycle';
 
 export type { BaseFilesystemOptions, FilesystemLifecycleHook } from './filesystem/base-filesystem';

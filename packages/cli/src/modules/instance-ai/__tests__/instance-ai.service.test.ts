@@ -39,6 +39,8 @@ vi.mock('@n8n/instance-ai', async () => {
 		deriveInstanceContextReach: profiles.deriveInstanceContextReach,
 		WorkSummaryAccumulator: profiles.WorkSummaryAccumulator,
 		mergeInstanceContextReach: profiles.mergeInstanceContextReach,
+		deriveAssistantUsageTier: profiles.deriveAssistantUsageTier,
+		listAssistantToolsUsed: profiles.listAssistantToolsUsed,
 		suspendedInstanceContextSchema: profiles.suspendedInstanceContextSchema,
 		enrichMessageWithBackgroundTasks: profiles.enrichMessageWithBackgroundTasks,
 		patchThread: vi.fn(async () => {}),

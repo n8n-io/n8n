@@ -79,7 +79,7 @@ describe('WorkSummaryAccumulator', () => {
 		expect(summary.totalToolCalls).toBe(1);
 		expect(summary.totalToolErrors).toBe(0);
 		expect(summary.toolCalls).toEqual([
-			{ toolCallId: 'tc-1', toolName: 'list-workflows', succeeded: true },
+			{ toolCallId: 'tc-1', toolName: 'list-workflows', succeeded: true, returned: true },
 		]);
 	});
 
@@ -93,6 +93,7 @@ describe('WorkSummaryAccumulator', () => {
 				toolCallId: 'tc-1',
 				toolName: 'agent_builder_update_skill',
 				succeeded: true,
+				returned: true,
 				configMutated: true,
 			},
 		]);
@@ -104,7 +105,12 @@ describe('WorkSummaryAccumulator', () => {
 		accumulator.observe(toolResultEvent('tc-1'));
 
 		expect(accumulator.toSummary().toolCalls).toEqual([
-			{ toolCallId: 'tc-1', toolName: 'workflow_builder_build_workflow', succeeded: true },
+			{
+				toolCallId: 'tc-1',
+				toolName: 'workflow_builder_build_workflow',
+				succeeded: true,
+				returned: true,
+			},
 		]);
 	});
 
@@ -122,6 +128,34 @@ describe('WorkSummaryAccumulator', () => {
 			succeeded: false,
 			errorSummary: 'Not found',
 		});
+	});
+
+	it('does not mark a call as returned while it waits for a result', () => {
+		const accumulator = new WorkSummaryAccumulator();
+		accumulator.observe(toolCallEvent('tc-1', 'workflows'));
+
+		expect(accumulator.toSummary().toolCalls[0]).toEqual({
+			toolCallId: 'tc-1',
+			toolName: 'workflows',
+			succeeded: true,
+		});
+	});
+
+	it.each([{ denied: true }, { approved: false }])('marks a call as denied for %o', (result) => {
+		const accumulator = new WorkSummaryAccumulator();
+		accumulator.observe(toolCallEvent('tc-1', 'workflows'));
+		accumulator.observe(toolResultEvent('tc-1', result));
+
+		expect(accumulator.toSummary().toolCalls[0]).toMatchObject({ returned: true, denied: true });
+	});
+
+	it('clears returned when a later error replaces the result', () => {
+		const accumulator = new WorkSummaryAccumulator();
+		accumulator.observe(toolCallEvent('tc-1', 'workflows'));
+		accumulator.observe(toolResultEvent('tc-1'));
+		accumulator.observe(toolErrorEvent('tc-1', 'Failed'));
+
+		expect(accumulator.toSummary().toolCalls[0].returned).toBeUndefined();
 	});
 
 	it('tracks multiple tool calls with mixed outcomes', () => {

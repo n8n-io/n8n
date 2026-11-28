@@ -1,4 +1,5 @@
 import { resolveBuilderToolName, type InstanceAiEvent } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 import { DOMAIN_TOOL_IDS } from '../tools/tool-ids';
@@ -13,6 +14,10 @@ export const toolCallSummarySchema = z.object({
 	/** Track workflow index reads without storing the requested node types. */
 	filteredByNodeTypes: z.literal(true).optional(),
 	succeeded: z.boolean(),
+	/** `succeeded` is also true while the call waits for a result, for example for approval. */
+	returned: z.literal(true).optional(),
+	/** The user or an admin denied the action. The tool still returned a result. */
+	denied: z.literal(true).optional(),
 	configMutated: z.literal(true).optional(),
 	errorSummary: z.string().optional(),
 });
@@ -27,6 +32,11 @@ export const workSummarySchema = z.object({
 
 export type ToolCallSummary = z.infer<typeof toolCallSummarySchema>;
 export type WorkSummary = z.infer<typeof workSummarySchema>;
+
+/** Tools return `denied: true` or `approved: false` when the user or an admin rejects the action. */
+function isDeniedResult(result: unknown): boolean {
+	return isRecord(result) && (result.denied === true || result.approved === false);
+}
 
 /** Builder tools stamp `configMutated: true` on results that changed the agent config. */
 export function hasConfigMutationMarker(result: unknown): boolean {
@@ -82,6 +92,12 @@ export class WorkSummaryAccumulator {
 				const existing = this.calls.get(toolCallId);
 				if (existing) {
 					existing.succeeded = true;
+					existing.returned = true;
+					if (isDeniedResult(event.payload.result)) {
+						existing.denied = true;
+					} else {
+						delete existing.denied;
+					}
 					if (hasConfigMutationMarker(event.payload.result)) {
 						existing.configMutated = true;
 					} else {
@@ -96,6 +112,7 @@ export class WorkSummaryAccumulator {
 				const existing = this.calls.get(toolCallId);
 				if (existing) {
 					existing.succeeded = false;
+					delete existing.returned;
 					existing.errorSummary = typeof error === 'string' ? error.slice(0, 500) : undefined;
 				}
 				break;

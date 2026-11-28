@@ -25,6 +25,7 @@ import type * as TerminalResponseGuardMod from './runtime/terminal-response-guar
 import type * as CloudBrowserAgentMod from './agent/cloud-browser-agent';
 import type * as SkillsMod from './skills/skills';
 import type * as StorageMod from './storage';
+import type * as AssistantUsageMod from './stream/assistant-usage';
 import type * as InstanceContextReachMod from './stream/instance-context-reach';
 import type * as MapChunkMod from './stream/map-chunk';
 import type * as UsageAccumulatorMod from './stream/usage-accumulator';
@@ -214,6 +215,9 @@ const loadWorkSummaryAccumulator = lazyModule<typeof WorkSummaryAccumulatorMod>(
 );
 const loadInstanceContextReach = lazyModule<typeof InstanceContextReachMod>(() =>
 	require('./stream/instance-context-reach'),
+);
+const loadAssistantUsage = lazyModule<typeof AssistantUsageMod>(() =>
+	require('./stream/assistant-usage'),
 );
 const loadInstanceContextState = lazyModule<typeof InstanceContextStateMod>(() =>
 	require('./runtime/instance-context-state'),
@@ -672,6 +676,11 @@ export const deriveInstanceContextReach: typeof InstanceContextReachMod.deriveIn
 	lazyFunction(() => loadInstanceContextReach().deriveInstanceContextReach);
 export const mergeInstanceContextReach: typeof InstanceContextReachMod.mergeInstanceContextReach =
 	lazyFunction(() => loadInstanceContextReach().mergeInstanceContextReach);
+export const deriveAssistantUsageTier: typeof AssistantUsageMod.deriveAssistantUsageTier =
+	lazyFunction(() => loadAssistantUsage().deriveAssistantUsageTier);
+export const listAssistantToolsUsed: typeof AssistantUsageMod.listAssistantToolsUsed = lazyFunction(
+	() => loadAssistantUsage().listAssistantToolsUsed,
+);
 export type { RunTokenUsage, BuilderUsageItem } from './stream/usage-accumulator';
 export const tokenUsageToBuilderUsageItems: typeof UsageAccumulatorMod.tokenUsageToBuilderUsageItems =
 	lazyFunction(() => loadUsageAccumulator().tokenUsageToBuilderUsageItems);

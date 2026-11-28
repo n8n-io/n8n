@@ -451,6 +451,11 @@ export const instanceContextAbsenceReasonSchema = z.enum(['disabled', 'empty', '
 
 export type InstanceContextAbsenceReason = z.infer<typeof instanceContextAbsenceReasonSchema>;
 
+/** How much a turn used the Assistant, from the tools that returned a result. */
+export const assistantUsageTierSchema = z.enum(['none', 'broad', 'strict']);
+
+export type AssistantUsageTier = z.infer<typeof assistantUsageTierSchema>;
+
 export const instanceContextInjectionSchema = z.discriminatedUnion('state', [
 	z.object({
 		state: z.literal('injected'),
