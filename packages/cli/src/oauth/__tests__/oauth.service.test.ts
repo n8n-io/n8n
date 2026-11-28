@@ -3077,8 +3077,10 @@ describe('OauthService', () => {
 	describe('generateAOauth2AuthUri with DCR scopes', () => {
 		const registerWithScopes = async ({
 			supportsDynamicClientRegistration,
+			scope,
 		}: {
 			supportsDynamicClientRegistration: boolean;
+			scope?: string;
 		}) => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			vi.mocked(ClientOAuth2).mockImplementation(function () {
@@ -3108,6 +3110,7 @@ describe('OauthService', () => {
 				oauthCredentials: {
 					serverUrl: 'https://todoist.com',
 					useDynamicClientRegistration: true,
+					scope,
 				} as OAuth2CredentialData,
 			});
 			vi.mocked(httpClientMock.get).mockResolvedValue({
@@ -3145,6 +3148,18 @@ describe('OauthService', () => {
 				expect.anything(),
 				expect.objectContaining({ scope: 'data:read_write,data:delete' }),
 				expect.anything(),
+			);
+		});
+
+		it('keeps the declared scope over a scope stored on the credential', async () => {
+			await registerWithScopes({
+				supportsDynamicClientRegistration: true,
+				scope: 'data:read data:read_write data:delete project:delete',
+			});
+
+			expect(httpClientMock.post).toHaveBeenCalledWith(
+				'https://todoist.com/oauth/register',
+				expect.objectContaining({ scope: 'data:read_write data:delete' }),
 			);
 		});
 
@@ -4568,7 +4583,7 @@ describe('OauthService', () => {
 				});
 
 				it('should use the instance metadata document URL as the client ID without registering', async () => {
-					const oauthCredentials = makeDcrCredentials({ clientSecret: 'stale-secret' });
+					const oauthCredentials = makeDcrCredentials({ clientSecret: 'stale-secret', scope: '' });
 					const toUpdate = {};
 					const toDelete: string[] = [];
 					vi.mocked(httpClientMock.get).mockResolvedValueOnce({ data: cimdMetadata() });
@@ -4590,6 +4605,7 @@ describe('OauthService', () => {
 						accessTokenUrl: 'https://auth.example.com/oauth2/token',
 						grantType: 'pkce',
 						usePkce: true,
+						scope: '',
 						clientId: 'https://n8n.example.com/rest/oauth2-credential/client-metadata.json',
 					});
 					expect(toDelete).toEqual(['authentication', 'clientSecret']);
@@ -4695,7 +4711,7 @@ describe('OauthService', () => {
 			});
 
 			it('should register with the second discovery URL when the first one fails', async () => {
-				const oauthCredentials = makeDcrCredentials();
+				const oauthCredentials = makeDcrCredentials({ scope: '' });
 				const toUpdate = {};
 
 				vi.mocked(httpClientMock.get)
@@ -4741,7 +4757,7 @@ describe('OauthService', () => {
 					}),
 				);
 				expect(toUpdate).not.toHaveProperty('clientSecret');
-				expect(toUpdate).not.toHaveProperty('scope');
+				expect(toUpdate).toHaveProperty('scope', '');
 			});
 
 			it('should skip metadata whose issuer does not match the authorization server', async () => {
@@ -5927,13 +5943,12 @@ describe('OauthService', () => {
 				await mockClientOAuth2UriFromOptions();
 				vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
 				vi.spyOn(service, 'getNewConnectionCredentials').mockResolvedValue({
-					oauthCredentials: // Under DCR the `scope` field is hidden and defaults to '' — the user
-						// cannot supply scopes, so the flow depends entirely on discovery.
-						makeDcrCredentials({
-							serverUrl: ATLASSIAN_SERVER_URL,
-							scope: '',
-							...credentialOverrides,
-						}),
+					// An empty scope uses discovery; an explicit scope takes precedence.
+					oauthCredentials: makeDcrCredentials({
+						serverUrl: ATLASSIAN_SERVER_URL,
+						scope: '',
+						...credentialOverrides,
+					}),
 				});
 
 				await service.generateAOauth2AuthUri(credential, {
@@ -6006,6 +6021,62 @@ describe('OauthService', () => {
 					data: { client_id: 'registered-client-id' },
 				});
 			};
+
+			it.each(['read:jira-work', '  read:jira-work  '])(
+				'uses the configured scope %j for registration and authorization',
+				async (scope) => {
+					mockProtectedResourceDiscovery(RESOURCE_SCOPES);
+					mockAuthServerWithScopes([...RESOURCE_SCOPES, 'profile']);
+
+					const { registerPayload, clientOptions, persisted } = await runAtlassianFlow({ scope });
+
+					expect(registerPayload.scope).toBe('read:jira-work');
+					expect(persisted.scope).toBe('read:jira-work');
+					expect(clientOptions.scopes?.join(clientOptions.scopesSeparator)).toBe('read:jira-work');
+					expect(persisted.grantType).toBe('pkce');
+					expect(registerPayload.token_endpoint_auth_method).toBe('none');
+				},
+			);
+
+			it('uses configured scopes when neither discovery document lists scopes', async () => {
+				mockProtectedResourceDiscovery();
+				mockAuthServerWithoutScopes();
+
+				const { registerPayload, clientOptions, persisted } = await runAtlassianFlow({
+					scope: 'read:jira-work search:confluence',
+				});
+
+				expect(registerPayload.scope).toBe('read:jira-work search:confluence');
+				expect(persisted.scope).toBe(registerPayload.scope);
+				expect(clientOptions.scopes?.join(clientOptions.scopesSeparator)).toBe(
+					registerPayload.scope,
+				);
+			});
+
+			it('uses discovered scopes when the configured scope is whitespace', async () => {
+				mockProtectedResourceDiscovery(['mcp']);
+				mockAuthServerWithScopes(['mcp', 'offline_access']);
+
+				const { registerPayload, persisted } = await runAtlassianFlow({ scope: ' \t ' });
+
+				expect(registerPayload.scope).toBe('mcp offline_access');
+				expect(persisted.scope).toBe('mcp offline_access');
+			});
+
+			it.each(['', ' \t ', undefined])(
+				'omits blank scope %j when neither discovery document lists scopes',
+				async (scope) => {
+					mockProtectedResourceDiscovery();
+					mockAuthServerWithoutScopes();
+
+					const { registerPayload, clientOptions, persisted } = await runAtlassianFlow({ scope });
+
+					expect(registerPayload.scope).toBeUndefined();
+					// The MCP spec omits the scope parameter when no scope is known.
+					expect(clientOptions.scopes).toBeUndefined();
+					expect(persisted.scope).toBe('');
+				},
+			);
 
 			it('adds offline_access when the auth server offers it and the resource omits it', async () => {
 				mockProtectedResourceDiscovery(['mcp']);
