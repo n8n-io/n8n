@@ -201,7 +201,7 @@ export class InterruptedRunSweeper {
 		// thread while the sweep was running must not shield it.
 		if (this.resumeHost?.isRunLive(threadId, runId)) return null;
 
-		const checkpoints = await this.checkpointRepo.findActiveByThreadId(threadId);
+		const checkpoints = await this.checkpointRepo.findActiveByThreadId(threadId, {});
 		const subAgentPrefix = createSubAgentResourceIdPrefix(threadId);
 		// Exact hostRunId match only: every logged run post-dates the column, and
 		// sub-agent or legacy rows carry null, so they never match another run's

@@ -1,15 +1,72 @@
 import { isDeepStrictEqual } from 'node:util';
 
-import { Service } from '@n8n/di';
 import type { SerializableAgentState } from '@n8n/agents';
-import { DataSource, IsNull, Repository } from '@n8n/typeorm';
+import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { DataSource, IsNull, LessThan } from '@n8n/typeorm';
 
 import { InstanceAiCheckpoint } from '../entities/instance-ai-checkpoint.entity';
 
+class InstanceAiCheckpointTable extends BaseRepository<InstanceAiCheckpoint> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(InstanceAiCheckpoint, dataSource.manager, transactionRunner);
+	}
+}
+
 @Service()
-export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpoint> {
-	constructor(dataSource: DataSource) {
-		super(InstanceAiCheckpoint, dataSource.manager);
+export class InstanceAiCheckpointRepository {
+	private readonly table: InstanceAiCheckpointTable;
+
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		this.table = new InstanceAiCheckpointTable(dataSource, transactionRunner);
+	}
+
+	async findByKey(key: string, ctx: OperationContext): Promise<InstanceAiCheckpoint | null> {
+		return await this.table.managerFor(ctx).findOne(InstanceAiCheckpoint, { where: { key } });
+	}
+
+	async createCheckpoint(
+		values: Pick<
+			InstanceAiCheckpoint,
+			'key' | 'runId' | 'hostRunId' | 'threadId' | 'resourceId' | 'state' | 'expiredAt'
+		>,
+		ctx: OperationContext,
+	): Promise<void> {
+		const manager = this.table.managerFor(ctx);
+		const checkpoint = manager.create(InstanceAiCheckpoint, values);
+		await manager.save(InstanceAiCheckpoint, checkpoint);
+	}
+
+	async saveCheckpointChanges(
+		checkpoint: InstanceAiCheckpoint,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.table.managerFor(ctx).save(InstanceAiCheckpoint, checkpoint);
+	}
+
+	async markExpiredByKey(key: string, expiredAt: Date, ctx: OperationContext): Promise<void> {
+		await this.table
+			.managerFor(ctx)
+			.update(InstanceAiCheckpoint, { key }, { expiredAt, state: null });
+	}
+
+	async markExpiredOlderThan(olderThan: Date, ctx: OperationContext): Promise<number> {
+		const result = await this.table
+			.managerFor(ctx)
+			.createQueryBuilder()
+			.update(InstanceAiCheckpoint)
+			.set({ expiredAt: new Date(), state: null })
+			.where('updatedAt < :olderThan', { olderThan })
+			.andWhere('expiredAt IS NULL')
+			.execute();
+		return result.affected ?? 0;
+	}
+
+	async deleteExpiredOlderThan(olderThan: Date, ctx: OperationContext): Promise<number> {
+		const result = await this.table
+			.managerFor(ctx)
+			.delete(InstanceAiCheckpoint, { expiredAt: LessThan(olderThan) });
+		return result.affected ?? 0;
 	}
 
 	/**
@@ -21,8 +78,11 @@ export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpo
 	 * committed at the end of a successful loop — until the run resumes and
 	 * completes, those artifacts live only in the checkpoint blob.
 	 */
-	async findActiveByThreadId(threadId: string): Promise<InstanceAiCheckpoint[]> {
-		return await this.find({
+	async findActiveByThreadId(
+		threadId: string,
+		ctx: OperationContext,
+	): Promise<InstanceAiCheckpoint[]> {
+		return await this.table.managerFor(ctx).find(InstanceAiCheckpoint, {
 			where: { threadId, expiredAt: IsNull() },
 			order: { createdAt: 'DESC' },
 		});
@@ -36,10 +96,10 @@ export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpo
 	async claimSuspendedForResume(
 		key: string,
 		expectedState: SerializableAgentState,
+		ctx: OperationContext,
 	): Promise<boolean> {
-		return await this.manager.transaction(async (manager) => {
-			const repo = manager.getRepository(InstanceAiCheckpoint);
-			const row = await repo.findOne({
+		return await this.table.runInTransaction(ctx, async (manager) => {
+			const row = await manager.findOne(InstanceAiCheckpoint, {
 				where: { key, expiredAt: IsNull() },
 				...(manager.connection.options.type === 'postgres'
 					? { lock: { mode: 'pessimistic_write' as const } }
@@ -54,7 +114,7 @@ export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpo
 			}
 
 			row.state = { ...row.state, status: 'running' };
-			await repo.save(row);
+			await manager.save(InstanceAiCheckpoint, row);
 			return true;
 		});
 	}
@@ -65,8 +125,11 @@ export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpo
 	 * parent thread and agent kind, so callers can compute the resourceId
 	 * without stashing it across suspend/resume cycles.
 	 */
-	async findActiveByResourceId(resourceId: string): Promise<InstanceAiCheckpoint | undefined> {
-		const row = await this.findOne({
+	async findActiveByResourceId(
+		resourceId: string,
+		ctx: OperationContext,
+	): Promise<InstanceAiCheckpoint | undefined> {
+		const row = await this.table.managerFor(ctx).findOne(InstanceAiCheckpoint, {
 			where: { resourceId, expiredAt: IsNull() },
 			order: { createdAt: 'DESC' },
 		});

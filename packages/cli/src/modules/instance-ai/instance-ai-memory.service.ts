@@ -633,7 +633,7 @@ export class InstanceAiMemoryService {
 	 *  carve-out, in-flight message merge) degrade rather than fail the read. */
 	private async loadActiveCheckpoints(threadId: string): Promise<InstanceAiCheckpoint[]> {
 		try {
-			return await this.checkpointRepository.findActiveByThreadId(threadId);
+			return await this.checkpointRepository.findActiveByThreadId(threadId, {});
 		} catch (error) {
 			this.logger.warn('Failed to load in-flight checkpoints', {
 				threadId,
