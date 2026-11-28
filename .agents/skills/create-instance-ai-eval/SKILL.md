@@ -14,6 +14,9 @@ Each eval is **one JSON case**. Author workflow cases in
 `packages/@n8n/instance-ai/evaluations/data/workflows/`. Author standalone Agent
 cases in `packages/@n8n/instance-ai/evaluations/data/agents/` and follow the
 [`create-agent-builder-eval` skill](../create-agent-builder-eval/SKILL.md).
+To test the Agent itself (a seeded Agent runs directly against a simulated
+user, with no assistant turn), follow the
+[`create-agent-runtime-eval` skill](../create-agent-runtime-eval/SKILL.md).
 The disk loader auto-discovers `*.json` in both directories. A LangTracer suite
 is the durable home. Cases validate against
 [`harness/schema.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/schema.ts)
@@ -1031,7 +1034,9 @@ in *checkpoint* mode calibration this is how the driver opens the built thread
 ## Other eval harnesses (not this skill)
 
 Use the [`create-agent-builder-eval` skill](../create-agent-builder-eval/SKILL.md)
-for standalone Agent cases. Three other harnesses have their own data dirs and
+for standalone Agent cases that grade the builder. Use the
+[`create-agent-runtime-eval` skill](../create-agent-runtime-eval/SKILL.md) to
+test the Agent itself: it runs directly, with no assistant turn. Three other harnesses have their own data dirs and
 CLIs: **`eval:subagent`** (workflow-build compatibility corpus,
 binary-check scored), **`eval:discovery`** (asserts first-hop tool/dispatch
 routing, no n8n server), **`eval:pairwise`** (head-to-head build comparison vs

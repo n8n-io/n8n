@@ -498,6 +498,11 @@ becoming a message the transcript builder would silently drop.
 
 #### `agents` — "here's an agent you already built, now change it"
 
+> To run the seeded Agent itself against a simulated user, with no assistant
+> turn (`agentRun.mode: "direct"`), see
+> [create-agent-runtime-eval](../create-agent-runtime-eval/SKILL.md). This
+> section covers seeds that the assistant then changes.
+
 An n8n **Agent** is not a workflow, so it has its own slot: a project-scoped
 resource with a config *plus authored skill bodies*. Declare it and the restore
 creates it at its pinned id in the thread's project, with its skills, before the

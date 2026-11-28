@@ -14,6 +14,9 @@ description: >-
 Use the shared Instance AI eval harness. Agent cases use an Agent-specific
 authoring directory, dataset, and LangTracer suite.
 
+This skill grades the builder. To test the built Agent's behavior, use
+[create-agent-runtime-eval](../create-agent-runtime-eval/SKILL.md).
+
 ## Required LangTracer preflight
 
 Run this check before sourcing, drafting, or writing an eval. Run it from

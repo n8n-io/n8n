@@ -163,6 +163,20 @@ Two things to expect:
 - **The opening often has no text at all.** Keep it that way; see the empty-opening
   note in [`case-shapes.md`](case-shapes.md).
 
+## Sourcing an Agent from a snapshot
+
+An Agent the assistant built is a snapshot, not a workflow. Find it with
+`list_conversations` (`usedAgentBuilder: true`), then
+`list_conversation_agent_snapshots`, and take the highest-`seq`
+`config-updated` row for one `agentId`. Its instructions and skill bodies are
+real prose: rewrite them before they enter a case. To grade the builder, seed
+from that snapshot as in
+[create-agent-builder-eval](../create-agent-builder-eval/SKILL.md#source-the-case-from-a-real-thread).
+To test the Agent itself, follow
+[create-agent-runtime-eval](../create-agent-runtime-eval/sourcing.md). Its
+[building.md](../create-agent-runtime-eval/building.md) has the Agent
+counterpart of the workflow scrub below.
+
 ## Scrubbing a real workflow into a synthetic seed
 
 A seeded case carries a workflow inside it, and that file is committed and runs for
