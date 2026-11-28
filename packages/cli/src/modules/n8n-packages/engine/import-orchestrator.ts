@@ -32,7 +32,11 @@ import {
 	columnIdConflictError,
 	DataTableImporter,
 } from '../entities/data-table/data-table-importer';
-import { reconcileSharedWrites } from '../entities/skill/skill-import.types';
+import {
+	reconcileSharedWrites,
+	skillIssue,
+	type StandaloneSkillPlan,
+} from '../entities/skill/skill-import.types';
 import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
@@ -120,6 +124,7 @@ import {
 import { identifyRequirements } from './import-result';
 
 export interface ImportOrchestrationInput {
+	standaloneSkillsOnly?: boolean;
 	context: ImportContext;
 	folders: PreparedFolder[];
 	workflows: PreparedWorkflow[];
@@ -198,7 +203,7 @@ export class ImportOrchestrator {
 
 	async assertNotBlocked(
 		plans: ImportPlan[],
-		options: { apiKeyScopes: string[] | undefined },
+		options: { apiKeyScopes: string[] | undefined; skillPlan?: StandaloneSkillPlan },
 	): Promise<void> {
 		const issues = await this.blockingIssues(plans, { ...options, mode: 'enforce' });
 		if (issues.length > 0) throw toImportBlockedError(issues);
@@ -214,7 +219,11 @@ export class ImportOrchestrator {
 	 */
 	async blockingIssues(
 		plans: ImportPlan[],
-		options: { apiKeyScopes: string[] | undefined; mode: ImportPlanMode },
+		options: {
+			apiKeyScopes: string[] | undefined;
+			mode: ImportPlanMode;
+			skillPlan?: StandaloneSkillPlan;
+		},
 	): Promise<BlockingIssue[]> {
 		assertTagWritesAllowed(
 			options.apiKeyScopes,
@@ -278,12 +287,37 @@ export class ImportOrchestrator {
 			if (!plan.agentPlan) continue;
 			assertPackageImportApiKeyScopes(options.apiKeyScopes, requiredAgentScopes(plan.agentPlan));
 		}
-		assertSharedSkillWritesAllowed(
-			options.apiKeyScopes,
-			plans.flatMap(({ agentPlan }) => (agentPlan?.skills ? [agentPlan.skills] : [])),
-		);
+		assertSharedSkillWritesAllowed(options.apiKeyScopes, [
+			...plans.flatMap(({ agentPlan }) => (agentPlan?.skills ? [agentPlan.skills] : [])),
+			...(options.skillPlan ? [options.skillPlan.writes] : []),
+		]);
+		if (options.skillPlan?.removals.length) {
+			assertPackageImportApiKeyScopes(options.apiKeyScopes, ['skill:delete']);
+		}
+		const skillWrites = [
+			...(options.skillPlan?.writes.shared ?? []),
+			...plans.flatMap(({ agentPlan }) => agentPlan?.skills?.shared ?? []),
+		];
+		const renameIssues: BlockingIssue[] = [];
+		if (skillWrites.length) {
+			const { SkillImporter } = await import('../entities/skill/skill-importer.js');
+			for (const issue of await Container.get(SkillImporter).renameIssues(skillWrites)) {
+				const write = skillWrites.find(({ skill }) => skill.id === issue.skillId);
+				renameIssues.push(
+					...(write?.usedBy.length
+						? write.usedBy.map((agentId) =>
+								skillIssue(agentId, write.packageSkillId ?? issue.skillId, issue.message),
+							)
+						: [issue]),
+				);
+			}
+		}
 
-		return await this.collectPackageBlockingIssues(plans, options.mode);
+		return [
+			...(await this.collectPackageBlockingIssues(plans, options.mode)),
+			...(options.skillPlan?.issues ?? []),
+			...renameIssues,
+		];
 	}
 
 	/**
@@ -435,7 +469,7 @@ export class ImportOrchestrator {
 			options,
 		} = input;
 
-		if (workflows.length > 0 || !agentPlan)
+		if (workflows.length > 0 || (!agentPlan && !input.standaloneSkillsOnly))
 			await this.workflowPublisher.assertCanPublish(
 				context.user,
 				context.projectId,
@@ -880,7 +914,7 @@ function toDataTableBlockingIssue(
 
 function toTagBlockingIssue(
 	failure: TagResolutionFailure,
-	plans: Array<Pick<ImportPlan, 'tagPlan' | 'workflowPlan'>>,
+	plans: Pick<ImportPlan, 'tagPlan' | 'workflowPlan'>[],
 ): BlockingIssue {
 	const consumers = plans.flatMap(({ tagPlan, workflowPlan }) => {
 		let tagIds: string[];

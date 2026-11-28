@@ -21,6 +21,7 @@ import { packageImportScopes } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
+	emptyImportResult,
 	identifyRequirements,
 	reconcileCredentialSummary,
 	toImportedWorkflowSummaries,
@@ -34,9 +35,16 @@ import { PackageImportPreflight } from './package-import-preflight';
 import {
 	needsBundledCredentialFiles,
 	needsBundledVariableValues,
+	isStandaloneSkillPackage,
 	placeByPolicy,
 } from './package-layout';
 import type { PackageManifest } from '../spec/manifest.schema';
+import {
+	planStandaloneSkills,
+	applyStandaloneSkills,
+	addSkillResults,
+	throwWithSkillResults,
+} from './package-skill-plan';
 
 /**
  * Imports loose top-level workflows, their folder shells, and credential & data table deps into a target project.
@@ -57,6 +65,27 @@ export class WorkflowPackageImporter {
 		reader: PackageReader,
 		manifest: PackageManifest,
 	): Promise<ImportOutcome> {
+		if (isStandaloneSkillPackage(manifest)) {
+			const skills = await this.packageParser.getSkills(reader);
+			let projectId = request.projectId;
+			if (
+				projectId === undefined &&
+				(skills.some((skill) => skill.scope === 'project') || request.deletedSkillIds?.length)
+			) {
+				projectId = (await this.projectService.getPersonalProject(request.user))?.id;
+			}
+			if (projectId) await this.resolveImportProject(request.user, projectId, []);
+			const skillPlan = await planStandaloneSkills(request, manifest, skills, [], {
+				destinationProjectId: projectId,
+			});
+			await this.importPreflight.prepare([], reader, request.apiKeyScopes, skillPlan);
+			const outcomes = await applyStandaloneSkills(request, skillPlan);
+			return {
+				result: addSkillResults(emptyImportResult(manifest), outcomes, skillPlan),
+				scopes: [],
+				agentOutcomes: [],
+			};
+		}
 		const folders = await this.packageParser.getFolders(reader);
 		const importLocation = await this.findImportLocation(
 			request.user,
@@ -141,7 +170,9 @@ export class WorkflowPackageImporter {
 			workflows,
 			credentialRequest,
 			agents,
-			skills: agents.length > 0 ? await this.packageParser.getSkills(reader) : [],
+			skills: manifest.skills?.length ? await this.packageParser.getSkills(reader) : [],
+			standaloneSkillsOnly:
+				!manifest.workflows?.length && !manifest.agents?.length && !!manifest.skills,
 			agentRequirements: identifyRequirements(manifest.requirements?.agents, workflows, agents),
 			dataTableRequest,
 			variableRequest,
@@ -155,55 +186,72 @@ export class WorkflowPackageImporter {
 			checkRootPlacement: false,
 		});
 
-		const [plan] = await this.importPreflight.prepare([draftPlan], reader, request.apiKeyScopes);
+		const skillPlan = await planStandaloneSkills(
+			request,
+			manifest,
+			draftPlan.input.skills ?? [],
+			[draftPlan],
+			{ destinationProjectId: context.projectId },
+		);
+		const [plan] = await this.importPreflight.prepare(
+			[draftPlan],
+			reader,
+			request.apiKeyScopes,
+			skillPlan,
+		);
+		const skillOutcomes = await applyStandaloneSkills(request, skillPlan, 'writes');
+		try {
+			const content = await this.importOrchestrator.apply(plan);
+			skillOutcomes.push(...(await applyStandaloneSkills(request, skillPlan, 'removals')));
 
-		const content = await this.importOrchestrator.apply(plan);
+			const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
+				user: request.user,
+				publicApi: request.publicApi,
+				ctx: request.ctx,
+				content: [content],
+				policy: request.publishingPolicy,
+				subWorkflowRequirements: plan.input.subWorkflowRequirements,
+			});
 
-		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
-			user: request.user,
-			publicApi: request.publicApi,
-			ctx: request.ctx,
-			content: [content],
-			policy: request.publishingPolicy,
-			subWorkflowRequirements: plan.input.subWorkflowRequirements,
-		});
+			const scopes: PackageImportScope[] = [
+				{
+					context,
+					imported: content,
+					credentialRequest: plan.input.credentialRequest,
+					dataTableRequest: plan.input.dataTableRequest,
+					variableRequest: plan.input.variableRequest,
+					tagRequest,
+				},
+			];
 
-		const scopes: PackageImportScope[] = [
-			{
-				context,
-				imported: content,
-				credentialRequest: plan.input.credentialRequest,
-				dataTableRequest: plan.input.dataTableRequest,
-				variableRequest: plan.input.variableRequest,
-				tagRequest,
-			},
-		];
+			const result = buildImportResult({
+				package: toPackageSummary(manifest),
+				agentOutcomes,
+				workflows: toImportedWorkflowSummaries(
+					content.workflowOutcomes,
+					context.projectId,
+					published,
+				),
+				// Always empty: `folderConflictPolicy=overwrite` is rejected for workflow packages.
+				removedWorkflows: content.removedWorkflows,
+				removedFolders: content.removedFolders,
+				folders: content.folderSummaries,
+				projects: [],
+				bindings: content.bindings,
+				credentials: reconcileCredentialSummary(content.credentialResult),
+				dataTables: {
+					matched: content.dataTablePlan.matchedCount,
+					created: content.dataTablePlan.creations.length,
+					updated: content.dataTablePlan.updates.length,
+				},
+				variables: toVariableSummary(content.variablePlan, content.variableResult),
+				tags: toTagSummary(content.tagPlan),
+			});
 
-		const result = buildImportResult({
-			package: toPackageSummary(manifest),
-			agentOutcomes,
-			workflows: toImportedWorkflowSummaries(
-				content.workflowOutcomes,
-				context.projectId,
-				published,
-			),
-			// Always empty: `folderConflictPolicy=overwrite` is rejected for workflow packages.
-			removedWorkflows: content.removedWorkflows,
-			removedFolders: content.removedFolders,
-			folders: content.folderSummaries,
-			projects: [],
-			bindings: content.bindings,
-			credentials: reconcileCredentialSummary(content.credentialResult),
-			dataTables: {
-				matched: content.dataTablePlan.matchedCount,
-				created: content.dataTablePlan.creations.length,
-				updated: content.dataTablePlan.updates.length,
-			},
-			variables: toVariableSummary(content.variablePlan, content.variableResult),
-			tags: toTagSummary(content.tagPlan),
-		});
-
-		return { result, scopes, agentOutcomes };
+			return { result: addSkillResults(result, skillOutcomes, skillPlan), scopes, agentOutcomes };
+		} catch (error) {
+			throwWithSkillResults(error, skillOutcomes);
+		}
 	}
 
 	private async findImportLocation(
@@ -235,7 +283,10 @@ export class WorkflowPackageImporter {
 			projectId = personalProject.id;
 		}
 
-		const project = await this.projectService.getProjectWithScope(user, projectId, scopes);
+		// Skill-only imports check permissions for each planned action in SkillImporter.
+		const project = scopes.length
+			? await this.projectService.getProjectWithScope(user, projectId, scopes)
+			: await this.projectService.findProject(projectId);
 		if (project) {
 			return project;
 		}

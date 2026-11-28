@@ -1,7 +1,7 @@
 export const PACKAGE_TAGS = ['N8nPackage'];
 
 export const EXPORT_SUMMARY =
-	'Beta: Export agents, workflows, folders, or projects as an n8n package';
+	'Beta: Export agents, workflows, Skills, folders, or projects as an n8n package';
 export const EXPORT_DESCRIPTION =
 	'**Beta** — breaking changes may still occur without major version bump.\n\n' +
 	'Export agents, workflows, and folders, or whole projects, as a gzipped tar\n' +
@@ -23,7 +23,12 @@ export const EXPORT_DESCRIPTION =
 	'variables, `variable:list` is also required. Exports that reference no variables\n' +
 	'do not need it.\n\n' +
 	'Agent definitions include referenced skills, custom tools, and schedules.\n' +
-	'Knowledge base files and runtime data are excluded.\n';
+	'Knowledge base files and runtime data are excluded.\n\n' +
+	'Use `skillIds` for standalone project or instance Skills. Use `includeSkills` with ' +
+	'`projectIds` to include all project Skills. These options require `skill:read`. ' +
+	'Skills always export their latest saved content, frontmatter, and supported reference files. ' +
+	'Source connections and credentials do not travel. Standalone selection uses package format 2. ' +
+	'Older destinations reject that format.\n';
 
 export const EXPORT_422_DESCRIPTION =
 	'A requested workflow cannot be exported because its stored data is invalid. ' +
@@ -39,7 +44,7 @@ export const EXPORT_COUNTS_HEADER_DESCRIPTION =
 export const IMPORT_SUMMARY = 'Beta: Import an n8n package into a project';
 export const IMPORT_DESCRIPTION =
 	'**Beta** — breaking changes may still occur without major version bump.\n\n' +
-	'Imports Agent-only, workflow-only, mixed, and whole-project packages. The Agents module ' +
+	'Imports Skill-only, Agent-only, workflow-only, mixed, and whole-project packages. The Agents module ' +
 	'must be active for packages that contain Agents. Send the gzip-compressed tar ' +
 	'archive (`.n8np`) as the multipart field `package`. Optional routing uses form fields `projectId` ' +
 	'and `folderId` (omit or send empty for defaults). Every optional mode/policy field ' +
@@ -64,7 +69,7 @@ export const IMPORT_DESCRIPTION =
 	'`dataTable:create` only when it creates a data table. Planned Agent actions also ' +
 	'require `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish`. Skipped Agents ' +
 	'do not require write grants. Creating a project or instance skill requires `skill:create`, ' +
-	'and saving a new version of one requires `skill:update`. ' +
+	'saving a new version requires `skill:update`, and explicit removal requires `skill:delete`. ' +
 	'When the import publishes a workflow, including a republish under ' +
 	'`preserve-published-state`, the API key needs `workflow:activate`. When it unpublishes ' +
 	'one, the key needs `workflow:deactivate`. Skipped workflows and workflows marked as ' +
@@ -79,6 +84,15 @@ export const IMPORT_DESCRIPTION =
 	'Check `agents[].publishing.state` and `workflows[].publishing.state` for publication ' +
 	'results, including `failed`. A publication failure retains the imported definition and ' +
 	'returns HTTP 200.\n\n' +
+	'Standalone Skill imports need no Agent or workflow grants. Send `skillIds` as a JSON array ' +
+	'to select Skills, or omit it to use the package selection. Send `deletedSkillIds` for explicit ' +
+	'removals. Unselected Skills remain unchanged. Instance Skills need no destination project. ' +
+	'Project Skills use the destination project of the import. Skill conflicts are checked before ' +
+	'writes. Source-managed destinations and Skills used by consumers cannot be removed. ' +
+	'Identical content creates no version. `new-version` updates followers of latest and keeps ' +
+	'published pins unchanged. Results include `skills` and `counts.skills`. Error metadata ' +
+	'includes saved Skill outcomes if a later step fails. Protected instances reject ordinary ' +
+	'Skill writes. Formats 1 and 2 are supported; unsupported files or unavailable Skills fail.\n\n' +
 	'Selected-Agent exports use this endpoint. Agent content is rejected by `/import-selection`, ' +
 	'directory imports, and Promotions before writes.\n\n' +
 	'Example multipart fields: `conflictPolicy=new-version`, `idPolicy=source`, ' +
@@ -87,7 +101,7 @@ export const IMPORT_DESCRIPTION =
 
 export const IMPORT_409_DESCRIPTION =
 	'Import blocked by at least one conflict among the issues — an Agent or workflow identity conflict, ' +
-	'a folder conflict, a tag conflict (rename drift or name collision), a data table conflict ' +
+	'a standalone Skill conflict, a folder conflict, a tag conflict (rename drift or name collision), a data table conflict ' +
 	'(id owned by another project, or a name that another table in the project has), a variable ' +
 	'whose bundled value differs from the resolved target, or a selected destination also named ' +
 	'for deletion.';
@@ -96,20 +110,25 @@ export const IMPORT_422_DESCRIPTION =
 	'variables, invalid Agent definitions or dependencies, node types this instance does not have, ' +
 	'a delete the caller may not perform, or ' +
 	'variable stubs whose creation would exceed the instance variable quota. ' +
-	'Exception: a skill conflict returns 422, also under `conflictPolicy=fail`. The import plans ' +
+	'An Agent Skill dependency conflict returns 422, also under `conflictPolicy=fail`. The import plans ' +
 	'a skill as part of each Agent that uses it, so it reports every skill problem as an ' +
 	'`agent-invalid` issue on that Agent, with the path `skills.<skillId>`.';
 
 export const IMPORT_SELECTION_SUMMARY =
-	'Beta: Import a selected subset of workflows from an n8n package';
+	'Beta: Import selected workflows and Skills from an n8n package';
 export const IMPORT_SELECTION_DESCRIPTION =
 	'**Beta** — breaking changes may still occur without major version bump.\n\n' +
-	'Imports a chosen subset of workflows from one source project of a gzip-compressed tar ' +
+	'Imports chosen workflows and Skills from one source project of a gzip-compressed tar ' +
 	'package (`.n8np`), instead of the whole package. Send the archive as the multipart field ' +
 	'`package`. The import is **additive** (cherry-pick): it never removes a workflow the ' +
 	'selection omits. It creates or updates only the workflows named in ' +
 	'`selectedWorkflowIds`, and deletes only the destination workflows named in ' +
-	'`deletedWorkflowIds`.\n\n' +
+	'`deletedWorkflowIds`. Use `selectedSkillIds` to import standalone Skills and ' +
+	'`deletedSkillIds` for explicit removals. These fields are JSON arrays. Omitted Skill ' +
+	'lists leave Skills unchanged. Skill actions require `skill:create`, `skill:update`, or ' +
+	'`skill:delete`. Unchanged Skills need no write scope. No workflow grant is needed for ' +
+	'a Skill-only selection. Instance Skills keep instance scope. Project Skills must belong ' +
+	'to the selected project.\n\n' +
 	'`selectedProjectId` names the single source project the selection is scoped to (its id ' +
 	'as it appears in the package). The selected workflows are written into the instance ' +
 	'project whose id matches that source project, which is created if it does not yet exist; ' +

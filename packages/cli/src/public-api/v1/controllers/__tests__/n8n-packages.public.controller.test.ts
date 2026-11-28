@@ -34,6 +34,8 @@ const EXPORT_COUNTS = {
 
 const DEFAULT_SERVICE_OPTIONS = {
 	user: { id: 'user-1' },
+	skillIds: [],
+	includeSkills: false,
 	agentIds: [],
 	workflowIds: [],
 	folderIds: [],
@@ -126,8 +128,25 @@ describe('N8nPackagesPublicController', () => {
 
 			expect(caught).toBeInstanceOf(BadRequestError);
 			expect(caught).toMatchObject({
-				message: 'At least one agentId, workflowId, folderId, or projectId is required',
+				message: 'At least one skillId, agentId, workflowId, folderId, or projectId is required',
 			});
+			expect(mockService.exportPackage).not.toHaveBeenCalled();
+		});
+
+		it('exports standalone Skills with only skill:read', async () => {
+			mockExportStream();
+			expect(await runAndCatch({ skillIds: ['guide'] }, ['skill:read'])).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				...DEFAULT_SERVICE_OPTIONS,
+				skillIds: ['guide'],
+			});
+		});
+
+		it('requires skill:read when project Skills are selected', async () => {
+			const caught = await runAndCatch({ projectIds: ['project'], includeSkills: true }, [
+				'project:export',
+			]);
+			expect(caught).toBeInstanceOf(ForbiddenError);
 			expect(mockService.exportPackage).not.toHaveBeenCalled();
 		});
 

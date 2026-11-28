@@ -1,4 +1,4 @@
-import { AgentJsonConfigBaseSchema, agentSkillSchema, skillScopeSchema } from '@n8n/api-types';
+import { AgentJsonConfigBaseSchema, CreateSkillDto, skillScopeSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
 export const skillIdSchema = AgentJsonConfigBaseSchema.shape.skills.unwrap().innerType().element
@@ -12,7 +12,7 @@ export const serializedSkillSchema = z
 	.object({
 		id: skillIdSchema,
 		scope: skillScopeSchema,
-		skill: agentSkillSchema.omit({ allowedTools: true }),
+		skill: CreateSkillDto.schema.shape.skill,
 		frontmatter: z.record(z.unknown()).nullable(),
 	})
 	.strict();

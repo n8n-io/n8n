@@ -77,6 +77,12 @@ Import the archive with `package import --file=<file.n8np>`. The shared
 `--conflict-policy`, `--id-policy`, and `--publishing-policy` settings apply to
 both Agents and workflows. `--conflict-policy` also applies to the skills of
 imported Agents. Only `source` is supported for `--id-policy`.
+Use `package export --skill-id=<id>` for standalone project or instance Skills.
+Use `--include-skills` with `--project-id` to include all project Skills.
+Import with `package import --file=<file.n8np>`. Use `--skill-id` to select Skills
+and `--delete-skill-id` for explicit removals. `package import-selection` accepts
+`--selected-skill-ids` and `--deleted-skill-ids`. Skill updates use
+`--conflict-policy`. Published pins remain unchanged.
 See [package commands](docs/commands/package.md)
 for scopes, defaults, and examples. Agent packages use the ordinary import command.
 

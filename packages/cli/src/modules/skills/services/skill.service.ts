@@ -180,6 +180,44 @@ export class SkillService {
 		}
 	}
 
+	/** Callers must check access to each returned Skill before reading its content. */
+	async findIdsInProjects(projectIds: string[]): Promise<string[]> {
+		return await this.skillRepository.findIdsInProjects(projectIds);
+	}
+
+	async isSourceManaged(skillId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.sourceRepository.isLinked(skillId, ctx);
+	}
+
+	async countFollowingAgents(skillId: string): Promise<number> {
+		return (await this.skillUsage.findFollowingAgentIds(skillId, {})).length;
+	}
+
+	/** The caller checks delete access before opening its transaction. */
+	async assertCanDelete(skillId: string, ctx: OperationContext = {}): Promise<void> {
+		this.assertWritable();
+		if ((await this.skillUsage.findUsingAgentIds(skillId, ctx)).length > 0) {
+			throw new ConflictError('A consumer still uses this Skill. Remove its references first.');
+		}
+	}
+
+	/** Recheck a reviewed deletion under the same lock used by Skill edits. */
+	async deleteChecked(checked: LatestSkill, ctx: OperationContext): Promise<void> {
+		await this.txRunner.run(ctx, async (txCtx) => {
+			await this.skillRepository.lockForEdit([checked.id], txCtx);
+			const latest = (await this.skillRepository.findLatestSaved([checked.id], txCtx)).get(
+				checked.id,
+			);
+			if (!latest) throw new ConflictError('The Skill was removed after planning.');
+			assertUnchangedSince(latest, checked.versionId, checked.target);
+			await this.assertCanDelete(checked.id, txCtx);
+			if (await this.isSourceManaged(checked.id, txCtx)) {
+				throw new ConflictError('The destination Skill is managed by a source.');
+			}
+			await this.deleteSkill(checked.id, 'all', txCtx);
+		});
+	}
+
 	// ---------------------------------------------------------------- user actions
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
@@ -978,8 +1016,9 @@ export class SkillService {
 		target: SkillTarget,
 		exceptSkillId: string | undefined,
 		ctx: OperationContext,
+		plannedNames?: ReadonlyMap<string, string>,
 	): Promise<void> {
-		if (await this.isNameTaken(name, target, exceptSkillId, ctx)) {
+		if (await this.isNameTaken(name, target, exceptSkillId, ctx, plannedNames)) {
 			throw new SkillNameTakenError(name);
 		}
 	}
@@ -995,12 +1034,13 @@ export class SkillService {
 		oldName: string,
 		newName: string,
 		ctx: OperationContext = {},
+		plannedNames?: ReadonlyMap<string, string>,
 	): Promise<void> {
 		// A rename that only changes case or separators keeps the name key, so it can
 		// clash with nothing new. The legacy rule skipped it too.
 		if (skillNameKey(newName) === skillNameKey(oldName)) return;
-		await this.assertNameFree(newName, target, skillId, ctx);
-		await this.skillUsage.assertRenameKeepsNamesApart(skillId, oldName, newName, ctx);
+		await this.assertNameFree(newName, target, skillId, ctx, plannedNames);
+		await this.skillUsage.assertRenameKeepsNamesApart(skillId, oldName, newName, ctx, plannedNames);
 	}
 
 	/**
@@ -1012,13 +1052,18 @@ export class SkillService {
 		target: SkillTarget,
 		exceptSkillId: string | undefined,
 		ctx: OperationContext = {},
+		plannedNames?: ReadonlyMap<string, string>,
 	): Promise<boolean> {
 		// Callers may pass a whole skill, so only its target goes to the query.
 		const names = await this.skillRepository.findLatestNamesInTarget(
 			{ projectId: target.projectId },
 			ctx,
 		);
-		return isNameTaken(name, names, exceptSkillId);
+		return isNameTaken(
+			name,
+			names.map((entry) => ({ ...entry, name: plannedNames?.get(entry.skillId) ?? entry.name })),
+			exceptSkillId,
+		);
 	}
 
 	/** Refuses a move that takes the skill away from one of `agentIds`. The rule is `findLosingAgents`. */

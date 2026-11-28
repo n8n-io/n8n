@@ -185,6 +185,8 @@ describe('ImportPackageSelectionRequestDto', () => {
 
 	it('lists the selection fields as multipart form fields', () => {
 		expect(IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS).toEqual([
+			'selectedSkillIds',
+			'deletedSkillIds',
 			'selectedProjectId',
 			'selectedWorkflowIds',
 			'deletedWorkflowIds',

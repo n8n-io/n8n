@@ -13,12 +13,14 @@ export interface SkillExportRequest {
 	user: User;
 	writer: PackageWriter;
 	/** The exported Agents and the skills they reference. */
-	agents: Array<{ agentId: string; projectId: string; skillIds: string[] }>;
+	agents: { agentId: string; projectId: string; skillIds: string[] }[];
+	/** Skills selected without an Agent. */
+	skillIds?: string[];
 	/** Project package targets. Without them, every skill goes to the top-level `skills/`. */
 	projectTargetsById?: Map<string, string>;
 }
 
-/** Writes the latest version of every skill that the exported Agents reference, once each. */
+/** Writes each selected Skill or Agent dependency at its latest saved version. */
 @Service()
 export class SkillExporter {
 	constructor(
@@ -27,22 +29,32 @@ export class SkillExporter {
 	) {}
 
 	async export(request: SkillExportRequest): Promise<ManifestEntry[]> {
-		const skillIds = [...new Set(request.agents.flatMap(({ skillIds: ids }) => ids))];
+		const skillIds = [
+			...new Set([
+				...(request.skillIds ?? []),
+				...request.agents.flatMap(({ skillIds: ids }) => ids),
+			]),
+		];
 		if (skillIds.length === 0) return [];
 		const rows = await this.skillService.findLatest(skillIds);
 		const canRead = await this.skillAccess.accessCheck(request.user, 'read');
 		const entries: ManifestEntry[] = [];
 		for (const id of skillIds) {
 			const row = rows.get(id);
-			if (!row) {
+			if (!row || !canRead(row.target)) {
 				throw new PackageExportBlockedError(
-					`Skill "${id}" does not exist. Export aborted. Remove the skill from the Agent, then export again.`,
+					`Skill "${id}" was not found. Check access to the Skill, or remove it from the export.`,
 				);
 			}
 			const ownerProjectId = row.target.projectId ?? undefined;
-			if (!canRead(row.target)) {
+			if (
+				request.skillIds?.includes(id) &&
+				ownerProjectId &&
+				request.projectTargetsById?.size &&
+				!request.projectTargetsById.has(ownerProjectId)
+			) {
 				throw new PackageExportBlockedError(
-					`You cannot read skill "${row.skill.name}" (${id}). Export aborted. Ask for access to the skill, or export without this Agent.`,
+					'A selected Skill belongs to a project outside this export.',
 				);
 			}
 			const directory = projectScopedDirectory(

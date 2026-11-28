@@ -79,6 +79,31 @@ describe('rest-error-response', () => {
 		expect(error.meta).toEqual({ limit: 50, actual: 50 });
 	});
 
+	it('exposes validated Skill import results without other metadata', () => {
+		const skills = [
+			{
+				sourceSkillId: 's',
+				localId: 's',
+				name: 'Guide',
+				projectId: null,
+				status: 'created',
+				followingAgentCount: 0,
+			},
+		];
+		const counts = { skills: { created: 1, updated: 0, skipped: 0, unchanged: 0, deleted: 0 } };
+		const descriptor = classifyRestError(
+			new ConflictError('Import failed', undefined, { skills, counts, privateData: 'secret' }),
+		);
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 409,
+			body: { message: 'Import failed', skills, counts },
+		});
+		const invalid = classifyRestError(
+			new ConflictError('Import failed', undefined, { skills: 'secret', counts }),
+		);
+		expect(serializePublicApiError(invalid).body).toEqual({ message: 'Import failed' });
+	});
+
 	it('maps UserError to 400', () => {
 		const descriptor = classifyRestError(new UserError('bad input'));
 		expect(serializePublicApiError(descriptor)).toEqual({

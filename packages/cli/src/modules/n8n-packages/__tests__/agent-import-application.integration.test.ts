@@ -1,5 +1,5 @@
+import { ModuleRegistry, LicenseState, Logger } from '@n8n/backend-common';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
-import { LicenseState, Logger } from '@n8n/backend-common';
 import { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
@@ -140,6 +140,7 @@ beforeAll(async () => {
 	await testModules.loadModules(['skills', 'agents', 'n8n-packages']);
 	await testDb.init();
 	registerSkillUsage();
+	Container.get(ModuleRegistry).settings.set('agents', { enabled: true });
 	await initNodeTypes({
 		'n8n-nodes-base.executeWorkflowTrigger': { type: new ExecuteWorkflowTrigger(), sourcePath: '' },
 		'n8n-nodes-base.scheduleTrigger': { type: new ScheduleTrigger(), sourcePath: '' },

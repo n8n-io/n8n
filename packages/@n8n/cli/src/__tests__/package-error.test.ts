@@ -4,6 +4,21 @@ import { ApiError } from '../client';
 import { toPackagesError } from '../commands/package/package-error';
 
 describe('toPackagesError', () => {
+	it('shows saved Skill IDs, statuses, and counts when no blocking issues exist', () => {
+		const details = {
+			issues: [],
+			skills: [{ localId: 'saved-skill', status: 'created' }],
+			counts: { skills: { created: 1 } },
+		};
+		const error = toPackagesError(new ApiError(500, 'Import failed', undefined, details));
+		expect(error).toMatchObject({
+			statusCode: 500,
+			message: 'Import failed',
+			details,
+			hint: expect.stringContaining('saved-skill'),
+		});
+		expect(error).toMatchObject({ hint: expect.stringContaining('"created": 1') });
+	});
 	it('explains Agent blockers and retains their structured details', () => {
 		const details = {
 			issues: [

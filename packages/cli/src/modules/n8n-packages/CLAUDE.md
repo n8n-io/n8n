@@ -36,13 +36,15 @@ flowchart LR
   `FolderService.createFolder(dto, projectId, id?)` / `FolderService.getFoldersByIds(ids)`.
 - `N8nPackagesService.importPackage` is a thin **dispatcher**: it builds the reader, reads the manifest,
   and delegates to a per-package-shape importer. Shapes mirror export's mutual exclusivity — a **project
-  package** (projects defined by the package) → `ProjectPackageImporter`, or a **workflow package** (loose
-  workflows + their folder shells + credential deps into a target project) → `WorkflowPackageImporter`.
+  package** (projects defined by the package) → `ProjectPackageImporter`, or a **loose package**
+  (workflows, Agents, or standalone Skills) → `WorkflowPackageImporter`.
 - `WorkflowPackageImporter` resolves the target scope from the request, then delegates the plan/gate/apply
   work to `ImportOrchestrator` (brings folders + workflows + credential deps into one project scope).
   `ProjectPackageImporter` creates the project shells, then reuses `ImportOrchestrator` per project to
   bring each one's own folders + workflows + credential deps into scope. Don't split folder vs workflow:
   they share target resolution, credential resolution, and publishing.
+- A loose package that contains only standalone Skills uses their action permissions. Instance Skills
+  need no target project. Project Skills use the requested project or the caller's personal project.
 
 ### Plan and write are separate steps
 - `ProjectPackageImporter.import` is `planImport` + throw on issues + `applyPlan`. `planImport`

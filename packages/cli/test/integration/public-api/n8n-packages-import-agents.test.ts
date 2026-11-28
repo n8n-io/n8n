@@ -1,7 +1,9 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import { packagedModules } from '@/modules/modules.manifest';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	ImportResultDto,
+	ImportBlockedErrorDto,
 	type ExportPackageRequestDto,
 } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
@@ -59,13 +61,23 @@ import {
 } from '@/modules/n8n-packages/__tests__/fixtures/agent-package-fixtures';
 import { streamToBuffer } from '@/modules/n8n-packages/__tests__/utils/tar-support';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
+import { TarPackageReader } from '@/modules/n8n-packages/io/tar/tar-package-reader';
+import { N8nPackageParser } from '@/modules/n8n-packages/engine/n8n-package-parser';
+import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { serializedAgentSchema } from '@/modules/n8n-packages/spec/serialized/agent.schema';
-import { createSkill, toSkillContent } from '@/modules/skills/testing';
+import {
+	createSkill,
+	findSkill,
+	findLatestSkillVersion,
+	toSkillContent,
+} from '@/modules/skills/testing';
+import { SkillService } from '@/modules/skills';
 import { serializedSkillSchema } from '@/modules/n8n-packages/spec/serialized/skill.schema';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
 import { createAgent } from '@test-integration/db/agents';
 import { createCredentials } from '@test-integration/db/credentials';
+import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { createProjectVariable } from '@test-integration/db/variables';
@@ -100,6 +112,7 @@ let tasks: AgentTaskRepository;
 
 beforeAll(async () => {
 	registerSkillUsage();
+	Container.get(ModuleRegistry).settings.set('agents', { enabled: true });
 	agents = Container.get(AgentRepository);
 	tasks = Container.get(AgentTaskRepository);
 	Container.get(InstanceSettings).markAsLeader();
@@ -165,6 +178,7 @@ afterEach(async () => {
 	await agents.delete({});
 	await Container.get(DataTableService).deleteDataTableAll();
 	await testDb.truncate([
+		'Folder',
 		'WorkflowEntity',
 		'WorkflowHistory',
 		'SharedWorkflow',
@@ -953,4 +967,213 @@ it('rejects Agent content on import-selection while the Agents module is active'
 	expect(response.statusCode).toBe(400);
 	expect(response.body.message).toContain('ordinary archive import');
 	expect(await records()).toEqual(before);
+});
+
+it.each([false, true])(
+	'imports standalone Skills with action scopes (refresh fails: %s)',
+	async (refreshFails) => {
+		if (refreshFails) {
+			await createSkill({
+				id: 'standalone',
+				projectId: null,
+				content: {
+					name: 'Standalone',
+					description: 'A guide',
+					instructions: 'Earlier instructions.',
+				},
+			});
+			await Container.get(AgentSkillRefsService).replaceDraftRefs(
+				sourceAgents[0],
+				[{ type: 'skill', id: 'standalone' }],
+				{},
+			);
+		}
+		const writer = new TarPackageWriter();
+		writer.writeFile(
+			'skills/standalone/skill.json',
+			JSON.stringify({
+				id: 'standalone',
+				scope: 'instance',
+				skill: { name: 'Standalone', description: 'A guide', instructions: 'Use short sentences.' },
+				frontmatter: null,
+			}),
+		);
+		writer.writeFile(
+			'manifest.json',
+			JSON.stringify({
+				packageFormatVersion: '2',
+				sourceN8nVersion: '2.0.0',
+				sourceId: 'source',
+				skills: [{ id: 'standalone', name: 'Standalone', target: 'skills/standalone' }],
+				selectedSkillIds: ['standalone'],
+			}),
+		);
+		const buffer = await streamToBuffer(writer.finalize());
+		const reader = await createOwnerWithApiKey({ scopes: ['skill:read'] });
+		const denied = await upload(buffer, { projectId: '' }, reader);
+		expect(denied.statusCode).toBe(403);
+		const writerKey = await createOwnerWithApiKey({
+			scopes: [refreshFails ? 'skill:update' : 'skill:create'],
+		});
+		if (refreshFails)
+			vi.spyOn(Container.get(SkillService), 'refreshFollowingAgents').mockRejectedValueOnce(
+				new Error('Internal refresh failure'),
+			);
+		const imported = await upload(buffer, { projectId: '' }, writerKey);
+		expect(imported.statusCode).toBe(refreshFails ? 500 : 200);
+		if (refreshFails) {
+			expect(ImportBlockedErrorDto.parse(imported.body)).toMatchObject({
+				message: 'Package import failed after Skill changes were saved.',
+				skills: [expect.objectContaining({ localId: 'standalone', status: 'updated' })],
+				counts: { skills: { updated: 1 } },
+			});
+		} else expect(ImportResultDto.parse(imported.body).counts.skills?.created).toBe(1);
+		const unchanged = await upload(buffer, { projectId: '' }, reader);
+		expect(unchanged.statusCode).toBe(200);
+		expect(unchanged.body.counts.skills.unchanged).toBe(1);
+		if (refreshFails)
+			await Container.get(AgentSkillRefsService).replaceDraftRefs(sourceAgents[0], [], {});
+		const remover = await createOwnerWithApiKey({ scopes: ['skill:delete'] });
+		const removed = await upload(
+			buffer,
+			{ projectId: '', skillIds: '[]', deletedSkillIds: '["standalone"]' },
+			remover,
+		);
+		expect(removed.statusCode).toBe(200);
+		expect(removed.body.counts.skills.deleted).toBe(1);
+	},
+);
+
+it.each(['skill:read', 'workflow:import'] as const)(
+	'checks project access for a package with requirements and an empty Skills collection (%s)',
+	async (scope) => {
+		const caller = await createMemberWithApiKey({ scopes: [scope] });
+		const folder = await createFolder(destination);
+		const writer = new TarPackageWriter();
+		writer.writeFile(
+			'manifest.json',
+			JSON.stringify({
+				packageFormatVersion: '2',
+				sourceN8nVersion: '2.0.0',
+				sourceId: 'source',
+				skills: [],
+				requirements: {
+					nodeTypes: [
+						{ type: 'example', typeVersion: 1, usedBy: [{ kind: 'workflow', id: 'unused' }] },
+					],
+				},
+			}),
+		);
+		const buffer = await streamToBuffer(writer.finalize());
+		for (const folderId of [folder.id, 'missing-folder']) {
+			const response = await upload(buffer, { folderId, folderConflictPolicy: 'merge' }, caller);
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).not.toContain('Folder');
+		}
+	},
+);
+
+it.each(['explicit', 'project'] as const)(
+	'exports standalone Skills through %s selection',
+	async (selection) => {
+		const references = [
+			{ path: 'scripts/helper.py', content: 'print("hello")\n' },
+			{ path: 'assets/image.png', content: 'AAECAw==', isBinary: true as const },
+		];
+		const { id } = await createSkill({
+			projectId: sourceProject.id,
+			content: {
+				name: 'Standalone files',
+				description: 'Files',
+				instructions: 'Use the files.',
+				files: references,
+			},
+		});
+		const buffer = await download(
+			selection === 'explicit'
+				? { skillIds: [id] }
+				: { projectIds: [sourceProject.id], includeSkills: true },
+		);
+		const reader = new TarPackageReader(buffer, new PackageImportConfig());
+		const parser = Container.get(N8nPackageParser);
+		expect(await parser.getManifest(reader)).toMatchObject({
+			packageFormatVersion: '2',
+			selectedSkillIds: expect.arrayContaining([id]),
+		});
+		expect(await parser.getSkills(reader)).toContainEqual(
+			expect.objectContaining({
+				id,
+				scope: 'project',
+				skill: expect.objectContaining({ references: expect.arrayContaining(references) }),
+			}),
+		);
+	},
+);
+
+it('checks standalone export input and API-key grants', async () => {
+	const caller = await createOwnerWithApiKey({ scopes: ['workflow:export'] });
+	const route = () => server.publicApiAgentFor(caller).post('/n8n-packages/export');
+	expect((await route().send({ skillIds: [] })).statusCode).toBe(400);
+	expect((await route().send({ skillIds: ['selected'] })).statusCode).toBe(403);
+});
+
+it('returns the same export result for unreadable and missing Skills', async () => {
+	const caller = await createMemberWithApiKey({ scopes: ['skill:read'] });
+	const request = () =>
+		server
+			.publicApiAgentFor(caller)
+			.post('/n8n-packages/export')
+			.send({ skillIds: ['selected'] });
+	const missing = await request();
+	await createSkill({
+		id: 'selected',
+		projectId: sourceProject.id,
+		content: { name: 'Selected guide' },
+	});
+	const unreadable = await request();
+	expect(unreadable.statusCode).toBe(400);
+	expect(unreadable.body).toEqual(missing.body);
+});
+
+it('selects and removes Skills through the selection API with independent grants', async () => {
+	await agents.delete({ projectId: sourceProject.id });
+	const { id } = await createSkill({
+		projectId: sourceProject.id,
+		content: { name: 'Selected guide' },
+	});
+	const buffer = await download({ projectIds: [sourceProject.id], includeSkills: true });
+	await Container.get(SkillService).delete(owner, id);
+	const removed = await createSkill({
+		projectId: sourceProject.id,
+		content: { name: 'Remove guide' },
+	});
+	const kept = await createSkill({ projectId: sourceProject.id, content: { name: 'Keep guide' } });
+	const request = (caller: User, selectedSkillIds = JSON.stringify([id])) =>
+		server
+			.publicApiAgentFor(caller)
+			.post('/n8n-packages/import-selection')
+			.field({
+				selectedProjectId: sourceProject.id,
+				selectedWorkflowIds: '[]',
+				selectedSkillIds,
+				deletedSkillIds: JSON.stringify([removed.id]),
+			})
+			.attach('package', buffer, 'skills.n8np');
+	const reader = await createOwnerWithApiKey({ scopes: ['skill:read'] });
+	expect((await request(reader)).statusCode).toBe(403);
+	expect((await request(reader, 'invalid')).statusCode).toBe(400);
+	const outsider = await createMemberWithApiKey({ scopes: ['skill:create', 'skill:delete'] });
+	expect((await request(outsider)).statusCode).toBe(403);
+	expect(await findSkill(id)).toBeNull();
+	expect(await findSkill(removed.id)).not.toBeNull();
+	const writer = await createOwnerWithApiKey({ scopes: ['skill:create', 'skill:delete'] });
+	const response = await request(writer);
+	expect(response.statusCode).toBe(200);
+	expect(ImportResultDto.parse(response.body).skills).toEqual([
+		expect.objectContaining({ localId: id, status: 'created', projectId: sourceProject.id }),
+		expect.objectContaining({ localId: removed.id, status: 'deleted' }),
+	]);
+	expect(await findLatestSkillVersion(id)).toMatchObject({ name: 'Selected guide', version: 1 });
+	expect(await findSkill(removed.id)).toBeNull();
+	expect(await findSkill(kept.id)).not.toBeNull();
 });

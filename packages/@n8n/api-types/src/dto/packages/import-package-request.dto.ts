@@ -13,6 +13,8 @@ const packageFileSchema = publicApiUploadedFileSchema.openapi(
 
 /** Multipart text field names validated by {@link ImportPackageRequestDto}. */
 export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
+	'skillIds',
+	'deletedSkillIds',
 	'projectId',
 	'folderId',
 	'credentialMatchingMode',
@@ -103,6 +105,12 @@ const bindingsSchema = z
 export class ImportPackageRequestDto extends Z.class(
 	{
 		package: packageFileSchema,
+		skillIds: optionalJsonStringIdArray('skillIds must be a JSON array of Skill IDs').openapi(
+			importPackageRequestFieldDocs.skillIds,
+		),
+		deletedSkillIds: optionalJsonStringIdArray(
+			'deletedSkillIds must be a JSON array of Skill IDs',
+		).openapi(importPackageRequestFieldDocs.deletedSkillIds),
 		projectId: optionalFormId.openapi(importPackageRequestFieldDocs.projectId),
 		folderId: optionalFormId.openapi(importPackageRequestFieldDocs.folderId),
 		credentialMatchingMode: optionalEnum(
@@ -173,6 +181,8 @@ export class ImportPackageRequestDto extends Z.class(
 
 /** Multipart text field names validated by {@link ImportPackageSelectionRequestDto}. */
 export const IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS = [
+	'selectedSkillIds',
+	'deletedSkillIds',
 	'selectedProjectId',
 	'selectedWorkflowIds',
 	'deletedWorkflowIds',
@@ -217,18 +227,25 @@ const requiredJsonStringIdArray = (errorMessage: string) =>
 	});
 
 /** Treat blank or omitted fields as `undefined`. */
-const optionalJsonStringIdArray = (errorMessage: string) =>
-	z
+function optionalJsonStringIdArray(errorMessage: string) {
+	return z
 		.string()
 		.optional()
 		.transform((value, ctx): string[] | undefined => {
 			if (value === undefined || value.trim().length === 0) return undefined;
 			return parseIdArray(value, ctx, errorMessage);
 		});
+}
 
 export class ImportPackageSelectionRequestDto extends Z.class(
 	{
 		package: packageFileSchema,
+		selectedSkillIds: optionalJsonStringIdArray(
+			'selectedSkillIds must be a JSON array of Skill IDs',
+		).openapi(importPackageSelectionRequestFieldDocs.selectedSkillIds),
+		deletedSkillIds: optionalJsonStringIdArray(
+			'deletedSkillIds must be a JSON array of Skill IDs',
+		).openapi(importPackageSelectionRequestFieldDocs.deletedSkillIds),
 		selectedProjectId: z
 			.string()
 			.trim()

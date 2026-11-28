@@ -1,6 +1,7 @@
 // An in-memory `SkillUsage` for unit tests. It passes the contract cases in
 // `skill-usage.contract.ts`, as the real one of the agents module does.
 import type { SkillAgentOption, SkillUsedBy } from '@n8n/api-types';
+import type { OperationContext } from '@n8n/db';
 
 import { SkillAgentNameTakenError } from '../errors/skill-agent-name-taken.error';
 import { SkillUsage, type SkillAgent } from '../services/skill-usage.contracts';
@@ -110,11 +111,21 @@ export class FakeSkillUsage extends SkillUsage {
 			.map((agent) => ({ id: agent.key, name: agent.name }));
 	}
 
-	async assertRenameKeepsNamesApart(skillId: string, oldName: string, newName: string) {
+	async assertRenameKeepsNamesApart(
+		skillId: string,
+		oldName: string,
+		newName: string,
+		_ctx: OperationContext = {},
+		plannedNames?: ReadonlyMap<string, string>,
+	) {
 		const clashing = this.followers(skillId).filter((agentKey) => {
 			const otherNames = this.world.drafts
 				.filter((ref) => ref.agent === agentKey && ref.skill !== skillId)
-				.map((ref) => this.nameOf(ref.skill, ref.version));
+				.map(
+					(ref) =>
+						(ref.version === undefined ? plannedNames?.get(ref.skill) : undefined) ??
+						this.nameOf(ref.skill, ref.version),
+				);
 			return renameIntroducesClash(otherNames, oldName, newName);
 		});
 		if (clashing.length > 0) {

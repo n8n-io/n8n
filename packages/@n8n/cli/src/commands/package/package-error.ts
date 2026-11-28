@@ -168,9 +168,35 @@ function issuesHint(details: unknown): string | undefined {
 
 export function toPackagesError(error: unknown): unknown {
 	if (!(error instanceof ApiError)) return error;
-	const hint = issuesHint(error.details);
+	const saved = savedSkillResults(error);
+	const hint = [
+		issuesHint(error.details),
+		saved ? `Saved Skill results:\n${JSON.stringify(saved, null, 2)}` : undefined,
+	]
+		.filter(Boolean)
+		.join('\n');
 	if (hint) {
 		return new ApiError(error.statusCode, error.message, hint, error.details);
 	}
 	return error;
+}
+
+/** Preserve committed changes when an import fails after the Skill transaction. */
+export function savedSkillResults(error: unknown) {
+	if (!(error instanceof ApiError)) return undefined;
+	const details = error.details;
+	if (
+		typeof details !== 'object' ||
+		details === null ||
+		!('skills' in details) ||
+		!Array.isArray(details.skills) ||
+		details.skills.length === 0
+	)
+		return undefined;
+	return {
+		message: error.message,
+		statusCode: error.statusCode,
+		skills: details.skills,
+		counts: 'counts' in details ? details.counts : undefined,
+	};
 }
