@@ -3,6 +3,7 @@ import { jsonParse } from 'n8n-workflow';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
+import type { InstanceAiEvalAgentExecutionResult } from '@n8n/api-types';
 import { aggregateResults } from '../run/aggregator';
 import { writeEvalResults } from '../run/persist';
 import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
@@ -147,5 +148,91 @@ describe('writeEvalResults — agent scenario runs', () => {
 			agentTurnCount: 5,
 			durationMs: 61_000,
 		});
+	});
+
+	function writeAgentRun(agentEvalResult: InstanceAiEvalAgentExecutionResult | undefined) {
+		const testCase = scenarioCase();
+		const result = runResult(testCase, { success: true });
+		result.executionScenarioResults[0] = { ...result.executionScenarioResults[0], agentEvalResult };
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-test-'));
+		const { jsonPath } = writeEvalResults(
+			aggregateResults([[result]], 1),
+			1234,
+			dir,
+			'exp-test',
+			undefined,
+			undefined,
+			new Map([[testCase, 'agent-case']]),
+			undefined,
+			undefined,
+		);
+		const report = jsonParse<{
+			testCases: Array<{ scenarios: Array<{ runs: Array<Record<string, unknown>> }> }>;
+		}>(readFileSync(jsonPath, 'utf8'));
+		return report.testCases[0]?.scenarios[0]?.runs[0];
+	}
+
+	const agentResult = {
+		runId: 'run-1',
+		success: true,
+		errors: [],
+		finalText: 'Noted.',
+		toolCalls: [],
+		modelTurns: [],
+		seed: { openingMessage: 'hi', globalContext: '', toolHints: {}, warnings: [] },
+		skippedFeatures: [],
+		mockedCredentials: [],
+	} satisfies InstanceAiEvalAgentExecutionResult;
+
+	it('records the memory config and the stored memory of a memory run on the run row', () => {
+		const memoryConfig = { enabled: true, storage: 'n8n' as const };
+		const memory = {
+			observations: [],
+			episodicEntries: [{ content: 'Allergic to nuts', createdAt: '2026-11-27T00:00:00.000Z' }],
+			pendingCandidates: 0,
+			tasks: [{ taskKind: 'episodic' as const, outcome: 'completed' as const }],
+		};
+
+		const run = writeAgentRun({ ...agentResult, memoryConfig, memory });
+
+		expect(run).toMatchObject({ memoryConfig, memoryState: memory });
+	});
+
+	it('leaves memoryConfig and memoryState off a run with memory off', () => {
+		const run = writeAgentRun(agentResult);
+
+		expect(run).not.toHaveProperty('memoryConfig');
+		expect(run).not.toHaveProperty('memoryState');
+	});
+
+	it('records the side-call usage of a run and its priced total', () => {
+		const sideCallUsage = [
+			{
+				task: 'title' as const,
+				model: 'anthropic/claude-haiku-5-5',
+				inputTokens: 40,
+				outputTokens: 6,
+				cost: 0.0002,
+			},
+			{
+				task: 'episodic' as const,
+				model: 'openai/text-embedding-3-small',
+				inputTokens: 12,
+				outputTokens: 0,
+				cost: 0.0001,
+			},
+			{ task: 'observer' as const, model: 'custom/unpriced', inputTokens: 900, outputTokens: 80 },
+		];
+
+		const run = writeAgentRun({ ...agentResult, sideCallUsage });
+
+		expect(run).toMatchObject({ sideCallUsage, sideCallCostUsd: 0.0003, unpricedSideCalls: 1 });
+	});
+
+	it('leaves the side-call fields off a run without side calls', () => {
+		const run = writeAgentRun(agentResult);
+
+		expect(run).not.toHaveProperty('sideCallUsage');
+		expect(run).not.toHaveProperty('sideCallCostUsd');
 	});
 });

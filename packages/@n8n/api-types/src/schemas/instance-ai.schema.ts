@@ -22,7 +22,7 @@ import { MAX_APP_BINDINGS } from './app-binding.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
-import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
+import { AgentJsonConfigSchema, type AgentJsonConfig } from '../agents/agent-json-config.schema';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
 	REMOVED_BUILDER_TOOL_NAMES,
@@ -3239,6 +3239,20 @@ export interface InstanceAiEvalThreadMemoryResponse {
 	cursor: { lastObservedMessageId: string; lastObservedAt: string } | null;
 }
 
+/**
+ * How a direct Agent run treats the seeded config (AGENT-1666). Shared with the
+ * eval harness's `agentRun` case field.
+ */
+export const instanceAiEvalAgentRunOptionsSchema = z.object({
+	/** Keep the Agent's memory config. Omitted or false: memory is stripped. */
+	keepMemory: z.boolean().optional(),
+	/** Deep-merged onto the Agent config (objects merge, arrays and scalars
+	 *  replace), then validated against the Agent JSON config schema. */
+	configOverrides: z.record(z.string(), z.unknown()).optional(),
+});
+
+export type InstanceAiEvalAgentRunOptions = z.infer<typeof instanceAiEvalAgentRunOptionsSchema>;
+
 export const instanceAiEvalAgentThreadTurnSchema = z.object({
 	threadId: z.string().uuid(),
 	/** The simulated user. A plain id: integration-style ids turn episodic memory off. */
@@ -3268,6 +3282,38 @@ export interface InstanceAiEvalAgentThreadEcho {
 	userMessage: string;
 }
 
+/** A background memory task that ended during the turn. */
+export interface InstanceAiEvalAgentMemoryTask {
+	taskKind: 'observer' | 'reflector' | 'episodic';
+	outcome: 'completed' | 'skipped' | 'failed';
+	error?: string;
+}
+
+/** What an eval Agent's memory holds for the simulated user after a turn (AGENT-1666). */
+export interface InstanceAiEvalAgentMemoryState {
+	/** Active observations of every thread of the resource, oldest first. */
+	observations: Array<{ threadId: string; marker: string; text: string }>;
+	/** Active episodic memory entries of the resource, oldest first. */
+	episodicEntries: Array<{ content: string; createdAt: string }>;
+	/** Flagged memories not yet turned into entries. */
+	pendingCandidates: number;
+	/** Memory tasks that ended during this turn. */
+	tasks: InstanceAiEvalAgentMemoryTask[];
+	/** Set by the harness when the last memory turn could not read the store:
+	 *  this is the state after an earlier turn. */
+	stale?: boolean;
+}
+
+/** One model call made beside the agent loop: title, observer, reflector, episodic. */
+export interface InstanceAiEvalAgentSideCallUsage {
+	task: 'title' | 'observer' | 'reflector' | 'episodic';
+	model: string;
+	inputTokens: number;
+	outputTokens: number;
+	/** USD, when the model has known pricing. */
+	cost?: number;
+}
+
 export interface InstanceAiEvalAgentExecutionResult {
 	runId: string;
 	/** The run completed without framework/model errors. Tool-level errors live on toolCalls[].error. */
@@ -3287,6 +3333,13 @@ export interface InstanceAiEvalAgentExecutionResult {
 	llmUsage?: InstanceAiEvalLlmUsage[];
 	/** Set on a multi-turn request (`thread`). */
 	thread?: InstanceAiEvalAgentThreadEcho;
+	/** The memory config the run used, after `agentRun.keepMemory` and
+	 *  `configOverrides`. Absent: memory was off (stripped or never set). */
+	memoryConfig?: AgentJsonConfig['memory'];
+	/** Set on a thread turn with memory on: the stored memory after the turn. */
+	memory?: InstanceAiEvalAgentMemoryState;
+	/** Side-call model usage reported during the turn. Not in `usage`. */
+	sideCallUsage?: InstanceAiEvalAgentSideCallUsage[];
 }
 
 export class InstanceAiEvalAgentExecutionRequest extends Z.class({
@@ -3305,6 +3358,15 @@ export class InstanceAiEvalAgentExecutionRequest extends Z.class({
 	 * (the simulated user) shares one generated world (seed + tool mocks).
 	 */
 	thread: instanceAiEvalAgentThreadTurnSchema.optional(),
+	/** Memory and config variants of the run (AGENT-1666). Omitted: memory stripped. */
+	agentRun: instanceAiEvalAgentRunOptionsSchema.optional(),
+	/**
+	 * With memory on and `thread` set: before responding, wait for the turn's
+	 * background memory work (observer, reflector, episodic) to finish, and fail
+	 * the turn with "memory not settled" if flagged memories are still pending.
+	 * The harness sets it on the last turn of every session but the final one.
+	 */
+	awaitMemory: z.boolean().optional(),
 }) {}
 
 export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({

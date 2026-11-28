@@ -44,11 +44,13 @@ export function findLangTracerSuite(
  *  by name on PATCH (upsert + delete missing); a server predating lang-tracer #48
  *  strips the key silently, leaving the old scenarios in place. */
 export type LangTracerUpdateCaseBody = Partial<
-	Omit<LangTracerCreateCaseBody, 'suiteId' | 'synthetic' | 'seed'>
+	Omit<LangTracerCreateCaseBody, 'suiteId' | 'synthetic' | 'seed' | 'agentRun'>
 > & {
 	/** Explicit `null` CLEARS a stored seed. An omitted key is a server-side no-op,
 	 *  so a disk case that drops its seed needs the null to take effect. */
 	seed?: LangTracerCreateCaseBody['seed'] | null;
+	/** Explicit `null` makes the case an assistant build again, as for `seed`. */
+	agentRun?: LangTracerCreateCaseBody['agentRun'] | null;
 };
 
 export class LangTracerClient {

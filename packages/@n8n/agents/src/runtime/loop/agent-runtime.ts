@@ -74,6 +74,7 @@ import { AgentMessageList, type SerializedMessageList } from '../model/message-l
 import { createModelTokenCounter } from '../model/model-token-counter';
 import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
 import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
+import type { MemoryTaskInfo } from '../memory/scoped-memory-task-runner';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
@@ -313,6 +314,25 @@ export class AgentRuntime {
 	async dispose(): Promise<void> {
 		this.eventBus.dispose();
 		await this.backgroundTasks.flush();
+	}
+
+	/**
+	 * Wait until no background task (title, observer, reflector, episodic
+	 * memory, side-call usage reports) is in flight, including tasks scheduled
+	 * while waiting, for a bounded number of rounds. Unlike `dispose()`,
+	 * nothing is torn down. True when nothing is left in flight.
+	 */
+	async waitForBackgroundTasks(): Promise<boolean> {
+		return await this.backgroundTasks.drain();
+	}
+
+	get pendingBackgroundTaskCount(): number {
+		return this.backgroundTasks.pendingCount;
+	}
+
+	/** Memory tasks (observer, reflector, episodic) that are queued or running. */
+	getInFlightMemoryTasks(): MemoryTaskInfo[] {
+		return this.memory.getInFlightMemoryTasks();
 	}
 
 	/** Return the latest state snapshot. */

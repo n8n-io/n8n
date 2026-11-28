@@ -178,6 +178,29 @@ interface DispatcherView {
 				execErrors: string[];
 				/** Agent runs: the multi-turn conversation, sessions marked by `heading`. */
 				transcript?: TranscriptTurn[];
+				/** Graded by its expectations: not a scored scenario unit (AGENT-1666). */
+				expectationGraded?: boolean;
+				/** Agent memory runs: the memory config the run used. */
+				memoryConfig?: Record<string, unknown>;
+				/** Agent memory runs: the stored memory after the run. */
+				memoryState?: {
+					observations: Array<{ threadId: string; marker: string; text: string }>;
+					episodicEntries: Array<{ content: string; createdAt: string }>;
+					pendingCandidates: number;
+					tasks: Array<{ taskKind: string; outcome: string; error?: string }>;
+				};
+				/** Agent runs: side calls beside the agent loop (title, memory workers, embeddings). */
+				sideCallUsage?: Array<{
+					task: string;
+					model: string;
+					inputTokens: number;
+					outputTokens: number;
+					cost?: number;
+				}>;
+				/** Agent runs: USD of the priced side calls. */
+				sideCallCostUsd?: number;
+				/** Agent runs: side calls with no known pricing, left out of sideCallCostUsd. */
+				unpricedSideCalls?: number;
 			}>;
 		}>;
 	}>;
@@ -418,6 +441,143 @@ describe('eval-results.json — dispatcher contract', () => {
 		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
 
 		expect(report.testCases[0].scenarios[0].runs[0].transcript).toEqual(transcript);
+	});
+
+	it('serializes the memory config and the stored memory of an Agent memory run', () => {
+		const directCase: WorkflowTestCase = {
+			complexity: 'simple',
+			tags: [],
+			datasets: ['full'],
+			executionScenarios: [scenario],
+			agentRun: { mode: 'direct', keepMemory: true },
+		};
+		const memoryConfig = {
+			enabled: true,
+			storage: 'n8n' as const,
+			episodicMemory: { enabled: true as const, credential: 'cred-embed' },
+		};
+		const memoryState = {
+			observations: [{ threadId: 'thread-1', marker: 'important', text: 'Nut allergy' }],
+			episodicEntries: [{ content: 'Allergic to nuts', createdAt: '2026-11-27T00:00:00.000Z' }],
+			pendingCandidates: 0,
+			tasks: [{ taskKind: 'episodic' as const, outcome: 'completed' as const }],
+		};
+		const run = (): WorkflowTestCaseResult => ({
+			testCase: directCase,
+			workflowBuildSuccess: true,
+			agentId: 'agent-1',
+			executionScenarioResults: [
+				{
+					scenario,
+					success: true,
+					score: 1,
+					reasoning: 'ok',
+					agentEvalResult: {
+						runId: 'run-1',
+						success: true,
+						errors: [],
+						finalText: 'Noted.',
+						toolCalls: [],
+						modelTurns: [],
+						seed: { openingMessage: 'hi', globalContext: '', toolHints: {}, warnings: [] },
+						skippedFeatures: [],
+						mockedCredentials: [],
+						memoryConfig,
+						memory: memoryState,
+						sideCallUsage: [
+							{
+								task: 'title',
+								model: 'anthropic/claude-haiku-5-5',
+								inputTokens: 40,
+								outputTokens: 6,
+								cost: 0.25,
+							},
+							{
+								task: 'episodic',
+								model: 'openai/text-embedding-3-small',
+								inputTokens: 12,
+								outputTokens: 0,
+								cost: 0.5,
+							},
+						],
+					},
+				},
+			],
+		});
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const { jsonPath } = writeEvalResults(
+			aggregateResults([[run()]], 1),
+			1234,
+			dir,
+			'exp-direct-agent',
+			undefined,
+			undefined,
+			new Map([[directCase, 'memory-agent']]),
+			undefined,
+			undefined,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+
+		expect(report.testCases[0].scenarios[0].runs[0]).toMatchObject({
+			memoryConfig,
+			memoryState,
+			sideCallCostUsd: 0.75,
+			unpricedSideCalls: 0,
+		});
+		expect(report.testCases[0].scenarios[0].runs[0].sideCallUsage).toHaveLength(2);
+	});
+
+	it('marks every run of a scenario graded by its expectations', () => {
+		const graded: ExecutionScenario = {
+			...scenario,
+			successCriteria: '',
+			expectations: ['Quotes it'],
+		};
+		const directCase: WorkflowTestCase = {
+			complexity: 'simple',
+			tags: [],
+			datasets: ['full'],
+			executionScenarios: [graded],
+			agentRun: { mode: 'direct' },
+		};
+		const run = (success: boolean): WorkflowTestCaseResult => ({
+			testCase: directCase,
+			workflowBuildSuccess: true,
+			agentId: 'agent-1',
+			executionScenarioResults: [
+				{ scenario: graded, success, score: success ? 1 : 0, reasoning: 'r' },
+			],
+		});
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const { jsonPath } = writeEvalResults(
+			aggregateResults([[run(true)], [run(false)]], 2),
+			1234,
+			dir,
+			'exp-graded',
+			undefined,
+			undefined,
+			new Map([[directCase, 'graded-agent']]),
+			undefined,
+			undefined,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+
+		expect(report.testCases[0].scenarios[0].runs.map((r) => r.expectationGraded)).toEqual([
+			true,
+			true,
+		]);
+	});
+
+	it('leaves expectationGraded off a scenario graded by its success criteria', () => {
+		expect(writeAndRead().testCases[0].scenarios[0].runs[0]).not.toHaveProperty(
+			'expectationGraded',
+		);
+	});
+
+	it('leaves memoryConfig and memoryState off a workflow scenario run', () => {
+		const row = writeAndRead().testCases[0].scenarios[0].runs[0];
+		expect(row).not.toHaveProperty('memoryConfig');
+		expect(row).not.toHaveProperty('memoryState');
 	});
 
 	it('leaves the transcript off a workflow scenario run', () => {

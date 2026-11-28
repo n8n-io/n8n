@@ -11,18 +11,24 @@ import type {
 	AgentEvaluationToolSummary,
 } from './agent-evaluation.contracts';
 
-export function pruneConfigForEval(original: AgentJsonConfig): {
+/**
+ * `keepMemory` (AGENT-1666): the run keeps the Agent's memory config, and its
+ * worker models and embeddings run for real. Otherwise memory is stripped.
+ */
+export function pruneConfigForEval(
+	original: AgentJsonConfig,
+	{ keepMemory = false }: { keepMemory?: boolean } = {},
+): {
 	config: AgentJsonConfig;
 	skippedFeatures: AgentEvaluationSkippedFeature[];
 } {
 	const skippedFeatures: AgentEvaluationSkippedFeature[] = [];
 	const config: AgentJsonConfig = { ...original };
 
-	if (config.memory?.enabled) {
+	if (config.memory?.enabled && !keepMemory) {
 		skippedFeatures.push({
 			feature: 'memory',
-			reason:
-				'Observational/episodic memory worker models and embeddings are not mockable yet — memory is disabled for the run.',
+			reason: 'Memory is disabled for the run unless the case keeps it (agentRun.keepMemory).',
 		});
 		config.memory = undefined;
 	}

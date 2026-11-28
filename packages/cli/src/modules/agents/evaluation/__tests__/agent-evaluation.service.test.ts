@@ -179,6 +179,92 @@ describe('AgentEvaluationService', () => {
 		expect(repository.save).not.toHaveBeenCalled();
 	});
 
+	describe('memory and config overrides (AGENT-1666)', () => {
+		const memory = {
+			enabled: true,
+			storage: 'n8n',
+			observationalMemory: { enabled: true },
+			episodicMemory: { enabled: true, credential: 'cred-embed' },
+		} as AgentJsonConfig['memory'];
+
+		async function runtimeSchema(
+			service: AgentEvaluationService,
+			reconstruction: ReturnType<typeof setup>['reconstruction'],
+			options: Parameters<AgentEvaluationService['prepare']>[3],
+		) {
+			const result = await service.prepare(user, 'proj-1', 'agent-1', options);
+			if (!result.preparation) throw new Error(result.error);
+			reconstruction.reconstructFromAgentEntity.mockResolvedValue({
+				agent: mock(),
+				toolRegistry: new Map(),
+				mcpServerAttributions: new Map(),
+			});
+			await result.preparation.buildRuntime({});
+			const [source] = reconstruction.reconstructFromAgentEntity.mock.calls[0];
+			return { preparation: result.preparation, schema: source.agent.schema };
+		}
+
+		it('strips memory by default', async () => {
+			const { service, reconstruction } = setup({ ...baseConfig, memory });
+			const { preparation, schema } = await runtimeSchema(service, reconstruction, undefined);
+			expect(schema?.memory).toBeUndefined();
+			expect(preparation.config.memory).toBeUndefined();
+			expect(preparation.skippedFeatures.map(({ feature }) => feature)).toContain('memory');
+		});
+
+		it('keeps the seeded memory config with keepMemory', async () => {
+			const { service, reconstruction } = setup({ ...baseConfig, memory });
+			const { preparation, schema } = await runtimeSchema(service, reconstruction, {
+				keepMemory: true,
+			});
+			expect(schema?.memory).toEqual(memory);
+			expect(preparation.config.memory).toEqual(memory);
+			expect(preparation.skippedFeatures.map(({ feature }) => feature)).not.toContain('memory');
+		});
+
+		it('deep-merges configOverrides onto the seeded config', async () => {
+			const { service, reconstruction } = setup({ ...baseConfig, memory });
+			const { schema } = await runtimeSchema(service, reconstruction, {
+				keepMemory: true,
+				configOverrides: {
+					memory: { observationalMemory: { observerThresholdTokens: 2000 } },
+				},
+			});
+			expect(schema?.memory).toEqual({
+				...memory,
+				observationalMemory: { enabled: true, observerThresholdTokens: 2000 },
+			});
+			expect(schema?.instructions).toBe(baseConfig.instructions);
+		});
+
+		it('rejects configOverrides that set a credential', async () => {
+			const { service } = setup({ ...baseConfig, memory });
+			const result = await service.prepare(user, 'proj-1', 'agent-1', {
+				keepMemory: true,
+				configOverrides: { memory: { episodicMemory: { enabled: true, credential: 'cred-9' } } },
+			});
+			expect(result.error).toContain('memory.episodicMemory.credential');
+		});
+
+		it('rejects configOverrides that set a model', async () => {
+			const { service } = setup({ ...baseConfig, memory });
+			const result = await service.prepare(user, 'proj-1', 'agent-1', {
+				configOverrides: { model: 'openai/gpt-5' },
+			});
+			expect(result.error).toContain('credentials or models (model)');
+		});
+
+		it('rejects configOverrides that do not give a valid Agent config', async () => {
+			const { service, reconstruction } = setup({ ...baseConfig, memory });
+			const result = await service.prepare(user, 'proj-1', 'agent-1', {
+				keepMemory: true,
+				configOverrides: { memory: { storage: 'redis' } },
+			});
+			expect(result.error).toContain('configOverrides');
+			expect(reconstruction.reconstructFromAgentEntity).not.toHaveBeenCalled();
+		});
+	});
+
 	it('retains draft skill refs and resolves their bodies when building the runtime', async () => {
 		const refs = [
 			{ type: 'skill' as const, id: 'zeta' },

@@ -3,7 +3,7 @@ import type { JSONSchema7 } from 'json-schema';
 import type { z } from 'zod';
 
 import type { FetchFn } from '../../runtime/model/model-factory';
-import type { ScopedMemoryTaskEvent } from '../../runtime/memory/scoped-memory-task-runner';
+import type { MemoryTaskEvent } from '../../runtime/memory/scoped-memory-task-runner';
 import type { AgentEventBus } from '../../runtime/state/event-bus';
 import type { RunStateManager } from '../../runtime/state/run-state';
 import type { ModelCost } from '../../sdk/catalog';
@@ -138,7 +138,7 @@ export interface AgentRuntimeConfig {
 	 */
 	runState?: RunStateManager;
 	/** Host callback for observational-memory background task lifecycle events. */
-	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	onMemoryTaskEvent?: (event: MemoryTaskEvent) => void;
 	/**
 	 * Per-server MCP connection failures recorded during `Agent.build()` when
 	 * resolving MCP tools. Tools from these servers were skipped; the runtime

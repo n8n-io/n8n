@@ -63,9 +63,18 @@ describe('agentRun case contract', () => {
 		expect(parsed.agentRun).toBeUndefined();
 	});
 
-	it('accepts the memory fields for later runs', () => {
+	const memoryConfig = {
+		name: 'Support',
+		model: 'anthropic/claude-sonnet-5-5',
+		instructions: 'Answer support questions.',
+		memory: { enabled: true, storage: 'n8n', observationalMemory: { enabled: true } },
+	};
+	const memorySeed = { mode: 'inline', agents: [{ id: SEED_AGENT_ID, config: memoryConfig }] };
+
+	it('accepts the memory fields', () => {
 		const parsed = EvalTestCaseSchema.parse(
 			directCase({
+				seed: memorySeed,
 				agentRun: {
 					mode: 'direct',
 					agent: SEED_AGENT_ID,
@@ -111,6 +120,63 @@ describe('agentRun case contract', () => {
 		expect(
 			issueMessages(directCase({ agentRun: { mode: 'direct', keepMemroy: true } })),
 		).not.toEqual([]);
+	});
+
+	it('rejects configOverrides that make the seeded Agent config invalid', () => {
+		const messages = issueMessages(
+			directCase({
+				seed: memorySeed,
+				agentRun: {
+					mode: 'direct',
+					configOverrides: { memory: { observationalMemory: { observerThresholdTokens: -1 } } },
+				},
+			}),
+		);
+
+		expect(messages).toEqual([expect.stringContaining('observerThresholdTokens')]);
+	});
+
+	it('rejects a configOverrides key the Agent config does not have', () => {
+		const messages = issueMessages(
+			directCase({
+				seed: memorySeed,
+				agentRun: { mode: 'direct', configOverrides: { memory: { observerModel: 'x' } } },
+			}),
+		);
+
+		expect(messages).toEqual([expect.stringContaining('memory.observerModel')]);
+	});
+
+	it('rejects configOverrides that set a credential: memory credentials come from the seed', () => {
+		const messages = issueMessages(
+			directCase({
+				seed: memorySeed,
+				agentRun: {
+					mode: 'direct',
+					keepMemory: true,
+					configOverrides: { memory: { episodicMemory: { enabled: true, credential: 'cred-9' } } },
+				},
+			}),
+		);
+
+		expect(messages).toEqual([expect.stringContaining('memory.episodicMemory.credential')]);
+	});
+
+	it('rejects configOverrides that set a worker model: models go through the resolver at restore', () => {
+		const messages = issueMessages(
+			directCase({
+				seed: memorySeed,
+				agentRun: {
+					mode: 'direct',
+					keepMemory: true,
+					configOverrides: {
+						memory: { observationalMemory: { observerModel: { model: 'openai/gpt-5' } } },
+					},
+				},
+			}),
+		);
+
+		expect(messages).toEqual([expect.stringContaining('memory.observationalMemory.observerModel')]);
 	});
 
 	it('rejects configOverrides that is not an object', () => {
@@ -439,5 +505,54 @@ describe('agentExpectationUnits', () => {
 
 	it('has no units for a scenario without expectations', () => {
 		expect(agentExpectationUnits({ name: 'refund', successCriteria: 'ok' })).toEqual([]);
+	});
+});
+
+describe('expectation keys stay unambiguous', () => {
+	const scenario = (name: string, expectations: string[], sessions?: unknown[]) => ({
+		name,
+		description: 'd',
+		dataSetup: 'x',
+		expectations,
+		...(sessions ? { sessions } : {}),
+	});
+
+	it('rejects the key separator " › " in a scenario name', () => {
+		expect(
+			issueMessages(directCase({ executionScenarios: [scenario('refund › late', ['Quotes it'])] })),
+		).toEqual([expect.stringContaining('" › "')]);
+	});
+
+	it('rejects the key separator in a scenario expectation and in a session expectation', () => {
+		const messages = issueMessages(
+			directCase({
+				executionScenarios: [
+					scenario(
+						'refund',
+						['Quotes › the window'],
+						[{ goal: 'g', expectations: ['Recalls › the order'] }],
+					),
+				],
+			}),
+		);
+
+		expect(messages).toHaveLength(2);
+		expect(messages.every((message) => message.includes('" › "'))).toBe(true);
+	});
+
+	it('accepts the character without the spaces around it', () => {
+		expect(
+			issueMessages(directCase({ executionScenarios: [scenario('refund›late', ['Quotes it'])] })),
+		).toEqual([]);
+	});
+
+	it('rejects two scenarios with the same name', () => {
+		const messages = issueMessages(
+			directCase({
+				executionScenarios: [scenario('refund', ['Quotes it']), scenario('refund', ['Says no'])],
+			}),
+		);
+
+		expect(messages).toEqual([expect.stringContaining('"refund"')]);
 	});
 });

@@ -10,6 +10,8 @@ import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	getAgentModelProviderCredentialTypes,
 	type InstanceAiEvalAgentExecutionResult,
+	type InstanceAiEvalAgentMemoryState,
+	type InstanceAiEvalAgentRunOptions,
 	type InstanceAiEvalAgentThreadTurn,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -23,6 +25,7 @@ import {
 	runAgentConversation,
 	singleTurnTranscript,
 	withTurnCount,
+	type AgentSessionPlan,
 } from './agent-conversation';
 import { agentExpectationUnits, type AgentExpectationUnit } from './agent-run-schema';
 import { agentHandler } from './artifacts/agent-handler';
@@ -55,7 +58,7 @@ import type {
 	TestCaseCredential,
 	TranscriptTurn,
 } from '../types';
-import { createAgentUserProxy } from '../utils/user-proxy/agent-user';
+import { createAgentUserProxy, type AgentUserProxy } from '../utils/user-proxy/agent-user';
 import type { CaseSeed } from './schema';
 import { agentModelSlots, AgentModelSlotsViewSchema } from '../credentials/agent-model-slots';
 import type { AgentModelResolution } from '../credentials/model-resolver';
@@ -248,6 +251,8 @@ interface AgentTurnTarget {
 	scenario: ExecutionScenario;
 	timeoutMs?: number;
 	logger: EvalLogger;
+	/** The case's memory and config options, sent on every turn. */
+	agentRun?: InstanceAiEvalAgentRunOptions;
 }
 
 /** One request to the agent eval endpoint, with the in-band transient-abort
@@ -256,11 +261,23 @@ async function executeAgentTurn(
 	client: N8nClient,
 	target: AgentTurnTarget,
 	thread?: InstanceAiEvalAgentThreadTurn,
+	awaitMemory = false,
 ): Promise<InstanceAiEvalAgentExecutionResult> {
-	const { agentId, projectId, scenario, timeoutMs, logger } = target;
+	const { agentId, projectId, scenario, timeoutMs, logger, agentRun } = target;
 	const send = async () =>
-		await client.executeAgentWithLlmMock(agentId, projectId, scenario.dataSetup, timeoutMs, thread);
+		await client.executeAgentWithLlmMock(
+			agentId,
+			projectId,
+			scenario.dataSetup,
+			timeoutMs,
+			thread,
+			{
+				agentRun,
+				awaitMemory,
+			},
+		);
 	let evalResult = await send();
+	throwIfMemoryTurnAborted(evalResult, target, thread);
 	for (
 		let attempt = 1;
 		!evalResult.success &&
@@ -277,6 +294,37 @@ async function executeAgentTurn(
 	return evalResult;
 }
 
+/**
+ * A turn with memory kept that a transient DB error aborted may already be
+ * in the runtime's thread; a retry would send its user message twice. Not
+ * retried: the run fails as a framework issue instead.
+ */
+function throwIfMemoryTurnAborted(
+	evalResult: InstanceAiEvalAgentExecutionResult,
+	target: AgentTurnTarget,
+	thread: InstanceAiEvalAgentThreadTurn | undefined,
+): void {
+	if (!thread || target.agentRun?.keepMemory !== true) return;
+	if (evalResult.success || !isTransientExecutionAbort(evalResult.errors)) return;
+	throw new Error(
+		`FRAMEWORK ISSUE: the Agent turn was aborted by a transient error and not retried, because the Agent's memory may already hold its message (${evalResult.errors.join('; ')})`,
+	);
+}
+
+/** A simulated user that never speaks: a one-turn thread opens with the seed's message. */
+const SILENT_USER: AgentUserProxy = { nextMessage: async () => ({ kind: 'done' }) };
+
+/**
+ * How the scenario talks to the Agent: its sessions or user turns, else one
+ * turn. With memory kept, that one turn is still a thread (with the seed's
+ * opening message), so the Agent runs on its memory as in a real chat.
+ */
+function scenarioPlans(target: AgentTurnTarget): AgentSessionPlan[] | undefined {
+	const plans = agentSessionPlans(target.scenario);
+	if (plans || target.agentRun?.keepMemory !== true) return plans;
+	return [{ goal: target.scenario.dataSetup, maxTurns: 1, opening: 'seed' }];
+}
+
 /** The scenario's run: one request, or a conversation of turns and sessions. */
 async function runAgentScenarioTurns(
 	client: N8nClient,
@@ -286,13 +334,16 @@ async function runAgentScenarioTurns(
 	transcript?: TranscriptTurn[];
 	turnCount: number;
 }> {
-	const plans = agentSessionPlans(target.scenario);
+	const plans = scenarioPlans(target);
 	if (!plans) return { evalResult: await executeAgentTurn(client, target), turnCount: 1 };
 	const conversation = await runAgentConversation({
 		plans,
 		dataSetup: target.scenario.dataSetup,
-		user: createAgentUserProxy({ logger: target.logger }),
-		executeTurn: async (thread) => await executeAgentTurn(client, target, thread),
+		user: agentSessionPlans(target.scenario)
+			? createAgentUserProxy({ logger: target.logger })
+			: SILENT_USER,
+		executeTurn: async (thread, { awaitMemory }) =>
+			await executeAgentTurn(client, target, thread, awaitMemory),
 	});
 	return {
 		evalResult: mergeConversationResult(conversation),
@@ -441,6 +492,8 @@ export async function executeAgentScenario(
 	seedContext?: ScenarioSeedContext,
 	/** The build's project. Absent: the client's personal project. */
 	projectId?: string,
+	/** A direct run's memory and config options (AGENT-1666). */
+	agentRun?: InstanceAiEvalAgentRunOptions,
 ): Promise<ExecutionScenarioResult> {
 	if (seedContext) {
 		await reseedScenarioTables(
@@ -454,7 +507,7 @@ export async function executeAgentScenario(
 
 	const execStart = Date.now();
 	const agentProjectId = projectId ?? (await client.getPersonalProjectId());
-	const target = { agentId, projectId: agentProjectId, scenario, timeoutMs, logger };
+	const target = { agentId, projectId: agentProjectId, scenario, timeoutMs, logger, agentRun };
 	const run = await runAgentScenarioTurns(client, target);
 	const evalResult = run.evalResult;
 	try {
@@ -658,6 +711,8 @@ function buildAgentScenarioContextBlock(
 		});
 	}
 
+	if (evalResult.memory) sections.push(...agentMemorySection(evalResult.memory));
+
 	sections.push(
 		'## Agent final reply',
 		'',
@@ -672,4 +727,78 @@ function buildAgentScenarioContextBlock(
 	);
 
 	return sections.join('\n');
+}
+
+/** At most this many entries or observations, each at most this many characters. */
+const MAX_MEMORY_ITEMS = 20;
+const MAX_MEMORY_ITEM_CHARS = 400;
+const MAX_LISTED_TASK_FAILURES = 5;
+
+/** Bulleted, capped by count and length, with "(+N more)" for the rest. */
+function cappedList(items: string[]): string[] {
+	if (items.length === 0) return ['(none)'];
+	const shown = items.slice(0, MAX_MEMORY_ITEMS).map((item) => `- ${truncateMemoryItem(item)}`);
+	const hidden = items.length - shown.length;
+	return hidden > 0 ? [...shown, `(+${String(hidden)} more)`] : shown;
+}
+
+function truncateMemoryItem(item: string): string {
+	if (item.length <= MAX_MEMORY_ITEM_CHARS) return item;
+	return `${item.slice(0, MAX_MEMORY_ITEM_CHARS)}… [truncated]`;
+}
+
+/** One line per task kind with its outcome counts, then the failed or skipped
+ *  tasks with their errors. */
+function memoryTaskSummary(tasks: InstanceAiEvalAgentMemoryState['tasks']): string[] {
+	if (tasks.length === 0) return ['(none)'];
+	const counts = new Map<string, Map<string, number>>();
+	for (const { taskKind, outcome } of tasks) {
+		const byOutcome = counts.get(taskKind) ?? new Map<string, number>();
+		byOutcome.set(outcome, (byOutcome.get(outcome) ?? 0) + 1);
+		counts.set(taskKind, byOutcome);
+	}
+	const lines = [...counts].map(
+		([kind, byOutcome]) =>
+			`- ${kind}: ${[...byOutcome].map(([outcome, count]) => `${String(count)} ${outcome}`).join(', ')}`,
+	);
+	const unfinished = tasks
+		.filter((task) => task.outcome !== 'completed')
+		.map((task) => `${task.taskKind} ${task.outcome}${task.error ? `: ${task.error}` : ''}`);
+	return unfinished.length === 0
+		? lines
+		: [...lines, 'Not completed:', ...cappedFailures(unfinished)];
+}
+
+function cappedFailures(failures: string[]): string[] {
+	const shown = failures.slice(0, MAX_LISTED_TASK_FAILURES).map((line) => `- ${line}`);
+	const hidden = failures.length - shown.length;
+	return hidden > 0 ? [...shown, `(+${String(hidden)} more)`] : shown;
+}
+
+/** What the Agent's memory held for the simulated user after the run, so memory
+ *  expectations are graded against what was stored, not only what was said. */
+function agentMemorySection(memory: InstanceAiEvalAgentMemoryState): string[] {
+	const observations = memory.observations.map(
+		(observation) => `[${observation.marker.toUpperCase()}] ${observation.text}`,
+	);
+	return [
+		'## Agent memory after the run (ground truth — read from the memory store)',
+		'',
+		...(memory.stale
+			? [
+					'⚠ STALE: the memory store could not be read after the last turn; this is the state after an earlier turn.',
+					'',
+				]
+			: []),
+		'**Episodic memory entries stored for this user:**',
+		...cappedList(memory.episodicEntries.map((entry) => entry.content)),
+		'',
+		'**Observations (compacted summaries of the threads):**',
+		...cappedList(observations),
+		'',
+		'**Background memory tasks that ran:**',
+		...memoryTaskSummary(memory.tasks),
+		`**Flagged memories still pending:** ${String(memory.pendingCandidates)}`,
+		'',
+	];
 }

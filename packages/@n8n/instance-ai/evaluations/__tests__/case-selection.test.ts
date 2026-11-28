@@ -71,7 +71,7 @@ describe('selectCases on the Assistant agent', () => {
 	});
 });
 
-describe('selectCases with Agent run fields that are not acted on yet', () => {
+describe('selectCases with Agent run fields', () => {
 	const directEntry = (
 		fileSlug: string,
 		agentRun: Record<string, unknown>,
@@ -89,7 +89,7 @@ describe('selectCases with Agent run fields that are not acted on yet', () => {
 		},
 	});
 
-	it('warns for each case that sets an ignored field, and keeps the case', () => {
+	it('keeps memory and multi-turn cases without a warning: every field is acted on', () => {
 		const { args, logger } = setup('instance-ai');
 
 		const { testCasesWithFiles } = selectCases(
@@ -104,11 +104,7 @@ describe('selectCases with Agent run fields that are not acted on yet', () => {
 		);
 
 		expect(testCasesWithFiles).toHaveLength(4);
-		const warnings = logger.warn.mock.calls.map(([message]) => message);
-		// Multi-turn runs (userTurns, sessions) are implemented; only memory still waits.
-		expect(warnings).toEqual([
-			expect.stringMatching(/memory: .*keepMemory, configOverrides.* ignored/),
-		]);
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('does not warn when keepMemory is false', () => {

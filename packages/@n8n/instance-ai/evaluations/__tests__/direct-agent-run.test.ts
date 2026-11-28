@@ -469,6 +469,20 @@ describe('a direct-mode case end to end', () => {
 		expect(mocks.sendMessage).not.toHaveBeenCalled();
 	});
 
+	it("passes the case's keepMemory and configOverrides to every scenario run", async () => {
+		const configOverrides = { instructions: 'Answer in one sentence.' };
+		const { laneState } = await runAllRows(
+			{},
+			{ testCase: directCase({ agentRun: { mode: 'direct', keepMemory: true, configOverrides } }) },
+		);
+
+		const sent = vi.mocked(laneState.tracedExecuteAgent).mock.calls.map(([call]) => call.agentRun);
+		expect(sent).toEqual([
+			{ keepMemory: true, configOverrides },
+			{ keepMemory: true, configOverrides },
+		]);
+	});
+
 	it('skips the MCP builder too', async () => {
 		const { outputs, laneState } = await runAllRows({ buildViaMcp: true });
 

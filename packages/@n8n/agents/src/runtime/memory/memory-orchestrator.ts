@@ -22,6 +22,8 @@ import {
 } from './observation-log-store';
 import {
 	ScopedMemoryTaskRunner,
+	type MemoryTaskEvent,
+	type MemoryTaskInfo,
 	type ScopedMemoryTaskHandle,
 	type ScopedMemoryTaskResult,
 } from './scoped-memory-task-runner';
@@ -219,6 +221,9 @@ export class MemoryOrchestrator {
 
 	/** Keyed by resource and thread because backends can lock on either scope. */
 	private episodicMemoryTasks = new Map<string, Promise<unknown>>();
+
+	/** Episodic tasks queued or running, by task id. */
+	private readonly episodicTaskInfos = new Map<string, MemoryTaskInfo>();
 
 	/** Size of the next model request, from the provider's reported usage. */
 	private readonly requestSize: RequestSizeTracker;
@@ -1128,7 +1133,7 @@ export class MemoryOrchestrator {
 							// priced even when post-processing throws.
 							onUsage: onSideCallUsage
 								? (model, usage) => {
-										void this.forwardSideCallUsage(onSideCallUsage, 'observer', model, usage);
+										this.trackSideCallUsage(onSideCallUsage, 'observer', model, usage);
 									}
 								: undefined,
 						}),
@@ -1288,7 +1293,7 @@ export class MemoryOrchestrator {
 					// priced even when post-processing throws.
 					onUsage: onSideCallUsage
 						? (model, usage) => {
-								void this.forwardSideCallUsage(onSideCallUsage, 'reflector', model, usage);
+								this.trackSideCallUsage(onSideCallUsage, 'reflector', model, usage);
 							}
 						: undefined,
 				});
@@ -1357,7 +1362,7 @@ export class MemoryOrchestrator {
 					// Returning usageReports here would double-count.
 					onUsage: onSideCallUsage
 						? (model, usage) => {
-								void this.forwardSideCallUsage(onSideCallUsage, 'episodic', model, usage);
+								this.trackSideCallUsage(onSideCallUsage, 'episodic', model, usage);
 							}
 						: undefined,
 				});
@@ -1370,18 +1375,15 @@ export class MemoryOrchestrator {
 		scope: EpisodicMemoryScope,
 		task: () => Promise<void>,
 	): void {
-		const id = crypto.randomUUID();
-		const keys = [
-			`resource:${scope.episodic?.writeScopeId ?? scope.resourceId}`,
-			`thread:${scope.threadId}`,
-		];
+		const info = this.queueEpisodicTaskInfo(scope);
+		const keys = [`resource:${info.observationScopeId}`, `thread:${scope.threadId}`];
 		const previous: Array<Promise<unknown>> = [];
 		for (const key of keys) {
 			const running = this.episodicMemoryTasks.get(key);
 			if (running) previous.push(running);
 		}
 		const done = Promise.allSettled(previous).then(
-			async () => await this.runEpisodicMemoryTask(memory, scope, id, task),
+			async () => await this.runEpisodicMemoryTask(memory, scope, info, task),
 		);
 		const queued = done.finally(() => {
 			for (const key of keys) {
@@ -1397,29 +1399,71 @@ export class MemoryOrchestrator {
 	private async runEpisodicMemoryTask(
 		memory: BuiltMemory,
 		scope: EpisodicMemoryScope,
-		holderId: string,
+		info: MemoryTaskInfo,
 		task: () => Promise<void>,
 	): Promise<void> {
+		this.startEpisodicTaskInfo(info);
 		const taskLock = memory.episodic?.taskLock;
 		let lock: EpisodicMemoryTaskLockHandle | null = null;
 		try {
 			if (taskLock) {
 				lock = await taskLock.acquire(scope, {
-					holderId,
+					holderId: info.id,
 					ttlMs: this.config.observationalMemory?.lockTtlMs ?? DEFAULT_MEMORY_TASK_LOCK_TTL_MS,
 				});
-				if (!lock) return;
+				if (!lock) {
+					this.emitMemoryTaskEvent({ type: 'skipped', task: { ...info }, reason: 'lock-held' });
+					return;
+				}
 			}
 			await task();
+			this.emitMemoryTaskEvent({ type: 'completed', task: { ...info }, value: undefined });
 		} catch (error) {
 			const message = 'Episodic memory processing task failed';
 			logger.warn(message, { error, ...scope });
 			this.eventBus.emit({ type: AgentEvent.Error, message, error, source: 'episodic-memory' });
+			this.emitMemoryTaskEvent({ type: 'failed', task: { ...info }, error });
 		} finally {
 			if (lock) {
 				await this.releaseEpisodicMemoryTaskLock(taskLock, lock, scope);
 			}
+			this.episodicTaskInfos.delete(info.id);
 		}
+	}
+
+	/** Track a queued episodic task so the host can observe it and see it in flight. */
+	private queueEpisodicTaskInfo(scope: EpisodicMemoryScope): MemoryTaskInfo {
+		const info: MemoryTaskInfo = {
+			id: crypto.randomUUID(),
+			taskKind: 'episodic',
+			observationScopeId: scope.episodic?.writeScopeId ?? scope.resourceId,
+			status: 'queued',
+			queuedAt: new Date(),
+		};
+		this.episodicTaskInfos.set(info.id, info);
+		this.emitMemoryTaskEvent({ type: 'queued', task: { ...info } });
+		return info;
+	}
+
+	private startEpisodicTaskInfo(info: MemoryTaskInfo): void {
+		info.status = 'running';
+		info.startedAt = new Date();
+		this.emitMemoryTaskEvent({ type: 'started', task: { ...info } });
+	}
+
+	/** A host observer must never break a memory task. */
+	private emitMemoryTaskEvent(event: MemoryTaskEvent): void {
+		try {
+			this.config.onMemoryTaskEvent?.(event);
+		} catch (error) {
+			logger.warn('Memory task observer failed', { error, taskKind: event.task.taskKind });
+		}
+	}
+
+	/** Observational and episodic memory tasks that are queued or running. */
+	getInFlightMemoryTasks(): MemoryTaskInfo[] {
+		const episodic = [...this.episodicTaskInfos.values()].map((info) => ({ ...info }));
+		return [...(this.memoryTasks?.getInFlightTasks() ?? []), ...episodic];
 	}
 
 	private async releaseEpisodicMemoryTaskLock(
@@ -1462,6 +1506,14 @@ export class MemoryOrchestrator {
 		return {
 			observationScopeId: persistence.threadId,
 		};
+	}
+
+	/** Forward a side-call report as a background task, so a host waiting for
+	 *  the runtime's background tasks also waits for its usage reports. */
+	private trackSideCallUsage(
+		...args: Parameters<MemoryOrchestrator['forwardSideCallUsage']>
+	): void {
+		this.backgroundTasks.track(this.forwardSideCallUsage(...args));
 	}
 
 	/**

@@ -42,6 +42,8 @@ const COMPARED_KEYS = [
 	// Stored at `metadata.seed` and emitted back by the export (lang-tracer #113).
 	// Compared so a seed-only edit isn't misread as unchanged and left unpushed.
 	'seed',
+	// Stored at `metadata.agentRun` and emitted back by the export (lang-tracer L3).
+	'agentRun',
 ] as const;
 
 /** Drop the create-only fields, leaving the patchable set (`scenarios` included —
@@ -56,7 +58,7 @@ export function toUpdatePatch({
 	synthetic,
 	...patch
 }: LangTracerCreateCaseBody): LangTracerUpdateCaseBody {
-	return { scenarios: [], seed: null, ...patch };
+	return { scenarios: [], seed: null, agentRun: null, ...patch };
 }
 
 /** `existingBodies`: `<name>.json` → exported (disk-shape) body from `GET /suites/:id/export`.
@@ -65,11 +67,13 @@ export function planPush(
 	selected: WorkflowTestCaseWithFile[],
 	existingBodies: Record<string, unknown>,
 	existingIdsByName: Record<string, number>,
+	/** The push marks its cases synthetic (the default); seed rows need it. */
+	{ synthetic }: { synthetic: boolean } = { synthetic: true },
 ): PushPlan {
 	const plan: PushPlan = { toCreate: [], toUpdate: [], unchanged: [], skipped: [] };
 
 	for (const item of selected) {
-		const reason = unsupportedPushReason(item.testCase);
+		const reason = unsupportedPushReason(item.testCase, { synthetic });
 		if (reason) {
 			plan.skipped.push({ fileSlug: item.fileSlug, reason });
 			continue;

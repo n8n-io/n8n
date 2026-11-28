@@ -3,9 +3,10 @@ import type { AgentMessage } from '@n8n/agents';
 // ---------------------------------------------------------------------------
 // Eval threads for multi-turn Agent runs (AGENT-1666).
 //
-// Memory is stripped from eval runs, so the Agent runtime keeps no history of
+// With memory stripped (the default), the Agent runtime keeps no history of
 // its own: the eval service keeps each thread's messages here and replays them
-// on the next turn. A "world" is what one simulated user (resource id) shares
+// on the next turn. With memory kept (`agentRun.keepMemory`), the runtime's
+// own thread memory holds the history instead (see `planThreadTurn`). A "world" is what one simulated user (resource id) shares
 // across its threads: the generated seed and the tool mocks it steers, so a
 // later session sees the same orders, tickets, and tool catalog.
 //
@@ -98,4 +99,35 @@ export class EvalAgentThreadStore<World> {
 		this.worlds.deleteWhere((_world, key) => key === resourceId);
 		this.threads.deleteWhere((thread) => thread.resourceId === resourceId);
 	}
+}
+
+/** What a thread turn sends the Agent, and whether the eval keeps the history. */
+export interface ThreadTurnPlan {
+	input: AgentMessage[];
+	/** Set when memory is on: the runtime loads and stores the thread itself. */
+	persistence?: { threadId: string; resourceId: string };
+	/** False when memory is on: replaying would duplicate history and hide compaction. */
+	keepsHistory: boolean;
+}
+
+/**
+ * Memory off: replay the thread's stored messages before the new one. Memory
+ * on: send only the new message, with the thread and resource ids, so the
+ * runtime's own memory (history, observations, episodic recall) is what the
+ * Agent sees, as in a real chat.
+ */
+export function planThreadTurn(args: {
+	memoryOn: boolean;
+	threadId: string;
+	resourceId: string;
+	history: AgentMessage[];
+	userMessage: string;
+}): ThreadTurnPlan {
+	const message: AgentMessage = {
+		role: 'user',
+		content: [{ type: 'text', text: args.userMessage }],
+	};
+	if (!args.memoryOn) return { input: [...args.history, message], keepsHistory: true };
+	const { threadId, resourceId } = args;
+	return { input: [message], persistence: { threadId, resourceId }, keepsHistory: false };
 }

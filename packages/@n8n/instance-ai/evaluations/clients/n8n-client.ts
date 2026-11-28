@@ -1480,13 +1480,17 @@ export class N8nClient {
 		timeoutMs: number = 120_000,
 		/** A turn of a multi-turn run (AGENT-1666). Omitted: single-shot, as before. */
 		thread?: InstanceAiEvalAgentThreadTurn,
+		/** Memory and config variants, and whether to wait for memory (AGENT-1666). */
+		options: Pick<InstanceAiEvalAgentExecutionRequest, 'agentRun' | 'awaitMemory'> = {},
 	): Promise<InstanceAiEvalAgentExecutionResult> {
 		const body: Pick<
 			InstanceAiEvalAgentExecutionRequest,
-			'projectId' | 'scenarioHints' | 'timeoutMs' | 'thread'
+			'projectId' | 'scenarioHints' | 'timeoutMs' | 'thread' | 'agentRun' | 'awaitMemory'
 		> = { projectId };
 		if (scenarioHints) body.scenarioHints = scenarioHints;
 		if (thread) body.thread = thread;
+		if (options.agentRun) body.agentRun = options.agentRun;
+		if (options.awaitMemory) body.awaitMemory = true;
 		const serverBudgetMs = serverBudgetFor(timeoutMs);
 		body.timeoutMs = serverBudgetMs;
 

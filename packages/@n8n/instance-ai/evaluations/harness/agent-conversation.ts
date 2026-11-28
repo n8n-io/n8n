@@ -12,6 +12,7 @@
 
 import type {
 	InstanceAiEvalAgentExecutionResult,
+	InstanceAiEvalAgentMemoryState,
 	InstanceAiEvalAgentThreadTurn,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -74,8 +75,11 @@ export function withTurnCount(error: unknown, turnCount: number): AgentRunError 
 	return new AgentRunError(message, turnCount, { cause: error });
 }
 
+/** `awaitMemory`: wait for the turn's background memory work before the
+ *  response, because a later session of the same user follows (AGENT-1666). */
 export type ExecuteAgentTurn = (
 	thread: InstanceAiEvalAgentThreadTurn,
+	options: { awaitMemory: boolean },
 ) => Promise<InstanceAiEvalAgentExecutionResult>;
 
 /** The sessions a scenario runs, or undefined for a single-shot scenario. */
@@ -96,6 +100,7 @@ export function newEvalResourceId(): string {
 
 interface ConversationContext {
 	resourceId: string;
+	awaitMemory?: boolean;
 	dataSetup: string;
 	user: AgentUserProxy;
 	executeTurn: ExecuteAgentTurn;
@@ -124,7 +129,10 @@ export async function runAgentConversation(input: {
 				turns: [],
 			};
 			sessions.push(session);
-			await runSession(plan, index === input.plans.length - 1, session, earlier, context);
+			const last = index === input.plans.length - 1;
+			// Which turn ends a session is known only after the simulated user stops,
+			// so every turn of a session that another session follows waits for memory.
+			await runSession(plan, last, session, earlier, { ...context, awaitMemory: !last });
 			if (session.turns.some((turn) => !turn.result.success)) break;
 		}
 	} catch (error) {
@@ -149,12 +157,15 @@ async function releaseWorld(
 	const lastTurn = session?.turns.at(-1);
 	if (!session || !lastTurn || (lastTurn.final && lastTurn.result.success)) return;
 	try {
-		await context.executeTurn({
-			threadId: session.threadId,
-			resourceId: context.resourceId,
-			expectedTurn: session.turns.length + 1,
-			final: true,
-		});
+		await context.executeTurn(
+			{
+				threadId: session.threadId,
+				resourceId: context.resourceId,
+				expectedTurn: session.turns.length + 1,
+				final: true,
+			},
+			{ awaitMemory: false },
+		);
 	} catch {
 		// The server forgets the world after its idle TTL anyway.
 	}
@@ -218,13 +229,16 @@ async function runTurn(
 	context: ConversationContext,
 ): Promise<AgentConversationTurn> {
 	const { threadId, expectedTurn, message, final } = request;
-	const result = await context.executeTurn({
-		threadId,
-		resourceId: context.resourceId,
-		expectedTurn,
-		...(message !== undefined ? { message } : {}),
-		...(final ? { final } : {}),
-	});
+	const result = await context.executeTurn(
+		{
+			threadId,
+			resourceId: context.resourceId,
+			expectedTurn,
+			...(message !== undefined ? { message } : {}),
+			...(final ? { final } : {}),
+		},
+		{ awaitMemory: context.awaitMemory === true },
+	);
 	throwIfTurnOutOfStep(result, expectedTurn);
 	const userMessage = result.thread?.userMessage ?? message ?? result.seed.openingMessage;
 	return { userMessage, result, ...(final ? { final } : {}) };
@@ -284,6 +298,8 @@ export function mergeConversationResult(
 			'FRAMEWORK ISSUE: the Agent conversation ran no turns — the simulated user wrote no opening message',
 		);
 	}
+	const memory = conversationMemory(results);
+	const sideCallUsage = results.flatMap((r) => r.sideCallUsage ?? []);
 	const inputTokens = sumOptional(results.map((r) => r.usage?.inputTokens));
 	const outputTokens = sumOptional(results.map((r) => r.usage?.outputTokens));
 	return {
@@ -299,6 +315,26 @@ export function mergeConversationResult(
 		...(inputTokens !== undefined || outputTokens !== undefined
 			? { usage: { inputTokens, outputTokens } }
 			: {}),
+		...(memory ? { memory } : {}),
+		...(sideCallUsage.length > 0 ? { sideCallUsage } : {}),
+	};
+}
+
+/** The memory stored after the last turn that reported it, with the memory
+ *  tasks of every turn; stale when the last memory turn could not read it.
+ *  Undefined when memory was off. */
+function conversationMemory(
+	results: InstanceAiEvalAgentExecutionResult[],
+): InstanceAiEvalAgentMemoryState | undefined {
+	const states = results.flatMap((r) => (r.memory ? [r.memory] : []));
+	const last = states[states.length - 1];
+	if (!last) return undefined;
+	const lastMemoryTurn = results.filter((r) => r.memoryConfig !== undefined).at(-1);
+	const stale = lastMemoryTurn !== undefined && lastMemoryTurn.memory === undefined;
+	return {
+		...last,
+		tasks: states.flatMap((state) => state.tasks),
+		...(stale ? { stale: true } : {}),
 	};
 }
 

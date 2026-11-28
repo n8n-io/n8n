@@ -5,6 +5,7 @@
 // is written up in agent-perf `docs/plans/2026-11-27-case-contract.md`.
 // ---------------------------------------------------------------------------
 
+import { agentConfigOverrideError, instanceAiEvalAgentRunOptionsSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
 /** `direct`: restore the seeded Agent and run its scenarios against it, with no
@@ -19,19 +20,15 @@ export const DEFAULT_MAX_USER_TURNS = 6;
 export const MAX_USER_TURNS = 20;
 export const MAX_SESSIONS = 5;
 
+/** `keepMemory` and `configOverrides` (AGENT-1666) are the eval endpoint's
+ *  `agentRun` options, sent as they are on every turn of the run. */
 export const AgentRunSchema = z
 	.object({
 		mode: z.enum(AGENT_RUN_MODES),
 		/** The seed id of the Agent under test. Defaults to the first seeded Agent. */
 		agent: z.string().min(1).optional(),
-		/** AGENT-1666: keep the seeded Agent's memory config. Omitted or false strips
-		 *  it, as today. */
-		keepMemory: z.boolean().optional(),
-		/** AGENT-1666: deep-merged onto the seeded Agent config, for test variants
-		 *  (for example episodic memory on vs off). Validated against the Agent
-		 *  config schema after the merge. */
-		configOverrides: z.record(z.string(), z.unknown()).optional(),
 	})
+	.merge(instanceAiEvalAgentRunOptionsSchema)
 	.strict();
 
 export type AgentRun = z.infer<typeof AgentRunSchema>;
@@ -51,14 +48,14 @@ export function agentUnderTestIndex(
 	return seedAgents.findIndex((agent) => agent.id === wanted);
 }
 
-/** Contract fields that load today but do nothing until N4 (memory) lands.
- *  Named so the run can warn instead of failing silently. */
-export function pendingAgentRunFields(testCase: { agentRun?: AgentRun }): string[] {
-	const pending: Array<[string, boolean]> = [
-		['keepMemory', testCase.agentRun?.keepMemory === true],
-		['configOverrides', testCase.agentRun?.configOverrides !== undefined],
-	];
-	return pending.filter(([, set]) => set).map(([field]) => field);
+/** The options the eval endpoint takes from `agentRun`. */
+export function agentRunOptions(agentRun: AgentRun | undefined) {
+	if (!agentRun) return undefined;
+	const { keepMemory, configOverrides } = agentRun;
+	return {
+		...(keepMemory !== undefined ? { keepMemory } : {}),
+		...(configOverrides !== undefined ? { configOverrides } : {}),
+	};
 }
 
 /** A simulated user who talks to the Agent for up to `maxTurns` user messages,
@@ -72,12 +69,27 @@ export const AgentUserTurnsSchema = z
 
 export type AgentUserTurns = z.infer<typeof AgentUserTurnsSchema>;
 
+/** Separates the parts of an expectation unit key. */
+export const EXPECTATION_KEY_SEPARATOR = ' › ';
+
+/** A scenario name or expectation with the separator would make keys ambiguous. */
+function separatorMessage(subject: string): string {
+	return `${subject} contains "${EXPECTATION_KEY_SEPARATOR}", which separates the parts of an expectation key — rephrase it`;
+}
+
 /** Separate pass/fail statements about one Agent run, like a workflow case's
  *  outcomeExpectations. A scenario passes only if all of them hold. */
 export const AgentExpectationsSchema = z.array(z.string().min(1)).superRefine((list, ctx) => {
 	// Each expectation is a unit keyed by its text, so a repeat would merge into one.
 	const seen = new Set<string>();
 	for (const [index, text] of list.entries()) {
+		if (text.includes(EXPECTATION_KEY_SEPARATOR)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: [index],
+				message: separatorMessage(`expectation "${text}"`),
+			});
+		}
 		if (seen.has(text)) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
@@ -137,15 +149,18 @@ interface TableShape {
 /** The case as the contract checks see it. Loose on purpose: only the keys read here. */
 export interface AgentRunCaseView {
 	agentRun?: AgentRun;
-	seed?: { mode: string; agents?: Array<{ id: string }>; dataTables?: TableShape[] } & Partial<
-		Record<string, unknown>
-	>;
+	seed?: {
+		mode: string;
+		agents?: Array<{ id: string; config?: unknown }>;
+		dataTables?: TableShape[];
+	} & Partial<Record<string, unknown>>;
 	executionScenarios?: AgentScenarioView[];
 	[key: string]: unknown;
 }
 
 /** A scenario as the contract checks and the judge bridge see it. */
 export interface AgentScenarioView {
+	name?: string;
 	successCriteria?: string;
 	seedDataTables?: TableShape[];
 	userTurns?: unknown;
@@ -167,9 +182,6 @@ export interface AgentExpectationUnit {
 	key: string;
 	text: string;
 }
-
-/** Separates the parts of an expectation unit key. */
-export const EXPECTATION_KEY_SEPARATOR = ' › ';
 
 /**
  * Every expectation of a scenario as its own unit: the scenario's, then each
@@ -240,6 +252,23 @@ function agentRefIssues(c: AgentRunCaseView): CaseIssue[] {
 		{
 			path: ['agentRun', 'agent'],
 			message: `agentRun.agent "${wanted}" is not the id of an Agent the inline seed declares`,
+		},
+	];
+}
+
+/** Overrides must give the Agent under test a valid config, as the server checks too. */
+function configOverrideIssues(c: AgentRunCaseView): CaseIssue[] {
+	const overrides = c.agentRun?.configOverrides;
+	if (overrides === undefined || c.seed?.mode !== 'inline') return [];
+	const agents = c.seed.agents ?? [];
+	const seeded = agents[agentUnderTestIndex(c.agentRun, agents)];
+	if (!seeded) return [];
+	const error = agentConfigOverrideError(seeded.config, overrides);
+	if (error === undefined) return [];
+	return [
+		{
+			path: ['agentRun', 'configOverrides'],
+			message: `agentRun.configOverrides do not give the seeded Agent a valid config: ${error}`,
 		},
 	];
 }
@@ -317,6 +346,31 @@ function scenarioExpectationIssues(c: AgentRunCaseView): CaseIssue[] {
 	);
 }
 
+/** Scenario names key expectation units: no separator in them, and no repeats. */
+function scenarioNameIssues(c: AgentRunCaseView): CaseIssue[] {
+	const names = (c.executionScenarios ?? []).map((scenario) => scenario.name);
+	return [...names.flatMap(separatorInNameIssues), ...duplicateNameIssues(names)];
+}
+
+function separatorInNameIssues(name: string | undefined, index: number): CaseIssue[] {
+	if (!name?.includes(EXPECTATION_KEY_SEPARATOR)) return [];
+	const path = ['executionScenarios', index, 'name'];
+	return [{ path, message: separatorMessage(`scenario name "${name}"`) }];
+}
+
+function duplicateNameIssues(names: Array<string | undefined>): CaseIssue[] {
+	return names.flatMap((name, index) =>
+		name !== undefined && names.indexOf(name) < index
+			? [
+					{
+						path: ['executionScenarios', index, 'name'],
+						message: `scenario name "${name}" is used twice — its expectation keys would collide`,
+					},
+				]
+			: [],
+	);
+}
+
 /** Outside direct mode `successCriteria` is what gets graded, so it stays required. */
 function successCriteriaIssues(c: AgentRunCaseView): CaseIssue[] {
 	return (c.executionScenarios ?? []).flatMap((scenario, index) =>
@@ -334,7 +388,9 @@ export function findAgentRunIssues(c: AgentRunCaseView): CaseIssue[] {
 		...assistantOnlyIssues(c),
 		...seedIssues(c),
 		...agentRefIssues(c),
+		...configOverrideIssues(c),
 		...scenarioCountIssues(c),
+		...scenarioNameIssues(c),
 		...scenarioExpectationIssues(c),
 		...scenarioTableIssues(c),
 		...turnIssues,

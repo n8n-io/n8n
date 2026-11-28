@@ -146,6 +146,7 @@ describe('executeAgentScenario', () => {
 			scenario.dataSetup,
 			10_000,
 			undefined,
+			{ agentRun: undefined, awaitMemory: false },
 		);
 		expect(client.getPersonalProjectId).not.toHaveBeenCalled();
 	});
