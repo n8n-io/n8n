@@ -11,6 +11,8 @@ import {
 	watchEffect,
 } from 'vue';
 
+import ChatInputTokenEditor from './ChatInputTokenEditor.vue';
+import type { ChatInputTokenQueryEnd, N8nChatInputTokenOptions } from './chatInputTokens';
 import { useAutosizeTextarea } from '../../composables/useAutosizeTextarea';
 import { useCharacterLimit } from '../../composables/useCharacterLimit';
 import { useI18n } from '../../composables/useI18n';
@@ -59,6 +61,11 @@ export interface N8nChatInputProps {
 	stopButtonTestId?: string;
 	/** Test id for the native textarea. Fallthrough attrs land on the wrapper. */
 	inputTestId?: string;
+	/**
+	 * Turns on inline tokens, such as @-mentions. The input becomes a rich editor
+	 * that shows each `[@label](n8n-resource://…)` in the value as a chip.
+	 */
+	tokens?: N8nChatInputTokenOptions;
 }
 
 const INFINITE_CREDITS = -1;
@@ -84,6 +91,7 @@ const props = withDefaults(defineProps<N8nChatInputProps>(), {
 	sendButtonTestId: 'send-message-button',
 	stopButtonTestId: 'send-message-button',
 	inputTestId: undefined,
+	tokens: undefined,
 });
 
 const emit = defineEmits<{
@@ -93,12 +101,15 @@ const emit = defineEmits<{
 	focus: [event: FocusEvent];
 	blur: [event: FocusEvent];
 	'upgrade-click': [];
+	/** With `tokens`: the query after `@`, or `undefined` with the reason when it ends without a pick. */
+	'token-query': [query: string | undefined, end?: ChatInputTokenQueryEnd];
 }>();
 
 const slots = useSlots();
 const { t } = useI18n();
 
 const textareaRef = ref<HTMLTextAreaElement>();
+const tokenEditorRef = ref<InstanceType<typeof ChatInputTokenEditor>>();
 const sendStopButtonRef = ref<HTMLElement>();
 const isFocused = ref(false);
 const textValue = ref(props.modelValue || '');
@@ -230,6 +241,10 @@ async function handleStop() {
 	}
 }
 
+async function handleTokenEditorSubmit() {
+	if (!sendDisabled.value) await handleSubmit();
+}
+
 async function handleKeyDown(event: KeyboardEvent) {
 	if (effectiveLayout() === 'single-line' && event.key === 'Enter' && !event.isComposing) {
 		event.preventDefault();
@@ -296,12 +311,34 @@ function handleFocusableRegionClick(event: MouseEvent) {
 }
 
 function focusInput(options?: FocusOptions) {
+	if (tokenEditorRef.value) {
+		tokenEditorRef.value.focus(options);
+		return;
+	}
 	textareaRef.value?.focus(options);
 }
 
-/** Returns the native textarea while the component is mounted. */
+/** Returns the native textarea while the component is mounted. `undefined` with `tokens`. */
 function getInputElement(): HTMLTextAreaElement | undefined {
 	return textareaRef.value;
+}
+
+/** Returns the element that takes the text: the textarea, or the rich editor with `tokens`. */
+function getEditorElement(): HTMLElement | undefined {
+	return tokenEditorRef.value?.getElement() ?? textareaRef.value;
+}
+
+/** The token commands of the rich editor, while `tokens` is set. */
+function getTokenEditor() {
+	const tokenEditor = tokenEditorRef.value;
+	if (!tokenEditor) return undefined;
+	return {
+		insertToken: tokenEditor.insertToken,
+		removeEmptyTrigger: tokenEditor.removeEmptyTrigger,
+		dismissTrigger: tokenEditor.dismissTrigger,
+		insertText: tokenEditor.insertText,
+		getTriggerRect: tokenEditor.getTriggerRect,
+	};
 }
 
 /**
@@ -334,6 +371,8 @@ onMounted(() => {
 defineExpose({
 	focusInput,
 	getInputElement,
+	getEditorElement,
+	getTokenEditor,
 	getSendStopButtonElement,
 });
 </script>
@@ -360,7 +399,37 @@ defineExpose({
 					{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
 				</N8nCallout>
 
+				<ChatInputTokenEditor
+					v-if="tokens"
+					ref="tokenEditorRef"
+					v-model="textValue"
+					:class="[
+						$style.tokenEditor,
+						{ [$style.adaptiveTokenEditor]: effectiveLayout() === 'adaptive' },
+					]"
+					:single-line="effectiveLayout() === 'single-line'"
+					:placeholder="hasNoCredits ? '' : placeholder"
+					:disabled="disabled || hasNoCredits"
+					:max-length="maxLength"
+					:trigger="tokens.trigger"
+					:icon="tokens.icon"
+					:block-canvas-shortcuts="blockCanvasShortcuts"
+					:input-test-id="inputTestId"
+					:min-rows="effectiveLayout() === 'single-line' ? 1 : autosizeRows.minRows"
+					:max-rows="
+						effectiveLayout() === 'single-line'
+							? 1
+							: isAutosizeEnabled
+								? autosizeRows.maxRows
+								: undefined
+					"
+					@submit="handleTokenEditorSubmit"
+					@focus="handleFocus"
+					@blur="handleBlur"
+					@token-query="(query, end) => emit('token-query', query, end)"
+				/>
 				<textarea
+					v-else
 					ref="textareaRef"
 					v-model="textValue"
 					:data-test-id="inputTestId"
@@ -515,6 +584,11 @@ defineExpose({
 	}
 }
 
+.tokenEditor {
+	flex: 1;
+	min-height: 0;
+}
+
 .bottomActions {
 	display: flex;
 	align-items: center;
@@ -564,6 +638,12 @@ defineExpose({
 	/* A 24px text line plus 4px above and below matches the 32px send button,
 		leaving the same 8px inset on every side in the compact state. */
 	padding-block: var(--spacing--4xs);
+}
+
+/* The token editor reserves the pinned button's column too, as `.adaptiveTextarea` does.
+	Its content already has the `--spacing--3xs` inset. */
+.adaptiveTokenEditor {
+	padding-right: var(--height--md);
 }
 
 .adaptiveActions {

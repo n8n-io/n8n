@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterAll, afterEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -11,12 +11,28 @@ import type { ContextChip } from '../../instanceAi.contextChip';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { AssistantMentionSelection } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import type { InstanceAiElementAttachment } from '@n8n/api-types';
 
 const telemetryTrack = vi.hoisted(() => vi.fn());
+
+// jsdom lacks elementFromPoint, and ProseMirror calls it on a click in the inline-mention
+// editor. Kept to this file: the editor-ui setup leaves it undefined on purpose.
+let addedElementFromPoint = false;
+beforeAll(() => {
+	if (Object.getOwnPropertyDescriptor(Document.prototype, 'elementFromPoint')) return;
+	Object.defineProperty(Document.prototype, 'elementFromPoint', {
+		configurable: true,
+		value: () => null,
+	});
+	addedElementFromPoint = true;
+});
+afterAll(() => {
+	if (addedElementFromPoint) Reflect.deleteProperty(Document.prototype, 'elementFromPoint');
+});
 
 // The plus menu asks for a router; keep the rest of vue-router real.
 vi.mock('vue-router', async (importOriginal) => ({
@@ -788,5 +804,112 @@ describe('InstanceAiInput — staged element attachment', () => {
 		const [message, attachments] = emitted().submit[0] as [string, unknown[]];
 		expect(message).toBe('remove this');
 		expect(attachments).toEqual([expect.objectContaining({ type: 'element', appId: 'app-1' })]);
+	});
+});
+
+describe('InstanceAiInput — inline mentions', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		vi.spyOn(usePostHog(), 'isFeatureEnabled').mockReturnValue(true);
+		// jsdom has no layout, and the rich editor measures the caret to scroll it into view.
+		const rect = new DOMRect();
+		const rects = Object.assign([rect], { item: () => rect }) as unknown as DOMRectList;
+		Range.prototype.getClientRects ??= () => rects;
+		Range.prototype.getBoundingClientRect ??= () => rect;
+		vi.spyOn(Range.prototype, 'getClientRects').mockReturnValue(rects);
+		vi.spyOn(Range.prototype, 'getBoundingClientRect').mockReturnValue(rect);
+		vi.spyOn(Element.prototype, 'getClientRects').mockReturnValue(rects);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('keeps a picked mention in the text and sends what it points to', async () => {
+		const { container, emitted, findByTestId, getByTestId, queryByTestId } = renderMentionsInput({
+			props: { inlineMentions: true },
+		});
+		await waitFor(() => expect(container.querySelector('[contenteditable]')).not.toBeNull());
+
+		await userEvent.click(getByTestId('mention-picker-select'));
+
+		expect(await findByTestId('chat-token')).toHaveTextContent('Orders');
+		expect(queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
+
+		await userEvent.click(await findByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		const [message, attachments, restoreDraft, , , mentionCounts, workflowIds] = emitted()
+			.submit[0] as [string, unknown[], () => boolean, unknown, unknown, unknown, string[]];
+		expect(message).toBe('[@Orders](n8n-resource://workflow/w1)');
+		expect(attachments).toEqual([{ type: 'workflow', id: 'w1', name: 'Orders' }]);
+		expect(mentionCounts).toEqual(expect.objectContaining({ workflow: 1, total: 1 }));
+		expect(workflowIds).toEqual(['w1']);
+
+		// A refused send puts the token back in the text, not as a staged chip.
+		expect(restoreDraft()).toBe(true);
+		expect(await findByTestId('chat-token')).toHaveTextContent('Orders');
+		expect(queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
+	});
+
+	it('puts a typed mention where the @ was, between the text around it', async () => {
+		const { container, emitted, findByTestId, getByTestId } = renderMentionsInput({
+			props: { inlineMentions: true },
+		});
+		await waitFor(() => expect(container.querySelector('[contenteditable]')).not.toBeNull());
+		const editor = container.querySelector<HTMLElement>('[contenteditable]');
+		if (!editor) throw new Error('No editor');
+
+		await userEvent.type(editor, 'Fix @Ord');
+		await waitFor(() =>
+			expect(getByTestId('mention-picker-stub')).toHaveAttribute('data-query', 'Ord'),
+		);
+		await userEvent.click(getByTestId('mention-picker-select'));
+		expect(await findByTestId('chat-token')).toHaveTextContent('Orders');
+		await userEvent.type(editor, 'today');
+
+		await userEvent.click(await findByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		const [message] = emitted().submit[0] as [string];
+		expect(message).toBe('Fix [@Orders](n8n-resource://workflow/w1) today');
+	});
+
+	it('keeps Enter for a focused button while the picker is open', async () => {
+		const { container, getByTestId } = renderMentionsInput({ props: { inlineMentions: true } });
+		await waitFor(() => expect(container.querySelector('[contenteditable]')).not.toBeNull());
+		const editor = container.querySelector<HTMLElement>('[contenteditable]');
+		if (!editor) throw new Error('No editor');
+
+		await userEvent.type(editor, '@Ord');
+		await waitFor(() =>
+			expect(getByTestId('mention-picker-stub')).toHaveAttribute('data-query', 'Ord'),
+		);
+
+		const pressEnter = (target: HTMLElement) => {
+			const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+			target.dispatchEvent(event);
+			return event.defaultPrevented;
+		};
+		expect(pressEnter(getByTestId('mention-picker-open'))).toBe(false);
+		// Enter in the editor picks from the open list, so it does not send.
+		expect(pressEnter(editor)).toBe(true);
+	});
+
+	it('turns the mentions into plain text when the project changes', async () => {
+		const { container, emitted, findByTestId, getByTestId, queryByTestId, rerender } =
+			renderMentionsInput({ props: { inlineMentions: true } });
+		await waitFor(() => expect(container.querySelector('[contenteditable]')).not.toBeNull());
+		await userEvent.click(getByTestId('mention-picker-select'));
+		expect(await findByTestId('chat-token')).toBeInTheDocument();
+
+		await rerender({ mentionProjectId: 'project-2' });
+
+		await waitFor(() => expect(queryByTestId('chat-token')).not.toBeInTheDocument());
+		await userEvent.click(await findByTestId('instance-ai-send-button'));
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		const [message, attachments] = emitted().submit[0] as [string, unknown[] | undefined];
+		expect(message).toBe('@Orders');
+		expect(attachments).toBeUndefined();
 	});
 });

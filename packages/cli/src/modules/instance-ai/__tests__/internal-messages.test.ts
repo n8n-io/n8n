@@ -824,6 +824,46 @@ describe('buildThreadArtifactsBlock', () => {
 		expect(buildThreadArtifactsBlock({ artifacts: [table, workflow] })).toBe(block);
 	});
 
+	it('lists the resources that the message mentions inline apart from the hand-off', () => {
+		const message =
+			'Do x with [@Foo](n8n-resource://workflow/wf-1), y with [@Slack](n8n-resource://node/wf-2/n-1) and ask [@Bot](n8n-resource://agent/ag-1)';
+		const block = buildThreadArtifactsBlock(
+			{ artifacts: [{ type: 'workflow', id: 'wf-1', name: 'Foo' }] },
+			[
+				{ type: 'workflow', id: 'wf-1', name: 'Foo' },
+				{ type: 'nodes', workflowId: 'wf-2', sets: [{ nodes: [{ id: 'n-1', name: 'Slack' }] }] },
+				{ type: 'agent', id: 'ag-1', name: 'Bot', projectId: 'p-1' },
+				{ type: 'workflow', id: 'wf-3', name: 'Handed off' },
+			],
+			message,
+		);
+
+		const mentions = block.indexOf('The user mentioned these items in their message.');
+		const handoff = block.indexOf('The user opened this conversation from the editor');
+		expect(mentions).toBeGreaterThan(-1);
+		expect(handoff).toBeGreaterThan(mentions);
+		const mentionSection = block.slice(mentions, handoff);
+		// A mentioned tab is listed again, so the agent can match its token.
+		expect(mentionSection).toContain('Workflow "Foo" (id: `wf-1`)');
+		expect(mentionSection).toContain('Selected nodes in workflow `wf-2`');
+		expect(mentionSection).toContain('Agent "Bot" (id: `ag-1`, in project `p-1`)');
+		expect(block.slice(handoff)).toContain('Workflow "Handed off" (id: `wf-3`)');
+		expect(
+			extractEditorContextResourceAttachments(`<thread-context>\n${block}\n</thread-context>`),
+		).toHaveLength(4);
+	});
+
+	it('lists every attachment as a hand-off when the message has no inline mentions', () => {
+		const block = buildThreadArtifactsBlock(
+			undefined,
+			[{ type: 'workflow', id: 'wf-1', name: 'Foo' }],
+			'Plain [@text](https://example.com)',
+		);
+
+		expect(block).not.toContain('The user mentioned these items');
+		expect(block).toContain('The user opened this conversation from the editor');
+	});
+
 	it('marks the focused tab as current and lists the rest', () => {
 		const block = buildThreadArtifactsBlock({
 			artifacts: [

@@ -4,7 +4,11 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
-import { N8nAttachment, N8nAttachmentGroup } from '@n8n/design-system';
+import {
+	N8nAttachment,
+	N8nAttachmentGroup,
+	type N8nChatInputTokenOptions,
+} from '@n8n/design-system';
 import { useAttachmentPreviews } from '@/features/ai/shared/composables/useAttachmentPreviews';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
@@ -42,6 +46,11 @@ import {
 	type InstanceAiPrefillPayload,
 } from '../prefills';
 import { mergeNodeSets } from '../utils/buildNodesAttachment';
+import { withoutAttachedResources } from '../assistantAgent/assistantMentionTokens';
+import {
+	useAssistantAgentMentions,
+	type MentionMenuAnchor,
+} from '../assistantAgent/useAssistantAgentMentions';
 import InstanceAiResourceChip from './InstanceAiResourceChip.vue';
 
 type AmendContext = { agentId: string; role: string } | null;
@@ -112,6 +121,11 @@ const props = withDefaults(
 		mentionProjectId?: string;
 		mentionArtifacts?: readonly WorkflowArtifactReference[];
 		mentionActiveWorkflowId?: string;
+		/**
+		 * A pick stays in the text as an inline token, as in the Assistant agent
+		 * composer, and the submit attaches what the tokens point to.
+		 */
+		inlineMentions?: boolean;
 		reservedAttachmentCount?: number;
 		isOutOfCredits?: boolean;
 		/** Restricts the accepted file types, as an `accept` string. */
@@ -131,6 +145,7 @@ const props = withDefaults(
 		mentionProjectId: undefined,
 		mentionArtifacts: () => [],
 		mentionActiveWorkflowId: undefined,
+		inlineMentions: false,
 		reservedAttachmentCount: 0,
 		isOutOfCredits: false,
 	},
@@ -250,11 +265,11 @@ function focus() {
 
 function appendText(text: string) {
 	inputText.value += text;
-	void mentions.handleTextChange(inputText.value, inputText.value.length);
+	mentionMode.value.handleTextChange(inputText.value, inputText.value.length);
 }
 
 function setText(text: string) {
-	mentions.close();
+	mentionMode.value.close();
 	inputText.value = text;
 }
 
@@ -354,24 +369,31 @@ const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );
 const shouldShowMentions = computed(() => props.mentionsEnabled && Boolean(props.mentionProjectId));
+const isSubmissionInFlight = computed(() => props.isSubmitting || isPreparingSubmission.value);
+
+function handleMentionEmptySearch(query: string): void {
+	mentionTelemetry.trackEmptySearch(query, { artifactCount: props.mentionArtifacts.length });
+}
+
+// Staged mentions, for the current runtime: a pick stages a resource chip above the text.
+// Only the picker of the mode in use loads what it can offer.
+const shouldShowStagedMentions = computed(() => shouldShowMentions.value && !props.inlineMentions);
 const mentionAvailability = useAssistantMentionAvailability({
-	enabled: shouldShowMentions,
+	enabled: shouldShowStagedMentions,
 	projectId: () => props.mentionProjectId,
 	artifacts: () => props.mentionArtifacts,
 });
-const isSubmissionInFlight = computed(() => props.isSubmitting || isPreparingSubmission.value);
-const canUseMentions = computed(
+const canUseStagedMentions = computed(
 	() =>
-		shouldShowMentions.value &&
+		shouldShowStagedMentions.value &&
 		mentionAvailability.isAvailable.value &&
 		!isSubmissionInFlight.value &&
 		!isGatedBySetup.value,
 );
-const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? null);
-const mentions = useAssistantAtMentions({
+const stagedMentions = useAssistantAtMentions({
 	text: inputText,
-	enabled: canUseMentions,
-	getInputElement: () => inputElement.value ?? undefined,
+	enabled: canUseStagedMentions,
+	getInputElement: () => chatInputRef.value?.getInputElement(),
 	onOpened: mentionTelemetry.trackPickerOpened,
 	onClosed: (info) => {
 		// Synchronous on purpose: the picker still shows what the user looked at.
@@ -381,14 +403,8 @@ const mentions = useAssistantAtMentions({
 		if (metrics) mentionTelemetry.trackPickerDismissed(info, metrics);
 	},
 });
-
-function handleMentionEmptySearch(query: string): void {
-	mentionTelemetry.trackEmptySearch(query, { artifactCount: props.mentionArtifacts.length });
-}
-const mentionMenuOpen = mentions.menuOpen;
-const mentionQuery = mentions.query;
-watch(canUseMentions, (enabled, wasEnabled) => {
-	if (enabled && !wasEnabled) void mentions.handleTextChange(inputText.value);
+watch(canUseStagedMentions, (enabled, wasEnabled) => {
+	if (enabled && !wasEnabled) void stagedMentions.handleTextChange(inputText.value);
 });
 
 const mentionAttachments = useAssistantMentionAttachments({
@@ -397,7 +413,7 @@ const mentionAttachments = useAssistantMentionAttachments({
 	projectId: () => props.mentionProjectId,
 	reservedAttachmentCount: () => props.reservedAttachmentCount,
 	onMentionRemoved: mentionTelemetry.trackMentionRemoved,
-	onCleared: () => mentions.close(false, 'unavailable'),
+	onCleared: () => stagedMentions.close(false, 'unavailable'),
 });
 
 /**
@@ -405,7 +421,7 @@ const mentionAttachments = useAssistantMentionAttachments({
  * gets its tab with the message it rides on, once that message is sent, so
  * picking it does not move the thread's tabs or preview around.
  */
-async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {
+async function selectStagedMention(selection: AssistantMentionSelection): Promise<void> {
 	const { item } = selection;
 	const existingArtifact =
 		item.kind === 'agent'
@@ -428,8 +444,133 @@ async function handleMentionSelection(selection: AssistantMentionSelection): Pro
 			i18n.baseText('instanceAi.nodeContext.truncated.title'),
 		);
 	}
-	await mentions.clearActiveRange();
+	await stagedMentions.clearActiveRange();
 }
+
+// Inline mentions, for the Assistant agent runtime: a pick stays in the text as a token.
+const inlineMentions = useAssistantAgentMentions({
+	threadId: () => props.currentThreadId || undefined,
+	projectId: () => props.mentionProjectId,
+	enabled: () => props.inlineMentions && shouldShowMentions.value,
+	draft: inputText,
+	composer: () => ({
+		getInputElement: () => chatInputRef.value?.getEditorElement(),
+		getTokenEditor: () => chatInputRef.value?.getTokenEditor(),
+	}),
+	picker: () => mentionPickerRef.value,
+	artifacts: () => props.mentionArtifacts,
+	reservedAttachmentCount: () =>
+		attachedFiles.value.length + attachedResources.value.length + props.reservedAttachmentCount,
+	reservedResources: () => attachedResources.value,
+	isBlocked: () => isSubmissionInFlight.value || isGatedBySetup.value,
+});
+
+/** What a sent message carries for its mentions, besides the staged resources. */
+interface MentionSubmission {
+	attachments: InstanceAiResourceAttachment[];
+	counts: AssistantMentionCounts;
+	workflowIds: string[];
+}
+
+/** The composer and picker wiring of one mention mode, so the composer does not branch on it. */
+interface ComposerMentionMode {
+	picker: () => {
+		open: boolean;
+		query: string;
+		disabled: boolean;
+		reference: HTMLElement | MentionMenuAnchor | null;
+		inputElement: HTMLElement | null;
+	};
+	tokens: () => N8nChatInputTokenOptions | undefined;
+	close: () => void;
+	handleTextChange: (text: string, caret?: number) => void;
+	handleMenuOpenChange: (open: boolean) => void;
+	handleSelect: (selection: AssistantMentionSelection) => void;
+	saveSelection: () => void;
+	handleCaretMove: () => void;
+	/** Keys while the picker is open: arrows and Enter move through it, so Enter does not send. */
+	handlePickerKeydown: (event: KeyboardEvent) => void;
+	submission: (text: string, staged: readonly InstanceAiResourceAttachment[]) => MentionSubmission;
+	/** The text was sent: its mentions leave the draft, but the user did not remove them. */
+	handleSent: (text: string) => void;
+}
+
+const stagedMentionMode: ComposerMentionMode = {
+	picker: () => ({
+		open: stagedMentions.menuOpen.value,
+		query: stagedMentions.query.value,
+		disabled: !canUseStagedMentions.value,
+		reference: composerRef.value,
+		inputElement: chatInputRef.value?.getInputElement() ?? null,
+	}),
+	tokens: () => undefined,
+	close: () => stagedMentions.close(),
+	handleTextChange: (text, caret) => {
+		void stagedMentions.handleTextChange(text, caret);
+	},
+	handleMenuOpenChange: stagedMentions.handleMenuOpenChange,
+	handleSelect: (selection) => {
+		void selectStagedMention(selection);
+	},
+	saveSelection: stagedMentions.saveSelection,
+	handleCaretMove: () => {
+		void stagedMentions.handleCaretMove();
+	},
+	handlePickerKeydown: (event) => {
+		const handled = mentionPickerRef.value?.handleExternalKeydown(event) ?? false;
+		const hasModifier = event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
+		const isComposing = event.isComposing || event.keyCode === IME_COMPOSITION_KEYCODE;
+		if (handled || event.key !== 'Enter' || hasModifier || isComposing) return;
+		event.preventDefault();
+		event.stopPropagation();
+	},
+	submission: () => ({
+		attachments: [],
+		counts: mentionAttachments.snapshotCounts(),
+		workflowIds: [...mentionAttachments.snapshotMentionedWorkflowIds()],
+	}),
+	handleSent: () => {},
+};
+
+// The editor tracks the caret and the typed `@` itself, so the caret events do nothing here.
+const inlineMentionMode: ComposerMentionMode = {
+	picker: () => ({
+		open: inlineMentions.menuOpen.value,
+		query: inlineMentions.query.value,
+		disabled: !inlineMentions.canUseMentions.value,
+		reference: inlineMentions.menuAnchor.value ?? composerRef.value,
+		inputElement: chatInputRef.value?.getEditorElement() ?? null,
+	}),
+	tokens: () => inlineMentions.tokenOptions.value,
+	close: () => inlineMentions.close(),
+	handleTextChange: (text) => {
+		inputText.value = text;
+	},
+	handleMenuOpenChange: inlineMentions.handleMenuOpenChange,
+	handleSelect: inlineMentions.handleSelect,
+	saveSelection: () => {},
+	handleCaretMove: () => {},
+	// Only keys from the editor go to the picker, so a focused button keeps its own Enter.
+	handlePickerKeydown: inlineMentions.handleKeydown,
+	submission: (text, staged) => {
+		const mentioned = inlineMentions.attachmentsFor(text);
+		const workflowIds = mentioned.flatMap((attachment) => {
+			if (attachment.type === 'workflow') return [attachment.id];
+			if (attachment.type === 'nodes') return [attachment.workflowId];
+			return [];
+		});
+		return {
+			// A mention of a staged resource goes once, with that resource.
+			attachments: withoutAttachedResources(mentioned, staged),
+			counts: inlineMentions.sentMentionCounts(text),
+			workflowIds: [...new Set(workflowIds)],
+		};
+	},
+	handleSent: inlineMentions.handleSent,
+};
+
+const mentionMode = computed(() => (props.inlineMentions ? inlineMentionMode : stagedMentionMode));
+const mentionPicker = computed(() => mentionMode.value.picker());
 
 const canSubmit = computed(() =>
 	canSubmitMessage(
@@ -622,6 +763,7 @@ function submitComposerMessage(
 		mentionCounts,
 		mentionedWorkflowIds,
 	);
+	mentionMode.value.handleSent(message);
 	resetDraftComposer();
 }
 
@@ -648,14 +790,13 @@ async function handleSubmit() {
 	if (!canSubmitMessage(text, attachedFiles.value.length + attachedResources.value.length)) {
 		return;
 	}
-	mentions.close();
+	mentionMode.value.close();
 	const responseStartedAtEpochMs = instanceAiResponseNow();
 
 	const submittedFiles = [...attachedFiles.value];
 	const submittedResources = [...attachedResources.value];
 	const mentionRecordIds = mentionAttachments.snapshotSubmission();
-	const mentionCounts = mentionAttachments.snapshotCounts();
-	const mentionedWorkflowIds = mentionAttachments.snapshotMentionedWorkflowIds();
+	const mentions = mentionMode.value.submission(text, submittedResources);
 	isPreparingSubmission.value = true;
 	let fileAttachments: InstanceAiAttachment[];
 	try {
@@ -670,7 +811,7 @@ async function handleSubmit() {
 	} finally {
 		isPreparingSubmission.value = false;
 	}
-	const attachments = [...fileAttachments, ...submittedResources];
+	const attachments = [...fileAttachments, ...submittedResources, ...mentions.attachments];
 
 	submitComposerMessage(
 		text,
@@ -681,8 +822,8 @@ async function handleSubmit() {
 			files: submittedFiles,
 			resources: submittedResources,
 			mentionRecordIds,
-			mentionCounts,
-			mentionedWorkflowIds,
+			mentionCounts: mentions.counts,
+			mentionedWorkflowIds: mentions.workflowIds,
 		},
 	);
 }
@@ -730,18 +871,18 @@ watch(
 onBeforeUnmount(() => instanceAiStore.setComposerElementAppId(null));
 
 function handleStop() {
-	mentions.close();
+	mentionMode.value.close();
 	emit('stop');
 }
 
 function handleComposerKeydown(event: KeyboardEvent): void {
-	if (!mentionMenuOpen.value) {
+	if (!mentionPicker.value.open) {
 		/** Keep text navigation, modified shortcuts, and composition unchanged. */
 		if (
 			event.key === 'ArrowUp' &&
-			event.target instanceof HTMLTextAreaElement &&
-			event.target === chatInputRef.value?.getInputElement() &&
-			!event.target.value &&
+			event.target instanceof HTMLElement &&
+			event.target === chatInputRef.value?.getEditorElement() &&
+			!inputText.value &&
 			!event.defaultPrevented &&
 			!event.altKey &&
 			!event.ctrlKey &&
@@ -760,13 +901,7 @@ function handleComposerKeydown(event: KeyboardEvent): void {
 		}
 		return;
 	}
-	const handled = mentionPickerRef.value?.handleExternalKeydown(event) ?? false;
-	const hasModifier = event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
-	const isComposing = event.isComposing || event.keyCode === IME_COMPOSITION_KEYCODE;
-	if (handled || event.key !== 'Enter' || hasModifier || isComposing) return;
-
-	event.preventDefault();
-	event.stopPropagation();
+	mentionMode.value.handlePickerKeydown(event);
 }
 
 function handleTabAutocomplete() {
@@ -908,10 +1043,10 @@ const resizable = computed(() => {
 		:class="$style.composer"
 		data-test-id="instance-ai-composer"
 		@keydown.capture="handleComposerKeydown"
-		@pointerdown.capture="mentions.saveSelection"
-		@click.capture="mentions.handleCaretMove"
-		@keyup.capture="mentions.handleCaretMove"
-		@select.capture="mentions.handleCaretMove"
+		@pointerdown.capture="mentionMode.saveSelection()"
+		@click.capture="mentionMode.handleCaretMove()"
+		@keyup.capture="mentionMode.handleCaretMove()"
+		@select.capture="mentionMode.handleCaretMove()"
 	>
 		<ChatInputBase
 			ref="chatInputRef"
@@ -930,7 +1065,9 @@ const resizable = computed(() => {
 			:show-attach-button="false"
 			:accepted-mime-types="props.acceptedMimeTypes"
 			:attached-encoded-bytes="attachedEncodedBytes"
-			@update:model-value="mentions.handleTextChange"
+			:tokens="mentionMode.tokens()"
+			@update:model-value="mentionMode.handleTextChange($event)"
+			@token-query="inlineMentions.handleTokenQuery"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"
@@ -991,18 +1128,18 @@ const resizable = computed(() => {
 			<template v-if="shouldShowMentions" #right-actions>
 				<AssistantAtMentionPicker
 					ref="mentionPickerRef"
-					v-model="mentionMenuOpen"
-					:query="mentionQuery"
+					:model-value="mentionPicker.open"
+					:query="mentionPicker.query"
 					:project-id="props.mentionProjectId"
 					:artifacts="props.mentionArtifacts"
 					:active-workflow-id="props.mentionActiveWorkflowId"
 					:excluded-keys="excludedMentionContext.keys"
 					:excluded-workflow-ids="excludedMentionContext.workflowIds"
-					:input-element="inputElement"
-					:reference="composerRef"
-					:disabled="!canUseMentions"
-					@update:model-value="mentions.handleMenuOpenChange"
-					@select="handleMentionSelection"
+					:input-element="mentionPicker.inputElement"
+					:reference="mentionPicker.reference"
+					:disabled="mentionPicker.disabled"
+					@update:model-value="mentionMode.handleMenuOpenChange"
+					@select="mentionMode.handleSelect"
 					@empty-search="handleMentionEmptySearch"
 				/>
 			</template>

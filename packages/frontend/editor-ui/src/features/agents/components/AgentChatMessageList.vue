@@ -52,6 +52,7 @@ import AgentChatHostEvents from './AgentChatHostEvents.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatActivity from './AgentChatActivity.vue';
+import AgentChatUserMessageText from './AgentChatUserMessageText.vue';
 import AgentChatRetryError from './AgentChatRetryError.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentChatTaskSummary from './AgentChatTaskSummary.vue';
@@ -941,7 +942,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						v-else-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.content"
 						:class="$style.chatMessage"
 					>
-						{{ group.message.content }}
+						<AgentChatUserMessageText :text="group.message.content" />
 					</div>
 					<div
 						v-else-if="group.message.stopReport"

@@ -17,6 +17,12 @@ describe('truncateToTitle', () => {
 		expect(truncateToTitle('Build a Slack workflow')).toBe('Build a Slack workflow');
 	});
 
+	it('writes an inline mention as its name', () => {
+		expect(truncateToTitle('Fix [@Order sync](n8n-resource://workflow/wf-1) please')).toBe(
+			'Fix @Order sync please',
+		);
+	});
+
 	it('trims whitespace', () => {
 		expect(truncateToTitle('  hello world  ')).toBe('hello world');
 	});

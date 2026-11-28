@@ -5,14 +5,18 @@ import {
 	type FetchFn,
 	type Telemetry,
 } from '@n8n/agents';
+import { chatTokensToPlainText } from '@n8n/utils/chat-tokens';
 
 import type { ModelConfig } from '../types';
 
 const MAX_TITLE_LENGTH = 60;
 
-/** Truncate a user message to a concise thread title (max 60 chars, word-boundary). */
+/**
+ * Truncate a user message to a concise thread title (max 60 chars, word-boundary).
+ * An inline mention becomes its `@name`.
+ */
 export function truncateToTitle(message: string): string {
-	const text = message.trim().replace(/\s+/g, ' ');
+	const text = chatTokensToPlainText(message).trim().replace(/\s+/g, ' ');
 	if (text.length <= MAX_TITLE_LENGTH) return text;
 	const truncated = text.slice(0, MAX_TITLE_LENGTH);
 	const lastSpace = truncated.lastIndexOf(' ');
@@ -45,7 +49,7 @@ export async function generateTitleForRun(
 	try {
 		const model = createModel(modelId, options?.modelFetch);
 		const telemetry = await resolveBuiltTelemetry(options?.telemetry);
-		return await generateTitleFromMessage(model, userMessage, {
+		return await generateTitleFromMessage(model, chatTokensToPlainText(userMessage), {
 			...(options?.requestLabels ? { functionId: 'instance-ai.thread_title' } : {}),
 			...(telemetry ? { telemetry } : {}),
 		});

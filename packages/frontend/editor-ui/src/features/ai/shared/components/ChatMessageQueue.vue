@@ -12,6 +12,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { chatTokensToPlainText } from '@n8n/utils/chat-tokens';
 import type { ChatMessageQueueSteerAction, ChatMessageQueueItem } from './chatMessageQueue.types';
 
 const props = defineProps<{
@@ -153,9 +154,9 @@ watch(
 								aria-hidden="true"
 								:class="$style.queueIcon"
 							/>
-							<div :class="$style.queuePreview" :title="item.message">
+							<div :class="$style.queuePreview" :title="chatTokensToPlainText(item.message)">
 								<N8nText v-if="item.message" bold step="xs" color="text-light">{{
-									item.message
+									chatTokensToPlainText(item.message)
 								}}</N8nText>
 							</div>
 							<N8nHoverCard v-if="item.attachmentNames?.length" side="top">

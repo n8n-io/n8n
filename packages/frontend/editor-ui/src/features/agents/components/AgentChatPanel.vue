@@ -26,7 +26,9 @@ import {
 	N8nTooltip,
 	type IconName,
 	N8nChatScrollArea,
+	type ChatInputTokenQueryEnd,
 	type ChatScrollAreaExposed,
+	type N8nChatInputTokenOptions,
 } from '@n8n/design-system';
 import { createReusableTemplate, useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -152,9 +154,16 @@ const props = withDefaults(
 		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 		/**
 		 * Builds the client context that is sent with each new message (for
-		 * example the user's time zone). Project agents ignore it.
+		 * example the user's time zone), from the text of that message. Project
+		 * agents ignore it.
 		 */
-		clientContext?: () => Record<string, unknown> | undefined;
+		clientContext?: (message: { text: string }) => Record<string, unknown> | undefined;
+		/**
+		 * Turns on inline tokens in the composer, such as @-mentions. A token stays
+		 * in the message text as `[@label](n8n-resource://…)`, and the sent message
+		 * shows it in place.
+		 */
+		inlineTokens?: N8nChatInputTokenOptions;
 		/**
 		 * The resources that a sent message shows, from the client context it
 		 * sends. The `user-message-references` slot renders them.
@@ -207,6 +216,7 @@ const props = withDefaults(
 		budgetCards: false,
 		increaseBudget: undefined,
 		clientContext: undefined,
+		inlineTokens: undefined,
 		messageReferences: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
@@ -246,6 +256,8 @@ const emit = defineEmits<{
 	'stream-event': [event: AgentSseEvent];
 	/** The user removed the card of a staged chip. The panel already dropped the chip. */
 	'composer-attachment-removed': [id: string];
+	/** With `inlineTokens`: the query after `@`, or `undefined` with the reason when it ends without a pick. */
+	'token-query': [query: string | undefined, end?: ChatInputTokenQueryEnd];
 	/**
 	 * The chat posts a new message now, before the server answers, so a refused
 	 * send emits this too. Typed text that cancels an open card emits this, but
@@ -473,9 +485,9 @@ function onChatInputKeydown(event: KeyboardEvent) {
 	/** Keep text navigation, modified shortcuts, and composition unchanged. */
 	if (
 		event.key === 'ArrowUp' &&
-		event.target instanceof HTMLTextAreaElement &&
-		event.target === chatInput.value?.getInputElement() &&
-		!event.target.value &&
+		event.target instanceof HTMLElement &&
+		event.target === chatInput.value?.getEditorElement() &&
+		!inputText.value &&
 		!event.defaultPrevented &&
 		!event.altKey &&
 		!event.ctrlKey &&
@@ -494,7 +506,8 @@ function onChatInputKeydown(event: KeyboardEvent) {
 	}
 
 	if (
-		!(event.target instanceof HTMLTextAreaElement) ||
+		!(event.target instanceof HTMLElement) ||
+		event.target !== chatInput.value?.getEditorElement() ||
 		event.key !== 'ArrowUp' ||
 		!event.altKey ||
 		event.ctrlKey ||
@@ -1528,7 +1541,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 		// Build the client context after `beforeSend`, so it reflects the host state at
 		// send time. The staged chip patches go on top of it.
 		const sentAttachments = fromComposer ? [...composerAttachments.value] : [];
-		const hostClientContext = props.clientContext?.();
+		const hostClientContext = props.clientContext?.({ text });
 		const clientContext = mergeClientContextPatches(
 			sentAttachments,
 			ownedClientContext ? { ...hostClientContext, ...ownedClientContext } : hostClientContext,
@@ -1726,9 +1739,17 @@ function openFilePicker() {
 	chatInput.value?.openFilePicker();
 }
 
-/** Returns the composer textarea while it is mounted, for example to anchor a picker. */
-function getInputElement(): HTMLTextAreaElement | undefined {
-	return chatInput.value?.getInputElement();
+/**
+ * Returns the element of the composer that takes the text while it is mounted:
+ * the textarea, or the rich editor with `inlineTokens`. For example to anchor a picker.
+ */
+function getInputElement(): HTMLElement | undefined {
+	return chatInput.value?.getEditorElement();
+}
+
+/** The token commands of the composer, while `inlineTokens` is set. */
+function getTokenEditor() {
+	return chatInput.value?.getTokenEditor();
 }
 
 /**
@@ -1736,14 +1757,19 @@ function getInputElement(): HTMLTextAreaElement | undefined {
  * mounted composer, appends the text to the draft.
  */
 async function insertText(text: string) {
+	const tokenEditor = getTokenEditor();
+	if (tokenEditor) {
+		tokenEditor.insertText(text);
+		return;
+	}
 	const current = inputText.value;
-	const element = getInputElement();
+	const element = chatInput.value?.getInputElement();
 	const start = element ? Math.min(element.selectionStart, current.length) : current.length;
 	const end = element ? Math.min(Math.max(element.selectionEnd, start), current.length) : start;
 	inputText.value = current.slice(0, start) + text + current.slice(end);
 	await nextTick();
 	const caret = start + text.length;
-	const updated = getInputElement();
+	const updated = chatInput.value?.getInputElement();
 	if (!updated) return;
 	updated.focus();
 	updated.setSelectionRange(caret, caret);
@@ -1854,6 +1880,7 @@ defineExpose({
 	clearDraftIfMatches,
 	openFilePicker,
 	getInputElement,
+	getTokenEditor,
 	insertText,
 	addComposerAttachment,
 	removeComposerAttachment,
@@ -1871,6 +1898,8 @@ defineExpose({
 	isSubmitting: computed(() => isSubmitting.value),
 	/** The chat waits for the user to answer a card, such as an approval or a question. A waiting card does not count, because the workflow resumes the run. */
 	isAwaitingUserAnswer: computed(() => hasOpenInteraction.value && !hasOpenWaitCard.value),
+	/** The composer text answers an open question card. That answer goes without the client context. */
+	isAnsweringQuestion: computed(() => hasOpenInteractiveQuestion.value),
 	/** The card that the chat waits on is an approval. */
 	isAwaitingUserApproval: computed(() => hasOpenApproval.value),
 	focusOpenInteraction,
@@ -2057,6 +2086,7 @@ onBeforeUnmount(() => {
 						"
 						:composer-height="composerHeight"
 						:max-length="maxLength"
+						:tokens="inlineTokens"
 						:is-streaming="false"
 						:show-stop-button="showStop"
 						show-voice
@@ -2070,6 +2100,7 @@ onBeforeUnmount(() => {
 						@stop="stopGenerating"
 						@files-selected="handleFilesSelected"
 						@files-rejected="handleFilesRejected"
+						@token-query="(query, end) => emit('token-query', query, end)"
 						@keydown="onChatInputKeydown"
 					>
 						<template #above>
