@@ -1,6 +1,6 @@
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AppCallContext, AppsConfig } from '@n8n/backend-module-apps';
-import type { GlobalConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
@@ -255,7 +255,7 @@ describe('AppWorkflowAdapter', () => {
 			});
 		});
 
-		it('saves execution data even when the workflow settings prune it', async () => {
+		it('keeps the execution row until the adapter reads it, also when the workflow does not save it', async () => {
 			const { adapter, loader, runner } = setup();
 			loader.loadWorkflow.mockResolvedValue({
 				id: 'workflow-1',
@@ -465,6 +465,176 @@ describe('AppWorkflowAdapter', () => {
 			await expect(adapter.run(ctx, 'workflow-1', {})).resolves.toMatchObject({
 				executionId: '12',
 			});
+		});
+	});
+
+	describe('runs that the workflow does not save', () => {
+		const doNotSave = { saveDataSuccessExecution: 'none', saveDataErrorExecution: 'none' };
+		const discardAll = {
+			appId: 'app-1',
+			appBindingKey: 'submit',
+			appVisitor: 'user:user-1',
+			appDiscardAfterRead: 'success,error',
+		};
+
+		function runSetup(settings: Record<string, unknown>, status: string) {
+			const mocks = setup();
+			mocks.loader.loadWorkflow.mockResolvedValue(workflow({ settings }));
+			mocks.runner.run.mockResolvedValue('12');
+			mocks.executions.findSingleExecution.mockResolvedValue(
+				execution({ status, runData: queryRunData }) as never,
+			);
+			return mocks;
+		}
+
+		it('writes the unsaved outcomes to the run metadata', async () => {
+			const { adapter, runner } = runSetup(doNotSave, 'success');
+
+			await adapter.run(ctx, 'workflow-1', {});
+
+			expect(runner.run.mock.calls[0][0].executionData?.resultData.metadata).toMatchObject({
+				appDiscardAfterRead: 'success,error',
+			});
+		});
+
+		it('does not write the metadata when the workflow saves every outcome', async () => {
+			const { adapter, runner } = runSetup(
+				{ saveDataSuccessExecution: 'all', saveDataErrorExecution: 'all' },
+				'success',
+			);
+
+			await adapter.run(ctx, 'workflow-1', {});
+
+			expect(runner.run.mock.calls[0][0].executionData?.resultData.metadata).not.toHaveProperty(
+				'appDiscardAfterRead',
+			);
+		});
+
+		it('deletes a finished run after it returns the result', async () => {
+			const { adapter, executions } = runSetup(doNotSave, 'success');
+
+			expect(await adapter.run(ctx, 'workflow-1', {})).toEqual({
+				executionId: '12',
+				status: 'success',
+				output: [{ id: 1, ok: true }],
+			});
+			expect(executions.hardDeleteById).toHaveBeenCalledWith('12');
+		});
+
+		it('deletes a failed run when the workflow does not save failed runs', async () => {
+			const { adapter, executions } = runSetup({ saveDataErrorExecution: 'none' }, 'error');
+
+			await adapter.run(ctx, 'workflow-1', {});
+
+			expect(executions.hardDeleteById).toHaveBeenCalledWith('12');
+		});
+
+		it('keeps a successful run when the workflow does not save only failed runs', async () => {
+			const { adapter, executions } = runSetup({ saveDataErrorExecution: 'none' }, 'success');
+
+			await adapter.run(ctx, 'workflow-1', {});
+
+			expect(executions.hardDeleteById).not.toHaveBeenCalled();
+		});
+
+		it('keeps a run that waits, because it resumes from its row', async () => {
+			const { adapter, executions } = runSetup(doNotSave, 'waiting');
+
+			await adapter.run(ctx, 'workflow-1', {});
+
+			expect(executions.hardDeleteById).not.toHaveBeenCalled();
+		});
+
+		it('keeps a run that is still running when the request stops waiting', async () => {
+			const { adapter, loader, runner, activeExecutions, executions } = setup({ waitMs: 5 });
+			loader.loadWorkflow.mockResolvedValue(workflow({ settings: doNotSave }));
+			runner.run.mockResolvedValue('12');
+			activeExecutions.has.mockReturnValue(true);
+			activeExecutions.getPostExecutePromise.mockReturnValue(
+				createDeferredPromise<IRun | undefined>().promise,
+			);
+
+			expect(await adapter.run(ctx, 'workflow-1', {})).toMatchObject({ status: 'running' });
+			expect(executions.hardDeleteById).not.toHaveBeenCalled();
+		});
+
+		describe('with the instance default', () => {
+			const executionsConfig = Container.get(GlobalConfig).executions;
+			const original = executionsConfig.saveDataOnSuccess;
+
+			afterEach(() => {
+				executionsConfig.saveDataOnSuccess = original;
+			});
+
+			it('deletes a successful run when the instance does not save successful runs', async () => {
+				executionsConfig.saveDataOnSuccess = 'none';
+				const { adapter, executions } = runSetup(
+					{ saveDataSuccessExecution: 'DEFAULT' },
+					'success',
+				);
+
+				await adapter.run(ctx, 'workflow-1', {});
+
+				expect(executions.hardDeleteById).toHaveBeenCalledWith('12');
+			});
+
+			it('keeps a successful run when the instance saves successful runs', async () => {
+				executionsConfig.saveDataOnSuccess = 'all';
+				const { adapter, executions } = runSetup(
+					{ saveDataSuccessExecution: 'DEFAULT' },
+					'success',
+				);
+
+				await adapter.run(ctx, 'workflow-1', {});
+
+				expect(executions.hardDeleteById).not.toHaveBeenCalled();
+			});
+		});
+
+		it('deletes a polled run after it reads the finished result', async () => {
+			const { adapter, executions } = setup();
+			executions.findSingleExecution.mockResolvedValue(
+				execution({ status: 'success', runData: queryRunData, metadata: discardAll }) as never,
+			);
+
+			expect(await adapter.getRun(ctx, 'workflow-1', '12')).toMatchObject({
+				status: 'success',
+				output: [{ id: 1, ok: true }],
+			});
+			expect(executions.hardDeleteById).toHaveBeenCalledWith('12');
+		});
+
+		it('keeps a polled run that is still running', async () => {
+			const { adapter, executions } = setup();
+			executions.findSingleExecution.mockResolvedValue(
+				execution({ status: 'running', metadata: discardAll }) as never,
+			);
+
+			await adapter.getRun(ctx, 'workflow-1', '12');
+
+			expect(executions.hardDeleteById).not.toHaveBeenCalled();
+		});
+
+		it('keeps a polled run that started without the metadata', async () => {
+			const { adapter, executions } = setup();
+			executions.findSingleExecution.mockResolvedValue(
+				execution({ status: 'success', runData: queryRunData }) as never,
+			);
+
+			await adapter.getRun(ctx, 'workflow-1', '12');
+
+			expect(executions.hardDeleteById).not.toHaveBeenCalled();
+		});
+
+		it('returns the result and logs a warning when the delete fails', async () => {
+			const { adapter, executions, logger } = runSetup(doNotSave, 'success');
+			executions.hardDeleteById.mockRejectedValue(new Error('retained'));
+
+			expect(await adapter.run(ctx, 'workflow-1', {})).toMatchObject({ status: 'success' });
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not delete an app run that the workflow does not save.',
+				expect.objectContaining({ executionId: '12' }),
+			);
 		});
 	});
 

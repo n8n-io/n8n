@@ -23,19 +23,23 @@ import { isRecord } from '@n8n/utils/is-record';
 import {
 	createRunExecutionData,
 	getExecutableNodeNames,
+	isTerminalExecutionStatus,
 	mapConnectionsByDestination,
 	type CredentialCheckStatus,
+	type ExecutionStatus,
 	type IDataObject,
 	type INode,
 	type IPinData,
 	type IRun,
 	type IRunExecutionData,
 	type IWorkflowExecutionDataProcess,
+	type IWorkflowSettings,
 } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { ActiveExecutions } from '@/active-executions';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import { toSaveSettings } from '@/execution-lifecycle/to-save-settings';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -65,6 +69,25 @@ const PASSTHROUGH_INPUT_SCHEMA: AppJsonSchema = { type: 'object', additionalProp
 const META_APP_ID = 'appId';
 const META_BINDING_KEY = 'appBindingKey';
 const META_VISITOR = 'appVisitor';
+const META_DISCARD = 'appDiscardAfterRead';
+
+type RunOutcome = 'success' | 'error';
+
+function unsavedOutcomes(settings: IWorkflowSettings | undefined): RunOutcome[] {
+	const save = toSaveSettings(settings);
+	// 'DEFAULT' resolves to the global 'all' | 'none' string, not a boolean.
+	const isSaved = (value: boolean | 'all' | 'none') => value === true || value === 'all';
+	const outcomes: RunOutcome[] = [];
+	if (!isSaved(save.success)) outcomes.push('success');
+	if (!isSaved(save.error)) outcomes.push('error');
+	return outcomes;
+}
+
+function parseOutcomes(value: string | undefined): RunOutcome[] {
+	return (value?.split(',') ?? []).filter(
+		(outcome): outcome is RunOutcome => outcome === 'success' || outcome === 'error',
+	);
+}
 
 const RUN_STATUSES: readonly string[] = [
 	'success',
@@ -318,13 +341,19 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 		if (execution.status === 'running' || execution.status === 'new') {
 			return { executionId, status: 'running' };
 		}
-		return this.toRunResult(
+		const result = this.toRunResult(
 			ctx,
 			executionId,
 			execution.status,
 			execution.data,
 			execution.workflowData.nodes,
 		);
+		await this.discardIfUnsaved(
+			executionId,
+			execution.status,
+			parseOutcomes(metadata?.[META_DISCARD]),
+		);
+		return result;
 	}
 
 	private async execute(
@@ -334,13 +363,14 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 		input: IDataObject,
 	): Promise<AppWorkflowRunResult> {
 		const pinData: IPinData = { [triggerNode.name]: [{ json: input }] };
+		const discard = unsavedOutcomes(workflow.settings);
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'integrated',
 			// End-user credentials resolve as the visitor, not as the app project.
 			encryptedRunnerIdentity: ctx.runnerIdentity,
 			workflowData: {
 				...workflow,
-				// `getRun` reads the result from the execution row, so it must outlive pruning-on-finish.
+				// Read from the row (queue mode, `getRun`); `discardIfUnsaved` removes it after.
 				settings: {
 					...workflow.settings,
 					saveDataSuccessExecution: 'all',
@@ -358,6 +388,7 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 						[META_APP_ID]: ctx.appId,
 						[META_BINDING_KEY]: ctx.bindingKey,
 						[META_VISITOR]: visitorTag(ctx),
+						...(discard.length > 0 ? { [META_DISCARD]: discard.join(',') } : {}),
 					},
 				},
 				executionData: {
@@ -392,7 +423,32 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 			}));
 		if (!execution) return { executionId, status: 'unknown', output: [] };
 
-		return this.toRunResult(ctx, executionId, execution.status, execution.data, workflow.nodes);
+		const result = this.toRunResult(
+			ctx,
+			executionId,
+			execution.status,
+			execution.data,
+			workflow.nodes,
+		);
+		await this.discardIfUnsaved(executionId, execution.status, discard);
+		return result;
+	}
+
+	private async discardIfUnsaved(
+		executionId: string,
+		status: ExecutionStatus | undefined,
+		discard: RunOutcome[],
+	) {
+		if (!isTerminalExecutionStatus(status)) return;
+		if (!discard.includes(status === 'success' ? 'success' : 'error')) return;
+		try {
+			await this.executionPersistence.hardDeleteById(executionId);
+		} catch (error) {
+			this.logger.warn('Could not delete an app run that the workflow does not save.', {
+				executionId,
+				error: ensureError(error),
+			});
+		}
 	}
 
 	private toRunResult(
