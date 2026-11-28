@@ -160,6 +160,115 @@ describe('DbConnection', () => {
 			expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('Postgres'));
 		});
 
+		describe('role defaults check', () => {
+			const createConnection = (options: Partial<DataSourceOptions>) => {
+				connectionOptions.getOptions.mockReturnValue({
+					...postgresOptions,
+					...options,
+				} as DataSourceOptions);
+				// options are @Memoized and read in the constructor — re-instantiate
+				return new DbConnection(
+					errorReporter,
+					connectionOptions,
+					databaseConfig,
+					logger,
+					dbConnectionMetrics,
+				);
+			};
+
+			const manager = mock<EntityManager>();
+			const mockRoleDefaults = (row: {
+				schema: string | null;
+				statement_timeout: string;
+				database?: string;
+			}) => {
+				manager.query.mockImplementation(async (sql: string) =>
+					sql.startsWith('SELECT') ? [{ database: 'n8n', ...row }] : [],
+				);
+				(dataSource.transaction as unknown as Mock).mockImplementation(
+					async (run: (m: EntityManager) => Promise<unknown>) => await run(manager),
+				);
+			};
+
+			beforeEach(() => {
+				dataSource.initialize.mockResolvedValue(dataSource);
+			});
+
+			it('should not check the role defaults in per-query mode', async () => {
+				await createConnection({ statementTimeout: 300_000 }).init();
+
+				expect(dataSource.transaction).not.toHaveBeenCalled();
+			});
+
+			it('should read the schema under the role default search_path', async () => {
+				mockRoleDefaults({ schema: 'n8n', statement_timeout: '300000' });
+
+				await createConnection({ schema: 'n8n', sessionSettingsMode: 'per-connection' }).init();
+
+				expect(manager.query).toHaveBeenNthCalledWith(1, 'SET LOCAL search_path TO DEFAULT');
+				expect(manager.query).toHaveBeenNthCalledWith(
+					2,
+					expect.stringContaining('current_schema()'),
+				);
+			});
+
+			it('should warn with the missing statements in per-connection mode', async () => {
+				mockRoleDefaults({ schema: 'public', statement_timeout: '0' });
+
+				await createConnection({
+					schema: 'n8n',
+					statementTimeout: 300_000,
+					sessionSettingsMode: 'per-connection',
+				}).init();
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('SET search_path = "n8n", public;'),
+				);
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('SET statement_timeout = 300000;'),
+				);
+			});
+
+			it('should name the real database, not the configured alias, in the statements', async () => {
+				mockRoleDefaults({ schema: 'public', statement_timeout: '0', database: 'n8n_prod' });
+
+				await createConnection({
+					database: 'pooler_alias',
+					statementTimeout: 300_000,
+					sessionSettingsMode: 'per-connection',
+				}).init();
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('ALTER ROLE CURRENT_USER IN DATABASE "n8n_prod"'),
+				);
+				expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('pooler_alias'));
+			});
+
+			it('should not warn when the role defaults match', async () => {
+				mockRoleDefaults({ schema: 'n8n', statement_timeout: '300000' });
+
+				await createConnection({
+					schema: 'n8n',
+					statementTimeout: 300_000,
+					sessionSettingsMode: 'per-connection',
+				}).init();
+
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('should complete startup when the check fails', async () => {
+				(dataSource.transaction as unknown as Mock).mockRejectedValue(new Error('boom'));
+				const connection = createConnection({ sessionSettingsMode: 'per-connection' });
+
+				await connection.init();
+
+				expect(connection.connectionState.connected).toBe(true);
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Could not check the database role defaults: boom',
+				);
+			});
+		});
+
 		it('should not reinitialize if already connected', async () => {
 			dataSource.initialize.mockResolvedValue(dataSource);
 			dbConnection.connectionState.connected = true;

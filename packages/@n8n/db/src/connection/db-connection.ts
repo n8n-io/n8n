@@ -14,6 +14,7 @@ import { DbConnectionMetrics } from './db-connection-metrics';
 import { DbConnectionMonitor } from './db-connection-monitor';
 import { DbConnectionOptions } from './db-connection-options';
 import { readPoolStats, type DbPoolStats } from './db-pool-stats';
+import { getMissingRoleDefaultsWarning } from './postgres-session-defaults';
 import { getPostgresVersionWarning } from './postgres-version-policy';
 import { wrapMigration } from '../migrations/migration-helpers';
 import type { Migration } from '../migrations/migration-types';
@@ -139,6 +140,7 @@ export class DbConnection {
 
 		connectionState.connected = true;
 		await this.warnOnUnsupportedPostgresVersion();
+		await this.warnOnMissingRoleDefaults();
 		this.monitor = new DbConnectionMonitor(
 			this.dataSource,
 			(connected) => (this.connectionState.connected = connected),
@@ -167,6 +169,46 @@ export class DbConnection {
 			if (warning) this.logger.warn(warning);
 		} catch (e) {
 			this.logger.warn(`Could not check database version: ${ensureError(e).message}`);
+		}
+	}
+
+	/**
+	 * With session settings applied once per pooled connection, warns when the database
+	 * role lacks matching defaults. Behind a transaction-mode pooler, those defaults are
+	 * the only way every server connection gets the schema and statement timeout.
+	 */
+	private async warnOnMissingRoleDefaults() {
+		const { options } = this;
+		if (options.type !== 'postgres' || options.sessionSettingsMode !== 'per-connection') return;
+
+		try {
+			// Go back to the role's search_path for this transaction only, and let Postgres
+			// resolve it: current_schema() is where unqualified table names go.
+			// current_database() is the real name; behind a pooler, the configured one can be an alias.
+			const [row] = await this.dataSource.transaction(async (manager) => {
+				await manager.query('SET LOCAL search_path TO DEFAULT');
+				return await manager.query<
+					Array<{ database: string; schema: string | null; statement_timeout: string }>
+				>(
+					"SELECT current_database() AS database, current_schema() AS schema, reset_val AS statement_timeout FROM pg_settings WHERE name = 'statement_timeout'",
+				);
+			});
+			if (!row) return;
+
+			const warning = getMissingRoleDefaultsWarning(
+				{
+					database: row.database,
+					schema: options.schema ?? 'public',
+					statementTimeoutMs: options.statementTimeout ?? 0,
+				},
+				{
+					schema: row.schema,
+					statementTimeout: row.statement_timeout,
+				},
+			);
+			if (warning) this.logger.warn(warning);
+		} catch (e) {
+			this.logger.warn(`Could not check the database role defaults: ${ensureError(e).message}`);
 		}
 	}
 

@@ -69,6 +69,14 @@ export interface PostgresConnectionOptions
 	readonly statementTimeout?: number;
 
 	/**
+	 * When to send `search_path` and `statement_timeout` on a pooled client: on every checkout
+	 * (`per-query`) or once per pooled client (`per-connection`). `per-connection` is not safe
+	 * behind a transaction-mode pooler unless the database role has these settings as defaults.
+	 * Defaults to `per-query`.
+	 */
+	readonly sessionSettingsMode?: 'per-query' | 'per-connection';
+
+	/**
 	 * Number of milliseconds the client waits for a query response before
 	 * terminating the connection (client-side). Default is no timeout.
 	 */

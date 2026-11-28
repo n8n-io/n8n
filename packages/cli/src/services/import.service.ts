@@ -76,20 +76,22 @@ export class ImportService {
 
 	private dbTags: TagEntity[] = [];
 
+	// Postgres uses SET LOCAL so the setting ends with the import transaction, also when the
+	// import returns early. A session-level SET would stay on a connection that a pooler shares.
 	private foreignKeyCommands: Record<'enable' | 'disable', Record<string, string>> = {
 		disable: {
 			sqlite: 'PRAGMA defer_foreign_keys = ON;',
 			'sqlite-pooled': 'PRAGMA defer_foreign_keys = ON;',
 			'sqlite-memory': 'PRAGMA defer_foreign_keys = ON;',
-			postgres: 'SET session_replication_role = replica;',
-			postgresql: 'SET session_replication_role = replica;',
+			postgres: 'SET LOCAL session_replication_role = replica;',
+			postgresql: 'SET LOCAL session_replication_role = replica;',
 		},
 		enable: {
 			sqlite: 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-pooled': 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-memory': 'PRAGMA defer_foreign_keys = OFF;',
-			postgres: 'SET session_replication_role = ORIGIN;',
-			postgresql: 'SET session_replication_role = ORIGIN;',
+			postgres: 'SET LOCAL session_replication_role = ORIGIN;',
+			postgresql: 'SET LOCAL session_replication_role = ORIGIN;',
 		},
 	};
 
