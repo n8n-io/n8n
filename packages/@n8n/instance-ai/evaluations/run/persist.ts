@@ -545,6 +545,7 @@ export function writeEvalResults(
 					...((sr.agentId ?? tc.runs[runIndex]?.agentId)
 						? { agentId: sr.agentId ?? tc.runs[runIndex]?.agentId }
 						: {}),
+					...(sr.modelResolution ? { modelResolution: sr.modelResolution } : {}),
 					passed: sr.success,
 					...(sr.incomplete ? { incomplete: true } : {}),
 					score: sr.score,

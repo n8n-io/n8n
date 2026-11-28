@@ -2,6 +2,7 @@ import type { InstanceAiEvalLlmUsage } from '@n8n/api-types';
 
 import { EvalUsageMeter, recordEvalUsage } from '../../src/utils/eval-usage';
 import type { CliArgs } from '../cli/args';
+import type { AgentModelResolution } from '../credentials/model-resolver';
 import type { BuildResult } from '../harness/build-workflow';
 import { cleanupBuild } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
@@ -9,7 +10,7 @@ import { PROVIDER_OUTAGE_ROOT_CAUSE } from '../harness/transient-error';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type { BuildOrchestrator, CachedBuild, LaneState } from '../run/build-orchestrator';
 import { createCasePipeline, type CasePipelineDeps } from '../run/case-pipeline';
-import type { WorkflowTestCase } from '../types';
+import type { TestCaseCredential, WorkflowTestCase } from '../types';
 
 // Characterization tests for the per-row execution pipeline extracted in
 // TRUST-261: sentinel / build-fail / agent / workflow dispatch, transient
@@ -672,7 +673,7 @@ describe('createCasePipeline', () => {
 		// its provider's type, and the builder sees only declared credentials. With
 		// none declared, the Agent cannot run whatever the builder does.
 		const lowTier = (model: string) => ({ modelsByDifficulty: { low: { model, credential: '' } } });
-		const seededCase = (credentials: Array<{ type: string }> = [], subAgents?: object) => ({
+		const seededCase = (credentials: TestCaseCredential[] = [], subAgents?: object) => ({
 			...scenarioCase(['happy-path']),
 			credentials,
 			seed: {
@@ -686,11 +687,21 @@ describe('createCasePipeline', () => {
 				],
 			},
 		});
+		// A declared Anthropic credential only runs with a real key behind it.
+		beforeEach(() => {
+			vi.stubEnv('ANTHROPIC_API_KEY', 'test-anthropic-key');
+		});
+
+		afterEach(() => {
+			vi.unstubAllEnvs();
+		});
+
 		const runWith = async (opts: {
 			testCase: object;
 			createdAgentIds: string[];
 			model: string;
 			subAgents?: object;
+			resolutions?: AgentModelResolution[];
 		}) => {
 			const lane = makeLane();
 			vi.mocked(lane.tracedExecuteAgent).mockResolvedValue({
@@ -718,6 +729,9 @@ describe('createCasePipeline', () => {
 					agentContextByKey: new Map([
 						['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact })],
 					]),
+					...(opts.resolutions
+						? { agentModelResolutionsByFileSlug: new Map([['case-a', opts.resolutions]]) }
+						: {}),
 				}),
 			);
 			return { output: await pipeline.runRow(rowInputs('happy-path')), lane };
@@ -737,12 +751,84 @@ describe('createCasePipeline', () => {
 
 		it('runs when the case declares a credential of the model provider', async () => {
 			const { lane } = await runWith({
-				testCase: seededCase([{ type: 'anthropicApi' }]),
+				testCase: seededCase([{ type: 'anthropicApi', realModelKey: true }]),
 				createdAgentIds: ['agent-1'],
 				model: 'anthropic/claude-sonnet-5-5',
 			});
 
 			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
+		});
+
+		it('is not run when the declared credential has only a placeholder key', async () => {
+			vi.stubEnv('ANTHROPIC_API_KEY', '');
+			vi.stubEnv('N8N_AI_ANTHROPIC_KEY', '');
+
+			const { output, lane } = await runWith({
+				testCase: seededCase([{ type: 'anthropicApi', realModelKey: true }]),
+				createdAgentIds: ['agent-1'],
+				model: 'anthropic/claude-sonnet-5-5',
+			});
+
+			expect(output).toMatchObject({
+				passed: false,
+				attribution: 'framework_issue',
+				execErrors: ['No real key for anthropicApi'],
+			});
+			expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
+		});
+
+		it('skips, without counting, an Agent the resolver could not map', async () => {
+			const resolution: AgentModelResolution = {
+				modelResolution: 'skipped',
+				originalModel: 'anthropic/claude-sonnet-5-5',
+				slots: [],
+				droppedOptions: [],
+				credentialTypes: [],
+				embeddings: 'none',
+				tags: [],
+				skip: {
+					kind: 'no-model-mapping',
+					reason: 'no model mapping for anthropic/claude-sonnet-5-5',
+				},
+			};
+
+			const { output, lane } = await runWith({
+				testCase: seededCase([{ type: 'anthropicApi', realModelKey: true }]),
+				createdAgentIds: ['agent-1'],
+				model: 'anthropic/claude-sonnet-5-5',
+				resolutions: [resolution],
+			});
+
+			expect(output).toMatchObject({
+				passed: false,
+				incomplete: true,
+				execErrors: ['Skipped: no model mapping'],
+				modelResolution: resolution,
+			});
+			expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
+		});
+
+		it('records the model resolution on a run', async () => {
+			const resolution: AgentModelResolution = {
+				modelResolution: 'comparable',
+				originalModel: 'azure-openai/my-deployment',
+				actualModel: 'anthropic/claude-sonnet-5-5',
+				slots: [],
+				droppedOptions: [],
+				credentialTypes: ['anthropicApi'],
+				embeddings: 'none',
+				tags: ['model-fallback'],
+			};
+
+			const { output, lane } = await runWith({
+				testCase: seededCase([{ type: 'anthropicApi', realModelKey: true }]),
+				createdAgentIds: ['agent-1'],
+				model: 'anthropic/claude-sonnet-5-5',
+				resolutions: [resolution],
+			});
+
+			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
+			expect(output.modelResolution).toEqual(resolution);
 		});
 
 		it('never blames the framework for an Agent the builder built', async () => {
@@ -759,7 +845,10 @@ describe('createCasePipeline', () => {
 
 		it('checks a seeded sub-agent model the same way', async () => {
 			const { output, lane } = await runWith({
-				testCase: seededCase([{ type: 'anthropicApi' }], lowTier('openai/gpt-4.1-nano')),
+				testCase: seededCase(
+					[{ type: 'anthropicApi', realModelKey: true }],
+					lowTier('openai/gpt-4.1-nano'),
+				),
 				createdAgentIds: ['agent-1'],
 				model: 'anthropic/claude-sonnet-5-5',
 				subAgents: lowTier('openai/gpt-4.1-nano'),
@@ -772,7 +861,10 @@ describe('createCasePipeline', () => {
 
 		it('never blames the framework for a sub-agent model the builder changed', async () => {
 			const { lane } = await runWith({
-				testCase: seededCase([{ type: 'anthropicApi' }], lowTier('openai/gpt-4.1-nano')),
+				testCase: seededCase(
+					[{ type: 'anthropicApi', realModelKey: true }],
+					lowTier('openai/gpt-4.1-nano'),
+				),
 				createdAgentIds: ['agent-1'],
 				model: 'anthropic/claude-sonnet-5-5',
 				subAgents: lowTier('xai/grok-4'),

@@ -4,7 +4,13 @@ import { vi } from 'vitest';
 
 import type { N8nClient } from '../../clients/n8n-client';
 import type { EvalLogger } from '../../harness/logger';
-import { createDeclaredCredentials, createOneCredential } from '../seeder';
+import type { TestCaseCredential } from '../../types';
+import {
+	createDeclaredCredentials,
+	createOneCredential,
+	credentialGetsRealKey,
+	hasRealCredentialKey,
+} from '../seeder';
 
 const makeClient = (createCredential: N8nClient['createCredential']) =>
 	({ createCredential }) as unknown as N8nClient;
@@ -202,5 +208,102 @@ describe('credential descriptions', () => {
 			'Production reports',
 			undefined,
 		);
+	});
+});
+
+describe('model provider keys', () => {
+	const KEY_VARS = [
+		'ANTHROPIC_API_KEY',
+		'N8N_AI_ANTHROPIC_KEY',
+		'EVAL_OPENROUTER_API_KEY',
+		'EVAL_OPENAI_API_KEY',
+	];
+
+	beforeEach(() => {
+		for (const name of KEY_VARS) vi.stubEnv(name, '');
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
+	const createdData = async (declared: TestCaseCredential) => {
+		const createCredential = vi.fn(
+			async (_name: string, _type: string, _data: Record<string, unknown>) =>
+				await Promise.resolve({ id: 'cred-1' }),
+		);
+		await createDeclaredCredentials(makeClient(createCredential), [declared]);
+		return createCredential.mock.calls[0][2];
+	};
+	const createdByProxy = async (type: string) => {
+		const createCredential = vi.fn(
+			async (_name: string, _type: string, _data: Record<string, unknown>) =>
+				await Promise.resolve({ id: 'cred-1' }),
+		);
+		await createOneCredential(makeClient(createCredential), type, undefined, new Map());
+		return createCredential.mock.calls[0][2];
+	};
+
+	it.each([
+		['anthropicApi', 'ANTHROPIC_API_KEY', 'test-anthropic-key'],
+		['anthropicApi', 'N8N_AI_ANTHROPIC_KEY', 'test-n8n-anthropic-key'],
+		['openRouterApi', 'EVAL_OPENROUTER_API_KEY', 'test-openrouter-key'],
+	])('gives a resolver-added %s the real key from %s', async (type, envVar, key) => {
+		vi.stubEnv(envVar, key);
+		const declared: TestCaseCredential = { type, realModelKey: true };
+
+		expect((await createdData(declared)).apiKey).toBe(key);
+		expect(hasRealCredentialKey(type)).toBe(true);
+		expect(credentialGetsRealKey(declared)).toBe(true);
+	});
+
+	it.each([
+		['anthropicApi', 'ANTHROPIC_API_KEY'],
+		['openRouterApi', 'EVAL_OPENROUTER_API_KEY'],
+	])(
+		'keeps a placeholder for an authored %s and the user proxy, whatever %s holds',
+		async (type, envVar) => {
+			vi.stubEnv(envVar, 'test-key');
+
+			expect((await createdData({ type })).apiKey).toBe('eval-placeholder');
+			expect((await createdByProxy(type)).apiKey).toBe('eval-placeholder');
+			expect(credentialGetsRealKey({ type })).toBe(false);
+		},
+	);
+
+	it('gives an authored openAiApi its real key, as before', async () => {
+		vi.stubEnv('EVAL_OPENAI_API_KEY', 'test-openai-key');
+
+		expect((await createdData({ type: 'openAiApi' })).apiKey).toBe('test-openai-key');
+		expect(credentialGetsRealKey({ type: 'openAiApi' })).toBe(true);
+	});
+
+	it('prefers ANTHROPIC_API_KEY over N8N_AI_ANTHROPIC_KEY', async () => {
+		vi.stubEnv('ANTHROPIC_API_KEY', 'test-primary');
+		vi.stubEnv('N8N_AI_ANTHROPIC_KEY', 'test-secondary');
+
+		expect((await createdData({ type: 'anthropicApi', realModelKey: true })).apiKey).toBe(
+			'test-primary',
+		);
+	});
+
+	it.each(['anthropicApi', 'openRouterApi', 'openAiApi'])(
+		'gives %s a placeholder when no key is set',
+		async (type) => {
+			expect((await createdData({ type, realModelKey: true })).apiKey).toBe('eval-placeholder');
+			expect(hasRealCredentialKey(type)).toBe(false);
+		},
+	);
+
+	it('creates an OpenRouter credential pointing at the OpenRouter API', async () => {
+		expect(await createdData({ type: 'openRouterApi' })).toEqual({
+			apiKey: 'eval-placeholder',
+			url: 'https://openrouter.ai/api/v1',
+		});
+	});
+
+	it('reports no real key for a type without an env var', () => {
+		expect(hasRealCredentialKey('groqApi')).toBe(false);
+		expect(hasRealCredentialKey('unknownType')).toBe(false);
 	});
 });

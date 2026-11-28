@@ -20,6 +20,7 @@ import type { CliArgs } from '../cli/args';
 import {
 	draftAgentVerdict,
 	seededAgentConfig,
+	seededAgentResolution,
 	findAgentArtifactRef,
 	type AgentScenarioContext,
 } from '../harness/agent-execution';
@@ -42,6 +43,7 @@ import {
 	shouldRetryScenarioExecution,
 } from '../harness/transient-error';
 import { BUILD_ONLY_SCENARIO_NAME, type DatasetExampleInputs } from '../langsmith/dataset-sync';
+import type { AgentModelResolution } from '../credentials/model-resolver';
 import type { BuildExpectationResult, ExecutionScenario, WorkflowTestCase } from '../types';
 
 const NO_SEED_MAPPING_REASON =
@@ -63,6 +65,8 @@ export interface CasePipelineDeps {
 	runDebugByThreadId: Map<string, Promise<InstanceAiRunDebugResponse[]>>;
 	/** Usage of the eval's own model calls, per `iteration:fileSlug`. Filled here. */
 	harnessUsageByKey: Map<string, EvalUsageMeter>;
+	/** Own-model resolutions of each case's seeded Agents, positional to `seed.agents`. */
+	agentModelResolutionsByFileSlug?: Map<string, AgentModelResolution[]>;
 }
 
 export interface CasePipeline {
@@ -92,6 +96,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		agentContextByKey,
 		runDebugByThreadId,
 		harnessUsageByKey,
+		agentModelResolutionsByFileSlug,
 	} = deps;
 	const { getOrBuild, buildCache } = orchestrator;
 
@@ -376,9 +381,15 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		if (agentRunnable && agentRef) {
 			const capturedAgent = await agentContextByKey.get(cacheKey);
 			const agentContext = capturedAgent?.rendered ?? '(agent configuration could not be fetched)';
-			const agentArtifactFields = capturedAgent?.artifact
-				? { agentArtifact: capturedAgent.artifact }
-				: {};
+			const modelResolution = seededAgentResolution(
+				agentModelResolutionsByFileSlug?.get(inputs.testCaseFile),
+				build.createdAgentIds,
+				agentRef.id,
+			);
+			const agentArtifactFields = {
+				...(capturedAgent?.artifact ? { agentArtifact: capturedAgent.artifact } : {}),
+				...(modelResolution ? { modelResolution } : {}),
+			};
 			const testCase = testCaseByFileSlug.get(inputs.testCaseFile);
 			// An Agent that cannot run throws before its first model turn; running it
 			// only produces a red the judge pins on the builder. Decide ownership here.
@@ -386,6 +397,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				capturedAgent?.artifact,
 				testCase?.credentials,
 				seededAgentConfig(testCase?.seed, build.createdAgentIds, agentRef.id),
+				modelResolution,
 			);
 			if (draft) {
 				logger.warn(`    [${scenario.name}] not run: ${draft.reasoning}`);
@@ -399,6 +411,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					reasoning: draft.reasoning,
 					failureCategory: draft.attribution,
 					attribution: draft.attribution,
+					...(draft.incomplete ? { incomplete: true } : {}),
 					execErrors: [draft.execError],
 					buildDurationMs,
 					...buildSpendFields,

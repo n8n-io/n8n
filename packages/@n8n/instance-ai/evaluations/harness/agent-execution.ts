@@ -38,6 +38,9 @@ import type {
 	TestCaseCredential,
 } from '../types';
 import type { CaseSeed } from './schema';
+import { agentModelSlots, AgentModelSlotsViewSchema } from '../credentials/agent-model-slots';
+import type { AgentModelResolution } from '../credentials/model-resolver';
+import { credentialGetsRealKey } from '../credentials/seeder';
 
 /** LLM credential types the eval seeder can create (credentials/seeder.ts). */
 const LLM_CREDENTIAL_TYPES = new Set(['openAiApi', 'googlePalmApi']);
@@ -51,23 +54,37 @@ export function seededAgentConfig(
 	agentId: string,
 ): unknown {
 	if (seed?.mode !== 'inline') return undefined;
-	const index = (createdAgentIds ?? []).indexOf(agentId);
-	return index === -1 ? undefined : seed.agents[index]?.config;
+	return seed.agents[seededAgentIndex(createdAgentIds, agentId)]?.config;
 }
 
-/** Every model an Agent config names, by slot: the main model and each
- *  `subAgents.modelsByDifficulty` tier — the slots the restore binds. */
+/** The own-model resolution of the Agent under test, when the seed restored it.
+ *  `resolutions` is positional to `seed.agents`, as `createdAgentIds` is. */
+export function seededAgentResolution(
+	resolutions: AgentModelResolution[] | undefined,
+	createdAgentIds: string[] | undefined,
+	agentId: string,
+): AgentModelResolution | undefined {
+	return resolutions?.[seededAgentIndex(createdAgentIds, agentId)];
+}
+
+function seededAgentIndex(createdAgentIds: string[] | undefined, agentId: string): number {
+	return (createdAgentIds ?? []).indexOf(agentId);
+}
+
+/** Every model an Agent config names, by slot: main, sub-agent tiers, and
+ *  memory workers. A config that doesn't parse names none. */
 function modelSlots(config: unknown): Map<string, string> {
-	const slots = new Map<string, string>();
-	if (!isRecord(config)) return slots;
-	if (typeof config.model === 'string' && config.model !== '') slots.set('model', config.model);
-	const tiers = isRecord(config.subAgents) ? config.subAgents.modelsByDifficulty : undefined;
-	if (isRecord(tiers)) {
-		for (const [tier, entry] of Object.entries(tiers)) {
-			if (isRecord(entry) && typeof entry.model === 'string') slots.set(tier, entry.model);
-		}
-	}
-	return slots;
+	const parsed = AgentModelSlotsViewSchema.safeParse(config);
+	if (!parsed.success) return new Map();
+	return new Map(agentModelSlots(parsed.data).map(({ slot, target }) => [slot, target.model]));
+}
+
+export interface DraftAgentVerdict {
+	attribution: EvalAttribution;
+	reasoning: string;
+	execError: string;
+	/** Not run and not counted: the eval had no way to run the Agent. */
+	incomplete?: true;
 }
 
 /**
@@ -77,9 +94,10 @@ function modelSlots(config: unknown): Map<string, string> {
  * documented behaviour, so the eval is what cannot proceed. With one declared,
  * an empty model is the builder's miss.
  *
+ * A seeded Agent the own-model resolver could not map is skipped, not failed.
  * A seeded Agent with a model slot still on the seed's model, when the case
- * declares no credential of that model's provider: the restore had nothing to
- * bind and the builder sees only declared credentials, so the eval cannot run
+ * declares no credential of that model's provider, or only one with a
+ * placeholder key: the provider would reject the call, so the eval cannot run
  * it. A slot the builder changed is the builder's. The captured config redacts
  * `credential`, so the rule reads the inputs, not the credential.
  */
@@ -87,25 +105,74 @@ export function draftAgentVerdict(
 	artifact: AgentArtifact | undefined,
 	credentials: TestCaseCredential[] | undefined,
 	seededConfig?: unknown,
-): { attribution: EvalAttribution; reasoning: string; execError: string } | undefined {
+	modelResolution?: AgentModelResolution,
+): DraftAgentVerdict | undefined {
 	if (!artifact || !isRecord(artifact.config)) return undefined;
+	if (modelResolution?.skip) return skippedVerdict(modelResolution.skip);
 	const model = artifact.config.model;
 	if (typeof model === 'string' && model.trim() !== '') {
-		const seeded = modelSlots(seededConfig);
-		for (const [slot, slotModel] of modelSlots(artifact.config)) {
-			if (seeded.get(slot) !== slotModel) continue;
-			const types = getAgentModelProviderCredentialTypes(getProviderPrefix(slotModel));
-			if (types.length === 0 || (credentials ?? []).some((c) => types.includes(c.type))) continue;
-			return {
-				attribution: 'framework_issue',
-				reasoning: `The seeded Agent's model ${slotModel} needs a ${types.join(' or ')} credential, and the case declares none, so the eval has no credential to run the Agent with.`,
-				execError: 'Seeded Agent model has no declared credential',
-			};
-		}
-		return undefined;
+		return seededModelVerdict(artifact.config, credentials ?? [], seededConfig);
 	}
-	const offeredLlmCredential = (credentials ?? []).some((c) => LLM_CREDENTIAL_TYPES.has(c.type));
-	return offeredLlmCredential
+	return noModelVerdict(credentials ?? []);
+}
+
+const SKIP_VERDICTS = {
+	'no-model-mapping': {
+		execError: 'Skipped: no model mapping',
+		note: ' The eval has no route to run this Agent on its own model or a comparable one.',
+	},
+	'no-embedding-key': { execError: 'Skipped: no embedding key', note: '' },
+} as const;
+
+function skippedVerdict(skip: NonNullable<AgentModelResolution['skip']>): DraftAgentVerdict {
+	const { execError, note } = SKIP_VERDICTS[skip.kind];
+	return {
+		attribution: 'framework_issue',
+		reasoning: `Skipped: ${skip.reason}.${note}`,
+		execError,
+		incomplete: true,
+	};
+}
+
+function seededModelVerdict(
+	config: unknown,
+	credentials: TestCaseCredential[],
+	seededConfig: unknown,
+): DraftAgentVerdict | undefined {
+	const seeded = modelSlots(seededConfig);
+	for (const [slot, slotModel] of modelSlots(config)) {
+		if (seeded.get(slot) !== slotModel) continue;
+		const verdict = slotCredentialVerdict(slotModel, credentials);
+		if (verdict) return verdict;
+	}
+	return undefined;
+}
+
+function slotCredentialVerdict(
+	slotModel: string,
+	credentials: TestCaseCredential[],
+): DraftAgentVerdict | undefined {
+	const types = getAgentModelProviderCredentialTypes(getProviderPrefix(slotModel));
+	if (types.length === 0) return undefined;
+	const declared = credentials.filter((c) => types.includes(c.type));
+	if (declared.length === 0) {
+		return {
+			attribution: 'framework_issue',
+			reasoning: `The seeded Agent's model ${slotModel} needs a ${types.join(' or ')} credential, and the case declares none, so the eval has no credential to run the Agent with.`,
+			execError: 'Seeded Agent model has no declared credential',
+		};
+	}
+	if (declared.some(credentialGetsRealKey)) return undefined;
+	const type = declared[0].type;
+	return {
+		attribution: 'framework_issue',
+		reasoning: `The seeded Agent's model ${slotModel} needs a real ${type} key, and the eval has none, so its credential holds a placeholder that the provider would reject.`,
+		execError: `No real key for ${type}`,
+	};
+}
+
+function noModelVerdict(credentials: TestCaseCredential[]): DraftAgentVerdict {
+	return credentials.some((c) => LLM_CREDENTIAL_TYPES.has(c.type))
 		? {
 				attribution: 'builder_issue',
 				reasoning:

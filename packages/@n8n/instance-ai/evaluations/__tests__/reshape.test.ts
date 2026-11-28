@@ -112,6 +112,30 @@ describe('reshapeLangSmithRuns', () => {
 		});
 	});
 
+	it('keeps the model resolution of an agent run on its scenario result', () => {
+		const cases = [withFile('agent-case', [scenario('s1')])];
+		const modelResolution = {
+			modelResolution: 'openrouter-same' as const,
+			originalModel: 'xai/grok-4',
+			actualModel: 'openrouter/x-ai/grok-4',
+			slots: [],
+			droppedOptions: [],
+			credentialTypes: ['openRouterApi'],
+			embeddings: 'none' as const,
+			tags: [],
+		};
+		const rows = [
+			row(
+				{ testCaseFile: 'agent-case', scenarioName: 's1', _iteration: 0 },
+				{ buildSuccess: true, passed: true, score: 1, reasoning: 'ok', modelResolution },
+			),
+		];
+
+		const result = reshapeLangSmithRuns(rows, cases, 1, new Map(), new Map(), undefined);
+
+		expect(result[0][0].executionScenarioResults[0].modelResolution).toEqual(modelResolution);
+	});
+
 	it('grades a build-only case (0 scenarios) from the sentinel row without a scenario unit', () => {
 		const cases = [withFile('build-only', [])];
 		const rows = [

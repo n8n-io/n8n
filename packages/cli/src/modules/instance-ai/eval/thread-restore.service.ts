@@ -483,35 +483,42 @@ export class EvalThreadRestoreService {
 	/** Point each model at the thread project's one credential of its provider's
 	 *  type (among those the allowlist admits), as `resolveNodeCredentials` does
 	 *  for a node. Zero or several candidates keep the blank: the case declared no
-	 *  LLM credential, or any pick would be a guess. */
+	 *  LLM credential, or any pick would be a guess. Covers the main model, the
+	 *  sub-agent tiers, and the memory worker models; episodic memory's embeddings
+	 *  always run on OpenAI, so its credential (even `managed`) binds to `openAiApi`. */
 	private async bindModelCredentials(
 		config: AgentJsonConfig,
 		projectId: string,
 		allowedCredentialIds?: Set<string>,
 	): Promise<AgentJsonConfig> {
-		const resolve = async (model: string) => {
-			const types = getAgentModelProviderCredentialTypes(getProviderPrefix(model));
-			if (types.length === 0) return undefined;
-			const candidates = (
-				await this.credentialsRepo.findByTypesInProject([...types], projectId)
-			).filter((c) => allowedCredentialIds?.has(c.id) ?? true);
-			return candidates.length === 1 ? candidates[0].id : undefined;
-		};
-
-		const bound = { ...config };
-		const credential = config.model ? await resolve(config.model) : undefined;
-		if (credential) bound.credential = credential;
-		const byDifficulty = config.subAgents?.modelsByDifficulty;
-		if (byDifficulty) {
-			const rebound = { ...byDifficulty };
-			for (const level of SUB_AGENT_TASK_DIFFICULTIES) {
-				const entry = rebound[level];
-				const id = entry && (await resolve(entry.model));
-				if (entry && id) rebound[level] = { ...entry, credential: id };
-			}
-			bound.subAgents = { ...config.subAgents, modelsByDifficulty: rebound };
+		const bindType = async (types: readonly string[]) =>
+			await this.soleAllowedCredential(types, projectId, allowedCredentialIds);
+		const bound = structuredClone(config);
+		for (const slot of modelCredentialSlots(bound)) {
+			const id = await bindType(
+				getAgentModelProviderCredentialTypes(getProviderPrefix(slot.model)),
+			);
+			if (id) slot.credential = id;
 		}
+		const episodic = bound.memory?.episodicMemory;
+		const embeddingId = episodic?.enabled
+			? await bindType(getAgentModelProviderCredentialTypes('openai'))
+			: undefined;
+		if (episodic?.enabled && embeddingId) episodic.credential = embeddingId;
 		return bound;
+	}
+
+	/** The project's one credential of these types that the allowlist admits. */
+	private async soleAllowedCredential(
+		types: readonly string[],
+		projectId: string,
+		allowedCredentialIds?: Set<string>,
+	): Promise<string | undefined> {
+		if (types.length === 0) return undefined;
+		const candidates = (
+			await this.credentialsRepo.findByTypesInProject([...types], projectId)
+		).filter((c) => allowedCredentialIds?.has(c.id) ?? true);
+		return candidates.length === 1 ? candidates[0].id : undefined;
 	}
 
 	/** Rewrite the seed's authored data-table ids to the ones the restore just
@@ -858,4 +865,29 @@ export class EvalThreadRestoreService {
 			throw error;
 		}
 	}
+}
+
+/** A `{ model, credential }` pair in an agent config, as a live reference. */
+type ModelCredentialSlot = Pick<AgentJsonConfig, 'model' | 'credential'>;
+
+/** Every `{ model, credential }` pair in an agent config, as live references:
+ *  the main model, the sub-agent tiers, and the memory worker models. */
+function modelCredentialSlots(config: AgentJsonConfig): ModelCredentialSlot[] {
+	const byDifficulty = config.subAgents?.modelsByDifficulty;
+	const tiers = SUB_AGENT_TASK_DIFFICULTIES.map((level) => byDifficulty?.[level]);
+	return [
+		...(config.model ? [config] : []),
+		...[...tiers, ...memoryWorkerSlots(config.memory)].filter((slot) => slot !== undefined),
+	];
+}
+
+function memoryWorkerSlots(
+	memory: AgentJsonConfig['memory'],
+): Array<ModelCredentialSlot | undefined> {
+	const episodic = memory?.episodicMemory;
+	return [
+		memory?.observationalMemory?.observerModel,
+		memory?.observationalMemory?.reflectorModel,
+		episodic?.enabled ? episodic.reflectorModel : undefined,
+	];
 }
