@@ -1,4 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { escapeXmlText } from '@n8n/utils/string/escape-xml';
 import {
 	NodeOperationError,
 	decodePathValue,
@@ -6,6 +7,7 @@ import {
 	requestPath,
 	requestUrl,
 	sanitizeXmlName,
+	toPathSegment,
 	type IExecuteFunctions,
 	type IHookFunctions,
 	type IHttpRequestMethods,
@@ -73,6 +75,16 @@ const ITEM_PROPS: Record<string, string> = {
 	'd:getcontentlength': 'contentLength',
 	'd:getcontenttype': 'contentType',
 };
+
+const ITEM_PROP_TAGS = [...Object.keys(ITEM_PROPS), 'nc:upload_time', 'd:getetag', 'd:resourcetype']
+	.map((prop) => `<${prop}/>`)
+	.join('');
+
+/** Asks for every prop that `toWebDavItem` reads. */
+export const ITEM_PROPFIND_BODY = `<?xml version="1.0"?>
+<d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
+  <d:prop>${ITEM_PROP_TAGS}</d:prop>
+</d:propfind>`;
 
 /** A file or folder from a multistatus response, with its path relative to the user's root. */
 export function toWebDavItem(response: Record<string, unknown>): IDataObject {
@@ -227,4 +239,62 @@ export async function nextCloudUserId(this: NextCloudContext): Promise<string> {
 		pending.catch(() => cache.delete(key));
 	}
 	return await pending;
+}
+
+export function searchCondition(
+	operator: 'eq' | 'like' | 'gt' | 'lt',
+	prop: string,
+	literal: string | number,
+) {
+	return `<d:${operator}><d:prop><${prop}/></d:prop><d:literal>${escapeXmlText(String(literal))}</d:literal></d:${operator}>`;
+}
+
+/**
+ * Runs a WebDAV SEARCH in the user's folder at `folderSegments`, newest first. Nextcloud ignores
+ * the depth, so the search always includes the subfolders.
+ */
+export async function searchFiles(
+	this: NextCloudContext,
+	folderSegments: string[],
+	where: string,
+	limit?: number,
+): Promise<IDataObject[]> {
+	// Nextcloud reads a relative scope href as it is and never decodes it (SearchDAV
+	// PathHelper::getPathFromUri), so the names stay raw. toPathSegment only rejects "." and "..".
+	const scope = [await nextCloudUserId.call(this), ...folderSegments].map((segment) =>
+		decodePathValue(toPathSegment(segment)),
+	);
+	const nresults =
+		limit === undefined ? '' : `<d:limit><d:nresults>${limit}</d:nresults></d:limit>`;
+	const body = `<?xml version="1.0" encoding="UTF-8"?>
+<d:searchrequest xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
+  <d:basicsearch>
+    <d:select>
+      <d:prop>${ITEM_PROP_TAGS}</d:prop>
+    </d:select>
+    <d:from>
+      <d:scope>
+        <d:href>${escapeXmlText(['', 'files', ...scope].join('/'))}</d:href>
+        <d:depth>infinity</d:depth>
+      </d:scope>
+    </d:from>
+    <d:where>${where}</d:where>
+    <d:orderby>
+      <d:order><d:prop><d:getlastmodified/></d:prop><d:descending/></d:order>
+    </d:orderby>
+    ${nresults}
+  </d:basicsearch>
+</d:searchrequest>`;
+
+	const response = await nextCloudApiRequest.call(
+		this,
+		'SEARCH',
+		requestPath``,
+		body,
+		{ 'Content-Type': 'application/xml' },
+		undefined,
+		undefined,
+		'dav',
+	);
+	return (await readMultistatus(response)).map(toWebDavItem);
 }
