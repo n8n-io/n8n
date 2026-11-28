@@ -79,6 +79,11 @@ export interface DaytonaSandboxConfig extends EnabledSandboxConfigBase {
 	id?: string;
 	name?: string;
 	labels?: Record<string, string>;
+	/**
+	 * For a custom endpoint, set this option or set `DAYTONA_API_URL` in the process environment.
+	 * Daytona SDK 0.214.0 does not read the endpoint from `.env` or `.env.local`.
+	 * If either file sets the endpoint in the working directory, pass this option explicitly.
+	 */
 	daytonaApiUrl?: string;
 	daytonaApiKey?: string;
 	image?: CreateSandboxFromImageParams['image'];
