@@ -24,6 +24,7 @@ export {
 } from './grammar';
 export type { NativeFallbackReason } from './evaluator';
 export type { NativeEvaluationData, NativeEvaluationHost } from './host';
+export { canonicalize } from './canonicalize';
 export { canVerifyNatively, nativeSkeleton, NativeVerifier } from './verify';
 export type { NativeVerifyMismatch } from './verify';
 

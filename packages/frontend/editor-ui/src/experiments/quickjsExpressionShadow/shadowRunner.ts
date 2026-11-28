@@ -1,3 +1,4 @@
+import { canonicalize } from '@n8n/expression-runtime/native-evaluation';
 import type {
 	ExpressionEvaluationOutcome,
 	ExpressionShadowContext,
@@ -7,7 +8,7 @@ import type {
 
 import { getResolvableState } from '@/app/utils/expressions';
 
-import { canonicalize, expressionSkeleton, isNonDeterministic, valueType } from './compare';
+import { expressionSkeleton, isNonDeterministic, valueType } from './compare';
 
 export const LATENCY_BUCKET_BOUNDS_MS = [0.1, 0.5, 1, 2, 5, 10, 25, 50, 100];
 

@@ -1,24 +1,14 @@
 import { IsolateError } from '@n8n/errors';
-import isEqualWith from 'lodash/isEqualWith';
 
+import { canonicalize } from './canonicalize';
 import { getCompiled } from './compiler';
-import { isObj } from './grammar';
 import type { NativeEvaluationData } from './host';
 import { readsClockOrParameter, skeletonOf } from './skeleton';
-import { isPlainObject } from '../runtime/transfer';
 import type { ExpressionEvaluationOutcome, Logger } from '../types';
-
-const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
-	isObj(value) && isPlainObject(value);
 
 // Each mismatch shape is reported once per process, up to this many, so a
 // common mismatch cannot spend the Sentry quota.
 const MAX_REPORTED_SHAPES = 1000;
-
-// The comparison runs outside the engine timeout.
-const MAX_COMPARED_PAIRS = 10_000;
-
-class ComparisonTooLargeError extends Error {}
 
 /**
  * Whether verify mode can compare the expression: it fits the native subset
@@ -130,42 +120,13 @@ function compareResults(
 	return sameError ? 'same' : 'different';
 }
 
-// TODO(native-evaluation verify, CET-447): share the bounded comparison with the QuickJS shadow.
-function compareValues(a: unknown, b: unknown, maxComparedPairs = MAX_COMPARED_PAIRS): Comparison {
-	let remaining = maxComparedPairs;
-	const compare = (x: unknown, y: unknown): boolean | undefined => {
-		remaining--;
-		if (remaining < 0) {
-			throw new ComparisonTooLargeError();
-		}
-		// QuickJS drops object keys that hold undefined from its results.
-		if (isPlainRecord(x) && isPlainRecord(y)) {
-			return sameDefinedEntries(x, y, compare);
-		}
-		return undefined;
-	};
-	try {
-		return isEqualWith(a, b, compare) ? 'same' : 'different';
-	} catch (error) {
-		if (error instanceof ComparisonTooLargeError) {
-			return 'too_large';
-		}
-		throw error;
+function compareValues(a: unknown, b: unknown): Comparison {
+	const canonicalA = canonicalize(a);
+	const canonicalB = canonicalize(b);
+	if (canonicalA !== undefined && canonicalB !== undefined) {
+		return canonicalA === canonicalB ? 'same' : 'different';
 	}
-}
-
-function sameDefinedEntries(
-	a: Record<string, unknown>,
-	b: Record<string, unknown>,
-	compare: (x: unknown, y: unknown) => boolean | undefined,
-): boolean {
-	const definedKeys = (value: Record<string, unknown>) =>
-		Object.keys(value).filter((key) => value[key] !== undefined);
-	const aKeys = definedKeys(a);
-	return (
-		aKeys.length === definedKeys(b).length &&
-		aKeys.every((key) => Object.hasOwn(b, key) && isEqualWith(a[key], b[key], compare))
-	);
+	return 'too_large';
 }
 
 function hitEngineLimit(result: ExpressionEvaluationOutcome): boolean {
