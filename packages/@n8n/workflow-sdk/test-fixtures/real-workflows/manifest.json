@@ -16846,7 +16846,13 @@
 		{
 			"id": 12682,
 			"name": "⚡ Text → Viral Shorts | AI Video Studio in Telegram /w Setup Video",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Build Photo URL"
+				}
+			]
 		},
 		{
 			"id": 4825,

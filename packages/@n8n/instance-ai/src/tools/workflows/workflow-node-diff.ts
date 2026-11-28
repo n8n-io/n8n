@@ -235,7 +235,17 @@ export function downgradeUnchangedNodeBlockers(
 		)
 			return warning;
 
-		if (warning.code === 'HARDCODED_CREDENTIALS') {
+		if (warning.code === 'HARDCODED_CREDENTIALS' && node.type === 'n8n-nodes-base.code') {
+			// Any change to the code field can add a secret, so only an identical field downgrades.
+			const param = warning.parameterPath;
+			if (
+				(param !== 'jsCode' && param !== 'pythonCode') ||
+				(node.disabled ?? false) !== (saved.disabled ?? false) ||
+				typeof saved.parameters?.[param] !== 'string' ||
+				saved.parameters[param] !== node.parameters?.[param]
+			)
+				return warning;
+		} else if (warning.code === 'HARDCODED_CREDENTIALS') {
 			const url = node.parameters?.url ?? node.parameters?.requestUrl;
 			const before = warning.parameterPath && httpAuthentication(saved, warning.parameterPath);
 			const after = warning.parameterPath && httpAuthentication(node, warning.parameterPath);

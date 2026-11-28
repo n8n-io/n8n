@@ -431,6 +431,10 @@ introduce a new hardcoded value. Changed auth, destination settings, or enabled
 state still block. Expression URLs stay blocking because their destination
 depends on execution data.
 
+For `HARDCODED_CREDENTIALS` on a Code node, compare the reported code field
+(`jsCode` or `pythonCode`). Only an identical field in the same enabled node
+becomes informational. Any change to that field keeps the finding blocking.
+
 For `SWITCH_NO_OUTPUT_CONNECTIONS`, check whether the same enabled Switch already
 had no main outputs. Changes to its inputs or rules leave that finding
 informational, including connecting an existing parked Switch. New or re-enabled

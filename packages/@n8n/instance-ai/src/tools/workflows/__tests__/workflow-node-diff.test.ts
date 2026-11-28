@@ -544,6 +544,43 @@ describe('downgradeUnchangedNodeBlockers', () => {
 		});
 	});
 
+	describe('Code node HARDCODED_CREDENTIALS on saved nodes', () => {
+		const codeNode = makeComposeNode({
+			parameters: { jsCode: 'const ADMIN_SECRET = "pre-existing-secret";\nreturn [];' },
+		});
+		const finding: ValidationWarning = {
+			code: 'HARDCODED_CREDENTIALS',
+			nodeName: codeNode.name,
+			parameterPath: 'jsCode',
+			message: "'Compose' [n8n-nodes-base.code] appears to hardcode a secret.",
+			severity: 'warning',
+		};
+
+		it('downgrades to informational when jsCode is unchanged and another node is edited', () => {
+			const saved = makeWorkflow([codeNode, makeNode()]);
+			const built = makeWorkflow([
+				codeNode,
+				makeNode({ parameters: { options: {}, sendTo: 'a@b' } }),
+			]);
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([
+				expect.objectContaining({ code: 'HARDCODED_CREDENTIALS', severity: 'informational' }),
+			]);
+		});
+
+		it('keeps blocking when jsCode changes or the node is newly added or re-enabled', () => {
+			const saved = makeWorkflow([codeNode]);
+			const modified = makeWorkflow([
+				makeComposeNode({ parameters: { jsCode: 'const ADMIN_SECRET = "changed";\nreturn [];' } }),
+			]);
+			expect(downgradeUnchangedNodeBlockers([finding], modified, saved)).toEqual([finding]);
+			expect(downgradeUnchangedNodeBlockers([finding], saved, makeWorkflow([]))).toEqual([finding]);
+
+			const disabledSaved = makeWorkflow([{ ...codeNode, disabled: true }]);
+			expect(downgradeUnchangedNodeBlockers([finding], saved, disabledSaved)).toEqual([finding]);
+		});
+	});
+
 	describe('PREFER_PREDEFINED_CREDENTIAL on saved nodes', () => {
 		const nodeName = 'Fetch results';
 		const parameters = {
