@@ -9,3 +9,8 @@ export function canManageInstanceAi(): boolean {
 export function canMessageInstanceAi(): boolean {
 	return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } });
 }
+
+/** The usage insights of the Assistant require this scope. */
+export function canViewAssistantUsage(): boolean {
+	return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:viewUsage' } });
+}

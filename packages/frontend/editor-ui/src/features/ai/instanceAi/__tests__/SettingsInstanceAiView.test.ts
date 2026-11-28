@@ -1347,4 +1347,39 @@ describe('SettingsInstanceAiView', () => {
 			expect(save).toHaveBeenCalled();
 		});
 	});
+
+	describe('usage insights', () => {
+		const useAgentsRuntime = () =>
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, assistantAgentEnabled: true });
+
+		it('links to the usage insights when the Assistant runs on the Agents runtime', () => {
+			useAgentsRuntime();
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-usage-insights-section')).toHaveTextContent(
+				'settings.n8nAgent.usageInsights.title',
+			);
+			expect(getByTestId('n8n-agent-usage-insights-link')).toHaveTextContent(
+				'settings.n8nAgent.usageInsights.link',
+			);
+		});
+
+		it('hides the section on the current runtime, which records no usage', () => {
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-usage-insights-section')).toBeNull();
+		});
+
+		it('hides the section from a viewer who cannot see the usage', () => {
+			useAgentsRuntime();
+			vi.mocked(hasPermission).mockImplementation(
+				(_permissionNames, options) => options?.rbac?.scope !== 'instanceAi:viewUsage',
+			);
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-usage-insights-section')).toBeNull();
+		});
+	});
 });
