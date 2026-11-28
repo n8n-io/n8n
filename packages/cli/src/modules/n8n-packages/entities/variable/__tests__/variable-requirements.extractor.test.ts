@@ -56,6 +56,10 @@ describe('VariableRequirementsExtractor', () => {
 		{ notation: 'single-quote bracket', expression: "={{ $vars['API_KEY'] }}" },
 		{ notation: 'double-quote bracket', expression: '={{ $vars["API_KEY"] }}' },
 		{ notation: 'bracket with inner spaces', expression: "={{ $vars[ 'API_KEY' ] }}" },
+		{ notation: 'template-literal bracket', expression: '={{ $vars[`API_KEY`] }}' },
+		{ notation: 'optional-chaining dot', expression: '={{ $vars?.API_KEY }}' },
+		{ notation: 'optional-chaining bracket', expression: "={{ $vars?.['API_KEY'] }}" },
+		{ notation: 'optional-chaining template-literal', expression: '={{ $vars?.[`API_KEY`] }}' },
 	])('finds $notation references', ({ expression }) => {
 		const workflow = makeWorkflow({
 			id: 'wf-bracket',
@@ -85,6 +89,59 @@ describe('VariableRequirementsExtractor', () => {
 			]),
 		);
 		expect(extractor.extract(workflow)).toHaveLength(2);
+	});
+
+	it('ignores the other parameters of a code node', () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				makeNode(
+					{ instructions: 'Copy $vars.PROSE into the output', jsCode: 'return items;' },
+					{ type: 'n8n-nodes-base.aiTransform' },
+				),
+			],
+		});
+
+		expect(extractor.extract(workflow)).toEqual([]);
+	});
+
+	it('ignores sticky notes, which never run', () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				makeNode(
+					{ content: 'Set it to {{ $vars.NOTE_ONLY }}' },
+					{ type: 'n8n-nodes-base.stickyNote' },
+				),
+			],
+		});
+
+		expect(extractor.extract(workflow)).toEqual([]);
+	});
+
+	// Many nodes resolve `{{ }}` in a fixed value at runtime, without the `=` prefix.
+	it.each([
+		{
+			name: 'a SQL query',
+			type: 'n8n-nodes-base.postgres',
+			parameters: { query: "SELECT '$vars.PROSE' FROM t WHERE env = '{{ $vars.TEMPLATE_VAR }}'" },
+		},
+		{
+			name: 'Form HTML',
+			type: 'n8n-nodes-base.form',
+			parameters: {
+				formFields: { values: [{ html: '<p>$vars.PROSE</p><b>{{ $vars.TEMPLATE_VAR }}</b>' }] },
+			},
+		},
+		{
+			name: 'an HTML template',
+			type: 'n8n-nodes-base.html',
+			parameters: { html: '<p>$vars.PROSE</p><a href="{{ $vars.TEMPLATE_VAR }}">link</a>' },
+		},
+	])('finds references in the `{{ }}` blocks of a fixed value: $name', ({ type, parameters }) => {
+		const workflow = makeWorkflow({ id: 'wf-template', nodes: [makeNode(parameters, { type })] });
+
+		expect(extractor.extract(workflow)).toEqual([
+			{ workflowId: 'wf-template', variableName: 'TEMPLATE_VAR' },
+		]);
 	});
 
 	it('scans nested parameter structures and arrays', () => {
@@ -165,6 +222,15 @@ describe('VariableRequirementsExtractor', () => {
 
 	it.each([
 		{ name: 'plain prose mentioning vars', value: 'set your $vars up correctly' },
+		{ name: 'a reference in a fixed value', value: 'Documentation example: $vars.LITERAL_ONLY' },
+		{
+			name: 'a reference in the text part of an expression',
+			value: '=Use $vars.LITERAL_ONLY, today is {{ $today }}',
+		},
+		{
+			name: 'a dynamic template-literal key',
+			value: '={{ $vars[`PREFIX_$' + '{$json.env}`] }}',
+		},
 		{ name: 'different prefix', value: '={{ $varsomething.FOO }}' },
 		{ name: 'invalid leading digit in dot notation', value: '={{ $vars.1BAD }}' },
 		{ name: 'unquoted bracket access', value: '={{ $vars[key] }}' },
