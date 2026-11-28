@@ -1,7 +1,9 @@
 import type { Agent as RuntimeAgent, BuiltTool } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -111,7 +113,12 @@ describe('HeldActionCommitService', () => {
 		vi.mocked(userHasScopes).mockResolvedValue(false);
 		const simulationSessions = mock<SimulationSessionService>();
 		const runtimeCache = mock<AgentRuntimeCacheService>();
-		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 
 		await expect(
 			service.commitHeldActions({
@@ -127,6 +134,93 @@ describe('HeldActionCommitService', () => {
 		});
 		expect(simulationSessions.getSession).not.toHaveBeenCalled();
 		expect(runtimeCache.getRuntime).not.toHaveBeenCalled();
+	});
+
+	it('tracks the counts of a replay, without tool names or inputs', async () => {
+		const { session } = createSimulatedSession();
+		const realSlack = vi.fn().mockResolvedValue({ ok: true });
+		const realGmail = vi.fn().mockRejectedValue(new Error('Gmail is down'));
+		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Hi' }, realSlack);
+		await captureHeldWrite(session, 'gmail_send_email', 'tc-2', { to: 'a@b.com' }, realGmail);
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockResolvedValue(session);
+		const { runtimeCache } = makeRuntime([
+			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
+			{ name: 'gmail_send_email', description: 'Gmail', handler: realGmail },
+		]);
+		const telemetry = mock<TelemetryProxy>();
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			telemetry,
+		);
+		const input = {
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1', 'tc-2', 'tc-missing'],
+		};
+		const ids = { agent_id: 'agent-1', project_id: 'project-1', user_id: 'user-1' };
+
+		await service.commitHeldActions(input);
+		expect(telemetry.track).toHaveBeenLastCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_RAN_HELD_AGENT_ACTIONS,
+			{
+				...ids,
+				backend: 'llm-mock',
+				requested_count: 3,
+				done_count: 1,
+				failed_count: 2,
+				already_committed_count: 0,
+			},
+		);
+
+		await service.commitHeldActions(input);
+		expect(telemetry.track).toHaveBeenLastCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_RAN_HELD_AGENT_ACTIONS,
+			expect.objectContaining({ done_count: 0, failed_count: 2, already_committed_count: 1 }),
+		);
+	});
+
+	it('returns the replay results after the real writes ran when telemetry throws', async () => {
+		const { session } = createSimulatedSession();
+		const realSlack = vi.fn().mockResolvedValue({ ok: true });
+		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Hi' }, realSlack);
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockResolvedValue(session);
+		const { runtimeCache } = makeRuntime([
+			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
+		]);
+		const telemetry = mock<TelemetryProxy>();
+		telemetry.track.mockImplementation(() => {
+			throw new Error('telemetry down');
+		});
+		const logger = mock<Logger>();
+		const service = new HeldActionCommitService(
+			logger,
+			simulationSessions,
+			runtimeCache,
+			telemetry,
+		);
+
+		const result = await service.commitHeldActions({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1'],
+		});
+
+		expect(realSlack).toHaveBeenCalledTimes(1);
+		expect(result.results).toEqual([
+			{ actionId: 'tc-1', toolName: 'slack_post_message', status: 'done' },
+		]);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'[SafeTesting] Could not track a telemetry event',
+			expect.objectContaining({ error: 'telemetry down' }),
+		);
 	});
 
 	it('holds writes during test run, replays them in order once, and returns already_committed on duplicate calls', async () => {
@@ -158,7 +252,12 @@ describe('HeldActionCommitService', () => {
 			{ name: 'gmail_send_email', description: 'Gmail', handler: realGmail },
 		]);
 
-		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 
 		const first = await service.commitHeldActions({
 			agentId: 'agent-1',
@@ -221,7 +320,12 @@ describe('HeldActionCommitService', () => {
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 		]);
 
-		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 
 		const req1 = service.commitHeldActions({
 			agentId: 'agent-1',
@@ -271,7 +375,12 @@ describe('HeldActionCommitService', () => {
 			{ name: 'gmail_send_email', description: 'Gmail', handler: realGmail },
 		]);
 
-		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 
 		const first = await service.commitHeldActions({
 			agentId: 'agent-1',
@@ -319,7 +428,12 @@ describe('HeldActionCommitService', () => {
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 			{ name: 'gmail_send_email', description: 'Gmail', handler: realGmail },
 		]);
-		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 		const request = {
 			agentId: 'agent-1',
 			projectId: 'project-1',
@@ -363,7 +477,12 @@ describe('HeldActionCommitService', () => {
 			.mockRejectedValueOnce(new Error('Runtime build failed'))
 			.mockResolvedValueOnce(missingTool)
 			.mockResolvedValueOnce(runtime);
-		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 		const request = {
 			agentId: 'agent-1',
 			projectId: 'project-1',
@@ -396,7 +515,12 @@ describe('HeldActionCommitService', () => {
 			[],
 			[{ name: 'crm_update_contact', description: 'CRM', handler: realMcp, mcpTool: true }],
 		);
-		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 
 		const result = await service.commitHeldActions({
 			agentId: 'agent-1',
@@ -427,7 +551,12 @@ describe('HeldActionCommitService', () => {
 			{ kind: 'keywords', id: 'no-deploy', stage: 'before', keywords: ['deploy'] },
 		];
 		runtime.toolRegistry = new Map();
-		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 		const request = {
 			agentId: 'agent-1',
 			projectId: 'project-1',
@@ -475,7 +604,12 @@ describe('HeldActionCommitService', () => {
 		const { runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 		]);
-		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 		const request = {
 			agentId: 'agent-1',
 			projectId: 'project-1',
@@ -510,7 +644,12 @@ describe('HeldActionCommitService', () => {
 		const { runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 		]);
-		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 
 		await service.commitHeldActions({
 			agentId: 'agent-1',
@@ -537,7 +676,12 @@ describe('HeldActionCommitService', () => {
 		const { runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: vi.fn() },
 		]);
-		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 
 		await service.commitHeldActions({
 			agentId: 'agent-1',
@@ -560,7 +704,12 @@ describe('HeldActionCommitService', () => {
 		simulationSessions.getSession.mockResolvedValue(undefined);
 		const runtimeCache = mock<AgentRuntimeCacheService>();
 
-		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 
 		await expect(
 			service.commitHeldActions({

@@ -17,9 +17,11 @@ import AgentChatActivity from '@/features/agents/components/AgentChatActivity.vu
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { TOOL_CALL_STATE } from '@/features/agents/constants';
 import {
+	clearTestChatMessages,
 	getAgentTestRunTools,
 	resetAgentTestRun,
 	getChatMessages,
+	getTestChatMessages,
 	getAgentChatQueue,
 } from '@/features/agents/composables/useAgentApi';
 
@@ -27,10 +29,24 @@ vi.mock('@/features/agents/composables/useAgentApi', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/agents/composables/useAgentApi')>();
 	return {
 		...actual,
+		clearTestChatMessages: vi.fn(),
 		getAgentTestRunTools: vi.fn(),
 		resetAgentTestRun: vi.fn(),
 		getChatMessages: vi.fn(),
+		getTestChatMessages: vi.fn(),
 		getAgentChatQueue: vi.fn(),
+	};
+});
+
+const trackStartedNewTestRunMock = vi.fn();
+vi.mock('@/features/agents/composables/useAgentTelemetry', async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import('@/features/agents/composables/useAgentTelemetry')>();
+	return {
+		useAgentTelemetry: () => ({
+			...actual.useAgentTelemetry(),
+			trackStartedNewTestRun: trackStartedNewTestRunMock,
+		}),
 	};
 });
 
@@ -205,7 +221,9 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 
 		const pinia = createTestingPinia();
 		const posthog = mockedStore(usePostHog);
-		posthog.isFeatureEnabled.mockImplementation((flag) => flag === AGENT_SAFE_TESTING_FLAG);
+		posthog.isVariantEnabled.mockImplementation(
+			(flag, variant) => flag === AGENT_SAFE_TESTING_FLAG && variant === 'test',
+		);
 		const pushStore = mockedStore(usePushConnectionStore);
 		pushStore.addEventListener.mockReturnValue(() => {});
 
@@ -254,6 +272,10 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 			);
 		});
 		expect(emitted('new-test-run')).toHaveLength(1);
+		expect(trackStartedNewTestRunMock).toHaveBeenCalledExactlyOnceWith({
+			agentId: 'agent-1',
+			hadMessages: false,
+		});
 	});
 
 	it('does not start a new test run in a chat that the panel opened during the reset', async () => {
@@ -276,7 +298,9 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 
 		const pinia = createTestingPinia();
 		const posthog = mockedStore(usePostHog);
-		posthog.isFeatureEnabled.mockImplementation((flag) => flag === AGENT_SAFE_TESTING_FLAG);
+		posthog.isVariantEnabled.mockImplementation(
+			(flag, variant) => flag === AGENT_SAFE_TESTING_FLAG && variant === 'test',
+		);
 		const pushStore = mockedStore(usePushConnectionStore);
 		pushStore.addEventListener.mockReturnValue(() => {});
 
@@ -315,6 +339,69 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
 		expect(emitted('new-test-run')).toBeUndefined();
+		expect(trackStartedNewTestRunMock).not.toHaveBeenCalled();
+	});
+
+	it('tracks a new test run in a chat without a session only when the history clears', async () => {
+		vi.mocked(getAgentTestRunTools).mockResolvedValue({
+			tools: [
+				{
+					toolName: 'run_custom_code',
+					kind: 'custom',
+					testability: 'blocked',
+					reason: 'not_simulatable',
+				},
+			],
+		});
+		vi.mocked(getTestChatMessages).mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		vi.mocked(clearTestChatMessages).mockRejectedValueOnce(new Error('Request failed'));
+
+		const pinia = createTestingPinia();
+		const posthog = mockedStore(usePostHog);
+		posthog.isVariantEnabled.mockImplementation(
+			(flag, variant) => flag === AGENT_SAFE_TESTING_FLAG && variant === 'test',
+		);
+		const pushStore = mockedStore(usePushConnectionStore);
+		pushStore.addEventListener.mockReturnValue(() => {});
+
+		const { container } = renderChatPanel({
+			props: {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				agentConfig: {
+					name: 'Support Agent',
+					model: 'anthropic/claude-sonnet-5-5',
+					instructions: 'Help users',
+				},
+				agentStatus: 'draft',
+				connectedTriggers: [],
+				visible: true,
+			},
+			pinia,
+		});
+		const newTestRunButton = () =>
+			container.querySelector('[data-testid="agent-new-test-run-button"]');
+		// The button does nothing while the history loads.
+		await waitFor(() => expect(getTestChatMessages).toHaveBeenCalled());
+		await waitFor(() => expect(newTestRunButton()).toBeEnabled());
+
+		await fireEvent.click(newTestRunButton()!);
+		await waitFor(() => expect(clearTestChatMessages).toHaveBeenCalledTimes(1));
+		await waitFor(() => expect(newTestRunButton()).toBeEnabled());
+		expect(trackStartedNewTestRunMock).not.toHaveBeenCalled();
+
+		await fireEvent.click(newTestRunButton()!);
+		await waitFor(() =>
+			expect(trackStartedNewTestRunMock).toHaveBeenCalledExactlyOnceWith({
+				agentId: 'agent-1',
+				hadMessages: false,
+			}),
+		);
+		expect(clearTestChatMessages).toHaveBeenCalledTimes(2);
 	});
 
 	it('lets a chat opened during a reset start its own test run', async () => {
@@ -332,7 +419,9 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 
 		const pinia = createTestingPinia();
 		const posthog = mockedStore(usePostHog);
-		posthog.isFeatureEnabled.mockImplementation((flag) => flag === AGENT_SAFE_TESTING_FLAG);
+		posthog.isVariantEnabled.mockImplementation(
+			(flag, variant) => flag === AGENT_SAFE_TESTING_FLAG && variant === 'test',
+		);
 		const pushStore = mockedStore(usePushConnectionStore);
 		pushStore.addEventListener.mockReturnValue(() => {});
 

@@ -52,6 +52,7 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
 		isFeatureEnabled: (flag?: string) =>
 			flag === AGENT_SANDBOX_FILES_FLAG ? sessionFilesFlag.value : false,
+		isVariantEnabled: () => false,
 	}),
 }));
 
@@ -422,6 +423,7 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 		trackSubmittedMessage: trackSubmittedMessageMock,
 		trackSentMessageToN8nChatAgent: trackSentMessageToN8nChatAgentMock,
 		trackClickedNewTestChat: vi.fn(),
+		trackStartedNewTestRun: vi.fn(),
 	}),
 }));
 

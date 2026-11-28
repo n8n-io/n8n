@@ -26,6 +26,17 @@ import { AgentModalTestStub } from './utils/AgentModalTestStub';
 configure({ testIdAttribute: 'data-testid' });
 
 const commitAgentTestRunActionsMock = vi.fn();
+const trackHeldActionsShownMock = vi.fn();
+const trackOpenedHeldActionPreviewMock = vi.fn();
+const trackClickedRunHeldActionsMock = vi.fn();
+
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackHeldActionsShown: trackHeldActionsShownMock,
+		trackOpenedHeldActionPreview: trackOpenedHeldActionPreviewMock,
+		trackClickedRunHeldActions: trackClickedRunHeldActionsMock,
+	}),
+}));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
@@ -199,7 +210,16 @@ describe('AgentTestRunEmptyState', () => {
 });
 
 describe('AgentHeldActionsTray', () => {
-	const renderTray = createComponentRenderer(AgentHeldActionsTray, { pinia: createTestingPinia() });
+	const renderTray = createComponentRenderer(AgentHeldActionsTray, {
+		pinia: createTestingPinia(),
+		props: { agentId: 'agent-1' },
+	});
+
+	beforeEach(() => {
+		trackHeldActionsShownMock.mockReset();
+		trackOpenedHeldActionPreviewMock.mockReset();
+		trackClickedRunHeldActionsMock.mockReset();
+	});
 
 	it('shows N actions on hold, expands previews, and emits run-actions', async () => {
 		const { getByTestId, getAllByTestId, queryByTestId, emitted } = renderTray({
@@ -237,22 +257,67 @@ describe('AgentHeldActionsTray', () => {
 		expect(runBtn).toHaveTextContent('Run 2 actions');
 		await fireEvent.click(runBtn);
 		expect(emitted('run-actions')).toEqual([[sampleActions]]);
+
+		expect(trackOpenedHeldActionPreviewMock).toHaveBeenCalledExactlyOnceWith({
+			agentId: 'agent-1',
+		});
+		expect(trackClickedRunHeldActionsMock).toHaveBeenCalledExactlyOnceWith({
+			agentId: 'agent-1',
+			actionCount: 2,
+		});
 	});
 
 	it('does not emit run-actions while the run is disabled', async () => {
 		const { getByTestId, emitted, rerender } = renderTray({
-			props: { actions: sampleActions, runDisabled: true },
+			props: { actions: sampleActions, complete: false, runDisabled: true },
 		});
 
 		await fireEvent.click(getByTestId('agent-held-actions-toggle'));
 		await waitFor(() => expect(getByTestId('agent-held-actions-run-btn')).toBeDisabled());
 		await fireEvent.click(getByTestId('agent-held-actions-run-btn'));
 		expect(emitted('run-actions')).toBeUndefined();
+		expect(trackHeldActionsShownMock).not.toHaveBeenCalled();
 
-		await rerender({ runDisabled: false });
+		await rerender({ complete: true, runDisabled: false });
+		expect(trackHeldActionsShownMock).toHaveBeenCalledExactlyOnceWith({
+			agentId: 'agent-1',
+			actionCount: 2,
+		});
 		expect(getByTestId('agent-held-actions-run-btn')).toBeEnabled();
 		await fireEvent.click(getByTestId('agent-held-actions-run-btn'));
 		expect(emitted('run-actions')).toEqual([[sampleActions]]);
+	});
+
+	it('does not track held actions of a reply that was complete when it mounted', async () => {
+		// A reload or remount renders the reply from history: complete and not run.
+		const { rerender } = renderTray({ props: { actions: sampleActions } });
+		await rerender({ actions: [...sampleActions] });
+
+		expect(trackHeldActionsShownMock).not.toHaveBeenCalled();
+	});
+
+	it('does not track a reply from history that waits for the test chat session', async () => {
+		// Run stays disabled until the session id arrives, but the reply was already complete.
+		const { getByTestId, rerender } = renderTray({
+			props: { actions: sampleActions, complete: true, runDisabled: true },
+		});
+		await rerender({ complete: true, runDisabled: false });
+
+		expect(getByTestId('agent-held-actions-count')).toHaveTextContent('2 actions on hold');
+		expect(trackHeldActionsShownMock).not.toHaveBeenCalled();
+	});
+
+	it('tracks a streamed reply once when it completes, even before the session arrives', async () => {
+		const { rerender } = renderTray({
+			props: { actions: sampleActions, complete: false, runDisabled: true },
+		});
+		await rerender({ complete: true, runDisabled: true });
+		await rerender({ complete: true, runDisabled: false });
+
+		expect(trackHeldActionsShownMock).toHaveBeenCalledExactlyOnceWith({
+			agentId: 'agent-1',
+			actionCount: 2,
+		});
 	});
 
 	it('updates in place to the done count and done summary after commit', () => {

@@ -1,4 +1,4 @@
-import { AGENTS_N8N_CHAT_FLAG } from '@n8n/api-types';
+import { AGENTS_N8N_CHAT_FLAG, type AgentChatMode } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -138,10 +138,12 @@ export function useAgentTelemetry() {
 		agentId: string;
 		status: AgentTelemetryStatus;
 		agentConfig: AgentConfigFingerprint;
+		chatMode?: AgentChatMode;
 	}) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_SUBMITTED_MESSAGE_TO_AGENT, {
 			agent_id: params.agentId,
 			mode: 'test', // Constant dimension kept for warehouse-schema stability.
+			...(params.chatMode ? { chat_mode: params.chatMode } : {}),
 			status: params.status,
 			agent_config: params.agentConfig,
 			...common(),
@@ -442,8 +444,43 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackHeldActionsShown(params: { agentId: string; actionCount: number }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.AGENT_HELD_ACTIONS_SHOWN, {
+			agent_id: params.agentId,
+			action_count: params.actionCount,
+			...common(),
+		});
+	}
+
+	function trackOpenedHeldActionPreview(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_HELD_ACTION_PREVIEW, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackClickedRunHeldActions(params: { agentId: string; actionCount: number }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_RUN_HELD_AGENT_ACTIONS, {
+			agent_id: params.agentId,
+			action_count: params.actionCount,
+			...common(),
+		});
+	}
+
+	function trackStartedNewTestRun(params: { agentId: string; hadMessages: boolean }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_STARTED_NEW_AGENT_TEST_RUN, {
+			agent_id: params.agentId,
+			had_messages: params.hadMessages,
+			...common(),
+		});
+	}
+
 	return {
 		safeTrack,
+		trackHeldActionsShown,
+		trackOpenedHeldActionPreview,
+		trackClickedRunHeldActions,
+		trackStartedNewTestRun,
 		trackClickedAgentsTab,
 		trackClickedKnowledgeUpload,
 		trackClickedTraceItem,

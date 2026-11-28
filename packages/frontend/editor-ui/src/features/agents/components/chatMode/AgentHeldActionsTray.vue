@@ -11,6 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 
+import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import type {
 	AgentTestRunCommitResponse,
 	AgentTestRunCommitResult,
@@ -26,15 +27,19 @@ import {
 
 const props = withDefaults(
 	defineProps<{
+		agentId: string;
 		actions: AgentHeldAction[];
 		committed?: AgentTestRunCommitResponse;
 		busy?: boolean;
-		/** True while the reply can still get more held actions. The run must wait for all of them. */
+		/** False while the reply streams and can still get more held actions. */
+		complete?: boolean;
+		/** Disables the Run button only, e.g. while the reply streams or the chat has no session. */
 		runDisabled?: boolean;
 	}>(),
 	{
 		committed: undefined,
 		busy: false,
+		complete: true,
 		runDisabled: false,
 	},
 );
@@ -44,6 +49,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const agentTelemetry = useAgentTelemetry();
 const expanded = ref(Boolean(props.committed));
 const expandedActionIds = ref<Record<string, boolean>>({});
 
@@ -57,6 +63,29 @@ const appIconActions = computed<AgentHeldAction[]>(() => {
 		return true;
 	});
 });
+
+// Fires once, when a reply that ran in this session gets all its held actions and they have
+// not run. A reply from history mounts complete, so a reload or remount does not track it again.
+let ranInSession = !props.complete;
+let shownTracked = false;
+watch(
+	() => props.complete,
+	(complete) => {
+		if (!complete) ranInSession = true;
+	},
+);
+watch(
+	() => props.actions.length > 0 && props.complete && !props.committed,
+	(shown) => {
+		if (!shown || shownTracked || !ranInSession) return;
+		shownTracked = true;
+		agentTelemetry.trackHeldActionsShown({
+			agentId: props.agentId,
+			actionCount: props.actions.length,
+		});
+	},
+	{ immediate: true },
+);
 
 // The result of a run shows without another click, with each failed action open.
 watch(
@@ -154,6 +183,7 @@ const doneSummaryText = computed(() => {
 
 function setActionPreviewOpen(actionId: string, open: boolean) {
 	expandedActionIds.value = { ...expandedActionIds.value, [actionId]: open };
+	if (open) agentTelemetry.trackOpenedHeldActionPreview({ agentId: props.agentId });
 }
 
 function actionStatus(actionId: string) {
@@ -162,6 +192,10 @@ function actionStatus(actionId: string) {
 
 function onRunClick() {
 	if (props.busy || props.runDisabled || props.committed) return;
+	agentTelemetry.trackClickedRunHeldActions({
+		agentId: props.agentId,
+		actionCount: props.actions.length,
+	});
 	emit('run-actions', props.actions);
 }
 </script>

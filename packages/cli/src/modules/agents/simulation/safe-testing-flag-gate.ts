@@ -1,17 +1,20 @@
-import { AGENT_SAFE_TESTING_FLAG } from '@n8n/api-types';
+import { AGENT_SAFE_TESTING_FLAG, AGENT_SAFE_TESTING_TEST_VARIANT } from '@n8n/api-types';
 import { PostHogClient } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 
-/** Per-user safe testing flag. `PostHogClient` already caches and applies env overrides. */
+/**
+ * Per-user safe testing flag. The flag is multivariate: only the `test` variant turns it on.
+ * `PostHogClient` already caches and applies env overrides.
+ */
 @Service()
 export class SafeTestingFlagGate {
 	constructor(private readonly postHogClient: PostHogClient) {}
 
 	async isEnabled(user: User): Promise<boolean> {
 		const flags = await this.postHogClient.getFeatureFlags(user);
-		return flags?.[AGENT_SAFE_TESTING_FLAG] === true;
+		return flags?.[AGENT_SAFE_TESTING_FLAG] === AGENT_SAFE_TESTING_TEST_VARIANT;
 	}
 
 	// 404 rather than 403: a flag-off surface should look unknown, not forbidden.
