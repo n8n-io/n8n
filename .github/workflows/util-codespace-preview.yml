@@ -47,13 +47,6 @@ on:
 
 permissions: {}
 
-concurrency:
-  # Never cancel a run in progress. Cancelling during `gh codespace create` leaves
-  # a box that nothing tracks and the org still pays for. Keyed on the PR, so the
-  # up, refresh and down runs for one PR happen one after another.
-  group: codespace-preview-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
-  cancel-in-progress: false
-
 jobs:
   preview:
     name: Preview instance
@@ -83,6 +76,11 @@ jobs:
           )
         )
       )
+    concurrency:
+      # Keep this at job level so unrelated labels cannot replace a pending preview.
+      # Do not cancel an active run: creation can leave a Codespace without a report.
+      group: codespace-preview-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     environment: codespaces
     timeout-minutes: 45

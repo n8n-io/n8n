@@ -302,11 +302,24 @@ the comment does not send a new notification.
 
 ### Label Triggers
 
-| Label                 | Workflow                     | Effect                                             |
-|-----------------------|------------------------------|----------------------------------------------------|
-| `codespace-preview`   | `util-codespace-preview.yml` | Runs the PR in a Codespace, comments the URL        |
-| `preview:enterprise`  | `util-codespace-preview.yml` | Re-serves the instance with an enterprise licence   |
-| `preview:debug`       | `util-codespace-preview.yml` | Re-serves the instance with `N8N_LOG_LEVEL=debug`   |
+Expensive PR quality checks skip unrelated label events, including `cla-signed`.
+The `Do Not Merge` guard and required validation still run on these events, and
+validation fails if a skipped check already failed on the head commit.
+A `Do Not Merge` label change runs the full quality gate. Relevant PR events share a
+concurrency group for the PR. A newer event cancels the active run. Unrelated
+labels and issue comments use separate groups, so they cannot cancel that run.
+Reviewer assignment also skips unrelated label events before it starts a runner.
+The Codespace preview job applies its concurrency group after its event condition.
+Unrelated labels cannot replace a pending preview operation.
+
+| Label                            | Workflow                         | Effect                                                                       |
+|----------------------------------|----------------------------------|------------------------------------------------------------------------------|
+| `Do Not Merge`                   | `ci-pr-quality.yml`              | Re-runs the quality gate when the label is added or removed                  |
+| `Auto-assign reviewers`          | `ci-owners-assign-reviewers.yml` | Requests review from the teams that own the changed files                    |
+| `Auto-assign required reviewers` | `ci-owners-assign-reviewers.yml` | Requests review from the teams whose required or involved OWNERS rules match |
+| `codespace-preview`              | `util-codespace-preview.yml`     | Runs the PR in a Codespace, comments the URL                                 |
+| `preview:enterprise`             | `util-codespace-preview.yml`     | Re-serves the instance with an enterprise licence                            |
+| `preview:debug`                  | `util-codespace-preview.yml`     | Re-serves the instance with `N8N_LOG_LEVEL=debug`                            |
 
 **Why:** A reviewer gets a running instance of the PR without a Docker build or a
 cloud deploy. The workflow calls `scripts/codespace-preview/preview.mjs`, which keeps one codespace
@@ -952,6 +965,7 @@ Scripts in `.github/scripts/`:
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `find-last-green-commit.mjs` | Newest PR commit that passed the current workflow, for incremental PR runs | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
+| `quality/preserve-skipped-checks.mjs` | Fail required PR quality validation on unrelated label events if a skipped quality check already failed on the head commit | `ci-pr-quality.yml` |
 | `glob.mjs`              | Builtin-only glob matcher for changed-file paths (`**`, `*`, dot segments) | `quality/check-pr-size.mjs` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
 

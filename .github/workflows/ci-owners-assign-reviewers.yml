@@ -1,6 +1,7 @@
 name: 'CI: Owners Assign Reviewers'
 
 # Request all owning teams or only required teams, depending on the label.
+# Other label events skip the job before it starts a runner.
 
 on:
   pull_request:
@@ -24,6 +25,9 @@ jobs:
     #    owning team
     if: |
       github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'labeled' ||
+       github.event.label.name == 'Auto-assign reviewers' ||
+       github.event.label.name == 'Auto-assign required reviewers') &&
       (github.event.pull_request.user.type != 'Bot' ||
        github.event.pull_request.user.login == 'n8n-cat-bot[bot]') &&
       (contains(github.event.pull_request.labels.*.name, 'Auto-assign reviewers') ||

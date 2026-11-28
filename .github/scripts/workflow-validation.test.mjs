@@ -172,6 +172,24 @@ describe('evaluateStepCondition', () => {
 	});
 });
 
+describe('workflow event tests in PR CI', () => {
+	const workflow = workflowFile('ci-pull-requests.yml');
+	const filterStep = stepNamed(workflow, 'install-and-build', 'Check for relevant changes');
+	const filters = parseFilters(filterStep.with.filters);
+
+	for (const name of [
+		'ci-pr-quality.yml',
+		'ci-owners-assign-reviewers.yml',
+		'util-codespace-preview.yml',
+	]) {
+		it(`runs the contract tests when only ${name} changes`, () => {
+			const patterns = filters.get('workflow-scripts');
+			assert.ok(patterns, 'PR CI has no workflow scripts path filter');
+			assert.equal(evaluateFilter([`.github/workflows/${name}`], patterns), true);
+		});
+	}
+});
+
 describe('ownership workflow routing', () => {
 	const reviews = workflowFile('ci-owners-required-reviews.yml');
 	const dispatch = stepNamed(
@@ -316,7 +334,10 @@ describe('automated release PR CI bypass', () => {
 		assertUsesPrPolicy(quality.jobs.changes);
 		assertUsesPrPolicy(quality.jobs['check-knip']);
 		assertUsesPrPolicy(quality.jobs['check-do-not-merge']);
-		assert.equal(quality.jobs['required-pr-quality-checks'].if, 'always()');
+		assert.equal(
+			quality.jobs['required-pr-quality-checks'].if,
+			"always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group')",
+		);
 		assertNeedsPrPolicy(quality.jobs['required-pr-quality-checks']);
 		assert.equal(
 			stepNamed(quality, 'required-pr-quality-checks', 'Validate required checks').if,
