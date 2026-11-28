@@ -115,22 +115,28 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 
 		await this.resolveOversizedBasePolicies(processable);
 
-		// Only executions where policy doesn't already grant access need a scope check.
-		// Shared by both the reveal and redact paths, and resolved concurrently with
-		// the credential-usability check below since neither depends on the other.
-		const needsCheck = processable.filter((e) => !this.policyAllowsReveal(e));
+		const credentialCheck = await this.resolveCredentialInaccessibleExecutions(
+			processable,
+			options.user,
+		);
+
+		// Only executions where policy doesn't already grant access need a scope check,
+		// shared by both the reveal and redact paths. An execution that used a deleted
+		// credential needs it whatever the policy: nobody can use that credential, so
+		// the `execution:reveal` scope decides who may see the data.
+		const needsCheck = processable.filter(
+			(e) => !this.policyAllowsReveal(e) || credentialCheck.deleted.has(e),
+		);
 		const uniqueWorkflowIds = [...new Set(needsCheck.map((e) => e.workflowId))];
 
-		const [revealableIds, credentialInaccessibleExecutions] = await Promise.all([
+		const revealableIds =
 			needsCheck.length > 0
-				? this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+				? await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
 						uniqueWorkflowIds,
 						options.user,
 						['execution:reveal'],
 					)
-				: Promise.resolve(new Set<string>()),
-			this.resolveCredentialInaccessibleExecutions(processable, options.user),
-		]);
+				: new Set<string>();
 
 		// Reveal path: validate all permissions atomically before any processing.
 		if (options.redactExecutionData === false) {
@@ -155,7 +161,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 					});
 					throw new ForbiddenError();
 				}
-				if (credentialInaccessibleExecutions.has(execution)) {
+				if (credentialCheck.inaccessible.has(execution)) {
 					this.eventService.emit('execution-data-reveal-failure', {
 						user: options.user,
 						executionId: execution.id ?? '',
@@ -173,9 +179,11 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			for (const execution of needsCheck) {
 				if (
 					this.hasDynamicCredentials(execution) &&
-					this.isOwnDynamicCredentialsExecution(execution, options.user.id)
+					this.isOwnDynamicCredentialsExecution(execution, options.user.id) &&
+					!credentialCheck.deleted.has(execution)
 				) {
-					// Owner of a dyncred execution skips the scope check.
+					// Owner of a dyncred execution skips the scope check, unless a deleted
+					// credential is involved: then only `execution:reveal` grants access.
 					continue;
 				}
 				if (!revealableIds.has(execution.workflowId)) {
@@ -211,13 +219,18 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			const isOwnDynCreds =
 				hasDynCreds && this.isOwnDynamicCredentialsExecution(execution, options.user.id);
 			const policyAllowsReveal = this.policyAllowsReveal(execution);
-			const inaccessibleCredentialIds = credentialInaccessibleExecutions.get(execution) ?? [];
+			const inaccessibleCredentialIds = credentialCheck.inaccessible.get(execution) ?? [];
 			const enforceCredentialUsabilityRedaction = inaccessibleCredentialIds.length > 0;
+			const enforceDeletedCredentialRedaction =
+				!enforceCredentialUsabilityRedaction && credentialCheck.deleted.has(execution);
 			const userCanReveal = enforceCredentialUsabilityRedaction
 				? false
 				: hasDynCreds
-					? isOwnDynCreds
-					: policyAllowsReveal || revealableIds.has(execution.workflowId);
+					? isOwnDynCreds &&
+						(!enforceDeletedCredentialRedaction || revealableIds.has(execution.workflowId))
+					: enforceDeletedCredentialRedaction
+						? revealableIds.has(execution.workflowId)
+						: policyAllowsReveal || revealableIds.has(execution.workflowId);
 			const enforceDynCredRedaction = hasDynCreds && !isOwnDynCreds;
 			const context: RedactionContext = {
 				user: options.user,
@@ -226,6 +239,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				enforceDynCredRedaction,
 				enforceCredentialUsabilityRedaction,
 				inaccessibleCredentialIds,
+				enforceDeletedCredentialRedaction,
 				redactedBySubWorkflow: this.isRedactedBySubWorkflow(execution),
 				memo: new Map(),
 			};
@@ -282,7 +296,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 * - `FullItemRedactionStrategy` is included when items should be cleared:
 	 *   explicit redact (`redactExecutionData === true`), policy=all, or
 	 *   policy=non-manual on a non-manual execution mode, or dynamic credentials,
-	 *   or a credential the viewer cannot use.
+	 *   or a credential the viewer cannot use, or a deleted credential.
 	 *   It is never included on the reveal path (`redactExecutionData === false`).
 	 *
 	 * Note: `NodeDefinedFieldRedactionStrategy` (node-declared `sensitiveOutputFields`)
@@ -304,6 +318,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			(context.redactExecutionData === true ||
 				context.enforceDynCredRedaction ||
 				context.enforceCredentialUsabilityRedaction ||
+				context.enforceDeletedCredentialRedaction ||
 				(!policyAllowsReveal &&
 					(policy === 'all' ||
 						(policy === 'non-manual' && !MANUAL_MODES.has(execution.mode)) ||
@@ -329,11 +344,20 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 * with no elevated scopes would be asked. The owner and admins are implicit
 	 * members of every team project, so credentials shared with a team project
 	 * count for them, and credentials that only a personal project holds do not.
+	 *
+	 * Deleted credentials are returned apart, in `deleted`: nobody can use them,
+	 * so they cannot decide who sees the data. Those executions are redacted, and
+	 * the `execution:reveal` scope decides who can reveal them.
 	 */
 	private async resolveCredentialInaccessibleExecutions(
 		executions: RedactableExecution[],
 		user: User,
-	): Promise<Map<RedactableExecution, string[]>> {
+	): Promise<{
+		inaccessible: Map<RedactableExecution, string[]>;
+		deleted: Set<RedactableExecution>;
+	}> {
+		const inaccessible = new Map<RedactableExecution, string[]>();
+		const deleted = new Set<RedactableExecution>();
 		const credentialIdsByExecution = new Map<RedactableExecution, string[]>();
 		const allCredentialIds = new Set<string>();
 		for (const execution of executions) {
@@ -351,23 +375,26 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			credentialIdsByExecution.set(execution, credentialIds);
 			for (const id of credentialIds) allCredentialIds.add(id);
 		}
-		if (allCredentialIds.size === 0) return new Map();
+		if (allCredentialIds.size === 0) return { inaccessible, deleted };
 
-		const inaccessibleIds =
-			await this.credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser(
+		const unusable =
+			await this.credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser(
 				user,
 				[...allCredentialIds],
 				{ ignoreGlobalUseScope: true },
 			);
-		if (inaccessibleIds.length === 0) return new Map();
-
-		const inaccessibleIdSet = new Set(inaccessibleIds);
-		const result = new Map<RedactableExecution, string[]>();
-		for (const [execution, credentialIds] of credentialIdsByExecution) {
-			const inaccessible = credentialIds.filter((id) => inaccessibleIdSet.has(id));
-			if (inaccessible.length > 0) result.set(execution, inaccessible);
+		if (unusable.inaccessible.length === 0 && unusable.deleted.length === 0) {
+			return { inaccessible, deleted };
 		}
-		return result;
+
+		const inaccessibleIdSet = new Set(unusable.inaccessible);
+		const deletedIdSet = new Set(unusable.deleted);
+		for (const [execution, credentialIds] of credentialIdsByExecution) {
+			const inaccessibleIds = credentialIds.filter((id) => inaccessibleIdSet.has(id));
+			if (inaccessibleIds.length > 0) inaccessible.set(execution, inaccessibleIds);
+			if (credentialIds.some((id) => deletedIdSet.has(id))) deleted.add(execution);
+		}
+		return { inaccessible, deleted };
 	}
 
 	/**

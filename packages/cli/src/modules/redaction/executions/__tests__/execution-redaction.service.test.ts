@@ -59,7 +59,10 @@ describe('ExecutionRedactionService', () => {
 		workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
 		fullItemRedactionStrategy.apply.mockResolvedValue(undefined);
 		// Default: viewer can use every credential
-		credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([]);
+		credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser.mockResolvedValue({
+			inaccessible: [],
+			deleted: [],
+		});
 		// Stand-in for the real extraction logic (covered by
 		// credentials-permission-checker.test.ts): the ids of enabled nodes'
 		// credentials, so fixtures built with `nodeWithCredential` behave as
@@ -661,9 +664,10 @@ describe('ExecutionRedactionService', () => {
 		});
 
 		it('passes the login id to execution-data-reveal-failure for an unusable credential', async () => {
-			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
-				'cred-1',
-			]);
+			credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser.mockResolvedValue({
+				inaccessible: ['cred-1'],
+				deleted: [],
+			});
 			const execution = makeExecution({
 				policy: 'none',
 				mode: 'trigger',
@@ -1428,9 +1432,10 @@ describe('ExecutionRedactionService', () => {
 
 	describe('credential usability redaction', () => {
 		it('force-redacts when the viewer cannot use a credential the workflow references', async () => {
-			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
-				'cred-1',
-			]);
+			credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser.mockResolvedValue({
+				inaccessible: ['cred-1'],
+				deleted: [],
+			});
 			const execution = makeExecution({
 				policy: 'none',
 				mode: 'manual',
@@ -1446,9 +1451,10 @@ describe('ExecutionRedactionService', () => {
 		});
 
 		it('passes on only the credentials of this execution that the viewer cannot use', async () => {
-			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
-				'cred-1',
-			]);
+			credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser.mockResolvedValue({
+				inaccessible: ['cred-1'],
+				deleted: [],
+			});
 			const execution = makeExecution({
 				policy: 'none',
 				mode: 'manual',
@@ -1475,14 +1481,15 @@ describe('ExecutionRedactionService', () => {
 			};
 
 			it('force-redacts the parent when the viewer cannot use it', async () => {
-				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
-					'cred-1',
-				]);
+				credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser.mockResolvedValue({
+					inaccessible: ['cred-1'],
+					deleted: [],
+				});
 
 				await service.processExecution(parentCallingSubWorkflow(), { user: mockUser });
 
 				expect(
-					credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+					credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser,
 				).toHaveBeenCalledWith(mockUser, ['cred-1'], { ignoreGlobalUseScope: true });
 				const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
 				expect(context.enforceCredentialUsabilityRedaction).toBe(true);
@@ -1490,7 +1497,10 @@ describe('ExecutionRedactionService', () => {
 			});
 
 			it('does not redact the parent for a viewer who can use it', async () => {
-				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([]);
+				credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser.mockResolvedValue({
+					inaccessible: [],
+					deleted: [],
+				});
 
 				await service.processExecution(parentCallingSubWorkflow(), { user: mockUser });
 
@@ -1514,9 +1524,10 @@ describe('ExecutionRedactionService', () => {
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
 				new Set(['workflow-123']),
 			);
-			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
-				'cred-1',
-			]);
+			credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser.mockResolvedValue({
+				inaccessible: ['cred-1'],
+				deleted: [],
+			});
 			const execution = makeExecution({
 				policy: 'none',
 				mode: 'manual',
@@ -1529,9 +1540,10 @@ describe('ExecutionRedactionService', () => {
 		});
 
 		it('emits execution-data-reveal-failure before the ForbiddenError on the reveal path', async () => {
-			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
-				'cred-1',
-			]);
+			credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser.mockResolvedValue({
+				inaccessible: ['cred-1'],
+				deleted: [],
+			});
 			const execution = makeExecution({
 				policy: 'none',
 				mode: 'manual',
@@ -1564,7 +1576,7 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, { user: mockUser });
 
 			expect(
-				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+				credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser,
 			).not.toHaveBeenCalled();
 		});
 
@@ -1589,7 +1601,7 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, { user: mockUser });
 
 			expect(
-				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+				credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser,
 			).not.toHaveBeenCalled();
 			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
 		});
@@ -1613,10 +1625,10 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecutions(executions, { user: mockUser });
 
 			expect(
-				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+				credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser,
 			).toHaveBeenCalledTimes(1);
 			const [, calledIds, options] =
-				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mock.calls[0];
+				credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser.mock.calls[0];
 			expect(new Set(calledIds)).toEqual(new Set(['cred-1', 'cred-2']));
 			expect(options).toEqual({ ignoreGlobalUseScope: true });
 		});
@@ -1626,9 +1638,10 @@ describe('ExecutionRedactionService', () => {
 			// `credential:use` scope. Redaction must still ask the real question — does
 			// this specific viewer have personal access to this specific credential —
 			// so an instance owner is redacted the same as anyone else without a grant.
-			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
-				'cred-1',
-			]);
+			credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser.mockResolvedValue({
+				inaccessible: ['cred-1'],
+				deleted: [],
+			});
 			const execution = makeExecution({
 				policy: 'none',
 				mode: 'manual',
@@ -1638,15 +1651,16 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, { user: mockUser });
 
 			expect(
-				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+				credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser,
 			).toHaveBeenCalledWith(mockUser, ['cred-1'], { ignoreGlobalUseScope: true });
 			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
 		});
 
 		it('only force-redacts the execution referencing the inaccessible credential', async () => {
-			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
-				'cred-1',
-			]);
+			credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser.mockResolvedValue({
+				inaccessible: ['cred-1'],
+				deleted: [],
+			});
 			const executions = [
 				makeExecution({
 					policy: 'none',
@@ -1670,9 +1684,10 @@ describe('ExecutionRedactionService', () => {
 		});
 
 		it('force-redacts an execution referencing one usable and one unusable credential', async () => {
-			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
-				'cred-2',
-			]);
+			credentialsPermissionChecker.partitionInaccessibleCredentialIdsForUser.mockResolvedValue({
+				inaccessible: ['cred-2'],
+				deleted: [],
+			});
 			const execution = makeExecution({
 				policy: 'none',
 				mode: 'manual',

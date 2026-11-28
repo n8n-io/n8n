@@ -253,6 +253,25 @@ export class CredentialsPermissionChecker {
 	}
 
 	/**
+	 * {@link resolveInaccessibleCredentialIdsForUser}, split by whether each
+	 * credential still exists. Nobody can use a deleted credential, so redaction
+	 * cannot use it to decide who sees the data and has to tell the two apart.
+	 */
+	async partitionInaccessibleCredentialIdsForUser(
+		user: User,
+		credentialIds: string[],
+		options: { ignoreGlobalUseScope?: boolean } = {},
+	): Promise<{ inaccessible: string[]; deleted: string[] }> {
+		const unusable = CredentialsPermissionChecker.flatten(
+			await this.findUnusable(user, credentialIds, options),
+		);
+		return {
+			inaccessible: unusable.filter((c) => c.exists).map((c) => c.id),
+			deleted: unusable.filter((c) => !c.exists).map((c) => c.id),
+		};
+	}
+
+	/**
 	 * The credentials that `user` can use through their own access: owned, shared
 	 * with them, in a project they belong to, or global. An instance-wide
 	 * `credential:use` does not count. Redaction asks the same question, so the

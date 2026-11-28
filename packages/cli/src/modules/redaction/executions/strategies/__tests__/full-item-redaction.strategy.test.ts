@@ -13,6 +13,7 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 	enforceDynCredRedaction: false,
 	enforceCredentialUsabilityRedaction: false,
 	inaccessibleCredentialIds: [],
+	enforceDeletedCredentialRedaction: false,
 	redactedBySubWorkflow: false,
 	memo: new Map(),
 	...overrides,
@@ -250,6 +251,35 @@ describe('FullItemRedactionStrategy', () => {
 			expect(execution.data.redactionInfo?.reason).toBe('credential_inaccessible');
 			// Names the credentials, so the editor can link to where access is granted.
 			expect(execution.data.redactionInfo?.credentialIds).toEqual(['alice-gmail']);
+		});
+
+		it('sets reason "credential_deleted" without credential ids when enforceDeletedCredentialRedaction is true', async () => {
+			const execution = makeExecution({
+				NodeA: [
+					{
+						startTime: 0,
+						executionIndex: 0,
+						executionTime: 0,
+						executionStatus: 'success',
+						source: [],
+						data: { main: [[{ json: { x: 1 } }]] },
+					},
+				],
+			});
+
+			await strategy.apply(
+				execution,
+				makeContext({ enforceDeletedCredentialRedaction: true, userCanReveal: true }),
+			);
+
+			const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
+			expect(item.redaction?.reason).toBe('credential_deleted');
+			// No ids: the editor must not offer to share a credential that is gone.
+			expect(execution.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'credential_deleted',
+				canReveal: true,
+			});
 		});
 
 		it('prefers "dynamic_credentials" over "credential_inaccessible" when both are set', async () => {
