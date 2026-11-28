@@ -131,9 +131,15 @@ function assertNoDelegateAtProjectScope(
 	}
 }
 
-function scopeVersionConflict(expectedVersion: number, foundVersion: number): ConflictError {
+/** Pass `kind` when one request checks the versions of several kinds. */
+function scopeVersionConflict(
+	expectedVersion: number,
+	foundVersion: number,
+	kind?: string,
+): ConflictError {
+	const subject = kind ? `The ${kind} policy scope` : 'Policy scope';
 	return new ConflictError(
-		`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${foundVersion})`,
+		`${subject} has changed since it was last read (expected version ${expectedVersion}, found ${foundVersion})`,
 	);
 }
 
@@ -546,6 +552,72 @@ export class TypeAvailabilityPolicyService {
 			before: { rules: existing.rules, version: existing.version },
 			loginId: loginIdOf(ctx),
 		});
+	}
+
+	/**
+	 * Deletes a project's scope of each kind, so the project follows the instance policy again.
+	 * The attached documents stay: only an explicit document delete removes a document.
+	 * Both kinds go in one transaction, so a stale version of either one deletes nothing.
+	 * A kind without a scope is expected at `UNCONFIGURED_VERSION`, the version a read returns.
+	 */
+	async deleteProjectPolicy(
+		projectId: string,
+		expectedVersions: { [NODE_TYPES_KIND]: number; [CREDENTIAL_TYPES_KIND]: number },
+		updatedBy: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		const result = await this.transactionRunner.run({}, async (tx) => {
+			const found: Array<{
+				kind: (typeof PROJECT_POLICY_KINDS)[number];
+				scope: TypeAvailabilityPolicyScope | null;
+			}> = [];
+			for (const kind of PROJECT_POLICY_KINDS) {
+				found.push({
+					kind,
+					scope: await this.scopeRepository.findScopeByKindAndProject(kind, projectId, tx, true),
+				});
+			}
+
+			const scopes = found.flatMap(({ scope }) => (scope ? [scope] : []));
+			if (scopes.length === 0) {
+				throw new NotFoundError(`Project has no policy: ${projectId}`);
+			}
+
+			for (const { kind, scope } of found) {
+				const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
+				if (currentVersion !== expectedVersions[kind]) {
+					throw scopeVersionConflict(expectedVersions[kind], currentVersion, kind);
+				}
+			}
+
+			const attachmentsByScope = await this.attachmentRepository.listAttachmentsForScopes(
+				scopes.map((scope) => scope.id),
+				tx,
+			);
+
+			for (const scope of scopes) {
+				await this.scopeRepository.deleteScope(scope.id, tx);
+			}
+
+			return { scopes, attachmentsByScope };
+		});
+
+		await this.snapshot.refreshAfterWrite();
+
+		for (const scope of result.scopes) {
+			this.eventService.emit('node-type-policy-scope-deleted', {
+				updatedBy,
+				kind: scope.kind,
+				projectId,
+				scopeId: scope.id,
+				before: {
+					defaultAction: scope.defaultAction,
+					version: scope.version,
+					attachments: result.attachmentsByScope.get(scope.id) ?? [],
+				},
+				loginId: loginIdOf(ctx),
+			});
+		}
 	}
 
 	async getPolicyDocument(kind: string, policyId: string): Promise<TypeAvailabilityPolicy | null> {

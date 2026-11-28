@@ -2019,6 +2019,20 @@ export type RelayEventMap = ModuleEventMap & {
 		loginId?: string;
 	};
 
+	'node-type-policy-scope-deleted': {
+		updatedBy: string;
+		kind: string;
+		projectId: string;
+		scopeId: string;
+		before: {
+			defaultAction: PolicyAction;
+			version: number;
+			attachments: readonly PolicyAttachment[];
+		};
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
 	'node-type-policy-document-deleted': {
 		updatedBy: string;
 		kind: string;

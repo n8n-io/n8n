@@ -1,5 +1,6 @@
 import {
 	CreateProjectPolicyDto,
+	DeleteProjectPolicyQueryDto,
 	type ProjectPoliciesResponse,
 	type ProjectPolicyEffectiveCounts,
 	type ProjectPolicyKindSummary,
@@ -8,7 +9,17 @@ import {
 import { LICENSE_FEATURES, MISSING_SCOPE_ERROR_MESSAGE } from '@n8n/constants';
 import { ProjectNotFoundError } from '@n8n/backend-services';
 import { AuthenticatedRequest, ProjectRepository, type User } from '@n8n/db';
-import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	GlobalScope,
+	Licensed,
+	Param,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import { ForbiddenError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
@@ -87,6 +98,29 @@ export class ProjectPoliciesController {
 				credential: kindSummary(credentialSummary?.summary, credential.withoutProjectPolicy),
 			};
 		});
+	}
+
+	@Delete('/:projectId')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('nodeTypePolicy:manage')
+	async deleteProjectPolicy(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Query query: DeleteProjectPolicyQueryDto,
+	) {
+		assertCanManageBothKinds(req.user);
+
+		await this.service.deleteProjectPolicy(
+			projectId,
+			{
+				[NODE_TYPES_KIND]: query.nodeTypesVersion,
+				[CREDENTIAL_TYPES_KIND]: query.credentialTypesVersion,
+			},
+			req.user.id,
+		);
+
+		return { success: true };
 	}
 
 	private async summarizeNodeTypes(projectId?: string) {
