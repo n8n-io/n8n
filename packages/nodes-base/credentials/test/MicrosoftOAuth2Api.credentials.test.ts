@@ -24,6 +24,14 @@ describe('MicrosoftOAuth2Api Credential', () => {
 		);
 	});
 
+	it('should treat both 401 and 403 as expired tokens', () => {
+		const statusProperty = microsoftOAuth2Api.properties.find(
+			(p) => p.name === 'tokenExpiredStatusCode',
+		);
+		expect(statusProperty?.type).toBe('hidden');
+		expect(statusProperty?.default).toEqual([401, 403]);
+	});
+
 	it('should request the Microsoft account chooser via authQueryParameters', () => {
 		const authQueryParamsProperty = microsoftOAuth2Api.properties.find(
 			(p) => p.name === 'authQueryParameters',

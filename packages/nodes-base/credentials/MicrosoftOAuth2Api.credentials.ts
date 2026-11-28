@@ -13,6 +13,15 @@ export class MicrosoftOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			// The base field is marked doNotInherit, so this credential never sees it.
+			// Power BI answers an expired token with 403 while other Microsoft APIs
+			// use 401, so treat both as expired to keep refresh working.
+			displayName: 'Token Expired Status Code',
+			name: 'tokenExpiredStatusCode',
+			type: 'hidden',
+			default: [401, 403],
+		},
+		{
 			displayName: 'Grant Type',
 			name: 'grantType',
 			type: 'hidden',
