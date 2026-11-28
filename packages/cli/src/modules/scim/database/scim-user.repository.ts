@@ -9,11 +9,24 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, type DeepPartial } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
 export type ScimUserFilter =
 	| { attribute: 'userName'; value: string }
 	| { attribute: 'externalId'; value: string; providerTypes: AuthProviderType[] };
+
+export type ProvisionedPersonInput = Pick<
+	Person,
+	'email' | 'firstName' | 'lastName' | 'password' | 'disabled'
+> & {
+	role: Pick<Person['role'], 'slug'>;
+};
+
+class UserTable extends BaseRepository<User> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(User, dataSource.manager, transactionRunner);
+	}
+}
 
 /**
  * The user queries SCIM needs that the shared `UserRepository` does not cover:
@@ -21,13 +34,15 @@ export type ScimUserFilter =
  * with the identity that links them to the IdP.
  */
 @Service()
-export class ScimUserRepository extends BaseRepository<User> {
+export class ScimUserRepository {
+	private readonly table: UserTable;
+
 	constructor(
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
 		private readonly personRepository: PersonRepository,
 	) {
-		super(User, dataSource.manager, transactionRunner);
+		this.table = new UserTable(dataSource, transactionRunner);
 	}
 
 	/**
@@ -38,7 +53,8 @@ export class ScimUserRepository extends BaseRepository<User> {
 		{ skip, take, filter }: { skip: number; take: number; filter?: ScimUserFilter },
 		ctx: OperationContext,
 	): Promise<[Person[], number]> {
-		const qb = this.managerFor(ctx)
+		const qb = this.table
+			.managerFor(ctx)
 			.createQueryBuilder(Person, 'user')
 			.leftJoinAndSelect('user.authIdentities', 'authIdentity')
 			.orderBy('user.createdAt', 'ASC')
@@ -67,11 +83,11 @@ export class ScimUserRepository extends BaseRepository<User> {
 	 * identity that lets them sign in.
 	 */
 	async createProvisioned(
-		person: DeepPartial<Person>,
+		person: ProvisionedPersonInput,
 		identity: { providerId: string; providerType: AuthProviderType } | undefined,
 		ctx: OperationContext,
 	): Promise<Person> {
-		return await this.runInTransaction(ctx, async (tx) => {
+		return await this.table.runInTransaction(ctx, async (tx) => {
 			const { user: created } = await this.personRepository.createPersonWithProject(person, tx);
 
 			if (identity) {
