@@ -442,7 +442,7 @@ export function useCanvasPreview({
 	const initialMcpServerTabId = computed(() => {
 		const serverId = initialMcpServerId?.();
 		if (!serverId) return undefined;
-		return artifactTabs.value.find((tab) => tab.type === 'mcp-server' && tab.id === serverId)?.id;
+		return openTabs.value.find((tab) => tab.type === 'mcp-server' && tab.id === serverId)?.id;
 	});
 
 	const initialArtifactId = computed(

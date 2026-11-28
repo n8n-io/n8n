@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
 	listApps: vi.fn(),
 	listMcpServers: vi.fn(),
-	isModuleActive: vi.fn(() => false),
+	isModuleActive: vi.fn((_name: string) => false),
 	customMcpServersEnabled: vi.fn(() => false),
 }));
 

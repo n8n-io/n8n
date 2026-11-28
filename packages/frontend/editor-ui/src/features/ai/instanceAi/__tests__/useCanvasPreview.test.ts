@@ -1808,6 +1808,27 @@ describe('useCanvasPreview', () => {
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 
+		test('does not select initialMcpServerId when the server tab is stored as closed', async () => {
+			const ctx = setup({
+				initialMcpServerId: () => 'srv-1',
+				tabsStorage: {
+					load: vi.fn().mockResolvedValue({
+						tabs: [],
+						closedTabs: [{ type: 'mcp-server', id: 'srv-1' }],
+						activeTab: null,
+						previewOpen: false,
+					}),
+					save: vi.fn().mockResolvedValue(undefined),
+				},
+			});
+			registerMcpServer(ctx.thread, 'srv-1');
+			await flushPromises();
+
+			expect(ctx.openTabs.value).toEqual([]);
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
 		test('openMcpServerPreview switches to an existing tab or opens a known server by id', () => {
 			const ctx = setup();
 			ctx.thread.resourceNameIndex.set('marketing tools', {
