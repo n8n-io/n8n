@@ -1,8 +1,8 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController } from '@n8n/decorators';
-import { NotFoundError } from '@n8n/errors';
 import type { Request } from 'express';
 
+import { McpServerNotFoundError } from '../errors/mcp-server-not-found.error';
 import { McpServerShareService } from '../services/mcp-server-share.service';
 
 /**
@@ -19,7 +19,7 @@ export class McpServerShareController {
 	// `mcpServer:connect` in the project of the server before it adds the details.
 	async share(req: AuthenticatedRequest<{ slug: string }>) {
 		const share = await this.service.shareFor(req.params.slug, req.user);
-		if (!share) throw new NotFoundError('MCP server not found');
+		if (!share) throw new McpServerNotFoundError();
 		return share;
 	}
 
@@ -28,7 +28,7 @@ export class McpServerShareController {
 	@Get('/:slug/public', { skipAuth: true, ipRateLimit: { limit: 60, windowMs: 60_000 } })
 	async publicShare(req: Request<{ slug: string }>) {
 		const share = await this.service.publicShare(req.params.slug);
-		if (!share) throw new NotFoundError('MCP server not found');
+		if (!share) throw new McpServerNotFoundError();
 		return share;
 	}
 }

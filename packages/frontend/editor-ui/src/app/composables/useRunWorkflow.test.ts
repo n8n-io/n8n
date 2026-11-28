@@ -45,7 +45,8 @@ import {
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
 	CHAT_HITL_TOOL_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
-} from '../constants';
+	SPLIT_IN_BATCHES_NODE_TYPE,
+} from '@/app/constants';
 import type { WorkflowObjectAccessors } from '../types';
 import type { useWorkflowDocumentStore } from '../stores/workflowDocument.store';
 import type { MockInstance, Mocked } from 'vitest';
@@ -903,6 +904,260 @@ describe('useRunWorkflow({ router })', () => {
 
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ dirtyNodeNames: [executeName] }),
+			);
+		});
+
+		it('should not include a completed loop in dirtyNodeNames when running a modified downstream node', async () => {
+			const composable = useRunWorkflow({ router });
+			const triggerName = 'Manual Trigger';
+			const loopName = 'Loop Over Items';
+			const inLoopName = 'Loop Body';
+			const downstreamName = 'Downstream Edit Fields';
+
+			mockDocumentStore.allNodes = [
+				createTestNode({ name: triggerName, type: MANUAL_TRIGGER_NODE_TYPE }),
+				createTestNode({ name: loopName, type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+				createTestNode({ name: inLoopName }),
+				createTestNode({ name: downstreamName }),
+			];
+
+			const outgoing: Record<string, INodeConnections> = {
+				[triggerName]: {
+					main: [[{ node: loopName, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				[loopName]: {
+					main: [
+						[{ node: downstreamName, type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: inLoopName, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				[inLoopName]: {
+					main: [[{ node: loopName, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+			const incoming: Record<string, INodeConnections> = {
+				[loopName]: {
+					main: [
+						[
+							{ node: triggerName, type: NodeConnectionTypes.Main, index: 0 },
+							{ node: inLoopName, type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+				[inLoopName]: {
+					main: [[{ node: loopName, type: NodeConnectionTypes.Main, index: 1 }]],
+				},
+				[downstreamName]: {
+					main: [[{ node: loopName, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			vi.mocked(mockDocumentStore.outgoingConnectionsByNodeName).mockImplementation(
+				(nodeName) => outgoing[nodeName] ?? ({} as INodeConnections),
+			);
+			vi.mocked(mockDocumentStore.incomingConnectionsByNodeName).mockImplementation(
+				(nodeName) => incoming[nodeName] ?? ({} as INodeConnections),
+			);
+
+			const runData: IRunData = {
+				[triggerName]: [
+					{
+						startTime: 1,
+						executionIndex: 0,
+						executionTime: 0,
+						source: [],
+					},
+				],
+				[loopName]: [
+					{
+						startTime: 1,
+						executionIndex: 1,
+						executionTime: 1,
+						source: [{ previousNode: triggerName }],
+					},
+					{
+						startTime: 1,
+						executionIndex: 3,
+						executionTime: 1,
+						source: [{ previousNode: inLoopName }],
+					},
+				],
+				[inLoopName]: [
+					{
+						startTime: 1,
+						executionIndex: 2,
+						executionTime: 1,
+						source: [{ previousNode: loopName }],
+					},
+				],
+				[downstreamName]: [
+					{
+						startTime: 1,
+						executionIndex: 4,
+						executionTime: 1,
+						source: [{ previousNode: loopName }],
+					},
+				],
+			};
+
+			seedActiveRunData(runData);
+			mockDocumentStore.serialize.mockReturnValue({
+				nodes: [],
+			} as unknown as WorkflowData);
+			vi.mocked(workflowHelpers).executeData.mockResolvedValue({
+				data: {},
+				node: {},
+				source: null,
+			} as IExecuteData);
+			mockDocumentStore.checkIfNodeHasChatParent.mockReturnValue(false);
+			mockDocumentStore.getParametersLastUpdate.mockImplementation((name: string) =>
+				name === downstreamName ? 2 : undefined,
+			);
+
+			await composable.runWorkflow({
+				destinationNode: { nodeName: downstreamName, mode: 'inclusive' },
+				source: 'Node.executeNode',
+			});
+
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ dirtyNodeNames: [downstreamName] }),
+			);
+		});
+
+		it('should include the loop entry node in dirtyNodeNames when running a modified dead-end branch inside the loop body', async () => {
+			const composable = useRunWorkflow({ router });
+			const triggerName = 'Manual Trigger';
+			const loopName = 'Loop Over Items';
+			const inLoopName = 'HTTP';
+			const deadEndName = 'Append row';
+			const downstreamName = 'Downstream Edit Fields';
+
+			mockDocumentStore.allNodes = [
+				createTestNode({ name: triggerName, type: MANUAL_TRIGGER_NODE_TYPE }),
+				createTestNode({ name: loopName, type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+				createTestNode({ name: inLoopName }),
+				createTestNode({ name: deadEndName }),
+				createTestNode({ name: downstreamName }),
+			];
+
+			const outgoing: Record<string, INodeConnections> = {
+				[triggerName]: {
+					main: [[{ node: loopName, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				[loopName]: {
+					main: [
+						[{ node: downstreamName, type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: inLoopName, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				[inLoopName]: {
+					main: [
+						[
+							{ node: loopName, type: NodeConnectionTypes.Main, index: 0 },
+							{ node: deadEndName, type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			};
+			const incoming: Record<string, INodeConnections> = {
+				[loopName]: {
+					main: [
+						[
+							{ node: triggerName, type: NodeConnectionTypes.Main, index: 0 },
+							{ node: inLoopName, type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+				[inLoopName]: {
+					main: [[{ node: loopName, type: NodeConnectionTypes.Main, index: 1 }]],
+				},
+				[deadEndName]: {
+					main: [[{ node: inLoopName, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				[downstreamName]: {
+					main: [[{ node: loopName, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			vi.mocked(mockDocumentStore.outgoingConnectionsByNodeName).mockImplementation(
+				(nodeName) => outgoing[nodeName] ?? ({} as INodeConnections),
+			);
+			vi.mocked(mockDocumentStore.incomingConnectionsByNodeName).mockImplementation(
+				(nodeName) => incoming[nodeName] ?? ({} as INodeConnections),
+			);
+
+			const runData: IRunData = {
+				[triggerName]: [
+					{
+						startTime: 1,
+						executionIndex: 0,
+						executionTime: 0,
+						source: [],
+					},
+				],
+				[loopName]: [
+					{
+						startTime: 1,
+						executionIndex: 1,
+						executionTime: 1,
+						source: [{ previousNode: triggerName }],
+					},
+					{
+						startTime: 1,
+						executionIndex: 4,
+						executionTime: 1,
+						source: [{ previousNode: inLoopName }],
+					},
+				],
+				[inLoopName]: [
+					{
+						startTime: 1,
+						executionIndex: 2,
+						executionTime: 1,
+						source: [{ previousNode: loopName }],
+					},
+				],
+				[deadEndName]: [
+					{
+						startTime: 1,
+						executionIndex: 3,
+						executionTime: 1,
+						source: [{ previousNode: inLoopName }],
+					},
+				],
+				[downstreamName]: [
+					{
+						startTime: 1,
+						executionIndex: 5,
+						executionTime: 1,
+						source: [{ previousNode: loopName }],
+					},
+				],
+			};
+
+			seedActiveRunData(runData);
+			mockDocumentStore.serialize.mockReturnValue({
+				nodes: [],
+			} as unknown as WorkflowData);
+			vi.mocked(workflowHelpers).executeData.mockResolvedValue({
+				data: {},
+				node: {},
+				source: null,
+			} as IExecuteData);
+			mockDocumentStore.checkIfNodeHasChatParent.mockReturnValue(false);
+			mockDocumentStore.getParametersLastUpdate.mockImplementation((name: string) =>
+				name === deadEndName ? 2 : undefined,
+			);
+
+			await composable.runWorkflow({
+				destinationNode: { nodeName: deadEndName, mode: 'inclusive' },
+				source: 'Node.executeNode',
+			});
+
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					dirtyNodeNames: expect.arrayContaining([deadEndName, loopName]),
+				}),
 			);
 		});
 

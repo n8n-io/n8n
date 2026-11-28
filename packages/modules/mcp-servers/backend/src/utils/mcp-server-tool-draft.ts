@@ -6,7 +6,7 @@ import {
 import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { isRecord } from '@n8n/utils/is-record';
 
-import type { WorkflowToolInputSchema } from './workflow-tool-port';
+import type { WorkflowToolInputSchema } from './workflow-tool-input-schema';
 
 /** What the model gets about the workflow of a tool. */
 export interface ToolDraftSource {

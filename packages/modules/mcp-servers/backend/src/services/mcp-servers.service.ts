@@ -10,14 +10,15 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError, UnexpectedError } from '@n8n/errors';
 
-import { RefreshTokenPort } from '../access/refresh-token-port';
-import { McpServerProtectedResource } from '../runtime/mcp-server-protected-resource';
 import type { McpServer } from '../database/entities/mcp-server.entity';
-import type { McpServerActor } from '../mcp-server-events';
 import {
 	McpServerRepository,
 	type McpServerProject,
 } from '../database/repositories/mcp-server.repository';
+import { McpServerNotFoundError } from '../errors/mcp-server-not-found.error';
+import { RefreshTokenPort } from '../ports/refresh-token.port';
+import type { McpServerActor } from '../utils/mcp-server-events';
+import { McpServerProtectedResource } from './mcp-server-protected-resource.service';
 
 function toResponse(server: McpServer, project: McpServerProject): McpServerResponse {
 	return {
@@ -96,7 +97,7 @@ export class McpServersService {
 		const server = this.isServerId(serverId)
 			? await this.servers.update(projectId, serverId, dto)
 			: null;
-		if (!server) throw new NotFoundError('MCP server not found');
+		if (!server) throw new McpServerNotFoundError();
 		return await this.withProject(server);
 	}
 
@@ -106,7 +107,7 @@ export class McpServersService {
 		// The tokens go first. If their delete fails, the server stays and a retry works.
 		await this.refreshTokens.deleteForResource(this.resources.serverUrl(server));
 		if (!(await this.servers.softDelete(projectId, server.id))) {
-			throw new NotFoundError('MCP server not found');
+			throw new McpServerNotFoundError();
 		}
 		this.events.emit('mcp-server-deleted', { ...actor, serverId, projectId });
 	}
@@ -123,7 +124,7 @@ export class McpServersService {
 		const server = this.isServerId(serverId)
 			? await this.servers.findInProject(projectId, serverId)
 			: null;
-		if (!server) throw new NotFoundError('MCP server not found');
+		if (!server) throw new McpServerNotFoundError();
 		return server;
 	}
 

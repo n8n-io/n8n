@@ -13,17 +13,17 @@ import {
 import type { SecurityContext } from '@n8n/permissions';
 
 import type { McpServerTool } from '../database/entities/mcp-server-tool.entity';
-import { McpServerToolRepository } from '../database/repositories/mcp-server-tool.repository';
 import type { McpServer } from '../database/entities/mcp-server.entity';
-import { OAuthClientNamePort } from '../tools/oauth-client-name-port';
+import { McpServerToolRepository } from '../database/repositories/mcp-server-tool.repository';
+import { OAuthClientNamePort } from '../ports/oauth-client-name.port';
 import {
 	WorkflowToolPort,
 	type WorkflowToolInputSchema,
 	type WorkflowToolRefusal,
 	type WorkflowToolRunResult,
-} from '../tools/workflow-tool-port';
-import { McpServerProtectedResource } from './mcp-server-protected-resource';
-import { McpServerRunCap } from './run-cap';
+} from '../ports/workflow-tool.port';
+import { McpServerProtectedResource } from './mcp-server-protected-resource.service';
+import { McpServerRunCap } from './mcp-server-run-cap.service';
 
 // The type imports and `lazyImport` both resolve the CommonJS declarations of the SDK, so the
 // controller can pass the `Server` of `createServer` to the SDK handler.

@@ -7,7 +7,7 @@ import {
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-import { McpServerBlock } from '../database/entities/mcp-server-block.entity';
+import { McpServerBlock } from '../entities/mcp-server-block.entity';
 
 class McpServerBlockTable extends BaseRepository<McpServerBlock> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -16,6 +16,9 @@ class McpServerBlockTable extends BaseRepository<McpServerBlock> {
 }
 
 export type NewMcpServerBlock = Pick<McpServerBlock, 'serverId' | 'userId' | 'blockedById'>;
+
+export type McpServerBlockFixtureRow = Pick<McpServerBlock, 'serverId' | 'userId'> &
+	Partial<Pick<McpServerBlock, 'blockedById' | 'blockedAt'>>;
 
 @Service()
 export class McpServerBlockRepository {
@@ -64,5 +67,24 @@ export class McpServerBlockRepository {
 			where: { serverId },
 			order: { blockedAt: 'DESC', userId: 'ASC' },
 		});
+	}
+
+	/** Inserts a block row with only the given columns, so database defaults apply. For test fixtures. */
+	async insertFixture(row: McpServerBlockFixtureRow): Promise<McpServerBlock> {
+		await this.table.manager.insert(McpServerBlock, { blockedById: null, ...row });
+		return await this.table.manager.findOneByOrFail(McpServerBlock, {
+			serverId: row.serverId,
+			userId: row.userId,
+		});
+	}
+
+	/** Lists every block row across all servers. For test fixtures. */
+	async findAll(): Promise<McpServerBlock[]> {
+		return await this.table.manager.find(McpServerBlock);
+	}
+
+	/** Deletes every block row. For test fixtures. */
+	async deleteAll(): Promise<void> {
+		await this.table.manager.delete(McpServerBlock, {});
 	}
 }

@@ -7,7 +7,7 @@ import {
 import { Service } from '@n8n/di';
 import { DataSource, LessThan } from '@n8n/typeorm';
 
-import { McpServerConnection } from '../database/entities/mcp-server-connection.entity';
+import { McpServerConnection } from '../entities/mcp-server-connection.entity';
 
 class McpServerConnectionTable extends BaseRepository<McpServerConnection> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -20,6 +20,10 @@ export type McpServerConnectionKey = Pick<
 	McpServerConnection,
 	'serverId' | 'userId' | 'oauthClientId'
 >;
+
+export type McpServerConnectionFixtureRow = McpServerConnectionKey &
+	Pick<McpServerConnection, 'clientName'> &
+	Partial<Pick<McpServerConnection, 'firstUsedAt' | 'lastUsedAt'>>;
 
 @Service()
 export class McpServerConnectionRepository {
@@ -94,5 +98,30 @@ export class McpServerConnectionRepository {
 			.managerFor(ctx)
 			.delete(McpServerConnection, { serverId, userId });
 		return result.affected ?? 0;
+	}
+
+	/** Inserts a connection row with only the given columns, so database defaults apply. For test fixtures. */
+	async insertFixture(row: McpServerConnectionFixtureRow): Promise<McpServerConnection> {
+		await this.table.manager.insert(McpServerConnection, row);
+		return await this.table.manager.findOneByOrFail(McpServerConnection, {
+			serverId: row.serverId,
+			userId: row.userId,
+			oauthClientId: row.oauthClientId,
+		});
+	}
+
+	/** Lists every connection row across all servers. For test fixtures. */
+	async findAll(): Promise<McpServerConnection[]> {
+		return await this.table.manager.find(McpServerConnection);
+	}
+
+	/** Sets the last-used timestamp directly. For test fixtures. */
+	async setLastUsedAt(key: McpServerConnectionKey, lastUsedAt: Date): Promise<void> {
+		await this.table.manager.update(McpServerConnection, key, { lastUsedAt });
+	}
+
+	/** Deletes every connection row. For test fixtures. */
+	async deleteAll(): Promise<void> {
+		await this.table.manager.delete(McpServerConnection, {});
 	}
 }

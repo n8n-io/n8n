@@ -7,10 +7,10 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError } from '@n8n/errors';
 import { DataSource, In, IsNull } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
+import { McpServerUrlTakenError } from '../../errors/mcp-server-url-taken.error';
 import { McpServer } from '../entities/mcp-server.entity';
 
 class McpServerTable extends BaseRepository<McpServer> {
@@ -23,6 +23,11 @@ export type NewMcpServer = Pick<
 	McpServer,
 	'projectId' | 'name' | 'slug' | 'description' | 'createdById'
 >;
+
+export type McpServerFixtureRow = Partial<
+	Pick<McpServer, 'id' | 'description' | 'createdById' | 'deletedAt'>
+> &
+	Pick<McpServer, 'projectId' | 'name' | 'slug'>;
 
 export type McpServerChanges = Partial<Pick<McpServer, 'name' | 'description'>>;
 
@@ -49,7 +54,7 @@ export class McpServerRepository {
 			await manager.insert(McpServer, server);
 		} catch (error) {
 			if (isUniqueConstraintError(error)) {
-				throw new ConflictError('Another MCP server uses this URL. Choose another URL.');
+				throw new McpServerUrlTakenError();
 			}
 			throw error;
 		}
@@ -145,5 +150,27 @@ export class McpServerRepository {
 
 	async projectExists(projectId: string, ctx: OperationContext = {}): Promise<boolean> {
 		return await this.table.managerFor(ctx).existsBy(Project, { id: projectId });
+	}
+
+	/** Inserts a server row with only the given columns, so database defaults apply. For test fixtures. */
+	async insertFixture(row: McpServerFixtureRow): Promise<McpServer> {
+		const id = row.id ?? uuidv7();
+		await this.table.manager.insert(McpServer, { ...row, id });
+		return await this.table.manager.findOneByOrFail(McpServer, { id });
+	}
+
+	/** Reads a server row by ID, including soft-deleted servers. For test fixtures. */
+	async findById(serverId: string): Promise<McpServer | null> {
+		return await this.table.manager.findOneBy(McpServer, { id: serverId });
+	}
+
+	/** Marks a server as deleted by ID or slug. For test fixtures. */
+	async markDeleted(where: { id: string } | { slug: string }): Promise<void> {
+		await this.table.manager.update(McpServer, where, { deletedAt: new Date() });
+	}
+
+	/** Deletes every server row. For test fixtures. */
+	async deleteAll(): Promise<void> {
+		await this.table.manager.delete(McpServer, {});
 	}
 }
