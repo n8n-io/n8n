@@ -832,6 +832,18 @@ export type {
 } from './schemas/assistant-preference-cards.schema';
 
 export {
+	assistantUsageResponseSchema,
+	assistantUsageUsersResponseSchema,
+} from './schemas/assistant-usage.schema';
+export type {
+	AssistantUsageSummary,
+	AssistantUsageDay,
+	AssistantUsageResponse,
+	AssistantUsageUser,
+	AssistantUsageUsersResponse,
+} from './schemas/assistant-usage.schema';
+
+export {
 	assistantAgentTargetSchema,
 	assistantAgentPreviewSessionSchema,
 } from './schemas/assistant-agent-targets.schema';
