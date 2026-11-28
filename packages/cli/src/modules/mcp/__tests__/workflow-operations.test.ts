@@ -109,6 +109,20 @@ describe('applyOperations', () => {
 			});
 		});
 
+		test('accepts a path spelled from the node root', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { jsCode: 'old' };
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/parameters/jsCode', value: 'new' },
+			];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes.find((n) => n.name === 'B')!.parameters).toEqual({
+				jsCode: 'new',
+			});
+		});
+
 		test('preserves sibling keys at the leaf', () => {
 			const wf = baseWorkflow();
 			wf.nodes[1].parameters = { url: 'https://old', method: 'GET' };

@@ -791,6 +791,14 @@ const handleSetNodeParameter: OpHandler<'setNodeParameter'> = (op, ctx) => {
 		return `path '${op.path}' is invalid or contains unsafe segments`;
 	}
 
+	// Paths are relative to the parameters object, but callers commonly spell
+	// them from the node root ("/parameters/jsCode"). Accept both instead of
+	// creating a nested `parameters` key that leaves the real value untouched.
+	if (segments[0] === 'parameters') segments.shift();
+	if (segments.length === 0) {
+		return `path '${op.path}' does not target a parameter`;
+	}
+
 	const params = (node.parameters ?? {}) as Record<string, unknown>;
 	const setError = setAtPointer(params, segments, op.value);
 	if (setError) {
