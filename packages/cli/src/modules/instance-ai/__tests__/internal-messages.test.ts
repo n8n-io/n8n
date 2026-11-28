@@ -851,6 +851,24 @@ describe('buildThreadArtifactsBlock', () => {
 		expect(block).toContain('Skill "Brand voice" (id: `skill-1`) [current]');
 	});
 
+	it('lists an open custom MCP server tab', () => {
+		const block = buildThreadArtifactsBlock({
+			artifacts: [
+				{
+					type: 'mcp-server',
+					id: 'srv-1',
+					name: 'Marketing tools',
+					projectId: 'proj-1',
+				},
+			],
+			activeId: 'srv-1',
+		});
+
+		expect(block).toContain(
+			'MCP server "Marketing tools" (id: `srv-1`, in project `proj-1`) [current]',
+		);
+	});
+
 	it('folds resource attachments into the same block with a durable JSON line', () => {
 		const block = buildThreadArtifactsBlock(
 			{

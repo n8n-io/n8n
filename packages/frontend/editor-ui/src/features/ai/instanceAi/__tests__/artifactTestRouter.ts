@@ -1,6 +1,7 @@
 import { defineComponent } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { APP_DETAIL_VIEW } from '@n8n/frontend-module-apps';
+import { MCP_SERVER_VIEW, MCP_SERVERS_LIST_VIEW } from '@n8n/frontend-module-mcp-servers';
 import { VIEWS } from '@/app/constants';
 import { AGENT_BUILDER_VIEW, AGENT_VIEW, AGENTS_LIST_VIEW } from '@/features/agents/constants';
 import { DATA_TABLE_DETAILS, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
@@ -19,6 +20,7 @@ export function createArtifactTestRouter(base = '/') {
 			{ path: '/home/credentials/:credentialId?', name: VIEWS.CREDENTIALS, component: Stub },
 			{ path: '/home/datatables', name: DATA_TABLE_VIEW, component: Stub },
 			{ path: '/home/agents', name: AGENTS_LIST_VIEW, component: Stub },
+			{ path: '/home/mcp-servers', name: MCP_SERVERS_LIST_VIEW, component: Stub },
 			{
 				path: '/settings/context/skills',
 				name: VIEWS.SETTINGS_CONTEXT_SKILLS,
@@ -42,6 +44,7 @@ export function createArtifactTestRouter(base = '/') {
 						children: [{ path: '', name: AGENT_BUILDER_VIEW, component: Stub }],
 					},
 					{ path: 'apps/:appId', name: APP_DETAIL_VIEW, component: Stub },
+					{ path: 'mcp-servers/:serverId', name: MCP_SERVER_VIEW, component: Stub },
 				],
 			},
 			{ path: '/:pathMatch(.*)*', component: Stub },

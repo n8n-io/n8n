@@ -69,13 +69,6 @@ export const registerComponentSlots = () => {
 	);
 
 	componentRegistry.register(
-		'assistant-panel',
-		defineAsyncComponent(
-			async () => await import('@/features/ai/instanceAi/embed/AssistantPanelSlot.vue'),
-		),
-	);
-
-	componentRegistry.register(
 		'credential-type-icon',
 		defineAsyncComponent(
 			async () => await import('@/features/credentials/components/CredentialIcon.vue'),

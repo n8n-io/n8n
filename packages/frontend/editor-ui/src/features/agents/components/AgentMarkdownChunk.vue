@@ -59,6 +59,10 @@ const openSkillPreview = inject<((id: string) => boolean) | undefined>(
 	undefined,
 );
 const openAppPreview = inject<((id: string) => boolean) | undefined>('openAppPreview', undefined);
+const openMcpServerPreview = inject<((id: string, projectId?: string) => boolean) | undefined>(
+	'openMcpServerPreview',
+	undefined,
+);
 
 function handleLinkClick(event: MouseEvent) {
 	if (!(event.target instanceof Element)) return;
@@ -104,6 +108,7 @@ function handleLinkClick(event: MouseEvent) {
 		:open-agent-preview="openAgentPreview"
 		:open-skill-preview="openSkillPreview"
 		:open-app-preview="openAppPreview"
+		:open-mcp-server-preview="openMcpServerPreview"
 		@click="handleLinkClick"
 	/>
 </template>

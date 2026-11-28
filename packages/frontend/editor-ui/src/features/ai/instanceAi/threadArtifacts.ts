@@ -26,7 +26,8 @@ function isThreadArtifactType(type: ResourceEntry['type']): type is ThreadArtifa
 		type === 'agent' ||
 		type === 'data-table' ||
 		type === 'skill' ||
-		type === 'app'
+		type === 'app' ||
+		type === 'mcp-server'
 	);
 }
 

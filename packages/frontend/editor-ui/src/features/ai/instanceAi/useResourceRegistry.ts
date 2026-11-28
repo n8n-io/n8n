@@ -10,17 +10,23 @@ import {
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
-import type { InstanceAiWorkflowAttachment, InstanceAiAppTarget } from '@n8n/api-types';
+import type {
+	InstanceAiAppTarget,
+	InstanceAiMcpServerTarget,
+	InstanceAiWorkflowAttachment,
+} from '@n8n/api-types';
 
 import type { ArtifactToolCall, ArtifactTurn } from './artifactTurns';
 import {
 	getAppArtifactFromToolCall,
 	getChangedDataTablesFromBatch,
+	getMcpServerLookupEntriesFromToolCall,
+	getMcpServerMutationEventFromToolCall,
 	getSkillArtifactFromToolCall,
 } from './canvasPreview.utils';
 
 export type ResourceEntry = {
-	type: 'workflow' | 'credential' | 'data-table' | 'agent' | 'skill' | 'app';
+	type: 'workflow' | 'credential' | 'data-table' | 'agent' | 'skill' | 'app' | 'mcp-server';
 	id: string;
 	name: string;
 	createdAt?: string;
@@ -67,6 +73,8 @@ interface Collections {
 	intake: ArtifactOrigin;
 	/** Every name recorded for each agent id, to tell a stale metadata name from a user rename. */
 	agentNames: Map<string, Set<string>>;
+	/** Custom MCP servers seen in list/get results, so later tool mutations resolve name and projectId. */
+	mcpServersById: Map<string, ResourceEntry>;
 }
 
 /**
@@ -247,6 +255,36 @@ function extractFromAppsResult(tc: ArtifactToolCall, col: Collections): void {
 	recordProduced(col, { type: 'app', id: app.appId, name: app.name, projectId: app.projectId });
 }
 
+/** Custom MCP server results: list/get index by name; create and mutations produce the server artifact. */
+function extractFromCustomMcpServersResult(tc: ArtifactToolCall, col: Collections): void {
+	for (const server of getMcpServerLookupEntriesFromToolCall(tc)) {
+		const entry: ResourceEntry = {
+			type: 'mcp-server',
+			id: server.id,
+			name: server.name,
+			...(server.projectId ? { projectId: server.projectId } : {}),
+		};
+		indexByName(col, entry);
+		col.mcpServersById.set(server.id, entry);
+	}
+	const event = getMcpServerMutationEventFromToolCall(tc);
+	if (!event || event.kind === 'deleted') return;
+	const existing = col.produced.get(event.serverId);
+	const known = col.mcpServersById.get(event.serverId);
+	const resolvedName = event.name ?? existing?.name ?? known?.name;
+	const projectId = event.projectId ?? existing?.projectId ?? known?.projectId;
+	recordProduced(
+		col,
+		{
+			type: 'mcp-server',
+			id: event.serverId,
+			name: resolvedName ?? 'MCP server',
+			...(projectId ? { projectId } : {}),
+		},
+		{ linkable: Boolean(resolvedName) },
+	);
+}
+
 /** Batch data table results: every table the batch changed and kept. Deleted tables stay out. */
 function extractFromDataTableBatch(tc: ArtifactToolCall, col: Collections): void {
 	for (const table of getChangedDataTablesFromBatch(tc)) {
@@ -259,6 +297,7 @@ function extractFromToolCall(tc: ArtifactToolCall, col: Collections): void {
 	extractFromDataTableBatch(tc, col);
 	extractFromSkillsResult(tc, col);
 	extractFromAppsResult(tc, col);
+	extractFromCustomMcpServersResult(tc, col);
 	const isFormerWorkflowsCall = isFormerWorkflowsTool(tc.toolName);
 	if (
 		!isFormerWorkflowsCall &&
@@ -451,6 +490,7 @@ export function turnHasArtifact(turn: ArtifactTurn): boolean {
 		origins: new Map(),
 		intake: 'attached',
 		agentNames: new Map(),
+		mcpServersById: new Map(),
 	};
 	collectFromToolCalls(turn, col);
 	return col.produced.size > 0;
@@ -581,6 +621,30 @@ function enrichAppsFromTargets(col: Collections, targets: readonly InstanceAiApp
 	}
 }
 
+function enrichMcpServerFromTarget(
+	col: Collections,
+	target: InstanceAiMcpServerTarget | undefined,
+): void {
+	if (!target) return;
+	const existing = col.produced.get(target.serverId);
+	if (existing && existing.type !== 'mcp-server') return;
+	const known = col.mcpServersById.get(target.serverId);
+	const resolvedName =
+		(existing?.name && existing.name !== 'MCP server' ? existing.name : undefined) ??
+		known?.name ??
+		target.name;
+	recordProduced(
+		col,
+		{
+			type: 'mcp-server',
+			id: target.serverId,
+			name: resolvedName ?? 'MCP server',
+			projectId: existing?.projectId ?? target.projectId,
+		},
+		{ linkable: Boolean(resolvedName) },
+	);
+}
+
 /**
  * Surface a new-agent artifact the user opened but has not configured yet, so
  * the panel can show it before any agent row exists.
@@ -626,6 +690,7 @@ export interface ResourceRegistrySources {
 	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined;
 	agentBuilderTargets?: () => AgentBuilderTargetMetadata[];
 	appTargets?: () => readonly InstanceAiAppTarget[];
+	mcpServerTarget?: () => InstanceAiMcpServerTarget | undefined;
 }
 
 /**
@@ -661,6 +726,7 @@ export function useResourceRegistry(
 		pendingWorkflowAttachment,
 		agentBuilderTargets,
 		appTargets,
+		mcpServerTarget,
 	}: ResourceRegistrySources = {},
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
@@ -683,6 +749,7 @@ export function useResourceRegistry(
 				origins: new Map<string, ArtifactOrigin>(),
 				intake: 'attached',
 				agentNames: new Map<string, Set<string>>(),
+				mcpServersById: new Map<string, ResourceEntry>(),
 			};
 
 			// Turns run in order, and the user's attachments precede the agent's
@@ -705,6 +772,7 @@ export function useResourceRegistry(
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
 			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
 			enrichAppsFromTargets(col, appTargets?.() ?? []);
+			enrichMcpServerFromTarget(col, mcpServerTarget?.());
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);

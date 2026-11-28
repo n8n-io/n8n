@@ -28,6 +28,7 @@ describe('useArtifactLinks', () => {
 		['credential', '/n8n/home/credentials/res-1'],
 		['data-table', '/n8n/home/datatables'],
 		['agent', '/n8n/home/agents'],
+		['mcp-server', '/n8n/home/mcp-servers'],
 	] as const)('resolves a %s without a project to %s', (type, href) => {
 		const { artifactHref } = setup('/n8n/');
 
@@ -51,6 +52,9 @@ describe('useArtifactLinks', () => {
 			const { artifactHref, artifactUrl, openArtifactInNewTab } = setup(base);
 
 			expect(artifactHref('workflow', 'wf-1')).toBe(`${prefix}/workflow/wf-1`);
+			expect(artifactHref('mcp-server', 'srv-1', 'project-1')).toBe(
+				`${prefix}/projects/project-1/mcp-servers/srv-1`,
+			);
 			expect(artifactUrl('skill', 'skill-1')).toBe(
 				`${window.location.origin}${prefix}/settings/context/skills?skillId=skill-1`,
 			);

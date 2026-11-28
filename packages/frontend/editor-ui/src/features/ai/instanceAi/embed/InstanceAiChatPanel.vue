@@ -76,7 +76,6 @@ import InstanceAiConversation from '../components/InstanceAiConversation.vue';
 import ApprovalModeSelector from '@/features/ai/instanceAi/components/ApprovalModeSelector.vue';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
-import { getMcpServerMutations } from './mcpServerMutations';
 import {
 	INSTANCE_AI_EMBED_SUBJECT_KEY,
 	threadTargetsSubject,
@@ -107,15 +106,11 @@ const emit = defineEmits<{
 	'update:building': [building: boolean];
 	'update:working': [working: boolean];
 	close: [];
-	/** A tool call of the Assistant changed the subject. Only a custom MCP server emits it. */
-	'subject-changed': [];
 	'message-sent': [];
 	'content-change': [hasContent: boolean];
 }>();
 
 const slots = defineSlots<{
-	/** A row under the header that names the subject. */
-	subject?: () => unknown;
 	/** A host's welcome state, rendered by the conversation until the thread has its first message. */
 	empty?: () => unknown;
 	'composer-start'?: () => unknown;
@@ -747,27 +742,6 @@ const ThreadScope = defineComponent({
 		const working = useIsAgentWorking(runtime);
 		watch(working, (value) => emit('update:working', value), { immediate: true });
 		useAgentMutationRefresh(runtime);
-		const serverMutations = computed(() =>
-			props.subject.type === 'mcpServer'
-				? getMcpServerMutations(runtime.artifactTurns, props.subject.id)
-				: [],
-		);
-		const seenServerMutations = new Set<string>();
-		let seededServerMutations = false;
-		watch(
-			serverMutations,
-			(toolCallIds) => {
-				const unseen = toolCallIds.filter((toolCallId) => !seenServerMutations.has(toolCallId));
-				for (const toolCallId of unseen) seenServerMutations.add(toolCallId);
-				// The changes of the history are already on the page: the thread at mount, and the
-				// messages that hydration loads. `sync` sees the hydrating flag before it turns off.
-				if (unseen.length > 0 && seededServerMutations && !runtime.isHydratingThread) {
-					emit('subject-changed');
-				}
-				seededServerMutations = true;
-			},
-			{ immediate: true, flush: 'sync' },
-		);
 		const buildingArtifactIds = useBuildingArtifactIds(runtime);
 		watch(
 			() => buildingArtifactIds.value.has(props.subject.id),
@@ -893,7 +867,6 @@ function handleCloseShortcut(event: KeyboardEvent) {
 				</KeyboardShortcutTooltip>
 			</template>
 		</InstanceAiViewHeader>
-		<slot name="subject" />
 		<div :class="$style.body">
 			<AssistantAgentPanelThread
 				v-if="activeThreadId && isAgentThread && props.subject.type === 'agent'"

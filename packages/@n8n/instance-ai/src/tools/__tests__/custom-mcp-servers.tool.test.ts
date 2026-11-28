@@ -741,4 +741,99 @@ describe('custom-mcp-servers tool', () => {
 			expect(parseToolInput(tool, input).success).toBe(false);
 		});
 	});
+
+	describe('onArtifactChanged', () => {
+		it('reports an mcp-server artifact on create, update, add-tools, update-tool, generate, and remove-tool', async () => {
+			const service = createService();
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createContext(service, { onArtifactChanged, projectId: 'project-1' });
+			const customTool = createCustomMcpServersTool(context);
+
+			await executeTool(customTool, { action: 'create', name: 'Marketing Tools' }, resumeCtx(true));
+			expect(onArtifactChanged).toHaveBeenLastCalledWith({
+				type: 'mcp-server',
+				id: SERVER_ID,
+				name: 'Marketing Tools',
+				projectId: 'project-1',
+			});
+
+			await executeTool(
+				customTool,
+				{ action: 'update', serverId: SERVER_ID, name: 'Revenue Tools' },
+				resumeCtx(true),
+			);
+			expect(onArtifactChanged).toHaveBeenLastCalledWith({
+				type: 'mcp-server',
+				id: SERVER_ID,
+				name: 'Marketing Tools',
+				projectId: 'project-1',
+			});
+
+			await executeTool(
+				customTool,
+				{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['wf-1'] },
+				resumeCtx(true),
+			);
+			expect(onArtifactChanged).toHaveBeenLastCalledWith({
+				type: 'mcp-server',
+				id: SERVER_ID,
+				projectId: 'project-1',
+			});
+
+			await executeTool(
+				customTool,
+				{ action: 'update-tool', serverId: SERVER_ID, toolId: TOOL_ID, toolName: 'get_leads' },
+				resumeCtx(true),
+			);
+			expect(onArtifactChanged).toHaveBeenLastCalledWith({
+				type: 'mcp-server',
+				id: SERVER_ID,
+				name: 'Marketing Tools',
+				projectId: 'project-1',
+			});
+
+			await executeTool(
+				customTool,
+				{ action: 'generate', serverId: SERVER_ID, toolId: TOOL_ID },
+				resumeCtx(true),
+			);
+			expect(onArtifactChanged).toHaveBeenLastCalledWith({
+				type: 'mcp-server',
+				id: SERVER_ID,
+				name: 'Marketing Tools',
+				projectId: 'project-1',
+			});
+
+			await executeTool(
+				customTool,
+				{ action: 'remove-tool', serverId: SERVER_ID, toolId: TOOL_ID },
+				resumeCtx(true),
+			);
+			expect(onArtifactChanged).toHaveBeenLastCalledWith({
+				type: 'mcp-server',
+				id: SERVER_ID,
+				name: 'Marketing Tools',
+				projectId: 'project-1',
+			});
+			expect(onArtifactChanged).toHaveBeenCalledTimes(6);
+		});
+
+		it('does not report on list, get, delete, or denied calls', async () => {
+			const service = createService();
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createContext(service, { onArtifactChanged, projectId: 'project-1' });
+			const customTool = createCustomMcpServersTool(context);
+
+			await executeTool(customTool, { action: 'list' }, resumeCtx(true));
+			await executeTool(customTool, { action: 'get', serverId: SERVER_ID }, resumeCtx(true));
+			await executeTool(customTool, { action: 'delete', serverId: SERVER_ID }, resumeCtx(true));
+			await executeTool(
+				customTool,
+				{ action: 'update', serverId: SERVER_ID, name: 'Nope' },
+				resumeCtx(false),
+			);
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+	});
 });

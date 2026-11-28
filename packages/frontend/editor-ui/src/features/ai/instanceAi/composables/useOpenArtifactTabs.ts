@@ -23,6 +23,7 @@ export const ARTIFACT_TAB_ICONS: Record<ArtifactTab['type'], IconName> = {
 	agent: 'robot',
 	skill: 'book-open',
 	app: 'layout-template',
+	'mcp-server': 'mcp',
 };
 
 type TabsLayout = Pick<AssistantThreadTabsState, 'tabs' | 'closedTabs'>;

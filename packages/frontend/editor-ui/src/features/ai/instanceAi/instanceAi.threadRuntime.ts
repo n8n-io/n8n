@@ -699,6 +699,8 @@ export function createThreadRuntime(
 		agentBuilderTargets: () =>
 			getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 		appTargets: () => getAppTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		mcpServerTarget: () =>
+			getMcpServerTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	});
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =

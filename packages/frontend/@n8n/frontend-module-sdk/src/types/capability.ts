@@ -1,6 +1,7 @@
 import type {
 	CreateCredentialDto,
 	EnvironmentsVersion,
+	InstanceAiPrefillPayload,
 	SelfHealingResultDetail,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
@@ -226,8 +227,13 @@ export interface TagNames {
 export interface McpServerAssistantHandoff {
 	/** Whether the Assistant is ready to open a thread on a custom MCP server. */
 	available: ComputedRef<boolean>;
-	/** Opens the full Assistant on the newest thread of the server, or on a new one. */
-	openServer(input: { serverId: string; projectId: string; serverName?: string }): Promise<boolean>;
+	/** Opens the Assistant on a new thread with the server as a tab. */
+	openServer(input: {
+		serverId: string;
+		projectId: string;
+		serverName?: string;
+		prefill?: InstanceAiPrefillPayload;
+	}): Promise<boolean>;
 }
 
 export interface AppAssistantHandoff {

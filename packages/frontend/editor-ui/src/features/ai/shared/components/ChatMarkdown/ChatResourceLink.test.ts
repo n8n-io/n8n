@@ -110,6 +110,20 @@ describe('ChatResourceLink', () => {
 		expect(openAppPreview).toHaveBeenCalledWith('app1');
 	});
 
+	it('opens the preview for a link to a known custom MCP server', () => {
+		const openMcpServerPreview = vi.fn(() => true);
+		const wrapper = mount(ChatResourceLink, {
+			props: {
+				href: '/projects/p1/mcp-servers/srv1',
+				label: 'Marketing tools',
+				resources: [{ type: 'mcp-server', id: 'srv1', name: 'Marketing tools' }],
+				openMcpServerPreview,
+			},
+		});
+		expect(click(wrapper.element).defaultPrevented).toBe(true);
+		expect(openMcpServerPreview).toHaveBeenCalledWith('srv1', 'p1');
+	});
+
 	it.each([
 		{ href: '/workflow/abc/debug/exec-1', type: 'workflow', id: 'abc' },
 		{ href: '/workflow/abc/executions', type: 'workflow', id: 'abc' },

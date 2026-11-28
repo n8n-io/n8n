@@ -1,5 +1,6 @@
 import { useRouter, type RouteLocationRaw } from 'vue-router';
 import { APP_DETAIL_VIEW } from '@n8n/frontend-module-apps';
+import { MCP_SERVER_VIEW, MCP_SERVERS_LIST_VIEW } from '@n8n/frontend-module-mcp-servers';
 import { VIEWS } from '@/app/constants';
 import { getSameOriginUrl } from '@/features/ai/shared/components/ChatMarkdown/ChatResourceLink.utils';
 import { AGENT_BUILDER_VIEW, AGENTS_LIST_VIEW } from '@/features/agents/constants';
@@ -12,6 +13,7 @@ const ARTIFACT_LINK_TYPES = [
 	'agent',
 	'skill',
 	'app',
+	'mcp-server',
 ] as const;
 
 export type ArtifactLinkType = (typeof ARTIFACT_LINK_TYPES)[number];
@@ -48,6 +50,10 @@ function artifactRoute(
 			return { name: VIEWS.SETTINGS_CONTEXT_SKILLS, query: { skillId: id } };
 		case 'app':
 			return projectId ? { name: APP_DETAIL_VIEW, params: { projectId, appId: id } } : undefined;
+		case 'mcp-server':
+			return projectId
+				? { name: MCP_SERVER_VIEW, params: { projectId, serverId: id } }
+				: { name: MCP_SERVERS_LIST_VIEW };
 	}
 }
 

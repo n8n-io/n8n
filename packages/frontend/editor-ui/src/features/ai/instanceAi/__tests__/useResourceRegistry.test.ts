@@ -57,6 +57,7 @@ function setup(
 		| undefined,
 	agentBuilderTargets?: () => Array<{ agentId: string; projectId: string; name?: string }>,
 	appTargets?: () => Array<{ appId: string; projectId: string; name?: string }>,
+	mcpServerTarget?: () => { serverId: string; projectId: string; name?: string } | undefined,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
 	const {
@@ -72,6 +73,7 @@ function setup(
 		pendingWorkflowAttachment,
 		agentBuilderTargets,
 		appTargets,
+		mcpServerTarget,
 	});
 	return {
 		messages,
@@ -1203,6 +1205,125 @@ describe('useResourceRegistry', () => {
 			await nextTick();
 
 			expect(producedArtifacts.size).toBe(0);
+		});
+	});
+
+	describe('producedArtifacts — custom MCP server registration', () => {
+		function untrusted(result: Record<string, unknown>) {
+			return {
+				type: 'content',
+				value: [
+					{
+						type: 'text',
+						text: `<untrusted_data source="tool:custom-mcp-servers">\n${JSON.stringify(result)}\n</untrusted_data>`,
+					},
+				],
+			};
+		}
+
+		test('registers a custom MCP server linked in thread metadata as a linkable preview artifact', async () => {
+			const target = ref({ serverId: 'srv-1', projectId: 'project-1', name: 'Marketing tools' });
+			const { producedArtifacts, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => target.value,
+			);
+			await nextTick();
+
+			expect(producedArtifacts.get('srv-1')).toEqual({
+				type: 'mcp-server',
+				id: 'srv-1',
+				name: 'Marketing tools',
+				projectId: 'project-1',
+			});
+			expect(linkableResourceNameIndex.get('marketing tools')?.id).toBe('srv-1');
+		});
+
+		test('registers created and mutated servers, indexes listed servers, and ignores reads/denials', async () => {
+			const { messages, producedArtifacts, resourceNameIndex } = setup();
+			const server = { id: 'srv-1', name: 'Marketing tools', projectId: 'project-1' };
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-list',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'list' },
+								result: untrusted({
+									servers: [
+										server,
+										{ id: 'srv-2', name: 'Read only server', projectId: 'project-1' },
+									],
+								}),
+							}),
+							makeToolCall({
+								toolCallId: 'tc-denied',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'update', serverId: 'srv-2', name: 'Denied' },
+								result: untrusted({ success: false, denied: true }),
+							}),
+							makeToolCall({
+								toolCallId: 'tc-add',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'add-tools', serverId: 'srv-1', workflowIds: ['wf-1'] },
+								result: untrusted({ success: true, serverMutated: true, tools: [] }),
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(resourceNameIndex.get('read only server')?.id).toBe('srv-2');
+			expect(producedArtifacts.has('srv-2')).toBe(false);
+			expect(producedArtifacts.get('srv-1')).toEqual({
+				type: 'mcp-server',
+				id: 'srv-1',
+				name: 'Marketing tools',
+				projectId: 'project-1',
+			});
+		});
+
+		test('prefers the latest name from an update tool call over thread metadata', async () => {
+			const target = ref({ serverId: 'srv-1', projectId: 'project-1', name: 'Old name' });
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => target.value,
+			);
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'custom-mcp-servers',
+								args: { action: 'update', serverId: 'srv-1', name: 'Revenue tools' },
+								result: untrusted({
+									success: true,
+									serverMutated: true,
+									server: { id: 'srv-1', name: 'Revenue tools', projectId: 'project-1' },
+								}),
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('srv-1')?.name).toBe('Revenue tools');
+			expect(linkableResourceNameIndex.get('revenue tools')?.id).toBe('srv-1');
 		});
 	});
 

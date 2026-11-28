@@ -36,6 +36,7 @@ const props = defineProps<{
 	openAgentChatPreview?: (id: string, projectId: string) => boolean;
 	openSkillPreview?: (id: string) => boolean;
 	openAppPreview?: (id: string) => boolean;
+	openMcpServerPreview?: (id: string, projectId?: string) => boolean;
 	artifactLinks?: Pick<
 		ReturnType<typeof useArtifactLinks>,
 		'artifactHref' | 'routerPathHref' | 'toRouterPath'
@@ -51,7 +52,9 @@ const testLabel = computed(() =>
 );
 
 const custom = computed(() =>
-	/^#?n8n-resource:\/\/(workflow|credential|data-table|agent|skill|app)\/(.+)$/.exec(props.href),
+	/^#?n8n-resource:\/\/(workflow|credential|data-table|agent|skill|app|mcp-server)\/(.+)$/.exec(
+		props.href,
+	),
 );
 
 const routerPath = computed(() => {
@@ -149,6 +152,9 @@ function handleClick(event: MouseEvent) {
 	if (type.value === 'workflow') switched = props.openWorkflowPreview?.(id.value);
 	if (type.value === 'skill') switched = props.openSkillPreview?.(id.value);
 	if (type.value === 'app') switched = props.openAppPreview?.(id.value);
+	if (type.value === 'mcp-server') {
+		switched = props.openMcpServerPreview?.(id.value, projectId.value);
+	}
 	if (projectId.value) {
 		if (type.value === 'data-table')
 			switched = props.openDataTablePreview?.(id.value, projectId.value);

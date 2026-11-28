@@ -1,5 +1,5 @@
-import { computed, ref, watch } from 'vue';
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import { computed, reactive, ref, watch } from 'vue';
+import type { AssistantArtifactType, InstanceAiAttachment } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
@@ -13,6 +13,7 @@ import {
 	getLatestAgentArtifactResult,
 	getLatestSkillArtifactResult,
 	getLatestAppArtifactResult,
+	getMcpServerMutationEvents,
 	getExecutionResultsByWorkflow,
 	isAppInLiveTurn,
 } from './canvasPreview.utils';
@@ -37,7 +38,7 @@ import {
 
 export interface ArtifactTab {
 	id: string;
-	type: 'workflow' | 'data-table' | 'agent' | 'skill' | 'app';
+	type: AssistantArtifactType;
 	name: string;
 	icon: IconName;
 	projectId?: string;
@@ -85,6 +86,7 @@ interface UseCanvasPreviewOptions {
 	threadId: () => string;
 	initialAgentId?: () => string | undefined;
 	initialAppId?: () => string | undefined;
+	initialMcpServerId?: () => string | undefined;
 	/** Saves the open tabs. Without it, the tabs reset when the thread loads again. */
 	tabsStorage?: ThreadTabsStorage;
 	/** The cloud browser tasks of the thread. A runtime without the cloud browser leaves it out. */
@@ -137,6 +139,7 @@ export function useCanvasPreview({
 	thread,
 	initialAgentId,
 	initialAppId,
+	initialMcpServerId,
 	tabsStorage,
 	cloudBrowserTasks: getCloudBrowserTasks,
 	workflowDrafts = () => ({}),
@@ -188,6 +191,9 @@ export function useCanvasPreview({
 		if (!working) userTabId.value = undefined;
 	});
 
+	/** Manual renames made inside an open custom MCP server tab. */
+	const mcpServerNameOverrides = reactive(new Map<string, string>());
+
 	// All previewable artifacts in the current thread, derived from resource registry.
 	const artifactTabs = computed((): ArtifactTab[] => {
 		const result: ArtifactTab[] = [];
@@ -198,12 +204,16 @@ export function useCanvasPreview({
 				entry.type === 'data-table' ||
 				entry.type === 'agent' ||
 				entry.type === 'skill' ||
-				entry.type === 'app'
+				entry.type === 'app' ||
+				entry.type === 'mcp-server'
 			) {
 				result.push({
 					id: entry.id,
 					type: entry.type,
-					name: entry.name,
+					name:
+						entry.type === 'mcp-server'
+							? (mcpServerNameOverrides.get(entry.id) ?? entry.name)
+							: entry.name,
 					icon: ARTIFACT_TAB_ICONS[entry.type],
 					projectId:
 						entry.projectId ??
@@ -368,6 +378,13 @@ export function useCanvasPreview({
 		return tab?.type === 'app' && tab.projectId ? { id: tab.id, projectId: tab.projectId } : null;
 	});
 
+	const activeMcpServer = computed(() => {
+		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'mcp-server' && tab.projectId
+			? { id: tab.id, projectId: tab.projectId }
+			: null;
+	});
+
 	// The preview of an app that has no build yet shows the build state while this is true.
 	const isActiveAppInLiveTurn = computed(() =>
 		activeApp.value ? isAppInLiveTurn(thread.artifactTurns, activeApp.value.id) : false,
@@ -388,6 +405,7 @@ export function useCanvasPreview({
 		() => skillRefreshKeys.value.get(activeSkillId.value ?? '') ?? 0,
 	);
 	const appRefreshKey = ref(0);
+	const mcpServerRefreshKey = ref(0);
 
 	const isPreviewVisible = computed(
 		() =>
@@ -427,6 +445,7 @@ export function useCanvasPreview({
 			pendingAgentTabId.value ??
 			initialAgentTabId.value ??
 			initialAppId?.() ??
+			initialMcpServerId?.() ??
 			thread.pendingWorkflowAttachment?.id,
 	);
 
@@ -640,6 +659,35 @@ export function useCanvasPreview({
 		return true;
 	}
 
+	/**
+	 * Open or switch the preview to a custom MCP server. Opens a new tab if the
+	 * server is known in the thread (e.g. from a list call or link path).
+	 */
+	function openMcpServerPreview(serverId: string, projectId?: string): boolean {
+		if (tabs.hasTab(serverId)) {
+			if (activeTabId.value === serverId && isPreviewOpen.value) return false;
+			selectTab(serverId);
+			return true;
+		}
+		const indexed = [...thread.resourceNameIndex.values()].find(
+			(entry) => entry.type === 'mcp-server' && entry.id === serverId,
+		);
+		const resolvedProjectId = projectId ?? indexed?.projectId;
+		if (!resolvedProjectId) return false;
+		openTab({
+			type: 'mcp-server',
+			id: serverId,
+			name: indexed?.name ?? serverId,
+			icon: ARTIFACT_TAB_ICONS['mcp-server'],
+			projectId: resolvedProjectId,
+		});
+		return true;
+	}
+
+	function renameMcpServerTab(serverId: string, name: string) {
+		mcpServerNameOverrides.set(serverId, name);
+	}
+
 	// --- Guard: fall back if active tab is removed from registry ---
 	// Only acts when there ARE tabs but the selected one is missing (i.e. it was removed).
 	// Skips when tabs are empty to avoid a race where the registry hasn't been populated yet.
@@ -815,6 +863,36 @@ export function useCanvasPreview({
 		},
 	);
 
+	// --- Auto-open and refresh custom MCP server tabs on live changes ---
+	// Approvals can finish in any order, so track every seen toolCallId instead of only the last.
+	const mcpServerEvents = computed(() => getMcpServerMutationEvents(thread.artifactTurns));
+	const seenMcpServerToolCallIds = new Set<string>();
+	let seededMcpServerEvents = false;
+
+	watch(
+		mcpServerEvents,
+		(events) => {
+			const unseen = events.filter((event) => !seenMcpServerToolCallIds.has(event.toolCallId));
+			for (const event of unseen) seenMcpServerToolCallIds.add(event.toolCallId);
+			if (unseen.length === 0 || !seededMcpServerEvents || thread.isHydratingThread) {
+				seededMcpServerEvents = true;
+				return;
+			}
+			for (const event of unseen) {
+				if (event.kind === 'deleted') {
+					if (tabs.hasTab(event.serverId)) closeTab(event.serverId);
+					continue;
+				}
+				if (event.name) mcpServerNameOverrides.delete(event.serverId);
+				showAgentArtifact(event.serverId);
+				if (activeTabId.value === event.serverId) {
+					mcpServerRefreshKey.value++;
+				}
+			}
+		},
+		{ immediate: true, flush: 'sync' },
+	);
+
 	// --- Close data table preview if the active table is deleted ---
 
 	// A batch can delete several tables at once. The joined key changes only when the deletion does.
@@ -972,11 +1050,13 @@ export function useCanvasPreview({
 		cloudBrowserTasks,
 		activeSkillId,
 		activeApp,
+		activeMcpServer,
 		isActiveAppInLiveTurn,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		skillRefreshKey,
 		appRefreshKey,
+		mcpServerRefreshKey,
 		isPreviewVisible,
 		workflowRefreshKey,
 		selectTab,
@@ -991,5 +1071,7 @@ export function useCanvasPreview({
 		openCloudBrowserTab,
 		openSkillPreview: openArtifactPreview,
 		openAppPreview: openArtifactPreview,
+		openMcpServerPreview,
+		renameMcpServerTab,
 	};
 }

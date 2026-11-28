@@ -207,6 +207,31 @@ describe('InstanceAiMarkdown with the shared renderer', () => {
 		expect(event.defaultPrevented).toBe(true);
 	});
 
+	it('enhances custom MCP server links and opens the server preview on left-click', async () => {
+		const resource = {
+			type: 'mcp-server' as const,
+			id: 'srv-1',
+			name: 'Marketing tools',
+			projectId: 'project-1',
+		};
+		thread.resourceNameIndex.set('marketing tools', resource);
+		const openMcpServerPreview = vi.fn(() => true);
+		const { container } = renderComponent({
+			props: { content: '[Marketing tools](n8n-resource://mcp-server/srv-1)' },
+			global: { provide: { openMcpServerPreview } },
+		});
+		await flushPromises();
+
+		const link = container.querySelector('a');
+		expect(link?.getAttribute('data-resource-chip')).toBe('mcp-server');
+		expect(link?.getAttribute('href')).toBe('/projects/project-1/mcp-servers/srv-1');
+
+		const event = new MouseEvent('click', { cancelable: true, button: 0 });
+		link?.dispatchEvent(event);
+		expect(openMcpServerPreview).toHaveBeenCalledExactlyOnceWith('srv-1', 'project-1');
+		expect(event.defaultPrevented).toBe(true);
+	});
+
 	it('enhances skill links and opens the skill preview on left-click', async () => {
 		const openSkillPreview = vi.fn(() => true);
 		const { container } = renderComponent({

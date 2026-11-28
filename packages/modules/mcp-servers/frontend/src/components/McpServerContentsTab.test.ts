@@ -675,13 +675,6 @@ describe('McpServerContentsTab', () => {
 			expect(emitted('build-with-assistant')).toHaveLength(1);
 		});
 
-		it('disables "Build with Assistant" while the panel is open', async () => {
-			api.getMcpServer.mockResolvedValue(server([]));
-			const { findByTestId } = renderWith({ assistantAvailable: true, assistantOpen: true });
-
-			expect(await findByTestId('mcp-server-build-with-assistant-button')).toBeDisabled();
-		});
-
 		it('does not offer the Assistant without it, or to a project viewer', async () => {
 			api.getMcpServer.mockResolvedValue(server([]));
 			const first = renderWith({ assistantAvailable: false });

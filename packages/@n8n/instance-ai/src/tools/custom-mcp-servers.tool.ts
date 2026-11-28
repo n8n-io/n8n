@@ -304,6 +304,18 @@ function countWorkflows(count: number): string {
 	return count === 1 ? '1 workflow' : `${count} workflows`;
 }
 
+async function reportServerArtifact(
+	context: InstanceAiContext,
+	server: { id: string; name?: string; projectId?: string },
+) {
+	await context.onArtifactChanged?.({
+		type: 'mcp-server',
+		id: server.id,
+		...(server.name ? { name: server.name } : {}),
+		...(server.projectId ? { projectId: server.projectId } : {}),
+	});
+}
+
 async function handleUpdate(
 	context: InstanceAiContext,
 	service: InstanceAiCustomMcpServerService,
@@ -328,9 +340,11 @@ async function handleUpdate(
 			resourceName: (await service.getServer(toRef(input))).name,
 			severity: 'info',
 		}),
-		async () => ({
-			server: summary(await service.update(toRef(input), changes)),
-		}),
+		async () => {
+			const server = await service.update(toRef(input), changes);
+			await reportServerArtifact(context, server);
+			return { server: summary(server) };
+		},
 	);
 }
 
@@ -381,9 +395,14 @@ async function handleAddTools(
 				severity: 'info',
 			};
 		},
-		async () => ({
-			tools: (await service.addTools(toRef(input), input.workflowIds)).map(toolSummary),
-		}),
+		async () => {
+			const tools = (await service.addTools(toRef(input), input.workflowIds)).map(toolSummary);
+			await reportServerArtifact(context, {
+				id: input.serverId,
+				projectId: input.projectId ?? context.projectId,
+			});
+			return { tools };
+		},
 	);
 }
 
@@ -401,7 +420,7 @@ async function handleUpdateTool(
 			reason: 'Pass a toolName or a description to change.',
 		};
 	}
-	const { tool } = await service.getTool(toRef(input), input.toolId);
+	const { server, tool } = await service.getTool(toRef(input), input.toolId);
 	return await withApproval(
 		context,
 		ctx,
@@ -416,9 +435,11 @@ async function handleUpdateTool(
 			resourceName: tool.toolName,
 			severity: 'info',
 		}),
-		async () => ({
-			tool: toolSummary(await service.updateTool(toRef(input), input.toolId, changes)),
-		}),
+		async () => {
+			const updated = await service.updateTool(toRef(input), input.toolId, changes);
+			await reportServerArtifact(context, server);
+			return { tool: toolSummary(updated) };
+		},
 	);
 }
 
@@ -431,7 +452,7 @@ async function handleGenerate(
 	input: ActionInput<'generate'>,
 	ctx: ConfirmationToolContext,
 ) {
-	const { tool, toolDraftsAvailable } = await service.getTool(toRef(input), input.toolId);
+	const { server, tool, toolDraftsAvailable } = await service.getTool(toRef(input), input.toolId);
 	if (!toolDraftsAvailable) {
 		return { success: false, refused: true, reason: DRAFTS_NOT_AVAILABLE };
 	}
@@ -456,6 +477,7 @@ async function handleGenerate(
 			if (result.status === 'not_available') {
 				return { success: false, refused: true, reason: DRAFTS_NOT_AVAILABLE };
 			}
+			await reportServerArtifact(context, server);
 			return { tool: toolSummary(result.tool) };
 		},
 	);
@@ -480,6 +502,7 @@ async function handleRemoveTool(
 		}),
 		async () => {
 			await service.removeTool(toRef(input), input.toolId);
+			await reportServerArtifact(context, server);
 			return { toolId: input.toolId };
 		},
 	);
@@ -565,7 +588,11 @@ export function createCustomMcpServersTool(context: InstanceAiContext) {
 								resourceName: input.name,
 								severity: 'info',
 							}),
-							async () => ({ server: summary(await service.create({ ...create, slug })) }),
+							async () => {
+								const server = await service.create({ ...create, slug });
+								await reportServerArtifact(context, server);
+								return { server: summary(server) };
+							},
 						);
 					}
 					case 'update':

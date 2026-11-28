@@ -5,6 +5,8 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { listAgentsPage } from '@/features/agents/composables/useAgentApi';
 import { fetchDataTablesApi } from '@/features/core/dataTable/dataTable.api';
 import { listApps } from '@n8n/frontend-module-apps';
+import { listMcpServers } from '@n8n/frontend-module-mcp-servers';
+import { customMcpServersEnabled } from '@/experiments/customMcpServers/customMcpServersEnabled';
 import type { ArtifactTab } from '../useCanvasPreview';
 import { ARTIFACT_TAB_ICONS } from './useOpenArtifactTabs';
 
@@ -47,6 +49,7 @@ export function useProjectResourceSearch({
 			agent: 0,
 			skill: 0,
 			app: 0,
+			'mcp-server': 0,
 		};
 		return visible
 			.filter((resource) => ++counts[resource.type] <= RESULTS_PER_TYPE)
@@ -129,6 +132,21 @@ export function useProjectResourceSearch({
 		}));
 	}
 
+	async function searchMcpServers(project: string, query: string): Promise<ProjectResource[]> {
+		const servers = await listMcpServers(rootStore.restApiContext, project);
+		const needle = query.toLowerCase();
+		return servers
+			.filter((server) => !needle || server.name.toLowerCase().includes(needle))
+			.map((server) => ({
+				type: 'mcp-server',
+				id: server.id,
+				name: server.name,
+				icon: ARTIFACT_TAB_ICONS['mcp-server'],
+				projectId: project,
+				updatedAt: server.updatedAt,
+			}));
+	}
+
 	async function search(query = '') {
 		const project = projectId();
 		if (!project) {
@@ -148,6 +166,9 @@ export function useProjectResourceSearch({
 			searchAgents(project, trimmed),
 		];
 		if (settingsStore.isAppsEnabled) searches.push(searchApps(project, trimmed));
+		if (settingsStore.isModuleActive('mcp-servers') && customMcpServersEnabled()) {
+			searches.push(searchMcpServers(project, trimmed));
+		}
 		const settled = await Promise.allSettled(searches);
 		// A newer search started while this one ran, so its results are stale.
 		if (current !== generation) return;

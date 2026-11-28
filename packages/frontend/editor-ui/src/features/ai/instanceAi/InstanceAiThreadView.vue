@@ -25,6 +25,7 @@ import {
 	getAppTargetsFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
+	getMcpServerTargetFromThreadMetadata,
 	getThreadDisplayTitle,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
@@ -81,6 +82,8 @@ import { isStagingDraft } from './instanceAi.workflowStaging';
 import { useDraftWorkflowPreview } from './composables/useDraftWorkflowPreview';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
+import InstanceAiMcpServerPreview from './components/InstanceAiMcpServerPreview.vue';
+import InstanceAiMcpServerEmptyState from './components/InstanceAiMcpServerEmptyState.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
@@ -300,6 +303,9 @@ const draftPreview = useDraftWorkflowPreview({
 const appTargets = computed(() =>
 	getAppTargetsFromThreadMetadata(store.getThreadMetadata(props.threadId)),
 );
+const mcpServerTarget = computed(() =>
+	getMcpServerTargetFromThreadMetadata(store.getThreadMetadata(props.threadId)),
+);
 const requestedAppId = computed(() => {
 	const appId = route.query[INSTANCE_AI_APP_ID_QUERY];
 	return typeof appId === 'string' && appTargets.value.some((target) => target.appId === appId)
@@ -314,6 +320,7 @@ const preview = useCanvasPreview({
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
 	initialAppId: () => requestedAppId.value ?? appTargets.value[0]?.appId,
+	initialMcpServerId: () => mcpServerTarget.value?.serverId,
 	tabsStorage: {
 		load: async () => (await fetchThreadTabs(rootStore.restApiContext, props.threadId)).state,
 		save: async (state) => {
@@ -447,6 +454,7 @@ provide(CloudBrowserLiveViewRefreshKey, cloudBrowserLiveViews.refresh);
 provide('openAgentChatPreview', openAgentChatPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('openAppPreview', preview.openAppPreview);
+provide('openMcpServerPreview', preview.openMcpServerPreview);
 provide('pendingComposerContext', handoffContext);
 provide(
 	'dismissPendingComposerContext',
@@ -962,6 +970,13 @@ function handleNewThreadClick() {
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
+					<template v-if="mcpServerTarget" #empty>
+						<InstanceAiMcpServerEmptyState
+							:project-id="mcpServerTarget.projectId"
+							:server-id="mcpServerTarget.serverId"
+							@select="conversationRef?.setPrefill($event)"
+						/>
+					</template>
 					<template #composer-controls>
 						<ApprovalModeSelector :thread-id="props.threadId" />
 					</template>
@@ -1167,6 +1182,15 @@ function handleNewThreadClick() {
 								:refresh-key="preview.appRefreshKey.value"
 								:assistant-working="preview.isActiveAppInLiveTurn.value"
 								@deleted="preview.closeTab"
+							/>
+							<InstanceAiMcpServerPreview
+								v-if="preview.isPreviewVisible.value && preview.activeMcpServer.value"
+								:class="$style.previewSlot"
+								:project-id="preview.activeMcpServer.value.projectId"
+								:server-id="preview.activeMcpServer.value.id"
+								:refresh-key="preview.mcpServerRefreshKey.value"
+								@deleted="preview.closeTab"
+								@renamed="preview.renameMcpServerTab(preview.activeMcpServer.value.id, $event)"
 							/>
 						</div>
 					</N8nTabsRoot>
