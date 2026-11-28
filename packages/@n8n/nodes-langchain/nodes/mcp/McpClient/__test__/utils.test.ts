@@ -298,5 +298,76 @@ describe('utils', () => {
 			];
 			expect(convertJsonSchemaToResourceMapperFields(schema)).toEqual(expected);
 		});
+
+		it.each([
+			[{ type: 'integer' }, 'number'],
+			[{ anyOf: [{ type: 'integer' }, { type: 'null' }] }, 'number'],
+			[{ oneOf: [{ type: 'null' }, { type: 'number' }] }, 'number'],
+			[{ type: ['boolean', 'null'] }, 'boolean'],
+			[{ type: ['null', 'string'], format: 'date-time' }, 'dateTime'],
+			[{ anyOf: [{ type: 'string' }, { type: 'number' }] }, 'string'],
+			[{ type: ['string', 'number', 'null'] }, 'string'],
+		] as Array<[JSONSchema7, string]>)(
+			'should keep the type of a nullable parameter (%j)',
+			(propertySchema, expectedType) => {
+				const schema: JSONSchema7 = { type: 'object', properties: { value: propertySchema } };
+				expect(convertJsonSchemaToResourceMapperFields(schema)[0].type).toEqual(expectedType);
+			},
+		);
+
+		it('should keep the options and title of a nullable enum', () => {
+			const schema = {
+				type: 'object',
+				properties: {
+					sort: {
+						title: 'Sort order',
+						anyOf: [{ type: 'string', enum: ['newest', 'oldest'] }, { type: 'null' }],
+						default: null,
+					},
+				},
+			} as JSONSchema7;
+
+			const [field] = convertJsonSchemaToResourceMapperFields(schema);
+
+			expect(field.displayName).toEqual('Sort order');
+			expect(field.type).toEqual('options');
+			expect(field.options).toEqual([
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				{ name: 'newest', value: 'newest' },
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				{ name: 'oldest', value: 'oldest' },
+			]);
+		});
+
+		it('should keep the title of a nullable parameter over the title of its type', () => {
+			const schema = {
+				type: 'object',
+				properties: {
+					sort: {
+						title: 'Sort order',
+						anyOf: [{ title: 'SortOrder', type: 'string', enum: ['newest'] }, { type: 'null' }],
+					},
+				},
+			} as JSONSchema7;
+
+			const [field] = convertJsonSchemaToResourceMapperFields(schema);
+
+			expect(field.displayName).toEqual('Sort order');
+			expect(field.type).toEqual('options');
+		});
+
+		it('should add defaultValue for a nullable array', () => {
+			const schema = {
+				type: 'object',
+				properties: {
+					tags: { anyOf: [{ type: 'array', items: { type: 'string' } }, { type: 'null' }] },
+				},
+			} as JSONSchema7;
+
+			const [field] = convertJsonSchemaToResourceMapperFields(schema);
+
+			expect(field.type).toEqual('array');
+			expect(field.defaultValue).toEqual(JSON.stringify(['string'], null, 2));
+		});
 	});
 });
