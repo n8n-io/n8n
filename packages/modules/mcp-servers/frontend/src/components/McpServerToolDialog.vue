@@ -1,105 +1,108 @@
 <script setup lang="ts">
 import {
-	MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH,
 	MCP_SERVER_TOOL_NAME_MAX_LENGTH,
 	mcpServerToolNameSchema,
+	type McpServerToolDetailResponse,
 	type McpServerToolDraftField,
+	type McpServerToolKind,
 	type McpServerToolResponse,
 	type UpdateMcpServerToolDto,
 } from '@n8n/api-types';
-import {
-	N8nButton,
-	N8nCallout,
-	N8nDialog,
-	N8nDialogBody,
-	N8nDialogFooter,
-	N8nIcon,
-	N8nInput,
-	N8nInputLabel,
-	N8nLink,
-	N8nSpinner,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
-// Bridge tool modal until CONTEXT-602 adds the full inputs and outputs modal.
-const props = defineProps<{
-	tool: McpServerToolResponse | null;
-	canUpdate: boolean;
-	/** The builder can edit, and the n8n Assistant can write drafts. */
-	canGenerate?: boolean;
-	/** The first draft after the add runs. */
-	drafting?: boolean;
-	/** A remove request is running for this tool. */
-	removing?: boolean;
-	/** The fields for which a "Generate" call runs. */
-	generating?: McpServerToolDraftField[];
-	/** Incremented when a save for this tool's name fails, so a focused field retries on blur/close. */
-	failedNameRevision?: number;
-	/** Incremented when a save for this tool's description fails, so a focused field retries on blur/close. */
-	failedDescriptionRevision?: number;
-	/** The URL of the source workflow, which opens in a new tab. */
-	workflowHref: string | null;
-}>();
+import McpServerToolModalShell from './McpServerToolModalShell.vue';
+import McpServerWorkflowToolContent from './McpServerWorkflowToolContent.vue';
+
+const KIND_ICONS: Record<McpServerToolKind, IconName> = {
+	workflow: 'workflow',
+	node: 'wrench',
+	agent: 'bot',
+	skill: 'book-open',
+};
+
+const props = withDefaults(
+	defineProps<{
+		tool: McpServerToolResponse | null;
+		detail?: McpServerToolDetailResponse | null;
+		detailLoading?: boolean;
+		detailError?: boolean;
+		canUpdate: boolean;
+		/** The builder can edit, and the n8n Assistant can write drafts. */
+		canGenerate?: boolean;
+		/** The first draft after the add runs. */
+		drafting?: boolean;
+		/** A save request is running for this tool. */
+		saving?: boolean;
+		/** A remove request is running for this tool. */
+		removing?: boolean;
+		/** The fields for which a "Generate" call runs. */
+		generating?: McpServerToolDraftField[];
+		/** Incremented when a "Generate" call finishes for each field, to sync the modal draft. */
+		draftedNameRevision?: number;
+		draftedDescriptionRevision?: number;
+		/** The URL of the source workflow, which opens in a new tab. */
+		workflowHref: string | null;
+	}>(),
+	{
+		detail: null,
+		detailLoading: false,
+		detailError: false,
+		canGenerate: false,
+		drafting: false,
+		saving: false,
+		removing: false,
+		generating: () => [],
+		draftedNameRevision: 0,
+		draftedDescriptionRevision: 0,
+	},
+);
 
 const emit = defineEmits<{
 	close: [];
-	update: [changes: UpdateMcpServerToolDto];
+	save: [changes: UpdateMcpServerToolDto];
 	remove: [];
 	generate: [field: McpServerToolDraftField];
+	retryDetail: [];
 }>();
 
 const i18n = useI18n();
 /** Kept across close so the dialog header and body do not clear during the fade-out animation. */
 const displayedTool = ref<McpServerToolResponse | null>(props.tool);
+const displayedDetail = ref<McpServerToolDetailResponse | null>(props.detail);
 const displayedWorkflowHref = ref<string | null>(props.workflowHref);
 const toolName = ref('');
 const description = ref('');
 
-/** The field that the builder types in. A new tool object does not reset it. */
-const editing = ref<McpServerToolDraftField | null>(null);
-/** Latest submitted values, so blur followed by close does not send a second PATCH. */
-let lastSubmittedName = '';
-let lastSubmittedDescription = '';
-
 watch(
 	() => props.tool,
 	(tool, previous) => {
-		if (!tool) {
-			editing.value = null;
-			return;
-		}
+		if (!tool) return;
 		displayedTool.value = tool;
 		displayedWorkflowHref.value = props.workflowHref;
-		const switched = !previous || tool.id !== previous.id;
-		if (switched) editing.value = null;
-		// Keep lastSubmitted* while editing if this field's server value did not change, so an
-		// unrelated tool update cannot swallow a revert made while a slower save is in flight.
-		if (switched || tool.toolName !== previous.toolName || editing.value !== 'toolName') {
+		const openedOrSwitched = !previous || tool.id !== previous.id;
+		if (openedOrSwitched) {
 			toolName.value = tool.toolName;
-			lastSubmittedName = tool.toolName;
-		}
-		if (switched || tool.description !== previous.description || editing.value !== 'description') {
 			description.value = tool.description;
-			lastSubmittedDescription = tool.description;
+			return;
+		}
+		if (tool.toolName !== previous.toolName) {
+			toolName.value = tool.toolName;
+		}
+		if (tool.description !== previous.description) {
+			description.value = tool.description;
 		}
 	},
 	{ immediate: true },
 );
 
 watch(
-	() => props.failedNameRevision,
-	() => {
-		if (props.tool) lastSubmittedName = props.tool.toolName;
+	() => props.detail,
+	(detail) => {
+		if (props.tool) displayedDetail.value = detail;
 	},
-);
-
-watch(
-	() => props.failedDescriptionRevision,
-	() => {
-		if (props.tool) lastSubmittedDescription = props.tool.description;
-	},
+	{ immediate: true },
 );
 
 watch(
@@ -109,290 +112,148 @@ watch(
 	},
 );
 
+watch(
+	() => props.draftedNameRevision,
+	() => {
+		if (props.tool) toolName.value = props.tool.toolName;
+	},
+);
+
+watch(
+	() => props.draftedDescriptionRevision,
+	() => {
+		if (props.tool) description.value = props.tool.description;
+	},
+);
+
 const open = computed({
 	get: () => props.tool !== null,
 	set: (value: boolean) => {
-		if (!value) close();
+		if (!value) emit('close');
 	},
 });
 
+const kindIcon = computed<IconName>(() =>
+	displayedTool.value ? KIND_ICONS[displayedTool.value.kind] : 'workflow',
+);
+const isGeneratingName = computed(() => props.generating.includes('toolName'));
+const isGeneratingDescription = computed(() => props.generating.includes('description'));
 // A broken tool has no published workflow to read, so the server refuses its draft.
-const showGenerate = computed(() => !!props.canGenerate && !displayedTool.value?.brokenReason);
+const showGenerate = computed(
+	() => props.canGenerate && !props.drafting && !displayedTool.value?.brokenReason,
+);
 const nameInvalid = computed(() => !mcpServerToolNameSchema.safeParse(toolName.value).success);
-const missingDescription = computed(
-	() => !props.drafting && (displayedTool.value?.description.trim() ?? '') === '',
+const titleError = computed(() =>
+	props.canUpdate && !props.drafting && nameInvalid.value
+		? i18n.baseText('mcpServers.tools.row.toolNameInvalid')
+		: '',
+);
+const titleHint = computed(() =>
+	props.canUpdate && !props.drafting && !nameInvalid.value
+		? i18n.baseText('mcpServers.tools.row.toolNameHint')
+		: '',
+);
+const busy = computed(() => props.saving || props.removing);
+const saveDisabled = computed(
+	() => props.drafting || isGeneratingName.value || isGeneratingDescription.value,
 );
 
-function isGenerating(field: McpServerToolDraftField) {
-	return props.generating?.includes(field) ?? false;
-}
-
-function saveName() {
-	editing.value = null;
-	if (!props.tool || nameInvalid.value || toolName.value === lastSubmittedName) return;
-	lastSubmittedName = toolName.value;
-	emit('update', { toolName: toolName.value });
-}
-
-function saveDescription() {
-	editing.value = null;
-	if (!props.tool) return;
-	const value = description.value.trim();
-	if (value === lastSubmittedDescription) return;
-	lastSubmittedDescription = value;
-	emit('update', { description: value });
-}
-
-function flushPendingChanges() {
-	if (!props.tool || !props.canUpdate || props.drafting) return;
+function handleSave() {
+	if (!props.tool || !props.canUpdate || props.drafting || busy.value || nameInvalid.value) return;
 	const changes: UpdateMcpServerToolDto = {};
-	if (!nameInvalid.value && toolName.value !== lastSubmittedName) {
-		lastSubmittedName = toolName.value;
+	if (toolName.value !== props.tool.toolName) {
 		changes.toolName = toolName.value;
 	}
-	const value = description.value.trim();
-	if (value !== lastSubmittedDescription) {
-		lastSubmittedDescription = value;
-		changes.description = value;
+	const trimmedDescription = description.value.trim();
+	if (trimmedDescription !== props.tool.description) {
+		changes.description = trimmedDescription;
 	}
-	editing.value = null;
-	if (Object.keys(changes).length > 0) emit('update', changes);
-}
-
-function close() {
-	flushPendingChanges();
-	emit('close');
+	if (Object.keys(changes).length === 0) {
+		emit('close');
+		return;
+	}
+	emit('save', changes);
 }
 </script>
 
 <template>
-	<N8nDialog
+	<McpServerToolModalShell
 		v-model:open="open"
-		:header="displayedTool?.toolName ?? ''"
+		:title="toolName"
+		:editable-title="canUpdate && !drafting"
+		:title-max-length="MCP_SERVER_TOOL_NAME_MAX_LENGTH"
+		:title-error="titleError"
+		:title-hint="titleHint"
+		:title-loading="isGeneratingName"
 		:aria-description="i18n.baseText('mcpServers.tools.dialog.ariaDescription')"
-		size="medium"
-		data-test-id="mcp-tool-dialog"
+		:can-update="canUpdate"
+		:saving="saving"
+		:save-disabled="saveDisabled"
+		:busy="busy"
+		@update:title="toolName = $event"
+		@save="handleSave"
 	>
-		<N8nDialogBody v-if="displayedTool" :class="$style.body">
-			<div v-if="displayedWorkflowHref" :class="$style.sourceLine">
-				<N8nLink
-					:to="displayedWorkflowHref"
-					new-window
-					size="small"
-					data-test-id="mcp-tool-dialog-source-link"
-				>
-					{{ i18n.baseText('mcpServers.tools.row.fromWorkflow') }}
-					<N8nIcon icon="external-link" size="xsmall" />
-				</N8nLink>
-			</div>
+		<template #titlePrefix>
+			<N8nIcon :icon="kindIcon" :size="18" />
+		</template>
 
-			<N8nCallout
-				v-if="displayedTool.brokenReason"
-				theme="warning"
-				data-test-id="mcp-tool-dialog-broken-callout"
-			>
-				{{ i18n.baseText(`mcpServers.tools.broken.callout.${displayedTool.brokenReason}`) }}
-			</N8nCallout>
-
-			<div v-if="drafting" :class="$style.drafting" data-test-id="mcp-tool-dialog-drafting">
-				<N8nSpinner size="small" />
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('mcpServers.tools.row.drafting') }}
-				</N8nText>
-			</div>
-
-			<template v-else-if="canUpdate">
-				<div>
-					<N8nInputLabel
-						:label="i18n.baseText('mcpServers.tools.row.toolName')"
-						:bold="false"
-						size="small"
-					>
-						<N8nInput
-							v-model="toolName"
-							:class="$style.mono"
-							:maxlength="MCP_SERVER_TOOL_NAME_MAX_LENGTH"
-							:disabled="isGenerating('toolName')"
-							data-test-id="mcp-tool-dialog-name-input"
-							@focus="editing = 'toolName'"
-							@blur="saveName"
-						>
-							<template v-if="isGenerating('toolName')" #suffix>
-								<N8nSpinner size="small" data-test-id="mcp-tool-dialog-generating-name" />
-							</template>
-						</N8nInput>
-					</N8nInputLabel>
-					<div :class="$style.fieldFooter">
-						<N8nText
-							v-if="nameInvalid"
-							tag="p"
-							size="small"
-							color="danger"
-							data-test-id="mcp-tool-dialog-name-error"
-						>
-							{{ i18n.baseText('mcpServers.tools.row.toolNameInvalid') }}
-						</N8nText>
-						<N8nText v-else tag="p" size="small" color="text-light">
-							{{ i18n.baseText('mcpServers.tools.row.toolNameHint') }}
-						</N8nText>
-						<N8nButton
-							v-if="showGenerate"
-							variant="ghost"
-							size="xsmall"
-							:label="i18n.baseText('mcpServers.tools.row.generate')"
-							:disabled="isGenerating('toolName')"
-							:class="$style.generate"
-							data-test-id="mcp-tool-dialog-generate-name"
-							data-attr="mcp-tool-dialog-generate-name"
-							@click="emit('generate', 'toolName')"
-						/>
-					</div>
-				</div>
-
-				<div>
-					<N8nInputLabel
-						:label="i18n.baseText('mcpServers.tools.row.description')"
-						:bold="false"
-						size="small"
-					>
-						<N8nInput
-							v-model="description"
-							type="textarea"
-							:rows="3"
-							:disabled="isGenerating('description')"
-							:maxlength="MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH"
-							:class="$style.resizable"
-							data-test-id="mcp-tool-dialog-description-input"
-							@focus="editing = 'description'"
-							@blur="saveDescription"
-						>
-							<template v-if="isGenerating('description')" #suffix>
-								<N8nSpinner
-									size="small"
-									:class="$style.textareaSpinner"
-									data-test-id="mcp-tool-dialog-generating-description"
-								/>
-							</template>
-						</N8nInput>
-					</N8nInputLabel>
-					<div :class="$style.fieldFooter">
-						<N8nText v-if="missingDescription" tag="p" size="small" color="warning">
-							{{ i18n.baseText('mcpServers.tools.row.missingDescription') }}
-						</N8nText>
-						<N8nText v-else tag="p" size="small" color="text-light">
-							{{ i18n.baseText('mcpServers.tools.row.descriptionHint') }}
-						</N8nText>
-						<N8nButton
-							v-if="showGenerate"
-							variant="ghost"
-							size="xsmall"
-							:label="i18n.baseText('mcpServers.tools.row.generate')"
-							:disabled="isGenerating('description')"
-							:class="$style.generate"
-							data-test-id="mcp-tool-dialog-generate-description"
-							data-attr="mcp-tool-dialog-generate-description"
-							@click="emit('generate', 'description')"
-						/>
-					</div>
-				</div>
-			</template>
-
-			<template v-else>
-				<div>
-					<N8nText tag="p" size="small" color="text-light">
-						{{ i18n.baseText('mcpServers.tools.row.toolName') }}
-					</N8nText>
-					<N8nText tag="p" :class="$style.monoText">{{ displayedTool.toolName }}</N8nText>
-				</div>
-				<div>
-					<N8nText tag="p" size="small" color="text-light">
-						{{ i18n.baseText('mcpServers.tools.row.description') }}
-					</N8nText>
-					<N8nText tag="p" :class="$style.readonlyDescription">
-						{{ displayedTool.description || i18n.baseText('mcpServers.tools.row.noDescription') }}
-					</N8nText>
-				</div>
-			</template>
-		</N8nDialogBody>
-
-		<N8nDialogFooter>
+		<template v-if="showGenerate" #titleFooterAction>
 			<N8nButton
-				v-if="canUpdate"
+				variant="ghost"
+				size="xsmall"
+				:label="i18n.baseText('mcpServers.tools.row.generate')"
+				:disabled="isGeneratingName || busy"
+				:class="$style.generate"
+				data-test-id="mcp-tool-dialog-generate-name"
+				data-attr="mcp-tool-dialog-generate-name"
+				@click="emit('generate', 'toolName')"
+			/>
+		</template>
+
+		<McpServerWorkflowToolContent
+			v-if="displayedTool && displayedTool.kind === 'workflow'"
+			v-model:description="description"
+			:tool="displayedTool"
+			:detail="displayedDetail"
+			:detail-loading="detailLoading"
+			:detail-error="detailError"
+			:can-update="canUpdate"
+			:show-generate="showGenerate"
+			:drafting="drafting"
+			:generating-description="isGeneratingDescription"
+			:workflow-href="displayedWorkflowHref"
+			@generate-description="emit('generate', 'description')"
+			@retry-detail="emit('retryDetail')"
+		/>
+
+		<template v-if="canUpdate" #footerLeft>
+			<N8nButton
 				variant="ghost"
 				icon="trash-2"
 				:label="i18n.baseText('mcpServers.tools.row.remove')"
 				:loading="removing"
-				:disabled="removing"
+				:disabled="busy"
 				data-test-id="mcp-tool-dialog-remove"
 				data-attr="mcp-tool-dialog-remove"
 				@click="emit('remove')"
 			/>
-			<N8nButton
-				variant="outline"
-				:label="i18n.baseText('generic.close')"
-				data-test-id="mcp-tool-dialog-close"
-				@click="close"
-			/>
-		</N8nDialogFooter>
-	</N8nDialog>
+		</template>
+	</McpServerToolModalShell>
 </template>
 
 <style lang="scss" module>
-.body {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--md);
-}
+// "Generate": a small text button with no border and no background.
+.generate {
+	--button--color: var(--text-color--subtle);
+	--button--color--background-hover: transparent;
+	--button--color--background-active: transparent;
+	--button--padding: 0;
+	flex: none;
+	font-style: italic;
+	font-weight: var(--font-weight--regular);
 
-.sourceLine {
-	display: flex;
-	align-items: center;
-}
-
-.drafting {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.fieldFooter {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--xs);
-	margin-top: var(--spacing--4xs);
-
-	// "Generate": a small text button with no border and no background. Two classes, to win
-	// over the size and variant classes of N8nButton.
-	.generate {
-		--button--color: var(--text-color--subtle);
-		--button--color--background-hover: transparent;
-		--button--color--background-active: transparent;
-		--button--padding: 0;
-		flex: none;
-		font-style: italic;
-		font-weight: var(--font-weight--regular);
-
-		&:hover:not(:disabled) {
-			--button--color: var(--text-color);
-		}
+	&:hover:not(:disabled) {
+		--button--color: var(--text-color);
 	}
-}
-
-.textareaSpinner {
-	margin: var(--spacing--xs) var(--spacing--xs) 0 0;
-}
-
-.mono :global(input),
-.monoText {
-	font-family: var(--font-family--monospace);
-}
-
-.resizable :global(textarea) {
-	resize: vertical;
-}
-
-.readonlyDescription {
-	white-space: pre-wrap;
 }
 </style>

@@ -14,8 +14,9 @@ type ToolsRequest = AuthenticatedRequest<{ projectId: string; serverId: string }
 type ToolRequest = AuthenticatedRequest<{ projectId: string; serverId: string; toolId: string }>;
 
 /**
- * The tools of a server. The write routes change the server, so they need `update`. The read
- * route `tool-candidates` also needs `update`, because only the editor of the server uses it.
+ * The tools of a server. The write routes and the workflow picker change the server, so they
+ * need `update`. Reading one tool's details needs `read` (and enforces workflow and execution
+ * visibility inside the service).
  */
 @RestController('/projects/:projectId/mcp-servers/:serverId')
 export class McpServerToolsController {
@@ -29,6 +30,18 @@ export class McpServerToolsController {
 	async candidates(req: ToolsRequest) {
 		await this.flagGate.assertEnabled();
 		return await this.toolsService.listCandidates(req.params.projectId, req.params.serverId);
+	}
+
+	@Get('/tools/:toolId')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.readTool)
+	async get(req: ToolRequest) {
+		await this.flagGate.assertEnabled();
+		return await this.toolsService.getToolDetail(
+			req.user,
+			req.params.projectId,
+			req.params.serverId,
+			req.params.toolId,
+		);
 	}
 
 	@Post('/tools')

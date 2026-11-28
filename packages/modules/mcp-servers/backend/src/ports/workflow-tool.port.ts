@@ -1,3 +1,6 @@
+import type { McpServerToolField } from '@n8n/api-types';
+import type { User } from '@n8n/db';
+
 import type { WorkflowToolInputSchema } from '../utils/workflow-tool-input-schema';
 
 export type { WorkflowToolInputSchema };
@@ -82,6 +85,16 @@ export type WorkflowToolRunResult =
 	| { status: 'busy' }
 	| WorkflowToolStartedRun;
 
+/**
+ * Source metadata, trigger inputs, and output fields from the last successful execution
+ * of a workflow, filtered to the data that the user can already see.
+ */
+export interface WorkflowToolInspection {
+	sourceName: string | null;
+	inputs: McpServerToolField[];
+	outputs: McpServerToolField[] | null;
+}
+
 export abstract class WorkflowToolPort {
 	/**
 	 * Every workflow that the project owns, for the workflow picker, or only the given workflows.
@@ -92,6 +105,16 @@ export abstract class WorkflowToolPort {
 	abstract check(projectId: string, workflowId: string): Promise<WorkflowToolCheck>;
 
 	abstract describe(projectId: string, workflowId: string): Promise<WorkflowToolDescription>;
+
+	/**
+	 * Reads the workflow name, trigger inputs, and output fields from the last successful
+	 * execution, returning only the data that `user` is allowed to read.
+	 */
+	abstract inspect(
+		projectId: string,
+		workflowId: string,
+		user: User,
+	): Promise<WorkflowToolInspection>;
 
 	/** Runs the published version in the mode `integrated`, with the credentials of the workflow. */
 	abstract run(

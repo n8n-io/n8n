@@ -1,4 +1,8 @@
-import type { McpServerToolCandidate, McpServerToolResponse } from '@n8n/api-types';
+import type {
+	McpServerToolCandidate,
+	McpServerToolDetailResponse,
+	McpServerToolResponse,
+} from '@n8n/api-types';
 import {
 	createActiveWorkflow,
 	createTeamProject,
@@ -23,9 +27,11 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { stringify } from 'flatted';
 import type { INode } from 'n8n-workflow';
 import { v7 as uuidv7 } from 'uuid';
 
+import { createExecution } from '../shared/db/executions';
 import { createMember, createOwner } from '../shared/db/users';
 import * as utils from '../shared/utils/';
 
@@ -111,7 +117,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await clearMcpServerTables();
-	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
+	await testDb.truncate(['ExecutionEntity', 'WorkflowEntity', 'SharedWorkflow']);
 	project = await createTeamProject('Marketing');
 	await linkUserToProject(admin, project, 'project:admin');
 	await linkUserToProject(editor, project, 'project:editor');
@@ -532,6 +538,140 @@ describe('GET /projects/:projectId/mcp-servers/:serverId', () => {
 	});
 });
 
+describe('GET /projects/:projectId/mcp-servers/:serverId/tools/:toolId', () => {
+	it('returns source name, trigger inputs, and output fields from the last successful execution', async () => {
+		const serverId = await createServer();
+		const workflow = await createToolWorkflow('Get campaign numbers');
+		const added = await testServer
+			.authAgentFor(editor)
+			.post(`${base(serverId)}/tools`)
+			.send({ workflowIds: [workflow.id] })
+			.expect(200);
+		const toolId = added.body.data[0].id as string;
+
+		await createExecution(
+			{
+				status: 'success',
+				finished: true,
+				data: stringify({
+					resultData: {
+						lastNodeExecuted: 'Format',
+						runData: {
+							Start: [
+								{
+									startTime: 0,
+									executionTime: 1,
+									data: { main: [[{ json: { email: 'a@example.com' } }]] },
+								},
+							],
+							Format: [
+								{
+									startTime: 1,
+									executionTime: 2,
+									data: {
+										main: [
+											[
+												{
+													json: {
+														campaign: 'Spring launch',
+														clicks: 142,
+														active: true,
+													},
+												},
+											],
+										],
+									},
+								},
+							],
+						},
+					},
+				}),
+			},
+			workflow,
+		);
+
+		const response = await testServer
+			.authAgentFor(editor)
+			.get(`${base(serverId)}/tools/${toolId}`)
+			.expect(200);
+
+		const detail: McpServerToolDetailResponse = response.body.data;
+		expect(detail).toMatchObject({
+			id: toolId,
+			toolName: 'get_campaign_numbers',
+			brokenReason: null,
+			sourceName: 'Get campaign numbers',
+			inputs: [{ name: 'email', type: 'string' }],
+			outputs: [
+				{ name: 'campaign', type: 'string' },
+				{ name: 'clicks', type: 'number' },
+				{ name: 'active', type: 'boolean' },
+			],
+		});
+	});
+
+	it('returns null outputs when the workflow has no successful execution', async () => {
+		const serverId = await createServer();
+		const workflow = await createToolWorkflow('Get campaign numbers');
+		const added = await testServer
+			.authAgentFor(editor)
+			.post(`${base(serverId)}/tools`)
+			.send({ workflowIds: [workflow.id] })
+			.expect(200);
+		const toolId = added.body.data[0].id as string;
+
+		const response = await testServer
+			.authAgentFor(editor)
+			.get(`${base(serverId)}/tools/${toolId}`)
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			id: toolId,
+			sourceName: 'Get campaign numbers',
+			inputs: [{ name: 'email', type: 'string' }],
+			outputs: null,
+		});
+	});
+
+	it('still returns source name and trigger inputs when the workflow is unpublished', async () => {
+		const serverId = await createServer();
+		const workflow = await createToolWorkflow('Draft later');
+		const added = await testServer
+			.authAgentFor(editor)
+			.post(`${base(serverId)}/tools`)
+			.send({ workflowIds: [workflow.id] })
+			.expect(200);
+		const toolId = added.body.data[0].id as string;
+
+		await Container.get(WorkflowRepository).update(workflow.id, {
+			activeVersionId: null,
+			active: false,
+		});
+		await Container.get(WorkflowPublishedVersionRepository).removePublishedVersion(workflow.id);
+
+		const response = await testServer
+			.authAgentFor(editor)
+			.get(`${base(serverId)}/tools/${toolId}`)
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			id: toolId,
+			brokenReason: 'not_published',
+			sourceName: 'Draft later',
+			inputs: [{ name: 'email', type: 'string' }],
+			outputs: null,
+		});
+	});
+
+	it('answers 404 for an unknown tool id', async () => {
+		const serverId = await createServer();
+		await testServer
+			.authAgentFor(editor)
+			.get(`${base(serverId)}/tools/${uuidv7()}`)
+			.expect(404);
+	});
+});
+
 describe('access', () => {
 	type Call = [string, (serverId: string, toolId: string) => [string, string, object?]];
 	const calls: Call[] = [
@@ -610,11 +750,23 @@ describe('access', () => {
 	);
 
 	it('a project viewer reads the server and its tools, a chat user and an outsider cannot', async () => {
-		const { serverId } = await setup();
+		const { serverId, toolId } = await setup();
 
 		await testServer.authAgentFor(viewer).get(base(serverId)).expect(200);
+		await testServer
+			.authAgentFor(viewer)
+			.get(`${base(serverId)}/tools/${toolId}`)
+			.expect(200);
 		await testServer.authAgentFor(chatUser).get(base(serverId)).expect(403);
+		await testServer
+			.authAgentFor(chatUser)
+			.get(`${base(serverId)}/tools/${toolId}`)
+			.expect(403);
 		await testServer.authAgentFor(outsider).get(base(serverId)).expect(403);
+		await testServer
+			.authAgentFor(outsider)
+			.get(`${base(serverId)}/tools/${toolId}`)
+			.expect(403);
 	});
 
 	it.each([
@@ -635,6 +787,7 @@ describe('access', () => {
 				.send({ workflowIds: [workflow.id] })
 				.expect(200);
 			const toolId = added.body.data[0].id as string;
+			await agent.get(`${base(serverId)}/tools/${toolId}`).expect(200);
 			await agent
 				.patch(`${base(serverId)}/tools/${toolId}`)
 				.send({ description: 'Campaign numbers.' })
@@ -648,6 +801,10 @@ describe('access', () => {
 		enableFlag(false);
 
 		await testServer.authAgentFor(editor).get(base(serverId)).expect(404);
+		await testServer
+			.authAgentFor(editor)
+			.get(`${base(serverId)}/tools/${toolId}`)
+			.expect(404);
 		for (const [, call] of calls) {
 			expect((await send(editor, call(serverId, toolId))).status).toBe(404);
 		}

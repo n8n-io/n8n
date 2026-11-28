@@ -1,6 +1,6 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-import { getMcpServerPublicShare, getMcpServerShare } from '../mcp-servers.api';
+import { getMcpServerPublicShare, getMcpServerShare, getToolDetail } from '../mcp-servers.api';
 
 const makeRestApiRequest = vi.hoisted(() => vi.fn());
 vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
@@ -18,5 +18,17 @@ describe('share page requests', () => {
 		await request(context, '../../some-route');
 
 		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'GET', path);
+	});
+});
+
+describe('tool detail request', () => {
+	it('requests GET /projects/:projectId/mcp-servers/:serverId/tools/:toolId', async () => {
+		await getToolDetail(context, 'project-1', 'server-1', 'tool-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/projects/project-1/mcp-servers/server-1/tools/tool-1',
+		);
 	});
 });

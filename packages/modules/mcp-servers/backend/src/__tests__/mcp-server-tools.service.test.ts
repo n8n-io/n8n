@@ -340,3 +340,104 @@ describe('McpServerToolsService.draftTool saves a drafted name', () => {
 		expect(tools.updateInServer).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe('McpServerToolsService.getToolDetail', () => {
+	const TOOL_ID = '7b0c2a52-3c1f-4f53-9a51-0c0d8c3a0a05';
+
+	it('returns source name, inputs, outputs, and broken reason for a workflow tool', async () => {
+		const servers = mock<McpServerRepository>();
+		const tools = mock<McpServerToolRepository>();
+		const { workflows, textDrafts } = mockMcpServerPorts();
+		const user = mock<User>();
+		const now = new Date();
+		servers.findInProject.mockResolvedValue(mock<McpServer>({ id: SERVER_ID }));
+		tools.findInServer.mockResolvedValue(
+			mock<McpServerTool>({
+				id: TOOL_ID,
+				serverId: SERVER_ID,
+				kind: 'workflow',
+				targetId: 'workflow-1',
+				toolName: 'get_campaign_numbers',
+				description: 'Campaign numbers.',
+				draftSource: 'edited',
+				position: 0,
+				createdAt: now,
+				updatedAt: now,
+			}),
+		);
+		workflows.check.mockResolvedValue({ callable: true });
+		workflows.inspect.mockResolvedValue({
+			sourceName: 'Get campaign numbers',
+			inputs: [{ name: 'campaign_id', type: 'string' }],
+			outputs: [
+				{ name: 'clicks', type: 'number' },
+				{ name: 'active', type: 'boolean' },
+			],
+		});
+		const service = new McpServerToolsService(
+			servers,
+			tools,
+			workflows,
+			textDrafts,
+			mock<EventService>(),
+			mock<Logger>(),
+		);
+
+		const detail = await service.getToolDetail(user, PROJECT_ID, SERVER_ID, TOOL_ID);
+
+		expect(workflows.inspect).toHaveBeenCalledWith(PROJECT_ID, 'workflow-1', user);
+		expect(detail).toMatchObject({
+			id: TOOL_ID,
+			toolName: 'get_campaign_numbers',
+			brokenReason: null,
+			sourceName: 'Get campaign numbers',
+			inputs: [{ name: 'campaign_id', type: 'string' }],
+			outputs: [
+				{ name: 'clicks', type: 'number' },
+				{ name: 'active', type: 'boolean' },
+			],
+		});
+	});
+
+	it('returns empty inputs and null outputs for a non-workflow tool without calling workflows.inspect', async () => {
+		const servers = mock<McpServerRepository>();
+		const tools = mock<McpServerToolRepository>();
+		const { workflows, textDrafts } = mockMcpServerPorts();
+		const now = new Date();
+		servers.findInProject.mockResolvedValue(mock<McpServer>({ id: SERVER_ID }));
+		tools.findInServer.mockResolvedValue(
+			mock<McpServerTool>({
+				id: TOOL_ID,
+				serverId: SERVER_ID,
+				kind: 'node',
+				targetId: null,
+				toolName: 'slack_send',
+				description: 'Send a Slack message.',
+				draftSource: 'defaults',
+				position: 0,
+				createdAt: now,
+				updatedAt: now,
+			}),
+		);
+		const service = new McpServerToolsService(
+			servers,
+			tools,
+			workflows,
+			textDrafts,
+			mock<EventService>(),
+			mock<Logger>(),
+		);
+
+		const detail = await service.getToolDetail(mock<User>(), PROJECT_ID, SERVER_ID, TOOL_ID);
+
+		expect(workflows.inspect).not.toHaveBeenCalled();
+		expect(detail).toMatchObject({
+			id: TOOL_ID,
+			kind: 'node',
+			brokenReason: null,
+			sourceName: null,
+			inputs: [],
+			outputs: null,
+		});
+	});
+});

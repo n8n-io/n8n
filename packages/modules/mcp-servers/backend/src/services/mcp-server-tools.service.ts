@@ -3,6 +3,7 @@ import {
 	mcpServerSchema,
 	type McpServerToolBrokenReason,
 	type McpServerToolCandidate,
+	type McpServerToolDetailResponse,
 	type McpServerToolDraftSource,
 	type McpServerToolDraftField,
 	type McpServerToolDraftResponse,
@@ -155,6 +156,35 @@ export class McpServerToolsService {
 	): Promise<McpServerToolResponse> {
 		const tool = await this.findTool(projectId, serverId, toolId);
 		return toToolResponse(tool, await this.brokenReason(projectId, tool));
+	}
+
+	/**
+	 * One tool with its source name, trigger inputs, and output fields from the last successful
+	 * execution. Reads only the data that `user` can already see.
+	 */
+	async getToolDetail(
+		user: User,
+		projectId: string,
+		serverId: string,
+		toolId: string,
+	): Promise<McpServerToolDetailResponse> {
+		const tool = await this.findTool(projectId, serverId, toolId);
+		if (tool.kind === 'workflow' && tool.targetId) {
+			const [brokenReason, inspection] = await Promise.all([
+				this.brokenReason(projectId, tool),
+				this.workflows.inspect(projectId, tool.targetId, user),
+			]);
+			return {
+				...toToolResponse(tool, brokenReason),
+				...inspection,
+			};
+		}
+		return {
+			...toToolResponse(tool, null),
+			sourceName: null,
+			inputs: [],
+			outputs: null,
+		};
 	}
 
 	/** The names of these workflows of the project, with no check. Unknown IDs are left out. */
