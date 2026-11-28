@@ -1,8 +1,14 @@
-import type { AgentTestRunToolsResponse } from '@n8n/api-types';
+import {
+	agentTestRunCommitRequestSchema,
+	type AgentTestRunCommitResponse,
+	type AgentTestRunToolsResponse,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Get, Param, ProjectScope, RestController } from '@n8n/decorators';
+import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { BadRequestError } from '@n8n/errors';
 import type { Response } from 'express';
 
+import { HeldActionCommitService } from './simulation/held-action-commit.service';
 import { SafeTestingFlagGate } from './simulation/safe-testing-flag-gate';
 import { SimulationSessionService } from './simulation/simulation-session.service';
 
@@ -12,6 +18,7 @@ export class AgentTestRunController {
 	constructor(
 		private readonly flagGate: SafeTestingFlagGate,
 		private readonly simulationSessions: SimulationSessionService,
+		private readonly heldActionCommit: HeldActionCommitService,
 	) {}
 
 	/** Which of the agent's tools can run in a test run, before the run starts. */
@@ -25,5 +32,30 @@ export class AgentTestRunController {
 	): Promise<AgentTestRunToolsResponse> {
 		await this.flagGate.assertEnabled(req.user);
 		return { tools: await this.simulationSessions.describeTools(agentId, projectId) };
+	}
+
+	/** Replays held write actions from a test run once against the agent's real tools. */
+	@Post('/:agentId/test-run/commit')
+	@ProjectScope('agent:execute')
+	async commitHeldActions(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+		@Body payload: unknown,
+	): Promise<AgentTestRunCommitResponse> {
+		await this.flagGate.assertEnabled(req.user);
+		const parsed = agentTestRunCommitRequestSchema.safeParse(payload);
+		if (!parsed.success) {
+			throw new BadRequestError(
+				parsed.error.issues[0]?.message ?? 'Invalid commit held actions request.',
+			);
+		}
+		return await this.heldActionCommit.commitHeldActions({
+			agentId,
+			projectId,
+			user: req.user,
+			...parsed.data,
+		});
 	}
 }

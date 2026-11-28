@@ -1169,6 +1169,11 @@ export {
 	type AgentChatMode,
 	toolTestKindSchema,
 	toolTestCapabilitySchema,
+	AGENT_TEST_RUN_MAX_HELD_ACTIONS,
+	agentTestRunCommitRequestSchema,
+	agentTestRunCommitActionStatusSchema,
+	agentTestRunCommitActionResultSchema,
+	agentTestRunCommitResponseSchema,
 } from './schemas/agent-safe-testing.schema';
 export type {
 	ToolCallRoute,
@@ -1179,4 +1184,8 @@ export type {
 	ToolTestKind,
 	ToolTestCapability,
 	AgentTestRunToolsResponse,
+	AgentTestRunCommitRequest,
+	AgentTestRunCommitActionStatus,
+	AgentTestRunCommitActionResult,
+	AgentTestRunCommitResponse,
 } from './schemas/agent-safe-testing.schema';

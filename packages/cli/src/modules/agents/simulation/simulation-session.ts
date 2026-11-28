@@ -8,6 +8,7 @@ import {
 	type ToolCallInterceptor,
 } from '@n8n/agents';
 import {
+	AGENT_TEST_RUN_MAX_HELD_ACTIONS,
 	toolCallEvidenceSchema,
 	type ToolCallEvidence,
 	type ToolCallReason,
@@ -27,6 +28,7 @@ import { InstrumentedRunUnsupportedError } from '../tools/instrumented-run-guard
 import { nodeSimulationGap } from './non-http-node-types';
 import { redactOutboundRequest } from './outbound-redaction';
 import { TestRunCredentialsHelper } from './test-run-credentials-helper';
+import { classifyBuiltToolAction, classifyHttpMethod } from './tool-action-classifier';
 import type {
 	OutboundRequest,
 	SimulatedReply,
@@ -76,6 +78,9 @@ const WEB_SEARCH_TOOL_NAME = 'web_search';
 /** Decisions nobody takes (an aborted call, for example) are dropped oldest first past this. */
 const MAX_PENDING_DECISIONS = 500;
 
+/** Held write actions kept per test chat for later replay, dropped oldest first past this. */
+const MAX_HELD_ACTIONS = AGENT_TEST_RUN_MAX_HELD_ACTIONS;
+
 /** Statuses that `new Response()` rejects with a body. */
 const NULL_BODY_STATUSES: ReadonlySet<number> = new Set([204, 205, 304]);
 
@@ -99,6 +104,24 @@ export class SimulationBlockedError extends Error {
 	}
 }
 
+export interface HeldActionDescriptor {
+	actionId: string;
+	toolName: string;
+	input: unknown;
+	createdAt: string;
+	committedAt?: string;
+	/** A replay started and failed. The service may have accepted the write. */
+	failedAt?: string;
+	/** The safe error message of the failed replay. */
+	error?: string;
+}
+
+export type BeginCommitActionResult =
+	| { status: 'ready'; action: HeldActionDescriptor }
+	| { status: 'already_committed'; action: HeldActionDescriptor }
+	| { status: 'already_failed'; action: HeldActionDescriptor }
+	| { status: 'not_found' };
+
 type ReplySource = 'world_state' | 'made_up';
 
 interface ActiveToolCall {
@@ -108,6 +131,7 @@ interface ActiveToolCall {
 	/** Only known values, so nothing large a backend sends is kept until the call ends. */
 	evidence: Set<ToolCallEvidence>;
 	blocked?: ToolCallSimulation;
+	readThrough?: boolean;
 }
 
 type ToolClassification =
@@ -130,6 +154,8 @@ export interface SimulationSessionInit {
 	capabilities: ToolTestCapability[];
 	/** Stores the test chat marker. Runs before each turn starts. */
 	markTestChat?: () => Promise<void>;
+	/** When true, safe read-only HTTP calls may pass through while writes stay held. Default: false. */
+	allowReadThrough?: boolean;
 }
 
 /** Guards every tool call of one test chat and records each call's route. Fails closed. */
@@ -144,6 +170,8 @@ export class SimulationSession {
 
 	private readonly unavailableDetail: string;
 
+	private readonly allowReadThrough: boolean;
+
 	private capabilities: Map<string, ToolTestCapability>;
 
 	private readonly markTestChatFn: SimulationSessionInit['markTestChat'];
@@ -155,12 +183,17 @@ export class SimulationSession {
 
 	private readonly decisions = new Map<string, ToolCallSimulation>();
 
+	private readonly heldActions = new Map<string, HeldActionDescriptor>();
+
+	private readonly committingActions = new Set<string>();
+
 	constructor(init: SimulationSessionInit) {
 		this.testChatId = init.testChatId;
 		this.world = init.world;
 		this.worldId = init.world?.worldId;
 		this.backend = init.world?.backend;
 		this.unavailableDetail = init.unavailableDetail ?? 'The simulator is not available.';
+		this.allowReadThrough = init.allowReadThrough === true;
 		this.capabilities = new Map(init.capabilities.map((tool) => [tool.toolName, tool]));
 		this.markTestChatFn = init.markTestChat;
 	}
@@ -194,7 +227,73 @@ export class SimulationSession {
 		return decision;
 	}
 
-	readonly interceptor: ToolCallInterceptor = async ({ tool, toolCallId }, run) => {
+	private recordHeldAction(action: HeldActionDescriptor): void {
+		this.heldActions.delete(action.actionId);
+		this.heldActions.set(action.actionId, action);
+		if (this.heldActions.size > MAX_HELD_ACTIONS) {
+			const oldest = this.heldActions.keys().next().value;
+			if (oldest !== undefined) this.heldActions.delete(oldest);
+		}
+	}
+
+	getHeldAction(actionId: string): HeldActionDescriptor | undefined {
+		const action = this.heldActions.get(actionId);
+		return action ? { ...action } : undefined;
+	}
+
+	listHeldActions(): HeldActionDescriptor[] {
+		return [...this.heldActions.values()].map((action) => ({ ...action }));
+	}
+
+	/** True while an action waits for its replay: not committed, and no replay failed. */
+	hasPendingHeldActions(): boolean {
+		for (const action of this.heldActions.values()) {
+			if (action.committedAt === undefined && action.failedAt === undefined) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Claims a held action for one-shot replay. Returns `already_committed` when the action
+	 * already finished or is currently replaying, so duplicate requests never execute twice.
+	 * Returns `already_failed` when a replay started and failed: the service may have accepted
+	 * the write before the failure, so a second replay could send it twice.
+	 */
+	beginCommitAction(actionId: string): BeginCommitActionResult {
+		const action = this.heldActions.get(actionId);
+		if (!action) return { status: 'not_found' };
+		if (action.failedAt !== undefined) {
+			return { status: 'already_failed', action: { ...action } };
+		}
+		if (action.committedAt !== undefined || this.committingActions.has(actionId)) {
+			return { status: 'already_committed', action: { ...action } };
+		}
+		this.committingActions.add(actionId);
+		return { status: 'ready', action: { ...action } };
+	}
+
+	completeCommitAction(actionId: string, committedAt: string): void {
+		this.committingActions.delete(actionId);
+		const action = this.heldActions.get(actionId);
+		if (action) action.committedAt = committedAt;
+	}
+
+	/** Records a replay that started and failed. The action never replays again. */
+	failCommitAction(actionId: string, failedAt: string, error: string): void {
+		this.committingActions.delete(actionId);
+		const action = this.heldActions.get(actionId);
+		if (action) {
+			action.failedAt = failedAt;
+			action.error = error;
+		}
+	}
+
+	/** Releases the claim. Use it only when the replay did not start, so nothing was sent. */
+	abortCommitAction(actionId: string): void {
+		this.committingActions.delete(actionId);
+	}
+
+	readonly interceptor: ToolCallInterceptor = async ({ tool, toolCallId, input }, run) => {
 		const classification = classifyTool(tool);
 		if (classification.type === 'local') return await run();
 
@@ -204,11 +303,13 @@ export class SimulationSession {
 			throw new SimulationBlockedError(preflight);
 		}
 
+		const actionMode = classifyBuiltToolAction(tool);
 		const active: ActiveToolCall = {
 			toolCallId,
 			toolName: tool.name,
 			sources: [],
 			evidence: new Set(),
+			readThrough: this.allowReadThrough && actionMode === 'read_through',
 		};
 		let output: unknown;
 		try {
@@ -233,6 +334,14 @@ export class SimulationSession {
 		}
 		const decision = foldSources(active.sources, active.evidence);
 		if (decision) this.recordDecision(toolCallId, decision);
+		if (actionMode === 'write_hold') {
+			this.recordHeldAction({
+				actionId: toolCallId,
+				toolName: tool.name,
+				input,
+				createdAt: new Date().toISOString(),
+			});
+		}
 		return output;
 	};
 
@@ -328,12 +437,23 @@ export class SimulationSession {
 		throw new SimulationBlockedError(decision);
 	}
 
-	// Never return `undefined`: core would then send the request to the real service.
+	// Never return `undefined` unless read-through is enabled and the HTTP method is GET/HEAD.
 	private createHttpHandler(toolName: string): EvalLlmMockHandler {
-		return async (options: IHttpRequestOptions, node): Promise<EvalMockHttpResponse> => {
+		return async (
+			options: IHttpRequestOptions,
+			node,
+		): Promise<EvalMockHttpResponse | undefined> => {
+			const method = options.method ?? 'GET';
+			if (
+				this.allowReadThrough &&
+				this.activeCalls.getStore()?.readThrough === true &&
+				classifyHttpMethod(method) === 'read_through'
+			) {
+				return undefined;
+			}
 			const request = redactOutboundRequest({
 				protocol: 'http',
-				method: options.method ?? 'GET',
+				method,
 				url: requestUrl(options),
 				headers: stringHeaders(options.headers),
 				body: options.body,

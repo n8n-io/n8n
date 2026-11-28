@@ -129,3 +129,33 @@ export type ToolTestability = ToolTestCapability['testability'];
 export interface AgentTestRunToolsResponse {
 	tools: ToolTestCapability[];
 }
+
+/** The most held write actions a test chat keeps, and so the most one commit can replay. */
+export const AGENT_TEST_RUN_MAX_HELD_ACTIONS = 500;
+
+/** Request body to replay held write actions from a test run against real services. */
+export const agentTestRunCommitRequestSchema = z.object({
+	testChatId: z.string().min(1),
+	executionId: z.string().min(1).optional(),
+	/** Non-empty list of held tool call IDs to replay in order. */
+	actionIds: z.array(z.string().min(1)).min(1).max(AGENT_TEST_RUN_MAX_HELD_ACTIONS),
+});
+export type AgentTestRunCommitRequest = z.infer<typeof agentTestRunCommitRequestSchema>;
+
+/** Outcome of one held action replay. */
+export const agentTestRunCommitActionStatusSchema = z.enum(['done', 'failed', 'already_committed']);
+export type AgentTestRunCommitActionStatus = z.infer<typeof agentTestRunCommitActionStatusSchema>;
+
+export const agentTestRunCommitActionResultSchema = z.object({
+	actionId: z.string(),
+	toolName: z.string(),
+	status: agentTestRunCommitActionStatusSchema,
+	error: z.string().optional(),
+});
+export type AgentTestRunCommitActionResult = z.infer<typeof agentTestRunCommitActionResultSchema>;
+
+export const agentTestRunCommitResponseSchema = z.object({
+	committedAt: z.string(),
+	results: z.array(agentTestRunCommitActionResultSchema),
+});
+export type AgentTestRunCommitResponse = z.infer<typeof agentTestRunCommitResponseSchema>;

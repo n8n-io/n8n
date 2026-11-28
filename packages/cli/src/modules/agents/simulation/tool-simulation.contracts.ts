@@ -23,10 +23,10 @@ export interface SimulationBackend {
 
 	/**
 	 * Deletes what a world holds, for example data it copied from a real service. n8n calls it
-	 * when it replaces the world, when it finds on the chat's next turn that the thread was
-	 * removed, and when the cached world expires (about 30 minutes after its last turn). It is
-	 * not called at the moment a thread is removed. Best effort: n8n logs a failure and does
-	 * not retry. Optional.
+	 * when the cached world expires (about 30 minutes after its last turn). When
+	 * `worldDependsOnDraftConnections` is set, n8n also calls it when it replaces the world and
+	 * when it finds on the chat's next turn that the thread was removed. It is not called at the
+	 * moment a thread is removed. Best effort: n8n logs a failure and does not retry. Optional.
 	 */
 	closeWorld?(worldId: string): Promise<void>;
 }
