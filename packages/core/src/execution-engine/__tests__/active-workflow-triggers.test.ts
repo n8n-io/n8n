@@ -164,6 +164,7 @@ describe('ActiveWorkflowTriggers', () => {
 					additionalData,
 					mode,
 					activation,
+					expect.any(Function),
 				);
 			});
 
@@ -245,6 +246,7 @@ describe('ActiveWorkflowTriggers', () => {
 					additionalData,
 					mode,
 					activation,
+					expect.any(Function),
 				);
 				expect(scheduledTaskManager.register).toHaveBeenCalled();
 				expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
@@ -1163,6 +1165,7 @@ describe('ActiveWorkflowTriggers', () => {
 				additionalData,
 				mode,
 				activation,
+				expect.any(Function),
 			);
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
 		});
@@ -1179,6 +1182,102 @@ describe('ActiveWorkflowTriggers', () => {
 
 			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a', 'b']));
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
+		});
+
+		it('closes the stored trigger response before a node starts again', async () => {
+			const events: string[] = [];
+			const firstResponse: ITriggerResponse = {
+				closeFunction: vi.fn(async () => {
+					events.push('close-first');
+				}),
+			};
+			const secondResponse: ITriggerResponse = { closeFunction: vi.fn() };
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValueOnce(firstResponse);
+			await addTriggers(['a']);
+			triggersAndPollers.runTriggerFunction.mockImplementationOnce(async () => {
+				events.push('start-second');
+				return secondResponse;
+			});
+
+			await addTriggers(['a']);
+
+			expect(events).toEqual(['close-first', 'start-second']);
+			expect(secondResponse.closeFunction).not.toHaveBeenCalled();
+		});
+
+		it('does not start a node again when closing its stored response fails', async () => {
+			const firstResponse: ITriggerResponse = {
+				closeFunction: vi.fn().mockRejectedValue(new Error('close failed')),
+			};
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue(firstResponse);
+			await addTriggers(['a']);
+
+			await expect(addTriggers(['a'])).rejects.toThrow(WorkflowActivationError);
+			expect(triggersAndPollers.runTriggerFunction).toHaveBeenCalledTimes(1);
+			expect(activeWorkflowTriggers.get(workflowId)?.get('a')).toBe(firstResponse);
+		});
+
+		it('starts a node again when its stored response fails to close with a TriggerCloseError', async () => {
+			const firstResponse: ITriggerResponse = {
+				closeFunction: vi
+					.fn()
+					.mockRejectedValue(new TriggerCloseError(triggerNodeA, { level: 'warning' })),
+			};
+			const secondResponse: ITriggerResponse = { closeFunction: vi.fn() };
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction
+				.mockResolvedValueOnce(firstResponse)
+				.mockResolvedValueOnce(secondResponse);
+			await addTriggers(['a']);
+
+			await addTriggers(['a']);
+
+			expect(activeWorkflowTriggers.get(workflowId)?.get('a')).toBe(secondResponse);
+		});
+
+		it('reports a trigger registration as replaced once its node starts again', async () => {
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue({ closeFunction: vi.fn() });
+			await addTriggers(['a']);
+			await addTriggers(['a']);
+
+			const [isFirstCurrent, isSecondCurrent] =
+				triggersAndPollers.runTriggerFunction.mock.calls.map((call) => call[6]);
+
+			expect(isFirstCurrent?.()).toBe(false);
+			expect(isSecondCurrent?.()).toBe(true);
+		});
+
+		it('reports a trigger registration as not current once its node is removed', async () => {
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue({ closeFunction: vi.fn() });
+			await addTriggers(['a']);
+			const isCurrent = triggersAndPollers.runTriggerFunction.mock.calls[0][6];
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a']));
+
+			expect(isCurrent?.()).toBe(false);
+		});
+
+		it('reports a trigger registration as not current, and keeps its node registered, while its close is pending', async () => {
+			const response: ITriggerResponse = { closeFunction: async () => await new Promise(() => {}) };
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue(response);
+			await addTriggers(['a']);
+			const isCurrent = triggersAndPollers.runTriggerFunction.mock.calls[0][6];
+
+			void activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a']));
+
+			expect(isCurrent?.()).toBe(false);
+			expect(activeWorkflowTriggers.get(workflowId)?.get('a')).toBe(response);
 		});
 
 		it('shares workflow state across concurrent single-node registrations', async () => {

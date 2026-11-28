@@ -604,7 +604,7 @@ describe('TriggerExecutionContextFactory', () => {
 		});
 
 		describe('emitError', () => {
-			test('delegates to the injected onTriggerFailure callback', () => {
+			test('delegates to the injected onTriggerFailure callback with the registration check', () => {
 				const onTriggerFailure =
 					vi.fn<(...args: Parameters<TriggerFailureHandler>) => () => void>();
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
@@ -623,7 +623,15 @@ describe('TriggerExecutionContextFactory', () => {
 					onTriggerFailure,
 					scheduleCollectionSession,
 				);
-				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+				const isCurrentRegistration = () => true;
+				const context = getTriggerFunctions(
+					workflow,
+					node,
+					additionalData,
+					mode,
+					activation,
+					isCurrentRegistration,
+				);
 
 				const error = new Error('Trigger connection failed');
 				context.emitError(error);
@@ -634,7 +642,37 @@ describe('TriggerExecutionContextFactory', () => {
 					workflowData,
 					mode,
 					activation,
+					isCurrentRegistration,
 				});
+			});
+
+			test('treats the registration as current when the caller passes no registration check', () => {
+				const onTriggerFailure =
+					vi.fn<(...args: Parameters<TriggerFailureHandler>) => () => void>();
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => workflowData,
+					onTriggerFailure,
+					scheduleCollectionSession,
+				);
+				const context = getTriggerFunctions(
+					mock<Workflow>({ name: 'Test Workflow' }),
+					mock<INode>({ name: 'Trigger Node' }),
+					additionalData,
+					mode,
+					activation,
+				);
+
+				context.emitError(new Error('Trigger connection failed'));
+
+				expect(onTriggerFailure.mock.calls[0][0].isCurrentRegistration()).toBe(true);
 			});
 		});
 

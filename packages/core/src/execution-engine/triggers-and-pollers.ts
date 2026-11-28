@@ -84,8 +84,16 @@ export class TriggersAndPollers {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
+		isCurrentRegistration?: () => boolean,
 	): Promise<ITriggerResponse | undefined> {
-		const triggerFunctions = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+		const triggerFunctions = getTriggerFunctions(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			activation,
+			isCurrentRegistration,
+		);
 
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 

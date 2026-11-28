@@ -17,6 +17,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS, TRIGGER_TEARDOWN_MAX_ATTEMPTS } from '@/constants';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import type {
 	NonWebhookTriggerRegistrar,
 	PreparedNonWebhookTriggerRegistration,
@@ -55,6 +56,7 @@ type ActivatorOverrides = {
 	activationErrorsService?: ActivationErrorsService;
 	tracing?: Tracing;
 	eventService?: EventService;
+	lifecycleLock?: WorkflowPublicationLifecycleLock;
 };
 
 function buildActivator(overrides: ActivatorOverrides = {}) {
@@ -64,7 +66,11 @@ function buildActivator(overrides: ActivatorOverrides = {}) {
 		overrides.nodeTypes ?? createNodeTypes(),
 		overrides.workflowRepository ?? mock<WorkflowRepository>(),
 		overrides.workflowStaticDataService ?? mock<WorkflowStaticDataService>(),
-		overrides.workflowsConfig ?? mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
+		overrides.workflowsConfig ??
+			mock<WorkflowsConfig>({
+				useWorkflowPublicationService: true,
+				publicationOutboxLeaseSeconds: 120,
+			}),
 		overrides.triggerExecutionContextFactory ?? mock<TriggerExecutionContextFactory>(),
 		overrides.webhookTriggerRegistrar ?? mock<WebhookTriggerRegistrar>(),
 		overrides.nonWebhookTriggerRegistrar ?? mock<NonWebhookTriggerRegistrar>(),
@@ -72,6 +78,7 @@ function buildActivator(overrides: ActivatorOverrides = {}) {
 		overrides.activationErrorsService ?? mock<ActivationErrorsService>(),
 		overrides.tracing ?? tracing,
 		overrides.eventService ?? eventService,
+		overrides.lifecycleLock ?? new WorkflowPublicationLifecycleLock(),
 	);
 }
 
@@ -1292,6 +1299,8 @@ describe('WorkflowTriggerActivator', () => {
 			activationErrorsService?: ActivationErrorsService;
 			errorReporter?: ErrorReporter;
 			workflowStaticDataService?: WorkflowStaticDataService;
+			workflowsConfig?: WorkflowsConfig;
+			lifecycleLock?: WorkflowPublicationLifecycleLock;
 		}) {
 			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(true);
 			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
@@ -1327,9 +1336,10 @@ describe('WorkflowTriggerActivator', () => {
 			workflowData: mock<IWorkflowDb>({ id: 'wf-1', name: 'Test workflow' }),
 			mode: 'trigger' as const,
 			activation: 'update' as const,
+			isCurrentRegistration: () => true,
 		};
 
-		test('tears the node down, surfaces the error, runs the error workflow, then reactivates and clears the error', async () => {
+		test('tears the node down, saves static data, surfaces the error and runs the error workflow, without starting the node again', async () => {
 			const callOrder: string[] = [];
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			nonWebhookTriggerRegistrar.deregister.mockImplementation(async () => {
@@ -1367,18 +1377,13 @@ describe('WorkflowTriggerActivator', () => {
 			onTriggerFailure(failure);
 			await flushPromises();
 
-			expect(callOrder).toEqual([
-				'teardown',
-				'register-error',
-				'error-workflow',
-				'reactivate',
-				'save-static',
-				'clear-error',
-			]);
-			expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith('wf-1', 't');
-			expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledTimes(1);
+			expect(callOrder).toEqual(['teardown', 'save-static', 'error-workflow', 'register-error']);
+			expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith(
+				'wf-1',
+				't',
+				expect.any(Function),
+			);
 			expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', 'trigger crashed');
-			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		});
 
 		test('runs the error workflow with a workflow activation error wrapping the cause', async () => {
@@ -1402,35 +1407,237 @@ describe('WorkflowTriggerActivator', () => {
 			expect(passedMode).toBe('trigger');
 		});
 
-		test('leaves the surfaced error in place when reactivation exhausts its retry budget', async () => {
+		test('logs only, when the failing registration is no longer current', async () => {
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
-			const errorReporter = mock<ErrorReporter>();
+			const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
 			const activationErrorsService = mock<ActivationErrorsService>();
-
+			const errorReporter = mock<ErrorReporter>();
 			const onTriggerFailure = await activateAndCaptureFailureHandler({
 				nonWebhookTriggerRegistrar,
+				triggerExecutionContextFactory,
 				activationErrorsService,
 				errorReporter,
 			});
+			errorReporter.warn.mockClear();
+			logger.info.mockClear();
 
-			// Reactivation fails transiently on every attempt, exhausting the budget.
-			// Reset first so we only count the reactivation calls, not the initial activation.
-			nonWebhookTriggerRegistrar.register.mockReset();
-			nonWebhookTriggerRegistrar.register.mockRejectedValue(new Error('still broken'));
+			onTriggerFailure({ ...failure, isCurrentRegistration: () => false });
+			await flushPromises();
+
+			expect(logger.info).toHaveBeenCalledWith(
+				'Ignored a runtime error of trigger node "t" from a connection that is not the current one',
+				expect.objectContaining({ workflowId: 'wf-1', nodeId: 't' }),
+			);
+			expect(errorReporter.warn).not.toHaveBeenCalled();
+			expect(nonWebhookTriggerRegistrar.deregister).not.toHaveBeenCalled();
+			expect(triggerExecutionContextFactory.executeErrorWorkflow).not.toHaveBeenCalled();
+			expect(activationErrorsService.register).not.toHaveBeenCalled();
+		});
+
+		test('surfaces the failure and runs the error workflow when the teardown fails', async () => {
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
+			const activationErrorsService = mock<ActivationErrorsService>();
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar,
+				triggerExecutionContextFactory,
+				activationErrorsService,
+			});
+			nonWebhookTriggerRegistrar.deregister.mockRejectedValue(new Error('close failed'));
 
 			onTriggerFailure(failure);
 			await flushPromises();
 
-			// One register call per attempt, all during reactivation.
-			expect(nonWebhookTriggerRegistrar.register).toHaveBeenCalledTimes(MAX_ATTEMPTS);
-			// The node stays down: the surfaced error is registered but never cleared.
 			expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', 'trigger crashed');
-			expect(activationErrorsService.deregister).not.toHaveBeenCalled();
-			// The reactivation failure is reported (once for the runtime error, once for the giveup).
-			expect(errorReporter.error).toHaveBeenCalledWith(
-				expect.objectContaining({ message: 'still broken' }),
-				expect.anything(),
+			expect(triggerExecutionContextFactory.executeErrorWorkflow).toHaveBeenCalledTimes(1);
+		});
+
+		test('runs the error workflow and logs a recording failure when storing the activation error fails', async () => {
+			const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
+			const activationErrorsService = mock<ActivationErrorsService>();
+			activationErrorsService.register.mockRejectedValue(new Error('cache unavailable'));
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar: mock<NonWebhookTriggerRegistrar>(),
+				triggerExecutionContextFactory,
+				activationErrorsService,
+			});
+			logger.error.mockClear();
+
+			onTriggerFailure(failure);
+			await flushPromises();
+
+			expect(triggerExecutionContextFactory.executeErrorWorkflow).toHaveBeenCalledTimes(1);
+			expect(logger.error.mock.calls.map(([message]) => message)).toEqual([
+				'Failed to record the activation error of trigger node "t" of workflow "Test workflow" after a runtime failure',
+			]);
+		});
+
+		test('waits for the workflow lock before it tears the failed node down', async () => {
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			const lifecycleLock = new WorkflowPublicationLifecycleLock();
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar,
+				lifecycleLock,
+			});
+			const publication = createDeferredPromise();
+			const heldByPublication = lifecycleLock.runExclusive({
+				workflowId: 'wf-1',
+				fn: async () => await publication.promise,
+				signal: new AbortController().signal,
+			});
+
+			onTriggerFailure(failure);
+			await flushPromises();
+			expect(nonWebhookTriggerRegistrar.deregister).not.toHaveBeenCalled();
+
+			publication.resolve();
+			await heldByPublication;
+			await flushPromises();
+			expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledTimes(1);
+		});
+
+		test('saves static data before it releases the workflow lock', async () => {
+			const workflowStaticDataService = mock<WorkflowStaticDataService>();
+			const lifecycleLock = new WorkflowPublicationLifecycleLock();
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar: mock<NonWebhookTriggerRegistrar>(),
+				workflowStaticDataService,
+				lifecycleLock,
+			});
+			workflowStaticDataService.saveStaticData.mockClear();
+			const save = createDeferredPromise();
+			workflowStaticDataService.saveStaticData.mockReturnValue(save.promise);
+
+			onTriggerFailure(failure);
+			await flushPromises();
+			expect(lifecycleLock.isLocked('wf-1')).toBe(true);
+
+			save.resolve();
+			await flushPromises();
+			expect(lifecycleLock.isLocked('wf-1')).toBe(false);
+		});
+
+		test('keeps the workflow lock until a teardown left pending by a failed durable removal settles', async () => {
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			const lifecycleLock = new WorkflowPublicationLifecycleLock();
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar,
+				lifecycleLock,
+			});
+			const inMemoryTeardown = createDeferredPromise();
+			nonWebhookTriggerRegistrar.deregister.mockImplementation(
+				async (_workflowId, _nodeId, onDetached) => {
+					onDetached?.(inMemoryTeardown.promise);
+					throw new Error('durable job removal failed');
+				},
 			);
+
+			onTriggerFailure(failure);
+			await flushPromises();
+			expect(lifecycleLock.isLocked('wf-1')).toBe(true);
+
+			inMemoryTeardown.resolve();
+			await flushPromises();
+			expect(lifecycleLock.isLocked('wf-1')).toBe(false);
+		});
+
+		test('releases the workflow lock after half a lease when the teardown never settles', async () => {
+			const LEASE_SECONDS = 0.02;
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			const errorReporter = mock<ErrorReporter>();
+			const lifecycleLock = new WorkflowPublicationLifecycleLock();
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar,
+				errorReporter,
+				lifecycleLock,
+				workflowsConfig: mock<WorkflowsConfig>({
+					useWorkflowPublicationService: true,
+					publicationOutboxLeaseSeconds: LEASE_SECONDS,
+				}),
+			});
+			errorReporter.error.mockClear();
+			nonWebhookTriggerRegistrar.deregister.mockReturnValue(new Promise(() => {}));
+
+			onTriggerFailure(failure);
+			await new Promise((resolve) => setTimeout(resolve, LEASE_SECONDS * 1000 * 2));
+
+			expect(lifecycleLock.isLocked('wf-1')).toBe(false);
+			expect(errorReporter.error.mock.calls.map(([error]) => (error as Error).message)).toEqual([
+				'Released the workflow lock while a runtime trigger teardown is still pending',
+			]);
+		});
+
+		test('surfaces the failure and runs the error workflow when the teardown outlives the lock hold', async () => {
+			const LEASE_SECONDS = 0.02;
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
+			const activationErrorsService = mock<ActivationErrorsService>();
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar,
+				triggerExecutionContextFactory,
+				activationErrorsService,
+				workflowsConfig: mock<WorkflowsConfig>({
+					useWorkflowPublicationService: true,
+					publicationOutboxLeaseSeconds: LEASE_SECONDS,
+				}),
+			});
+			nonWebhookTriggerRegistrar.deregister.mockReturnValue(new Promise(() => {}));
+
+			onTriggerFailure(failure);
+			await new Promise((resolve) => setTimeout(resolve, LEASE_SECONDS * 1000 * 2));
+
+			expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', 'trigger crashed');
+			expect(triggerExecutionContextFactory.executeErrorWorkflow).toHaveBeenCalledTimes(1);
+		});
+
+		test('reports a teardown that fails after it outlived the lock hold', async () => {
+			const LEASE_SECONDS = 0.02;
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			const errorReporter = mock<ErrorReporter>();
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar,
+				errorReporter,
+				workflowsConfig: mock<WorkflowsConfig>({
+					useWorkflowPublicationService: true,
+					publicationOutboxLeaseSeconds: LEASE_SECONDS,
+				}),
+			});
+			errorReporter.error.mockClear();
+			const lateTeardown = createDeferredPromise();
+			nonWebhookTriggerRegistrar.deregister.mockReturnValue(lateTeardown.promise);
+
+			onTriggerFailure(failure);
+			await new Promise((resolve) => setTimeout(resolve, LEASE_SECONDS * 1000 * 2));
+			lateTeardown.reject(new Error('durable job removal failed'));
+			await flushPromises();
+
+			expect(errorReporter.error.mock.calls.map(([error]) => (error as Error).message)).toEqual([
+				'Released the workflow lock while a runtime trigger teardown is still pending',
+				'durable job removal failed',
+			]);
+		});
+
+		test('starts one recovery for two back-to-back failures of the same node', async () => {
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar,
+				triggerExecutionContextFactory,
+			});
+			let isRegistrationCurrent = true;
+			nonWebhookTriggerRegistrar.deregister.mockImplementation(async () => {
+				isRegistrationCurrent = false;
+			});
+			const sameConnectionFailure = {
+				...failure,
+				isCurrentRegistration: () => isRegistrationCurrent,
+			};
+
+			onTriggerFailure(sameConnectionFailure);
+			onTriggerFailure(sameConnectionFailure);
+			await flushPromises();
+
+			expect(triggerExecutionContextFactory.executeErrorWorkflow).toHaveBeenCalledTimes(1);
 		});
 	});
 

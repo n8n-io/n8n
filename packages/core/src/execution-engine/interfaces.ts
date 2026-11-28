@@ -25,5 +25,7 @@ export interface IGetExecuteTriggerFunctions {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
+		/** Whether the registration this start creates is still the current one of the node. */
+		isCurrentRegistration?: () => boolean,
 	): ITriggerFunctions;
 }

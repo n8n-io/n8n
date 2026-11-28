@@ -53,6 +53,31 @@ describe('TriggersAndPollers', () => {
 			await expect(runTriggerHelper()).rejects.toThrow(UnexpectedError);
 		});
 
+		it('passes the registration check to the trigger context', async () => {
+			nodeType.trigger = triggerFn;
+			triggerFn.mockResolvedValue({ test: true });
+			const isCurrentRegistration = () => true;
+
+			await triggersAndPollers.runTriggerFunction(
+				workflow,
+				node,
+				getTriggerFunctions,
+				additionalData,
+				'trigger',
+				'init',
+				isCurrentRegistration,
+			);
+
+			expect(getTriggerFunctions).toHaveBeenCalledWith(
+				workflow,
+				node,
+				additionalData,
+				'trigger',
+				'init',
+				isCurrentRegistration,
+			);
+		});
+
 		it('should call trigger function in regular mode', async () => {
 			nodeType.trigger = triggerFn;
 			triggerFn.mockResolvedValue({ test: true });
