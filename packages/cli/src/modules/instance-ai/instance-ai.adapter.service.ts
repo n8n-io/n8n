@@ -114,6 +114,7 @@ import type {
 	McpRegistryServerSummary,
 	ModelConfig,
 	FolderResolutionFailure,
+	InstanceAiStoreWorkflowFile,
 } from '@n8n/instance-ai';
 import {
 	wrapUntrustedData,
@@ -148,6 +149,7 @@ import {
 	type DataTableRows,
 	type WorkflowExecuteMode,
 	type ExecutionError,
+	type IBinaryKeyData,
 	type IRunData,
 	type ITaskData,
 	NodeConnectionTypes,
@@ -283,7 +285,12 @@ import {
 	pruneUnreachedVerificationPinData,
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
-import { storeRunOutputFiles } from './instance-ai-run-output-files';
+import {
+	MAX_RUN_OUTPUT_FILES,
+	countItemFiles,
+	storeItemFiles,
+	storeRunOutputFiles,
+} from './instance-ai-run-output-files';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { skipTimeBasedWaits } from './skip-time-based-waits';
 import type { TemporaryWorkflowMarkers } from './temporary-workflow-markers';
@@ -5847,7 +5854,7 @@ function resolveOutputNames(workflow: Workflow | undefined, nodeName: string): s
 export async function extractNodeOutput(
 	execution: IExecutionResponse,
 	nodeName: string,
-	options?: { startIndex?: number; maxItems?: number },
+	options?: { startIndex?: number; maxItems?: number; storeFile?: InstanceAiStoreWorkflowFile },
 	nodeTypes?: INodeTypes,
 ): Promise<NodeOutputResult> {
 	const executionId = execution.id;
@@ -5912,6 +5919,8 @@ export async function extractNodeOutput(
 	let index = 0;
 	let returnedCount = 0;
 	const outputs: NodeOutputBranch[] = [];
+	// The model sees only the JSON of an item, so the result counts the files apart.
+	const returnedItemsWithFiles: Array<{ binary?: IBinaryKeyData }> = [];
 	for (let outputIndex = 0; outputIndex < outputCount; outputIndex++) {
 		const collected: unknown[] = [];
 		let itemsOnOutput = 0;
@@ -5927,6 +5936,7 @@ export async function extractNodeOutput(
 							`node:${nodeName}${call}[${outputIndex}][${itemsOnOutput}]`,
 						),
 					);
+					if (item.binary) returnedItemsWithFiles.push(item);
 					returnedCount++;
 				}
 				index++;
@@ -5942,12 +5952,24 @@ export async function extractNodeOutput(
 		});
 	}
 
+	const binaryFileCount = countItemFiles(returnedItemsWithFiles);
+	const storedFiles =
+		options?.storeFile && binaryFileCount > 0
+			? await storeItemFiles(
+					returnedItemsWithFiles,
+					options.storeFile,
+					`one call stores at most ${MAX_RUN_OUTPUT_FILES} files; ask for fewer items with startIndex and maxItems to store the files of later items`,
+				)
+			: {};
+
 	return {
 		nodeName,
 		outputs,
 		totalItems: index,
 		returned: { from: startIndex, to: startIndex + returnedCount },
 		...(nodeRuns.length > 1 ? { totalRuns: nodeRuns.length } : {}),
+		...(binaryFileCount > 0 ? { binaryFileCount } : {}),
+		...storedFiles,
 	};
 }
 

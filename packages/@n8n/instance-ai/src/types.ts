@@ -315,6 +315,18 @@ export interface NodeOutputResult {
 	/** Page position over the items of all outputs, first output first. */
 	returned: { from: number; to: number };
 	/**
+	 * Files (binary data) on the returned items, each binary one time. Absent
+	 * when they have none.
+	 */
+	binaryFileCount?: number;
+	/**
+	 * Files of the returned items, stored as conversation files. Set only when
+	 * the caller passed `storeFile`.
+	 */
+	files?: InstanceAiConversationFile[];
+	/** Files of the returned items that were not stored, for example because they are too large. The list has a cap. */
+	skippedFiles?: InstanceAiSkippedFiles;
+	/**
 	 * Runs the node recorded, when it recorded more than one. A sub-node's runs
 	 * are all read; a node in the main graph reports the last of them.
 	 */
@@ -789,7 +801,15 @@ export interface InstanceAiExecutionService {
 	getNodeOutput(
 		executionId: string,
 		nodeName: string,
-		options?: { startIndex?: number; maxItems?: number },
+		options?: {
+			startIndex?: number;
+			maxItems?: number;
+			/**
+			 * Store each file of the returned items as a conversation file. The
+			 * result lists them in `files`.
+			 */
+			storeFile?: InstanceAiStoreWorkflowFile;
+		},
 	): Promise<NodeOutputResult>;
 	/**
 	 * Re-resolve a node's parameter expressions against a saved execution's data.
@@ -1848,7 +1868,7 @@ export interface InstanceAiStoredFileReader {
 	 */
 	readBinary?(fileId: string): Promise<IBinaryData | undefined>;
 	/**
-	 * Store a binary that a workflow run returned as a conversation file. Gives
+	 * Store a binary of a workflow execution as a conversation file. Gives
 	 * a skipped file for a file over a cap, and `undefined` when storage fails.
 	 * The host sets it together with `readBinary`.
 	 */

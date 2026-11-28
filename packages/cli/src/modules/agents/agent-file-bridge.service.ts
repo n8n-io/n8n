@@ -17,7 +17,11 @@ import { z } from 'zod';
 
 import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 
-import { AgentChatAttachmentService, AgentFileLimitError } from './agent-chat-attachment.service';
+import {
+	AgentChatAttachmentService,
+	AgentFileLimitError,
+	hashFileContent,
+} from './agent-chat-attachment.service';
 import { AgentSandboxFilesService } from './agent-sandbox-files.service';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
@@ -179,12 +183,14 @@ export class AgentFileBridge {
 	/**
 	 * Store one workflow binary as an agent file. Gives a skipped file for a file
 	 * over a cap, and `undefined` when storage fails. A skipped file without a
-	 * name gets `fallbackName`.
+	 * name gets `fallbackName`. With `reuseSameFile`, a file of the thread with
+	 * the same bytes, name and type is given in place of a new copy.
 	 */
 	async adoptBinary(
 		binary: IBinaryData,
 		scope: AgentFileScope,
 		fallbackName = 'file',
+		options: { reuseSameFile?: boolean } = {},
 	): Promise<AgentToolOutputFile | AgentToolSkippedFile | undefined> {
 		if (await this.isTooLarge(binary)) {
 			return {
@@ -192,7 +198,7 @@ export class AgentFileBridge {
 				reason: `larger than ${this.attachmentService.maxGeneratedFileBytes / 1024 / 1024} MB`,
 			};
 		}
-		return await this.store(binary, scope);
+		return await this.store(binary, scope, options.reuseSameFile ?? false);
 	}
 
 	/** Delete stored files that nothing refers to. */
@@ -230,6 +236,7 @@ export class AgentFileBridge {
 	private async store(
 		binary: IBinaryData,
 		scope: AgentFileScope,
+		reuseSameFile: boolean,
 	): Promise<AgentToolOutputFile | AgentToolSkippedFile | undefined> {
 		const id = generateNanoId();
 		let fileName = binary.fileName ?? id;
@@ -237,10 +244,20 @@ export class AgentFileBridge {
 			// ponytail: loads the whole file (up to the generated file size cap) into memory, the same as storeInbound. Copy by ID if that is too much.
 			const data = await this.binaryDataService.getAsBuffer(binary);
 			const mimeType = await resolveInboundMimeType(binary.mimeType, data);
-			if (!hasExtension(fileName) || fileName.length > MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH) {
+			const nameIsGenerated =
+				!hasExtension(fileName) || fileName.length > MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH;
+			if (nameIsGenerated) {
 				// Some nodes set no file name, a fixed one such as "data", or one too long for the column. Use the file ID, so each file has a unique, usable name.
 				const ext = binary.fileExtension ?? (extension(mimeType) || undefined);
 				fileName = ext ? `${id}.${ext}` : id;
+			}
+			const contentHash = hashFileContent(data);
+			if (reuseSameFile) {
+				// A generated name is new on each call, so only the bytes and the type can match.
+				const same = await this.findSameFile(scope, contentHash, mimeType, {
+					fileName: nameIsGenerated ? undefined : fileName,
+				});
+				if (same) return same;
 			}
 			const attachment = await this.attachmentService.storeInbound({
 				...scope,
@@ -249,6 +266,7 @@ export class AgentFileBridge {
 				fileName,
 				mimeType,
 				data,
+				contentHash,
 			});
 			return { fileId: attachment.id, fileName, mimeType, sizeBytes: attachment.fileSizeBytes };
 		} catch (error) {
@@ -259,6 +277,33 @@ export class AgentFileBridge {
 			this.logger.warn('Failed to store agent tool output file', { fileName, error });
 			return undefined;
 		}
+	}
+
+	/**
+	 * The newest file of the thread, for the same memory resource and agent, with
+	 * these bytes and type and, when given, this name. A file whose bytes are gone
+	 * does not count.
+	 */
+	private async findSameFile(
+		scope: AgentFileScope,
+		contentHash: string,
+		mimeType: string,
+		name: { fileName?: string },
+	): Promise<AgentToolOutputFile | undefined> {
+		const readable = await this.attachmentService.findReadableByHashes([contentHash], scope);
+		for (const file of readable.get(contentHash) ?? []) {
+			if (file.resourceId !== scope.resourceId || file.agentId !== scope.agentId) continue;
+			if (file.mimeType !== mimeType) continue;
+			if (name.fileName !== undefined && file.fileName !== name.fileName) continue;
+			if (!(await this.attachmentService.hasStoredData(file))) continue;
+			return {
+				fileId: file.id,
+				fileName: file.fileName,
+				mimeType: file.mimeType,
+				sizeBytes: file.fileSizeBytes,
+			};
+		}
+		return undefined;
 	}
 }
 
