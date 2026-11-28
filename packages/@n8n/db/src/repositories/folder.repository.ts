@@ -38,6 +38,32 @@ export class FolderRepository extends Repository<Folder> {
 		this.table = new FolderTable(dataSource, transactionRunner);
 	}
 
+	/** Transfers a folder and its subfolders to another project, under `destinationParentFolderId`. */
+	async transferTreeToProject(
+		folderId: string,
+		childFolderIds: string[],
+		destinationProjectId: string,
+		destinationParentFolderId: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.table.runInTransaction(ctx, async (manager) => {
+			await manager.update(
+				Folder,
+				{ id: In(childFolderIds) },
+				{ homeProject: { id: destinationProjectId } },
+			);
+			await manager.update(
+				Folder,
+				{ id: folderId },
+				{
+					homeProject: { id: destinationProjectId },
+					parentFolder:
+						destinationParentFolderId === PROJECT_ROOT ? null : { id: destinationParentFolderId },
+				},
+			);
+		});
+	}
+
 	async relocateChildrenAndDelete(
 		folderId: string,
 		projectId: string,
