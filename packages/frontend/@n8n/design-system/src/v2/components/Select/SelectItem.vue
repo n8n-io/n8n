@@ -68,9 +68,9 @@ const typeaheadText = computed(() => props.textValue ?? props.label);
 .itemText {
 	flex-grow: 1;
 	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	overflow: var(--select-item-text--overflow, hidden);
+	text-overflow: var(--select-item-text--text-overflow, ellipsis);
+	white-space: var(--select-item-text--white-space, nowrap);
 	line-height: var(--line-height--lg);
 }
 
