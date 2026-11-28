@@ -104,6 +104,52 @@ describe('Telegram > GenericFunctions', () => {
 			expect(result).toEqual({ success: true });
 		});
 
+		it('should show the Telegram error and a parse mode hint when Telegram cannot parse the text', async () => {
+			const telegramError = {
+				ok: false,
+				error_code: 400,
+				description:
+					"Bad Request: can't parse entities: Can't find end of the entity starting at byte offset 12",
+			};
+			(mockThis.getCredentials as Mock).mockResolvedValue(credentials);
+			(mockThis.helpers.request as Mock).mockRejectedValue(
+				Object.assign(new Error(`400 - ${JSON.stringify(telegramError)}`), {
+					statusCode: 400,
+					error: telegramError,
+				}),
+			);
+
+			const error = await apiRequest
+				.call(mockThis, 'POST', 'sendMessage', { text: 'Workflow: My_Workflow' })
+				.catch((e: NodeApiError) => e);
+
+			expect(error).toBeInstanceOf(NodeApiError);
+			expect(error.message).toBe(telegramError.description);
+			expect(error.description).toContain('Plain Text');
+		});
+
+		it('should keep the default error for other Telegram errors', async () => {
+			const telegramError = {
+				ok: false,
+				error_code: 400,
+				description: 'Bad Request: chat not found',
+			};
+			(mockThis.getCredentials as Mock).mockResolvedValue(credentials);
+			(mockThis.helpers.request as Mock).mockRejectedValue(
+				Object.assign(new Error(`400 - ${JSON.stringify(telegramError)}`), {
+					statusCode: 400,
+					error: telegramError,
+				}),
+			);
+
+			const error = await apiRequest
+				.call(mockThis, 'POST', 'sendMessage', { text: 'Hello' })
+				.catch((e: NodeApiError) => e);
+
+			expect(error.message).toBe('Bad request - please check your parameters');
+			expect(error.description).toBe(telegramError.description);
+		});
+
 		it('should throw a NodeApiError on request failure', async () => {
 			const method: IHttpRequestMethods = 'POST';
 			const endpoint = 'sendMessage';
@@ -349,6 +395,69 @@ describe('Telegram > GenericFunctions', () => {
 				disable_web_page_preview: true,
 				parse_mode: 'Markdown',
 				text: 'Hello, world!\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)',
+			});
+		});
+
+		describe('parse mode', () => {
+			const mockParameters = (operation: string, additionalFields: IDataObject) => {
+				(mockThis.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+					switch (paramName) {
+						case 'operation':
+							return operation;
+						case 'additionalFields':
+							return additionalFields;
+						case 'replyMarkup':
+							return 'none';
+						default:
+							return '';
+					}
+				});
+			};
+
+			it('should default sendMessage to Markdown when parse mode is not set', () => {
+				const body: IDataObject = { text: 'Workflow: My_Workflow' };
+				mockParameters('sendMessage', { appendAttribution: false });
+
+				addAdditionalFields.call(mockThis, body, 0, 1.2);
+
+				expect(body).toEqual({
+					text: 'Workflow: My_Workflow',
+					parse_mode: 'Markdown',
+					disable_web_page_preview: true,
+				});
+			});
+
+			it('should send plain text sendMessage without parse_mode', () => {
+				const body: IDataObject = { text: 'Workflow: My_Workflow' };
+				mockParameters('sendMessage', { appendAttribution: false, parse_mode: 'plainText' });
+
+				addAdditionalFields.call(mockThis, body, 0, 1.2);
+
+				expect(body).toEqual({
+					text: 'Workflow: My_Workflow',
+					disable_web_page_preview: true,
+				});
+			});
+
+			it('should append plain text attribution to plain text sendMessage', () => {
+				const body: IDataObject = { text: 'Workflow: My_Workflow' };
+				mockParameters('sendMessage', { parse_mode: 'plainText' });
+
+				addAdditionalFields.call(mockThis, body, 0, 1.2, '45');
+
+				expect(body).toEqual({
+					text: 'Workflow: My_Workflow\n\nThis message was sent automatically with n8n: https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_45',
+					disable_web_page_preview: true,
+				});
+			});
+
+			it('should send plain text captions without parse_mode', () => {
+				const body: IDataObject = { photo: 'file-id' };
+				mockParameters('sendPhoto', { caption: 'My_Workflow', parse_mode: 'plainText' });
+
+				addAdditionalFields.call(mockThis, body, 0);
+
+				expect(body).toEqual({ photo: 'file-id', caption: 'My_Workflow' });
 			});
 		});
 	});

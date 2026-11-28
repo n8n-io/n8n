@@ -75,6 +75,25 @@ export interface IMarkupReplyKeyboardRemove {
 	selective?: boolean;
 }
 
+// Telegram has no plain text parse mode: plain text is sent without `parse_mode`.
+export const PLAIN_TEXT_PARSE_MODE = 'plainText';
+
+function appendAttribution(text: string, parseMode: unknown, instanceId?: string): string {
+	const attributionText = 'This message was sent automatically with ';
+	const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
+
+	if (parseMode === 'Markdown') {
+		return `${text}\n\n_${attributionText}_[n8n](${link})`;
+	}
+	if (parseMode === 'HTML') {
+		return `${text}\n\n<em>${attributionText}</em><a href="${link}" target="_blank">n8n</a>`;
+	}
+	if (parseMode === PLAIN_TEXT_PARSE_MODE) {
+		return `${text}\n\n${attributionText}n8n: ${link}`;
+	}
+	return text;
+}
+
 /**
  * Add the additional fields to the body
  *
@@ -94,9 +113,6 @@ export function addAdditionalFields(
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 
 	if (operation === 'sendMessage') {
-		const attributionText = 'This message was sent automatically with ';
-		const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
-
 		if (nodeVersion && nodeVersion >= 1.1 && additionalFields.appendAttribution === undefined) {
 			additionalFields.appendAttribution = true;
 		}
@@ -113,11 +129,7 @@ export function addAdditionalFields(
 		}
 
 		if (additionalFields.appendAttribution) {
-			if (additionalFields.parse_mode === 'Markdown') {
-				body.text = `${body.text}\n\n_${attributionText}_[n8n](${link})`;
-			} else if (additionalFields.parse_mode === 'HTML') {
-				body.text = `${body.text}\n\n<em>${attributionText}</em><a href="${link}" target="_blank">n8n</a>`;
-			}
+			body.text = appendAttribution(body.text as string, additionalFields.parse_mode, instanceId);
 		}
 
 		if (
@@ -129,6 +141,10 @@ export function addAdditionalFields(
 		}
 
 		delete additionalFields.appendAttribution;
+	}
+
+	if (additionalFields.parse_mode === PLAIN_TEXT_PARSE_MODE) {
+		delete additionalFields.parse_mode;
 	}
 
 	Object.assign(body, additionalFields);
@@ -267,7 +283,15 @@ export async function apiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		const apiError = new NodeApiError(this.getNode(), error as JsonObject);
+		if (apiError.description?.includes("can't parse entities")) {
+			throw new NodeApiError(this.getNode(), error as JsonObject, {
+				message: apiError.description,
+				description:
+					"Telegram could not read the formatting in the text. To send the text as it is, set 'Parse Mode' to 'Plain Text'. To keep the formatting, escape the special characters, for example _ and *.",
+			});
+		}
+		throw apiError;
 	}
 }
 
@@ -481,13 +505,11 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApp
 	const chat_id = context.getNodeParameter('chatId', 0) as string;
 
 	const config = getSendAndWaitConfig(context);
+	const parseMode = context.getNodeParameter('options.parse_mode', 0, 'Markdown') as string;
 	let text = config.message;
 
 	if (config.appendAttribution !== false) {
-		const instanceId = context.getInstanceId();
-		const attributionText = 'This message was sent automatically with ';
-		const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
-		text = `${text}\n\n_${attributionText}_[n8n](${link})`;
+		text = appendAttribution(text, parseMode, context.getInstanceId());
 	}
 
 	const body = {
@@ -495,7 +517,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApp
 		text,
 
 		disable_web_page_preview: true,
-		parse_mode: 'Markdown',
+		...(parseMode !== PLAIN_TEXT_PARSE_MODE && { parse_mode: parseMode }),
 		reply_markup: {
 			inline_keyboard: [
 				config.options.map((option) => {

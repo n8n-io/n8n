@@ -52,6 +52,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // approvalOptions
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('Markdown'); // options.parse_mode
 
 		// configureWaitTillDate
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); //options.limitWaitTime.values
@@ -184,5 +185,84 @@ describe('createSendAndWaitMessageBody - chat approval callback references', () 
 
 		expect(decisionForLabel('Approve')).toBe('a');
 		expect(decisionForLabel('Decline')).toBe('d');
+	});
+});
+
+describe('createSendAndWaitMessageBody - parse mode', () => {
+	const createContext = (options: Record<string, unknown>) => {
+		const context = mock<IExecuteFunctions>();
+		context.getInstanceId.mockReturnValue('instanceId');
+		context.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		context.getNodeParameter.mockImplementation((name: string, _index, fallback) => {
+			switch (name) {
+				case 'chatId':
+					return 'chatID';
+				case 'message':
+					return 'Approve My_Workflow';
+				case 'subject':
+					return '';
+				case 'options':
+					return options;
+				case 'options.parse_mode':
+					return options.parse_mode ?? fallback;
+				case 'responseType':
+					return 'approval';
+				default:
+					return {};
+			}
+		});
+		return context;
+	};
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should default to Markdown when parse mode is not set', () => {
+		const body = genericFunctions.createSendAndWaitMessageBody(
+			createContext({ appendAttribution: false }),
+		);
+
+		expect(body.parse_mode).toBe('Markdown');
+		expect(body.text).toBe('Approve My_Workflow');
+	});
+
+	it('should send plain text without parse_mode', () => {
+		const body = genericFunctions.createSendAndWaitMessageBody(
+			createContext({ appendAttribution: false, parse_mode: 'plainText' }),
+		);
+
+		expect(body).not.toHaveProperty('parse_mode');
+		expect(body.text).toBe('Approve My_Workflow');
+	});
+
+	it.each(['HTML', 'MarkdownV2'])('should send the %s parse mode as selected', (parseMode) => {
+		const body = genericFunctions.createSendAndWaitMessageBody(
+			createContext({ appendAttribution: false, parse_mode: parseMode }),
+		);
+
+		expect(body.parse_mode).toBe(parseMode);
+		expect(body.text).toBe('Approve My_Workflow');
+	});
+
+	it('should append HTML attribution to HTML messages', () => {
+		const body = genericFunctions.createSendAndWaitMessageBody(
+			createContext({ parse_mode: 'HTML' }),
+		);
+
+		expect(body.text).toContain('<em>This message was sent automatically with </em><a href=');
+	});
+
+	it('should append plain text attribution to plain text messages', () => {
+		const body = genericFunctions.createSendAndWaitMessageBody(
+			createContext({ parse_mode: 'plainText' }),
+		);
+
+		expect(body).not.toHaveProperty('parse_mode');
+		expect(body.text).toBe(
+			'Approve My_Workflow\n\nThis message was sent automatically with n8n: https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_instanceId',
+		);
 	});
 });
