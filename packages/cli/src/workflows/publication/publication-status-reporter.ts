@@ -94,7 +94,8 @@ export class PublicationStatusReporter {
 
 			case 'skipped': {
 				this.logSkip(record, result.reason);
-				await this.complete(record);
+				const warningMessage = this.surfaceTeardownFailures(result.teardownFailures);
+				await this.complete(record, /*triggerStatuses=*/ undefined, warningMessage);
 				return;
 			}
 

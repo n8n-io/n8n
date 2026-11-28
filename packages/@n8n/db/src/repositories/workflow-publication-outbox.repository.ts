@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, In } from '@n8n/typeorm';
-import type { EntityManager } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Raw } from '@n8n/typeorm';
+import type { EntityManager, FindOperator } from '@n8n/typeorm';
 import { UnexpectedError } from '@n8n/errors';
 
 import { BaseRepository } from './base-repository';
@@ -585,19 +585,59 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 	 *
 	 * If a newer pending record was enqueued meanwhile, the flip collides with the
 	 * one-pending-row-per-workflow unique index; that record supersedes this one, so
-	 * we delete this row instead. Catching the collision keeps it atomic against a
-	 * concurrent enqueue.
+	 * we delete this row instead, and a `transfer` reason moves to that record.
+	 * Catching the collision keeps it atomic against a concurrent enqueue.
 	 */
 	async returnToPending(id: number): Promise<void> {
+		await this.flipToPending(id);
+	}
+
+	/** As {@link returnToPending}, only while the record is younger than `maxAgeSeconds` by the database clock; returns whether it did. */
+	async returnToPendingWhileYoungerThan(id: number, maxAgeSeconds: number): Promise<boolean> {
+		const createdWithin =
+			this.globalConfig.database.type === 'postgresdb'
+				? Raw(
+						(column) => `${column} > CURRENT_TIMESTAMP(3) - make_interval(secs => :maxAgeSeconds)`,
+						{ maxAgeSeconds },
+					)
+				: Raw((column) => `${column} > STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', :ageModifier)`, {
+						ageModifier: `-${maxAgeSeconds} seconds`,
+					});
+
+		return await this.flipToPending(id, createdWithin);
+	}
+
+	private async flipToPending(id: number, createdAt?: FindOperator<Date>): Promise<boolean> {
 		try {
-			await this.update(
-				{ id, status: Status.InProgress },
-				{ status: Status.Pending, errorMessage: null },
-			);
+			const claimed = { id, status: Status.InProgress };
+			const { affected } = await this.update(createdAt ? { ...claimed, createdAt } : claimed, {
+				status: Status.Pending,
+				errorMessage: null,
+			});
+			return (affected ?? 0) > 0;
 		} catch (error) {
 			if (!isUniqueConstraintError(error)) throw error;
-			await this.delete({ id, status: Status.InProgress });
+			await this.mergeIntoPendingRecord(id);
+			return true;
 		}
+	}
+
+	/** Deletes a claimed record and keeps the pending record of its workflow, which takes over a `transfer` reason. */
+	private async mergeIntoPendingRecord(id: number): Promise<void> {
+		await this.manager.transaction(async (tx) => {
+			const claimed = await tx.findOneBy(WorkflowPublicationOutbox, {
+				id,
+				status: Status.InProgress,
+			});
+			await tx.delete(WorkflowPublicationOutbox, { id, status: Status.InProgress });
+			if (claimed?.reason === WorkflowPublicationReason.Transfer) {
+				await tx.update(
+					WorkflowPublicationOutbox,
+					{ workflowId: claimed.workflowId, status: Status.Pending },
+					{ reason: WorkflowPublicationReason.Transfer },
+				);
+			}
+		});
 	}
 
 	/**

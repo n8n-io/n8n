@@ -160,6 +160,20 @@ describe('PublicationStatusReporter', () => {
 			);
 		});
 
+		test('skipped still completes the record, recording the failures as a warning', async () => {
+			await reporter.report(makeRecord(), {
+				type: 'skipped',
+				reason: 'node-ids-healed',
+				teardownFailures: [failure],
+			});
+
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(
+				1,
+				operationContext,
+				'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
+			);
+		});
+
 		test('unpublished reports the abandoned deregistrations once, at error level', async () => {
 			await reporter.report(makeRecord(), { type: 'unpublished', teardownFailures: [failure] });
 
