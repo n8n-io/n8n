@@ -75,6 +75,9 @@ const getContentTypeHeader = (headers: JSONOutput['headers']): string | undefine
 	return get(headers, CONTENT_TYPE_KEY) ?? undefined;
 };
 
+const getMediaType = (headers: JSONOutput['headers']): string | undefined =>
+	getContentTypeHeader(headers)?.split(';', 1)[0]?.trim().toLowerCase();
+
 const isContentType = (headers: JSONOutput['headers'], contentType: ContentTypes): boolean => {
 	return getContentTypeHeader(headers) === contentType;
 };
@@ -170,6 +173,19 @@ const jsonBodyToNodeParameters = (body: JSONOutput['data'] = {}): Parameter[] | 
 		});
 	}
 	return keyValueBodyToNodeParameters(body);
+};
+
+const serializeRawBody = (data: JSONOutput['data'], mediaType?: string): string | undefined => {
+	if (!data) return undefined;
+	if (typeof data === 'string') return data;
+
+	if (mediaType === 'application/x-www-form-urlencoded') {
+		return new URLSearchParams(
+			jsonBodyToNodeParameters(data).map(({ name, value }): [string, string] => [name, value]),
+		).toString();
+	}
+
+	return JSON.stringify(data);
 };
 
 const multipartToNodeParameters = (
@@ -330,7 +346,8 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		httpNodeParameters.options.response.response.responseFormat = 'autodetect';
 	}
 
-	const contentType = curlJson?.headers?.[CONTENT_TYPE_KEY] as ContentTypes;
+	const contentTypeHeader = getContentTypeHeader(curlJson.headers);
+	const mediaType = getMediaType(curlJson.headers);
 
 	if (isBinaryRequest(curlJson)) {
 		return Object.assign(httpNodeParameters, {
@@ -339,14 +356,14 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		});
 	}
 
-	if (contentType && !SUPPORTED_CONTENT_TYPES.includes(contentType)) {
+	if (contentTypeHeader && !SUPPORTED_CONTENT_TYPES.includes(contentTypeHeader as ContentTypes)) {
 		const data = curlJson?.data;
 
 		return Object.assign(httpNodeParameters, {
 			sendBody: true,
 			contentType: 'raw',
-			rawContentType: contentType,
-			body: data ? (typeof data === 'string' ? data : JSON.stringify(data)) : undefined,
+			rawContentType: contentTypeHeader,
+			body: serializeRawBody(data, mediaType),
 		});
 	}
 
