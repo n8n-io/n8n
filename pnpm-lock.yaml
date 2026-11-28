@@ -10760,6 +10760,9 @@ importers:
       n8n-containers:
         specifier: workspace:*
         version: link:../../environments/containers
+      nanoid:
+        specifier: 'catalog:'
+        version: 3.3.18
     devDependencies:
       '@n8n/oxlint-config':
         specifier: workspace:*
