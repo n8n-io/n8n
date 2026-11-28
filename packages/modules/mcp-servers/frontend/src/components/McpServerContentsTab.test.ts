@@ -1089,6 +1089,50 @@ describe('McpServerContentsTab', () => {
 			expect(await findByTestId('mcp-tool-chip')).toHaveTextContent('get_campaign_numbers');
 		});
 
+		it('clears the generating state when reopening a tool after canceling an in-flight Generate', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			const firstCall = deferred<unknown>();
+			const secondCall = deferred<unknown>();
+			api.draftTool.mockReturnValueOnce(firstCall.promise).mockReturnValueOnce(secondCall.promise);
+			const { findByTestId } = await render();
+
+			await userEvent.click(await findByTestId('mcp-tool-chip'));
+			await userEvent.click(await screen.findByTestId('mcp-tool-dialog-generate-name'));
+			expect(screen.getByTestId('mcp-tool-dialog-generating-name')).toBeInTheDocument();
+			expect(screen.getByTestId('mcp-tool-dialog-save')).toBeDisabled();
+
+			// Cancel while the first Generate is still in flight, then reopen the same tool.
+			await userEvent.click(screen.getByTestId('mcp-tool-dialog-cancel'));
+			await waitFor(() => expect(screen.queryByTestId('mcp-tool-dialog')).not.toBeInTheDocument());
+
+			await userEvent.click(await findByTestId('mcp-tool-chip'));
+			await screen.findByTestId('mcp-tool-dialog');
+			expect(screen.queryByTestId('mcp-tool-dialog-generating-name')).not.toBeInTheDocument();
+			expect(screen.getByTestId('mcp-tool-dialog-save')).toBeEnabled();
+			expect(screen.getByTestId('mcp-tool-dialog-generate-name')).toBeEnabled();
+
+			// Start a fresh Generate in the reopened session; the stale first response must not
+			// overwrite the field or clear the new session's spinner.
+			await userEvent.click(screen.getByTestId('mcp-tool-dialog-generate-name'));
+			expect(screen.getByTestId('mcp-tool-dialog-generating-name')).toBeInTheDocument();
+
+			firstCall.resolve({
+				status: 'drafted',
+				tool: tool({ toolName: 'stale_name', draftSource: 'ai' }),
+			});
+			await Promise.resolve();
+			expect(screen.getByTestId('mcp-tool-dialog-generating-name')).toBeInTheDocument();
+
+			secondCall.resolve({
+				status: 'drafted',
+				tool: tool({ toolName: 'fresh_name', draftSource: 'ai' }),
+			});
+			await waitFor(() =>
+				expect(screen.queryByTestId('mcp-tool-dialog-generating-name')).not.toBeInTheDocument(),
+			);
+			expect(screen.getByTestId('inline-edit-preview')).toHaveTextContent('fresh_name');
+		});
+
 		it('disables the description input and Generate button while Save is in flight', async () => {
 			api.getMcpServer.mockResolvedValue(server([tool()]));
 			const save = deferred<McpServerToolResponse>();

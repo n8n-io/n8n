@@ -30,12 +30,10 @@ const emit = defineEmits<{
 }>();
 
 const attrs = useAttrs();
-const rootAttrs = computed(() =>
-	Object.fromEntries(Object.entries(attrs).filter(([key]) => !INPUT_ARIA_ATTRS.has(key))),
-);
-const inputAriaAttrs = computed(() =>
-	Object.fromEntries(Object.entries(attrs).filter(([key]) => INPUT_ARIA_ATTRS.has(key))),
-);
+const getRootAttrs = () =>
+	Object.fromEntries(Object.entries(attrs).filter(([key]) => !INPUT_ARIA_ATTRS.has(key)));
+const getInputAriaAttrs = () =>
+	Object.fromEntries(Object.entries(attrs).filter(([key]) => INPUT_ARIA_ATTRS.has(key)));
 
 const editableRoot = useTemplateRef('editableRoot');
 const measureSpan = useTemplateRef('measureSpan');
@@ -78,7 +76,8 @@ const computedContentStyles = {
 };
 
 function forceFocus() {
-	if (editableRoot.value && !props.readOnly && !props.disabled) {
+	const isReadOnly = attrs.readonly !== undefined ? attrs.readonly !== false : props.readOnly;
+	if (editableRoot.value && !isReadOnly && !props.disabled) {
 		editableRoot.value.edit();
 	}
 }
@@ -117,7 +116,6 @@ defineExpose({ forceFocus, forceCancel });
 <template>
 	<EditableRoot
 		ref="editableRoot"
-		v-bind="rootAttrs"
 		:placeholder="placeholder"
 		:model-value="editingValue"
 		submit-mode="both"
@@ -128,6 +126,7 @@ defineExpose({ forceFocus, forceCancel });
 		:readonly="readOnly"
 		select-on-focus
 		auto-resize
+		v-bind="getRootAttrs()"
 		@click="forceFocus"
 		@submit="onSubmit"
 		@update:model-value="onInput"
@@ -151,7 +150,7 @@ defineExpose({ forceFocus, forceCancel });
 			<!-- size=1 stops the input's default intrinsic width from inflating fit-content sizing -->
 			<EditableInput
 				ref="input"
-				v-bind="inputAriaAttrs"
+				v-bind="getInputAriaAttrs()"
 				:size="1"
 				:class="$style.inlineRenameInput"
 				data-test-id="inline-edit-input"

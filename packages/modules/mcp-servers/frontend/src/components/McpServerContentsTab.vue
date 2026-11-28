@@ -94,8 +94,8 @@ const handledExpand = ref('');
 const draftingIds = ref(new Set<string>());
 /** The tools that the latest reload added. Their chips show a short highlight. */
 const highlightedIds = ref(new Set<string>());
-/** The fields of each tool for which a "Generate" call runs. */
-const generating = ref(new Map<string, Set<McpServerToolDraftField>>());
+/** The fields of the open tool modal for which a "Generate" call runs in the current session. */
+const generatingFields = ref(new Set<McpServerToolDraftField>());
 /** The tool whose save request is currently in flight. */
 const savingToolId = ref<string | null>(null);
 /** The tool whose remove request is currently in flight. */
@@ -153,10 +153,15 @@ async function loadToolDetail(toolId: string) {
 	}
 }
 
-watch(selectedToolId, (toolId) => {
+function resetModalDraftState() {
 	modalSession++;
 	draftedName.value = null;
 	draftedDescription.value = null;
+	generatingFields.value = new Set();
+}
+
+watch(selectedToolId, (toolId) => {
+	resetModalDraftState();
 	if (!toolId) {
 		latestDetailFetch.next();
 		selectedToolDetailLoading.value = false;
@@ -241,9 +246,7 @@ async function reload() {
 			if (selectedTool.value) {
 				void loadToolDetail(selectedToolId.value);
 			} else {
-				modalSession++;
-				draftedName.value = null;
-				draftedDescription.value = null;
+				resetModalDraftState();
 				latestDetailFetch.next();
 				selectedToolId.value = null;
 				selectedToolDetail.value = null;
@@ -384,23 +387,11 @@ async function draftNewTools(tools: McpServerToolResponse[]) {
 	);
 }
 
-function generatingFields(toolId: string): McpServerToolDraftField[] {
-	return [...(generating.value.get(toolId) ?? [])];
-}
-
-function setGenerating(toolId: string, fields: Set<McpServerToolDraftField>) {
-	const next = new Map(generating.value);
-	if (fields.size > 0) next.set(toolId, fields);
-	else next.delete(toolId);
-	generating.value = next;
-}
-
 /** Preview-only draft for one modal field; the builder applies it on Save or discards it on Cancel. */
 async function onGenerate(tool: McpServerToolResponse, field: McpServerToolDraftField) {
-	const running = generating.value.get(tool.id) ?? new Set();
-	if (running.has(field)) return;
+	if (generatingFields.value.has(field)) return;
 	const session = modalSession;
-	setGenerating(tool.id, new Set(running).add(field));
+	generatingFields.value = new Set(generatingFields.value).add(field);
 	try {
 		const { status, tool: drafted } = await draftTool(
 			rootStore.restApiContext,
@@ -418,11 +409,15 @@ async function onGenerate(tool: McpServerToolResponse, field: McpServerToolDraft
 			}
 		}
 	} catch (error) {
-		toast.showError(error, i18n.baseText('mcpServers.tools.draftError'));
+		if (session === modalSession) {
+			toast.showError(error, i18n.baseText('mcpServers.tools.draftError'));
+		}
 	} finally {
-		const after = new Set(generating.value.get(tool.id));
-		after.delete(field);
-		setGenerating(tool.id, after);
+		if (session === modalSession) {
+			const after = new Set(generatingFields.value);
+			after.delete(field);
+			generatingFields.value = after;
+		}
 	}
 }
 
@@ -553,7 +548,7 @@ onMounted(load);
 				:drafting="selectedTool ? draftingIds.has(selectedTool.id) : false"
 				:saving="selectedTool ? savingToolId === selectedTool.id : false"
 				:removing="selectedTool ? removingToolId === selectedTool.id : false"
-				:generating="selectedTool ? generatingFields(selectedTool.id) : []"
+				:generating="[...generatingFields]"
 				:drafted-name="draftedName"
 				:drafted-description="draftedDescription"
 				:workflow-href="selectedTool?.targetId ? workflowHref(selectedTool.targetId) : null"

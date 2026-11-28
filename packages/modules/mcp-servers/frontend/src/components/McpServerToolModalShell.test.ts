@@ -87,21 +87,43 @@ describe('McpServerToolModalShell', () => {
 	});
 
 	it('links title validation errors via aria-describedby and aria-invalid without role="alert"', async () => {
-		renderComponent({
+		const { rerender } = renderComponent({
 			props: {
 				open: true,
-				title: 'Invalid-Name',
+				title: 'valid_name',
 				editableTitle: true,
 				canUpdate: true,
-				titleError: 'Use lowercase letters, numbers, and underscores.',
+				titleError: '',
 			},
 		});
 
+		const input = await screen.findByTestId('inline-edit-input');
+		expect(input).not.toHaveAttribute('aria-invalid');
+		expect(input).not.toHaveAttribute('aria-describedby');
+
+		await rerender({
+			open: true,
+			title: 'Invalid-Name',
+			editableTitle: true,
+			canUpdate: true,
+			titleError: 'Use lowercase letters, numbers, and underscores.',
+		});
+
 		const error = await screen.findByTestId('mcp-tool-dialog-name-error');
-		const input = screen.getByTestId('inline-edit-input');
 		expect(error).not.toHaveAttribute('role', 'alert');
 		expect(error).toHaveAttribute('id');
 		expect(input).toHaveAttribute('aria-invalid', 'true');
 		expect(input).toHaveAttribute('aria-describedby', error.getAttribute('id'));
+
+		await rerender({
+			open: true,
+			title: 'valid_name',
+			editableTitle: true,
+			canUpdate: true,
+			titleError: '',
+		});
+
+		expect(input).not.toHaveAttribute('aria-invalid');
+		expect(input).not.toHaveAttribute('aria-describedby');
 	});
 });

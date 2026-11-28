@@ -151,23 +151,59 @@ describe('N8nInlineTextEdit', () => {
 		expect(input).toHaveFocus();
 	});
 
-	it('forwards aria-invalid and aria-describedby to the inner input', () => {
+	it('forwards aria-invalid and aria-describedby to the inner input and updates when they change', async () => {
 		const wrapper = renderComponent({
 			props: {
 				modelValue: 'Test Value',
 			},
-			attrs: {
-				'aria-invalid': 'true',
-				'aria-describedby': 'title-error',
-				'data-test-id': 'inline-root',
-			},
+		});
+
+		const input = wrapper.getByTestId('inline-edit-input');
+		expect(input).not.toHaveAttribute('aria-invalid');
+		expect(input).not.toHaveAttribute('aria-describedby');
+
+		await wrapper.rerender({
+			modelValue: 'Test Value',
+			'aria-invalid': 'true',
+			'aria-describedby': 'title-error',
+			'data-test-id': 'inline-root',
 		});
 
 		const root = wrapper.getByTestId('inline-root');
-		const input = wrapper.getByTestId('inline-edit-input');
 		expect(input).toHaveAttribute('aria-invalid', 'true');
 		expect(input).toHaveAttribute('aria-describedby', 'title-error');
 		expect(root).not.toHaveAttribute('aria-invalid');
 		expect(root).not.toHaveAttribute('aria-describedby');
+
+		await wrapper.rerender({
+			modelValue: 'Test Value',
+			'aria-invalid': undefined,
+			'aria-describedby': undefined,
+			'data-test-id': 'inline-root',
+		});
+
+		expect(input).not.toHaveAttribute('aria-invalid');
+		expect(input).not.toHaveAttribute('aria-describedby');
+	});
+
+	it('lets fallthrough root attributes override default EditableRoot bindings (e.g. readonly)', async () => {
+		const wrapper = renderComponent({
+			props: {
+				modelValue: 'Managed Credential',
+			},
+			attrs: {
+				readonly: true,
+			},
+		});
+
+		const editableArea = wrapper.getByTestId('inline-editable-area');
+		const input = wrapper.getByTestId('inline-edit-input');
+		expect(editableArea).toHaveAttribute('data-readonly');
+		expect(input).toHaveAttribute('readonly');
+
+		await userEvent.click(wrapper.getByTestId('inline-edit-preview'));
+		await userEvent.type(input, 'Changed{Enter}');
+		expect(input).toHaveValue('Managed Credential');
+		expect(wrapper.emitted('update:model-value')).toBeUndefined();
 	});
 });
