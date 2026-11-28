@@ -756,7 +756,7 @@ describe('on the leader', () => {
 			.expect(200);
 
 		const AFTER_THE_REQUEST = {
-			error: expect.objectContaining({ name: 'TriggerCredentialAccessError' }),
+			error: undefined,
 			activeVersionId: workflow.versionId,
 			registeredCron: registeredBefore,
 			records: [pendingTransfer(workflow.versionId)],

@@ -114,6 +114,7 @@ import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { findPolicyViolations } from '@/policy/policy-violation.error';
 import type { PublicApiCaller, PublicApiClient } from '@/public-api/public-api-client';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
@@ -137,6 +138,12 @@ class SystemPublishSupersededError extends Error {}
 const PUBLISH_API_KEY_SCOPE: ApiKeyScope = 'workflow:activate';
 
 type PublishedWorkflow = WorkflowEntity & { activeVersion: WorkflowHistory };
+
+function toTransferResult(error: unknown): WorkflowTransferResult {
+	const unpublishReasons = findPolicyViolations(error);
+	const { name, message } = ensureError(error);
+	return unpublishReasons ? { unpublishReasons } : { error: { name, message } };
+}
 
 /** What `getMany` should enrich or scope beyond the plain list query. */
 export type GetManyOptions = {
@@ -1713,14 +1720,30 @@ export class WorkflowService {
 		});
 	}
 
-	/** Returns only the workflows that the transfer could not republish in the destination. */
+	/** Returns only the workflows that the transfer unpublished because the destination refused them. */
 	async republishAroundTransfer(
 		user: User,
 		workflowIds: string[],
+		destinationProjectId: string,
 		transfer: (ctx: OperationContext) => Promise<string[]>,
 		{ publicApi }: { publicApi: PublicApiCaller },
 	): Promise<Map<string, WorkflowTransferResult>> {
 		const publishedBeforeTransfer = await this._findPublished(workflowIds);
+
+		const sourceProjects = await this._sourceProjectsOfLeaving(
+			publishedBeforeTransfer,
+			destinationProjectId,
+		);
+		const refusals = new Map<string, unknown>();
+		for (const workflow of publishedBeforeTransfer.filter(({ id }) => sourceProjects.has(id))) {
+			try {
+				await this._enforcePublishInProject(workflow, destinationProjectId, user);
+			} catch (error) {
+				if (!findPolicyViolations(error)) throw error;
+				refusals.set(workflow.id, error);
+			}
+		}
+
 		const transferredIds = await this.workflowRepository.runInTransaction({}, async (_trx, ctx) => {
 			const transferred = await transfer(ctx);
 			await this.outboxRepository.enqueueByWorkflowIds(
@@ -1731,16 +1754,91 @@ export class WorkflowService {
 			return transferred;
 		});
 
+		await this._clearWebhooksInSourceProject(
+			[...refusals.keys()].filter((workflowId) => transferredIds.includes(workflowId)),
+			sourceProjects,
+		);
+
 		const afterCommitFailure = await this._afterCommitFailure(transferredIds, user);
 		const results = await this._finishTransfer(
 			user,
 			transferredIds,
+			refusals,
 			publishedBeforeTransfer,
 			publicApi,
 		);
 		if (afterCommitFailure) throw afterCommitFailure;
 
 		return results;
+	}
+
+	/** The owner project of each workflow that leaves it for `destinationProjectId`. */
+	private async _sourceProjectsOfLeaving(
+		workflows: PublishedWorkflow[],
+		destinationProjectId: string,
+	): Promise<Map<string, string>> {
+		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
+			workflows.map((workflow) => workflow.id),
+		);
+		const sourceProjects = new Map<string, string>();
+		for (const [workflowId, project] of owners) {
+			if (project.id !== destinationProjectId) sourceProjects.set(workflowId, project.id);
+		}
+		return sourceProjects;
+	}
+
+	private async _enforcePublishInProject(
+		workflow: PublishedWorkflow,
+		projectId: string,
+		user: User,
+	): Promise<void> {
+		if (this.policyEnforcementService.hasChecksFor('workflowPublish')) {
+			try {
+				await this.policyEnforcementService.enforceWorkflowPublish(
+					{
+						workflow: { id: workflow.id, name: workflow.name, nodes: workflow.activeVersion.nodes },
+						projectId,
+					},
+					{ kind: 'user', user },
+				);
+			} catch (error) {
+				if (!findPolicyViolations(error)) {
+					this.logger.error(`Failed to check the publish policy for workflow "${workflow.id}"`, {
+						workflowId: workflow.id,
+						error,
+					});
+				}
+				throw error;
+			}
+		}
+	}
+
+	/**
+	 * Never throws: if a removal fails, the leader removes the webhook as the destination project,
+	 * unless that project's decrypt policy refuses the credential.
+	 */
+	// TODO: Delete this method once the decrypt policy allows deregistration.
+	private async _clearWebhooksInSourceProject(
+		workflowIds: string[],
+		sourceProjects: Map<string, string>,
+	): Promise<void> {
+		const removals = await Promise.allSettled(
+			workflowIds.map(
+				async (workflowId) =>
+					await this.activeWorkflowManager.clearWebhooks(
+						workflowId,
+						sourceProjects.get(workflowId),
+					),
+			),
+		);
+		const failedIds = workflowIds.filter((_, index) => removals[index].status === 'rejected');
+		if (failedIds.length > 0) {
+			const firstFailure = removals.find((removal) => removal.status === 'rejected');
+			this.logger.error('Failed to remove the webhooks of refused workflows after the transfer', {
+				workflowIds: failedIds,
+				error: firstFailure?.reason,
+			});
+		}
 	}
 
 	/** Runs both steps after the move commits, even if the first fails, and returns the first failure. */
@@ -1765,6 +1863,7 @@ export class WorkflowService {
 	private async _finishTransfer(
 		user: User,
 		transferredIds: string[],
+		refusals: Map<string, unknown>,
 		publishedBeforeTransfer: PublishedWorkflow[],
 		publicApi: PublicApiCaller,
 	): Promise<Map<string, WorkflowTransferResult>> {
@@ -1772,11 +1871,13 @@ export class WorkflowService {
 		const results = new Map<string, WorkflowTransferResult>();
 		let unpublishedAny = false;
 		for (const workflow of workflows) {
-			const failure = await this._triggerCredentialCheckFailure(workflow);
+			const failure = refusals.has(workflow.id)
+				? refusals.get(workflow.id)
+				: await this._triggerCredentialCheckFailure(workflow);
 			if (failure) {
 				const unpublished = await this._unpublishAfterTransfer(user, workflow, publicApi);
 				unpublishedAny ||= unpublished;
-				results.set(workflow.id, { error: { name: failure.name, message: failure.message } });
+				if (unpublished) results.set(workflow.id, toTransferResult(failure));
 			}
 		}
 

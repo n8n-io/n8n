@@ -269,7 +269,8 @@ export class ActiveWorkflowManager {
 	 * Remove all webhooks of a workflow from the database, and
 	 * deregister those webhooks from external services.
 	 */
-	async clearWebhooks(workflowId: WorkflowId) {
+	/** `projectId` names the project to deregister in, when the owner is no longer that project. */
+	async clearWebhooks(workflowId: WorkflowId, projectId?: string) {
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 			relations: { activeVersion: true },
@@ -301,6 +302,7 @@ export class ActiveWorkflowManager {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflow.id,
 			workflowSettings: workflowData.settings,
+			projectId,
 		});
 
 		await this.deregisterWebhooks(workflow, additionalData);
