@@ -139,6 +139,33 @@ describe('McpTrigger', () => {
 	});
 
 	describe('webhook - setup (GET)', () => {
+		it('should return 405 Method Not Allowed when session ID is present on GET setup request', async () => {
+			const req = createMockRequest({
+				path: '/webhook',
+				headers: { 'mcp-session-id': 'existing-session-123' },
+			});
+			const resp = createMockResponse();
+			const node = mock<INode>({
+				typeVersion: 2,
+				name: 'MCP Server Trigger',
+			});
+
+			mockMcpServer.getSessionId.mockReturnValue('existing-session-123');
+
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.getSessionId).toHaveBeenCalledWith(req);
+			expect(resp.writeHead).toHaveBeenCalledWith(405);
+			expect(resp.end).toHaveBeenCalledWith('Method Not Allowed');
+			expect(mockMcpServer.handleSetupRequest).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
 		it('should handle setup request for version 1', async () => {
 			const req = createMockRequest({ path: '/webhook/sse' });
 			const resp = createMockResponse();

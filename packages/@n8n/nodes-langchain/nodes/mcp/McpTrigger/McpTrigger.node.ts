@@ -318,6 +318,12 @@ export class McpTrigger extends Node {
 		const mcpServer = McpServer.instance(context.logger);
 
 		if (webhookName === 'setup') {
+			if (mcpServer.getSessionId(req)) {
+				resp.writeHead(405);
+				resp.end('Method Not Allowed');
+				return { noWebhookResponse: true };
+			}
+
 			const postUrl =
 				node.typeVersion < 2
 					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)
