@@ -1,14 +1,18 @@
 import { nextTick } from 'vue';
 import type { Pinia } from 'pinia';
 import { createPinia, setActivePinia } from 'pinia';
-import { screen } from '@testing-library/vue';
+import { screen, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import {
 	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	AI_CATEGORY_MCP_NODES,
+	AI_CATEGORY_ROOT_NODES,
+	AI_CATEGORY_TOOLS,
 	AI_MCP_TOOL_NODE_TYPE,
 	AI_OTHERS_NODE_CREATOR_VIEW,
+	AI_SUBCATEGORY,
+	CORE_NODES_CATEGORY,
 	HTTP_REQUEST_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	REGULAR_NODE_CREATOR_VIEW,
@@ -16,7 +20,7 @@ import {
 	SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
-import type { CommandCreateElement, NodeCreateElement } from '@/Interface';
+import type { CommandCreateElement, INodeUi, NodeCreateElement } from '@/Interface';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { useKeyboardNavigation } from '@/features/shared/nodeCreator/composables/useKeyboardNavigation';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -25,7 +29,7 @@ import { waitAllPromises } from '@n8n/frontend-test-utils';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import type { IWorkflowSettings } from 'n8n-workflow';
+import { NodeConnectionTypes, type IWorkflowSettings } from 'n8n-workflow';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import NodesMode from './NodesMode.vue';
@@ -37,7 +41,7 @@ const mockDocumentStoreState = {
 	connectionsBySourceNode: {},
 	settings: {} as IWorkflowSettings,
 	workflowTriggerNodes: [],
-	aiNodes: [],
+	aiNodes: [] as INodeUi[],
 	getExpressionHandler: () => null,
 };
 vi.mock('@/app/stores/workflowDocument.store', () => ({
@@ -493,5 +497,200 @@ describe('NodesMode', () => {
 			'href',
 			REQUEST_NODE_FORM_URL,
 		);
+	});
+
+	// Regression tests for NODE-6853: remove temporary "New" badges from MCP servers
+	// subcategory tile and MCP server nodes in node creator.
+	describe('MCP servers badges', () => {
+		function mcpRegistryServerElement(): NodeCreateElement {
+			const properties = mockSimplifiedNodeType({
+				name: '@n8n/mcp-registry.acme',
+				displayName: 'Acme MCP',
+				description: 'Connect tools from Acme over MCP',
+				group: ['output'],
+				outputs: [NodeConnectionTypes.AiTool],
+				codex: {
+					categories: [AI_SUBCATEGORY],
+					subcategories: {
+						[AI_SUBCATEGORY]: [AI_CATEGORY_MCP_NODES],
+					},
+					alias: ['MCP', 'Model Context Protocol'],
+				},
+			});
+
+			return {
+				key: properties.name,
+				type: 'node',
+				subcategory: AI_CATEGORY_MCP_NODES,
+				properties,
+			};
+		}
+
+		function mcpClientToolElement(): NodeCreateElement {
+			const properties = mockSimplifiedNodeType({
+				name: AI_MCP_TOOL_NODE_TYPE,
+				displayName: 'MCP Client Tool',
+				description: 'Connect tools from an MCP Server',
+				group: ['output'],
+				outputs: [NodeConnectionTypes.AiTool],
+				codex: {
+					categories: [AI_SUBCATEGORY],
+					subcategories: {
+						[AI_SUBCATEGORY]: [AI_CATEGORY_MCP_NODES],
+					},
+					alias: ['Model Context Protocol', 'MCP Client'],
+				},
+			});
+
+			return {
+				key: properties.name,
+				type: 'node',
+				subcategory: AI_CATEGORY_MCP_NODES,
+				properties,
+			};
+		}
+
+		function mcpTriggerElement(): NodeCreateElement {
+			const properties = mockSimplifiedNodeType({
+				name: '@n8n/n8n-nodes-langchain.mcpTrigger',
+				displayName: 'MCP Server Trigger',
+				description: 'Expose n8n tools as an MCP Server endpoint',
+				group: ['trigger'],
+				outputs: [NodeConnectionTypes.Main],
+				codex: {
+					categories: [AI_SUBCATEGORY, CORE_NODES_CATEGORY],
+					subcategories: {
+						[AI_SUBCATEGORY]: [AI_CATEGORY_ROOT_NODES, AI_CATEGORY_MCP_NODES],
+					},
+					alias: ['Model Context Protocol', 'MCP Server'],
+				},
+			});
+
+			return {
+				key: properties.name,
+				type: 'node',
+				subcategory: AI_CATEGORY_MCP_NODES,
+				properties,
+			};
+		}
+
+		function expectItemWithoutNewBadge(name: string) {
+			const item = screen
+				.getByText(name)
+				.closest<HTMLElement>('[data-test-id="item-iterator-item"]');
+			if (!item) {
+				expect.fail(`Expected node creator item "${name}" to render`);
+			}
+
+			expect(within(item).queryByText('New')).not.toBeInTheDocument();
+		}
+
+		beforeEach(() => {
+			mockDocumentStoreState.aiNodes = [{} as INodeUi];
+		});
+
+		afterEach(() => {
+			mockDocumentStoreState.aiNodes = [];
+		});
+
+		it('does not show a "New" badge on MCP Server Trigger in global search', async () => {
+			useViewStacks().pushViewStack({
+				title: 'What happens next?',
+				mode: 'nodes',
+				rootView: REGULAR_NODE_CREATOR_VIEW,
+				hasSearch: true,
+				search: 'MCP Server Trigger',
+				items: [],
+				searchItems: [mcpTriggerElement()],
+			});
+
+			render({ pinia });
+			await nextTick();
+
+			expectItemWithoutNewBadge('MCP Server Trigger');
+		});
+
+		it('does not show a "New" badge on the MCP servers subcategory tile in the Tools view', async () => {
+			useViewStacks().pushViewStack({
+				title: AI_CATEGORY_TOOLS,
+				mode: 'nodes',
+				rootView: AI_OTHERS_NODE_CREATOR_VIEW,
+				connectionType: NodeConnectionTypes.AiTool,
+				items: [mcpClientToolElement(), mcpRegistryServerElement()],
+			});
+
+			render({ pinia });
+			await nextTick();
+
+			expectItemWithoutNewBadge('MCP servers');
+		});
+
+		it('does not show a "New" badge on MCP server nodes in Tools search', async () => {
+			useViewStacks().pushViewStack({
+				title: AI_CATEGORY_TOOLS,
+				mode: 'nodes',
+				rootView: AI_OTHERS_NODE_CREATOR_VIEW,
+				connectionType: NodeConnectionTypes.AiTool,
+				hasSearch: true,
+				search: 'MCP',
+				items: [mcpClientToolElement(), mcpRegistryServerElement()],
+			});
+
+			render({ pinia });
+			await nextTick();
+
+			expectItemWithoutNewBadge('Acme MCP');
+			expectItemWithoutNewBadge('MCP Client Tool');
+		});
+
+		it('does not show a "New" badge on MCP server nodes in global search', async () => {
+			useViewStacks().pushViewStack({
+				title: 'What happens next?',
+				mode: 'nodes',
+				rootView: REGULAR_NODE_CREATOR_VIEW,
+				hasSearch: true,
+				search: 'MCP',
+				items: [],
+				searchItems: [mcpClientToolElement(), mcpRegistryServerElement()],
+			});
+
+			render({ pinia });
+			await nextTick();
+
+			expectItemWithoutNewBadge('Acme MCP');
+			expectItemWithoutNewBadge('MCP Client Tool');
+		});
+
+		it('does not show a "New" badge on MCP server nodes inside the MCP servers view', async () => {
+			const viewStacks = useViewStacks();
+			viewStacks.pushViewStack({
+				title: 'MCP servers',
+				mode: 'nodes',
+				rootView: AI_OTHERS_NODE_CREATOR_VIEW,
+				subcategory: AI_CATEGORY_MCP_NODES,
+				items: [
+					{
+						key: AI_MCP_TOOL_NODE_TYPE,
+						type: 'section',
+						title: '',
+						children: [mcpClientToolElement()],
+						showSeparator: true,
+						hideHeader: true,
+					},
+					mcpRegistryServerElement(),
+				],
+			});
+
+			render({ pinia });
+			await nextTick();
+
+			expectItemWithoutNewBadge('MCP Client Tool');
+			expectItemWithoutNewBadge('Acme MCP');
+
+			viewStacks.updateCurrentViewStack({ search: 'Acme' });
+			await nextTick();
+
+			expectItemWithoutNewBadge('Acme MCP');
+		});
 	});
 });
