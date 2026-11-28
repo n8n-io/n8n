@@ -264,6 +264,20 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(activeExecutions.add).not.toHaveBeenCalled();
 		});
 
+		it('passes the owner project of the sub-workflow to preExecute', async () => {
+			workflowPreExecute.run.mockRejectedValue(new Error('blocked'));
+
+			await expect(
+				executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+				),
+			).rejects.toThrow('blocked');
+
+			expect(workflowPreExecute.run.mock.calls[0][4]).toBe('project-id-1');
+		});
+
 		it.each([false, true])(
 			'persists caller lastRunOnly=%s before the child starts',
 			async (returnLastRunOnly) => {

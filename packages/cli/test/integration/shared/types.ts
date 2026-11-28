@@ -92,7 +92,8 @@ type ModuleName =
 	| 'type-availability-policies'
 	| 'inbound-auth-core'
 	| 'mcp-servers'
-	| 'scim';
+	| 'scim'
+	| 'execution-ledger';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

@@ -15,15 +15,18 @@ import { getWorkflowActiveStatusFromWorkflowData } from '../execution.utils';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
+import { admitExecution } from '@/policy/admit-execution';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 /**
- * Runs `workflow.preExecute` before an execution row is created and writes
- * hook mutations back onto `workflowData`. A throw means the run never
- * started — no row, no Insights/license count.
+ * Runs the checks that can refuse a run before its execution row is created: the
+ * `executionAdmission` policy, then the `workflow.preExecute` hook. A throw means the run
+ * never started — no row, no Insights/license count.
  *
- * No-ops when `N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION` is true; the lifecycle
- * hook then runs after persist (legacy).
+ * When `N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION` is true, only the policy runs here; the
+ * lifecycle hook then runs after persist (legacy).
  */
 @Service()
 export class WorkflowPreExecute {
@@ -32,6 +35,8 @@ export class WorkflowPreExecute {
 		private readonly workflowContext: WorkflowHookContextService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	async run(
@@ -39,7 +44,16 @@ export class WorkflowPreExecute {
 		mode: WorkflowExecuteMode,
 		source?: WorkflowExecutionSource,
 		pinData?: IPinData,
+		projectId?: string,
 	): Promise<Workflow | undefined> {
+		// A refused run must not reach the hook, where n8n Cloud counts its quota.
+		await admitExecution(this.policyEnforcementService, this.ownershipService, {
+			workflow: workflowData,
+			mode,
+			source,
+			projectId,
+		});
+
 		if (this.executionsConfig.preExecuteErrorCreatesExecution) {
 			return;
 		}
