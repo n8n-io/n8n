@@ -5262,6 +5262,52 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 
+		describe('trigger node and caller', () => {
+			const runData = {
+				finished: true,
+				status: 'success',
+				mode: 'webhook',
+				data: { resultData: { runData: {} } },
+			} as unknown as IRun;
+
+			const getTrackedProperties = () =>
+				vi.mocked(telemetry.trackWorkflowExecution).mock.calls[0][0];
+
+			it('should add the trigger node and the caller recorded when the execution was created', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: mockWorkflowBase,
+					executionId: 'execution123',
+					runData,
+					telemetryMetadata: {
+						origin: { triggerNodeType: 'n8n-nodes-base.webhook', caller: 'public_api' },
+					},
+				});
+
+				await flushPromises();
+
+				expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+					expect.objectContaining({
+						execution_mode: 'webhook',
+						trigger_node_type: 'n8n-nodes-base.webhook',
+						execution_caller: 'public_api',
+					}),
+				);
+			});
+
+			it('should add neither when no origin was recorded', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: mockWorkflowBase,
+					executionId: 'execution123',
+					runData,
+				});
+
+				await flushPromises();
+
+				expect(getTrackedProperties()).not.toHaveProperty('trigger_node_type');
+				expect(getTrackedProperties()).not.toHaveProperty('execution_caller');
+			});
+		});
+
 		it('should call telemetry.track when manual node execution finished', async () => {
 			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
 			credentialsRepository.findOneBy.mockResolvedValue(

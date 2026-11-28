@@ -4543,6 +4543,30 @@ describe('POST /workflows/:workflowId/run', () => {
 			expect(executions).toEqual([expect.objectContaining({ id: executionId, mode: 'manual' })]);
 		});
 
+		test('should mark the run as started by the public API in its telemetry', async () => {
+			const workflow = await createMockWorkflow();
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+			const response = await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({
+				runData: { [TRIGGER_NODE_NAME]: taskData({}) },
+				destinationNode: toLastNode,
+			});
+
+			expect(response.statusCode).toBe(200);
+			await waitForExecution(response.body.executionId);
+
+			// A partial run reuses the output of the trigger node, which is recorded as its trigger.
+			expect(emitSpy).toHaveBeenCalledWith(
+				'workflow-post-execute',
+				expect.objectContaining({
+					executionId: response.body.executionId,
+					telemetryMetadata: expect.objectContaining({
+						origin: { triggerNodeType: 'n8n-nodes-base.manualTrigger', caller: 'public_api' },
+					}),
+				}),
+			);
+		});
+
 		test('should accept dirty node names', async () => {
 			const workflow = await createMockWorkflow();
 

@@ -73,6 +73,7 @@ import type { PoolConfigService } from '@/scaling/pool-config.service.ee';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
+import { getExecutionOrigin } from '@/telemetry/execution-origin';
 import { StreamingWebhookResponseHeartbeat } from '@/webhooks/streaming-webhook-response-heartbeat';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -505,6 +506,12 @@ export class WorkflowRunner {
 		// A v2 resume has no control-plane row either.
 		if (existingExecution?.engineResume) {
 			return await this.engineV2Dispatcher.resume(existingExecution, data);
+		}
+
+		// Records how the run started while its execution is created, for the run's telemetry.
+		const origin = getExecutionOrigin(data, this.nodeTypes);
+		if (origin) {
+			data.telemetryMetadata = { ...data.telemetryMetadata, origin };
 		}
 
 		const establishContextError = await this.establishContextForPersistence(data);

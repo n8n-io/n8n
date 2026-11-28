@@ -37,6 +37,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
+	IWorkflowExecutionTelemetryMetadata,
 	IWorkflowBase,
 	PollCursor,
 } from 'n8n-workflow';
@@ -418,6 +419,7 @@ export class WorkflowExecutionService {
 		pushRef,
 		n8nAuthCookie,
 		waitForWebhook = true,
+		telemetryMetadata,
 	}: {
 		workflowData: IWorkflowBase;
 		payload: WorkflowRequest.ManualRunPayload;
@@ -425,6 +427,7 @@ export class WorkflowExecutionService {
 		pushRef?: string;
 		n8nAuthCookie?: string;
 		waitForWebhook?: boolean;
+		telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 	}): Promise<ManualRunResponse> {
 		this.assertManualExecutionAllowed();
 
@@ -585,6 +588,10 @@ export class WorkflowExecutionService {
 			);
 			data.projectId = projectId;
 			data.projectName = projectName;
+
+			if (telemetryMetadata) {
+				data.telemetryMetadata = telemetryMetadata;
+			}
 
 			data.encryptedRunnerIdentity = n8nAuthCookie
 				? await this.executionContextService.buildManualExecutionCredentials(n8nAuthCookie)

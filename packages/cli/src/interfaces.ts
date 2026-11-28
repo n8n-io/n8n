@@ -22,6 +22,7 @@ import type {
 	ExecutionSummary,
 	IWorkflowExecutionDataProcess,
 	IExecutionContext,
+	WorkflowExecutionCaller,
 	WorkflowExecutionSource,
 	ExecutionStorageLocation,
 } from 'n8n-workflow';
@@ -251,6 +252,18 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	mock_data_sources?: string;
 	/** Number of credentials the run uses only through the acting user's own access. */
 	personal_credentials_count?: number;
+	/** Mode that started the run, for example `webhook`. Absent when the run has no run data. */
+	execution_mode?: WorkflowExecuteMode;
+	/**
+	 * Type of the trigger node that started the execution, or whose output a partial run reuses.
+	 * Absent when there is none.
+	 */
+	trigger_node_type?: string;
+	/**
+	 * The agent, parent workflow, public API call or Instance AI that started the run. Absent when
+	 * none did.
+	 */
+	execution_caller?: WorkflowExecutionCaller;
 }
 
 // ----------------------------------

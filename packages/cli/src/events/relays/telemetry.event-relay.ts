@@ -2133,6 +2133,15 @@ export class TelemetryEventRelay extends EventRelay {
 			telemetryProperties.user_id = userId;
 		}
 
+		// Recorded when the execution was created, see `getExecutionOrigin`.
+		const { caller, triggerNodeType } = telemetryMetadata?.origin ?? {};
+		if (caller) {
+			telemetryProperties.execution_caller = caller;
+		}
+		if (triggerNodeType) {
+			telemetryProperties.trigger_node_type = triggerNodeType;
+		}
+
 		if (runData?.data.resultData.error?.message?.includes('canceled')) {
 			runData.status = 'canceled';
 		}

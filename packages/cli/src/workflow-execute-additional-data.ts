@@ -87,6 +87,7 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
+import { getExecutionOrigin } from '@/telemetry/execution-origin';
 import { findSubworkflowStart } from '@/utils';
 import { buildSubWorkflowError } from '@/utils/sub-workflow-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -776,7 +777,8 @@ async function startExecution(
 
 		// The hooks read this object when the run ends, so the credential check
 		// below can still fill it in.
-		const telemetryMetadata: IWorkflowExecutionTelemetryMetadata = {};
+		const origin = getExecutionOrigin(runData);
+		const telemetryMetadata: IWorkflowExecutionTelemetryMetadata = origin ? { origin } : {};
 		hooks = getLifecycleHooksForSubExecutions(
 			runData.executionMode,
 			executionId,
