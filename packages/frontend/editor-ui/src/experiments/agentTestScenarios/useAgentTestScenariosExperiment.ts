@@ -1,8 +1,8 @@
-import { AGENT_SAFE_TESTING_FLAG } from '@n8n/api-types';
 import { computed } from 'vue';
 
 import { AGENT_TEST_SCENARIOS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useAgentSafeTestingFlag } from '@/features/agents/composables/useAgentSafeTestingFlag';
 
 export function useAgentTestScenariosExperiment() {
 	const posthog = usePostHog();
@@ -14,11 +14,8 @@ export function useAgentTestScenariosExperiment() {
 		),
 	);
 
-	const isSafeTestingActive = computed(
-		() =>
-			posthog.isFeatureEnabled(AGENT_SAFE_TESTING_FLAG) ||
-			posthog.isVariantEnabled(AGENT_SAFE_TESTING_FLAG, 'variant'),
-	);
+	// Test scenarios yield to safe testing when the user is in its `test` variant.
+	const isSafeTestingActive = useAgentSafeTestingFlag();
 
 	const shouldShow = computed(() => isEnabled.value && !isSafeTestingActive.value);
 
