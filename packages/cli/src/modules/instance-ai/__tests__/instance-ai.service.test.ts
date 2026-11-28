@@ -816,7 +816,7 @@ function stubInitialRunSurface(
 ): void {
 	Object.assign(service, {
 		adapterService: {
-			resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
+			resolveExperimentGates: vi.fn(async () => ({})),
 		},
 		resolveContextAttachments: vi.fn(() => []),
 		createProxyRunConfig: vi.fn(async () => ({})),
@@ -1003,7 +1003,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				conversationHistoryEnabled: false,
 				draftWorkflowPreviewEnabled: false,
 				nodeUsageEnabled: !instanceContextEnabled,
-				nodeContextEnabled: false,
 				folderExplorationEnabled: false,
 				instanceContextEnabled,
 			}),
@@ -1357,7 +1356,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				draftWorkflowPreviewEnabled: false,
 				conciseStyleEnabled: concise,
 				nodeUsageEnabled: false,
-				nodeContextEnabled: false,
 				folderExplorationEnabled: true,
 				assistantSkillsEnabled: enabled,
 			}),
@@ -5487,7 +5485,7 @@ describe('InstanceAiService run input gates', () => {
 			formBaseUrl: 'https://acme.example.com/form',
 			tracing: { createOrchestratorResumeTraceContext: vi.fn(async () => undefined) },
 			adapterService: {
-				resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
+				resolveExperimentGates: vi.fn(async () => ({})),
 			},
 			resolveContextAttachments: vi.fn(() => []),
 			instanceAiErrorReporter: { beginRun: vi.fn(), endRun: vi.fn() },
@@ -5654,7 +5652,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 			getExtensionTraceContext: vi.fn(() => ({ connectionState: 'disconnected' })),
 		};
 		service.adapterService = {
-			resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
+			resolveExperimentGates: vi.fn(async () => ({})),
 		};
 		return service;
 	}

@@ -47,7 +47,6 @@ function createService() {
 		conciseStyleEnabled: false,
 		setupPanelEnabled: false,
 		nodeUsageEnabled: false,
-		nodeContextEnabled: false,
 		folderExplorationEnabled: false,
 		approvalModesEnabled: false,
 		instanceContextEnabled: false,

@@ -116,10 +116,9 @@ type FormattedTurnError = NonNullable<
 	Awaited<ReturnType<NonNullable<SystemAgentTurnHandle['formatError']>>>
 >;
 
-/** The resource attachments that reach the agent. Node attachments need their gate. */
+/** The resource attachments that reach the agent. */
 function contextAttachmentsOf(
 	attachments: InstanceAiAttachment[] | undefined,
-	nodeContextEnabled: boolean,
 ): InstanceAiResourceAttachment[] {
 	return (attachments ?? []).filter(
 		(
@@ -132,7 +131,7 @@ function contextAttachmentsOf(
 			attachment.type === 'workflow' ||
 			attachment.type === 'agent' ||
 			attachment.type === 'element' ||
-			(attachment.type === 'nodes' && nodeContextEnabled),
+			attachment.type === 'nodes',
 	);
 }
 
@@ -274,10 +273,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		try {
 			const experimentGates = await this.adapterService.resolveExperimentGates(user);
 			const turnFiles = turn.type === 'start' ? turn.attachments : [];
-			const contextAttachments = contextAttachmentsOf(
-				request.attachments,
-				experimentGates.nodeContextEnabled,
-			);
+			const contextAttachments = contextAttachmentsOf(request.attachments);
 			// One token manager backs the run and its trace.
 			const proxyRunConfig = await this.turnEnvironment.createProxyRunConfig(user);
 			trace = await this.tracer.startForTurn(turn, {

@@ -2507,12 +2507,10 @@ export class InstanceAiService {
 
 	/**
 	 * Splits a message's attachments into the resource references that feed the
-	 * context block. The canvas node-context and Assistant mentions flags both
-	 * accept `nodes` attachments. Workflow and agent references always pass.
+	 * context block.
 	 */
 	private resolveContextAttachments(
 		attachments: InstanceAiAttachment[] | undefined,
-		nodeContextEnabled: boolean,
 	): InstanceAiResourceAttachment[] {
 		const attachmentsOrEmpty = attachments ?? [];
 
@@ -2532,12 +2530,7 @@ export class InstanceAiService {
 			(attachment): attachment is InstanceAiElementAttachment => attachment.type === 'element',
 		);
 
-		return [
-			...workflowAttachments,
-			...agentAttachments,
-			...(nodeContextEnabled ? nodeAttachments : []),
-			...elementAttachments,
-		];
+		return [...workflowAttachments, ...agentAttachments, ...nodeAttachments, ...elementAttachments];
 	}
 
 	/**
@@ -2586,10 +2579,7 @@ export class InstanceAiService {
 		);
 
 		const experimentGates = await this.adapterService.resolveExperimentGates(user);
-		const contextAttachments = this.resolveContextAttachments(
-			attachments,
-			experimentGates.nodeContextEnabled,
-		);
+		const contextAttachments = this.resolveContextAttachments(attachments);
 
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
