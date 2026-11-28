@@ -62,28 +62,22 @@ function createService(options: CreateServiceOptions = {}) {
 	const publisher = mock<Publisher>({ publishCommand: vi.fn().mockResolvedValue(undefined) });
 
 	if (options.storedServers === null) {
-		repository.find.mockResolvedValue([]);
-		repository.findBy.mockResolvedValue([]);
+		repository.findAll.mockResolvedValue([]);
+		repository.findActive.mockResolvedValue([]);
+		repository.findBySlugs.mockResolvedValue([]);
+		repository.findBySlug.mockResolvedValue(null);
 	} else {
 		const servers = options.storedServers ?? [notionMockServer, linearMockServer];
 		const entities = servers.map(toMockEntity);
-		repository.find.mockResolvedValue(entities);
-		repository.findBy.mockImplementation(async (where) => {
-			if (Array.isArray(where)) {
-				const slugs = new Set(where.map((condition) => condition.slug));
-				return entities.filter((e) => slugs.has(e.slug));
-			}
-			if (where && 'status' in where) {
-				return entities.filter((e) => e.status === where.status);
-			}
-			return entities;
+		repository.findAll.mockResolvedValue(entities);
+		repository.findActive.mockResolvedValue(entities.filter((e) => e.status === 'active'));
+		repository.findBySlugs.mockImplementation(async (slugs) => {
+			const slugSet = new Set(slugs);
+			return entities.filter((e) => slugSet.has(e.slug));
 		});
-		repository.findOneBy.mockImplementation(async (where) => {
-			if (where && 'slug' in where) {
-				return entities.find((e) => e.slug === where.slug) ?? null;
-			}
-			return null;
-		});
+		repository.findBySlug.mockImplementation(
+			async (slug) => entities.find((e) => e.slug === slug) ?? null,
+		);
 	}
 
 	apiClient.fetchServersMetadata.mockResolvedValue([]);
@@ -233,7 +227,7 @@ describe('McpRegistryService', () => {
 			const servers = await service.getBySlugs([]);
 
 			expect(servers).toEqual([]);
-			expect(repository.findBy).not.toHaveBeenCalled();
+			expect(repository.findBySlugs).not.toHaveBeenCalled();
 		});
 
 		it('returns mapped servers for getBySlugs', async () => {
@@ -241,7 +235,7 @@ describe('McpRegistryService', () => {
 
 			const servers = await service.getBySlugs(['notion', 'linear']);
 
-			expect(repository.findBy).toHaveBeenCalledWith([{ slug: 'notion' }, { slug: 'linear' }]);
+			expect(repository.findBySlugs).toHaveBeenCalledWith(['notion', 'linear'], {});
 			expect(servers).toEqual([notionMockServer, linearMockServer]);
 		});
 
@@ -392,6 +386,7 @@ describe('McpRegistryService', () => {
 			expect(repository.upsertFetchedServers).toHaveBeenCalledWith(
 				[toEntity(unsupportedServer)],
 				DB_NOW,
+				{},
 			);
 		});
 

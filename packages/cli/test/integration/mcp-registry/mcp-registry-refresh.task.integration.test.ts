@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { Publisher, PushProxy } from '@n8n/backend-services';
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -13,6 +14,7 @@ import type {
 	McpRegistryServerMetadata,
 } from '@/modules/mcp-registry/registry/mcp-registry-api.client';
 import { McpRegistryCapabilities } from '@/modules/mcp-registry/registry/mcp-registry-capabilities';
+import { McpRegistryServerEntity } from '@/modules/mcp-registry/registry/mcp-registry-server.entity';
 import { McpRegistryServerRepository } from '@/modules/mcp-registry/registry/mcp-registry-server.repository';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
@@ -41,12 +43,14 @@ describe('McpRegistryRefreshTask', () => {
 	const push = mock<PushProxy>();
 	const publisher = mock<Publisher>();
 	let repository: McpRegistryServerRepository;
+	let tableRepository: Repository<McpRegistryServerEntity>;
 	let task: McpRegistryRefreshTask;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['mcp-registry']);
 		await testDb.init();
 		repository = Container.get(McpRegistryServerRepository);
+		tableRepository = Container.get(DataSource).getRepository(McpRegistryServerEntity);
 		const service = new McpRegistryService(
 			mock<Logger>({ scoped: vi.fn().mockReturnThis() }),
 			repository,
@@ -70,7 +74,7 @@ describe('McpRegistryRefreshTask', () => {
 	});
 
 	afterEach(async () => {
-		await repository.delete({});
+		await tableRepository.delete({});
 	});
 
 	afterAll(async () => {
@@ -86,7 +90,7 @@ describe('McpRegistryRefreshTask', () => {
 	}
 
 	async function seed(servers: McpRegistryServer[]): Promise<void> {
-		await repository.insert(
+		await tableRepository.insert(
 			servers.map((server) => ({ ...toEntity(server), updatedAt: SEEDED_AT })),
 		);
 	}
@@ -104,7 +108,7 @@ describe('McpRegistryRefreshTask', () => {
 	}
 
 	async function storedRows(): Promise<StoredRow[]> {
-		return bySlug((await repository.find()).map(row));
+		return bySlug((await tableRepository.find()).map(row));
 	}
 
 	async function runOverlapping(): Promise<void> {
