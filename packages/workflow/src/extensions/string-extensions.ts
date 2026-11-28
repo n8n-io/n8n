@@ -217,8 +217,12 @@ function removeMarkdown(value: string): string {
 	return output;
 }
 
+// A tag starts with `<` and a letter, `_`, `:`, `/`, `!` or `?`. A run of `<` before
+// a tag is removed too, so that removing a tag cannot join two parts into a new tag.
+const TAG_REGEX = /(?<!<)<+[\p{L}_:/!?][^>]*>?/gu;
+
 function removeTags(value: string): string {
-	return value.replace(/<[^>]*>?/gm, '');
+	return value.replace(TAG_REGEX, '');
 }
 
 function toDate(value: string): Date {

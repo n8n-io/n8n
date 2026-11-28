@@ -71,8 +71,49 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
-		test('.removeTags should work correctly on a string', () => {
-			expect(evaluate('={{ "<html><head>test</head></html>".removeTags() }}')).toEqual('test');
+		describe('.removeTags', () => {
+			test('should work correctly on a string', () => {
+				expect(evaluate('={{ "<html><head>test</head></html>".removeTags() }}')).toEqual('test');
+			});
+
+			test.each([
+				['<b>bold</b>, <a>link</a>', 'bold, link'],
+				['<p class="x">Hi</p><br/>there', 'Hithere'],
+				['<!-- note -->text', 'text'],
+				['<?xml version="1.0"?><a>x</a>', 'x'],
+				['<élan>x</élan>', 'x'],
+				['<_id>idhere</_id>', 'idhere'],
+				['<:x>y</:x>', 'y'],
+				['<ns:tag>y</ns:tag>', 'y'],
+				['trailing <b', 'trailing '],
+			])('should remove the tags from %s', (input, expected) => {
+				expect(evaluate('={{ $json.value.removeTags() }}', [{ value: input }])).toEqual(expected);
+			});
+
+			test.each([
+				'price < 100 USD',
+				'a<2 and b>1',
+				'x <= y',
+				'I <3 you',
+				'a < b and c > d',
+				'<< 3',
+				'<>',
+				'<%= name %>',
+				'price <€50 today',
+			])('should keep the text %s', (input) => {
+				expect(evaluate('={{ $json.value.removeTags() }}', [{ value: input }])).toEqual(input);
+			});
+
+			test('should keep a less-than sign that follows a tag', () => {
+				expect(evaluate('={{ "<b>bold</b> < 100".removeTags() }}')).toEqual('bold < 100');
+			});
+
+			test.each([
+				['<<b>script>alert(1)<</b>/script>', 'script>alert(1)/script>'],
+				['<<img>img src=x onerror=alert(1)>', 'img src=x onerror=alert(1)>'],
+			])('should not leave a tag in the output of %s', (input, expected) => {
+				expect(evaluate('={{ $json.value.removeTags() }}', [{ value: input }])).toEqual(expected);
+			});
 		});
 
 		test('.removeMarkdown should work correctly on a string', () => {
