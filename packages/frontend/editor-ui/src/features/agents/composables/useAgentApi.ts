@@ -1113,6 +1113,11 @@ export const steerAgentQueuedMessage = async (
 	);
 };
 
+/** Query that asks for the unredacted data of a thread. The server audits each such read. */
+function revealQuery(revealExecutionData: boolean | undefined): Record<string, string> {
+	return revealExecutionData ? { redactExecutionData: 'false' } : {};
+}
+
 /**
  * The messages of a chat thread. Without `page`, the response holds the whole
  * thread. With `page`, it holds the newest `limit` turns before `cursor`.
@@ -1124,13 +1129,22 @@ export const getChatMessages = async (
 	threadId: string,
 	channel: AgentChatChannel = 'chat',
 	page?: { limit: number; cursor?: string },
+	options: { revealExecutionData?: boolean } = {},
 ): Promise<AgentChatMessagesResponse> => {
 	const path = `${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/messages`;
-	if (!page) return await makeRestApiRequest<AgentChatMessagesResponse>(context, 'GET', path);
-	return await makeRestApiRequest<AgentChatMessagesResponse>(context, 'GET', path, {
-		limit: String(page.limit),
-		...(page.cursor !== undefined ? { cursor: page.cursor } : {}),
-	});
+	const query = {
+		...(page
+			? {
+					limit: String(page.limit),
+					...(page.cursor !== undefined ? { cursor: page.cursor } : {}),
+				}
+			: {}),
+		...revealQuery(options.revealExecutionData),
+	};
+	if (Object.keys(query).length === 0) {
+		return await makeRestApiRequest<AgentChatMessagesResponse>(context, 'GET', path);
+	}
+	return await makeRestApiRequest<AgentChatMessagesResponse>(context, 'GET', path, query);
 };
 
 /** One of the user's own threads with a system agent. Rejects with a 404 for any other thread. */
@@ -1197,12 +1211,19 @@ export const getSessionFiles = async (
 	agentId: string,
 	threadId: string,
 	channel: AgentChatChannel = 'chat',
-): Promise<AgentSessionFilesResponse> =>
-	await makeRestApiRequest<AgentSessionFilesResponse>(
+	options: { revealExecutionData?: boolean } = {},
+): Promise<AgentSessionFilesResponse> => {
+	const path = `${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/files`;
+	if (!options.revealExecutionData) {
+		return await makeRestApiRequest<AgentSessionFilesResponse>(context, 'GET', path);
+	}
+	return await makeRestApiRequest<AgentSessionFilesResponse>(
 		context,
 		'GET',
-		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/files`,
+		path,
+		revealQuery(true),
 	);
+};
 
 /**
  * Builds the download/thumbnail URL for a chat attachment on either channel.

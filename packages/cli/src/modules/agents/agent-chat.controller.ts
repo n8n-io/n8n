@@ -1128,15 +1128,25 @@ export class AgentChatController {
 		) {
 			throw new NotFoundError('Session not found');
 		}
+		const threadId = chatThreadId(agentId, req.user.id);
+		const checkpoint = ownCheckpoint(
+			await this.checkpointStorage.findSuspendedForThread(agentId, threadId),
+			draftChatMemoryResourceId(req.user.id),
+		);
+		// The memory holds the raw turns. When a turn is redacted for the reader,
+		// the transcript comes from the redacted turns instead.
+		const reader = threadReaderFromRequest(req);
+		if (await this.agentExecutionService.findRedactionStart(threadId, projectId, agentId, reader)) {
+			const history = await this.agentExecutionOrchestratorService.getConversationHistory({
+				threadId,
+				projectId,
+				agentId,
+				reader,
+			});
+			return threadMessagesResponse(history, checkpoint);
+		}
 		const messages = await this.agentTestChatService.getTestChatMessages(agentId, req.user.id);
-		const checkpoint = await this.checkpointStorage.findSuspendedForThread(
-			agentId,
-			chatThreadId(agentId, req.user.id),
-		);
-		return withOpenSuspensions(
-			messagesToDto(messages),
-			ownCheckpoint(checkpoint, draftChatMemoryResourceId(req.user.id)),
-		);
+		return withOpenSuspensions(messagesToDto(messages), checkpoint);
 	}
 
 	@Get('/:agentId/chat/:threadId/files')

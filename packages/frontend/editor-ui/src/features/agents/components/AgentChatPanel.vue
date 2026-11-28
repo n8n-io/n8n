@@ -76,6 +76,9 @@ import AgentChatMessageList from './AgentChatMessageList.vue';
 import AgentChatPlan from './AgentChatPlan.vue';
 import AgentChatTaskStopNotice from './AgentChatTaskStopNotice.vue';
 import SessionFilesList from './SessionFilesList.vue';
+import AgentRedactedTurnsNotice from './AgentRedactedTurnsNotice.vue';
+import { backgroundJobTitle } from '../utils/background-job-labels';
+import { useConfirmRevealData } from '../composables/useConfirmRevealData';
 import { isRetryableChatError } from '../utils/errors';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import {
@@ -316,6 +319,9 @@ const {
 	isLoadingHistory,
 	hasOlderMessages,
 	loadOlderMessages,
+	historyRedaction,
+	revealExecutionData,
+	revealHistory,
 	getFullHistory,
 	isStreaming,
 	isStreamAttached,
@@ -368,8 +374,26 @@ provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
 		attachmentId,
 		props.channel,
 		props.continueSessionId,
+		revealExecutionData.value,
 	),
 );
+
+const { confirmReveal } = useConfirmRevealData();
+const revealingHistory = ref(false);
+
+/** Reveals the redacted turns of the thread: messages, then the files list when it is open. */
+async function onRevealHistory() {
+	if (revealingHistory.value) return;
+	const threadId = props.continueSessionId;
+	if (!(await confirmReveal()) || props.continueSessionId !== threadId) return;
+	revealingHistory.value = true;
+	try {
+		const revealed = await revealHistory();
+		if (revealed && sessionFilesOpen.value) await loadSessionFiles();
+	} finally {
+		revealingHistory.value = false;
+	}
+}
 
 // The stream adds a sent message only once its run starts. On the entry page the first
 // message shows right away instead, so the page doesn't sit in its empty state meanwhile.
@@ -671,7 +695,14 @@ const backgroundApproval = computed(() => {
 
 		const input = parseApprovalInput(job.approval.suspendPayload);
 
-		if (input) return { id: job.id, title: job.title, approval: job.approval, input };
+		if (input) {
+			return {
+				id: job.id,
+				title: backgroundJobTitle(job.title, locale),
+				approval: job.approval,
+				input,
+			};
+		}
 	}
 
 	return undefined;
@@ -744,7 +775,7 @@ const backgroundJobRows = computed(() =>
 					: job.kind === 'approval'
 						? 'agents.chat.backgroundTasks.approvalFor'
 						: 'agents.chat.backgroundTasks.subagent',
-				{ interpolate: { title: job.title } },
+				{ interpolate: { title: backgroundJobTitle(job.title, locale) } },
 			),
 			indicator,
 		};
@@ -1798,6 +1829,7 @@ function sessionFileHref(fileId: string) {
 		fileId,
 		props.channel,
 		props.continueSessionId,
+		revealExecutionData.value,
 	);
 }
 
@@ -1808,13 +1840,22 @@ async function loadSessionFiles() {
 	sessionFilesLoading.value = true;
 	sessionFilesError.value = false;
 	try {
-		const { files } = await getSessionFiles(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-			threadId,
-			channel,
-		);
+		const { files } = revealExecutionData.value
+			? await getSessionFiles(
+					rootStore.restApiContext,
+					props.projectId,
+					props.agentId,
+					threadId,
+					channel,
+					{ revealExecutionData: true },
+				)
+			: await getSessionFiles(
+					rootStore.restApiContext,
+					props.projectId,
+					props.agentId,
+					threadId,
+					channel,
+				);
 		if (props.continueSessionId === threadId) sessionFiles.value = files;
 	} catch {
 		// A response for a previous session must not change the state of the open one.
@@ -2207,6 +2248,14 @@ onBeforeUnmount(() => {
 				</N8nTooltip>
 			</template>
 		</N8nCallout>
+
+		<div v-if="historyRedaction" :class="$style.warningBanner">
+			<AgentRedactedTurnsNotice
+				:can-reveal="historyRedaction.canReveal && Boolean(continueSessionId)"
+				:revealing="revealingHistory"
+				@reveal="onRevealHistory"
+			/>
+		</div>
 
 		<div
 			v-for="(warning, index) in warnings"

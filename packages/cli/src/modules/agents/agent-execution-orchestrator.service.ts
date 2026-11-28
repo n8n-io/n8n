@@ -120,7 +120,7 @@ function taskRunStarterUserId(hostMetadata: JSONObject | undefined): string | un
 /** User-visible history of a chat thread, or of one page of its turns. */
 export type ConversationHistory = Pick<
 	AgentChatMessagesResponse,
-	'messages' | 'activeExecutionId' | 'nextCursor'
+	'messages' | 'activeExecutionId' | 'nextCursor' | 'redaction'
 >;
 
 export interface AgentMemoryScope {
@@ -502,10 +502,19 @@ export class AgentExecutionOrchestratorService {
 	}
 
 	private toConversationHistory(executions: AgentExecution[]): ConversationHistory {
+		const redacted = executions.flatMap(({ redaction }) => (redaction ? [redaction] : []));
 		return {
 			messages: executionsToMessagesDto(executions),
 			activeExecutionId:
 				executions.findLast((execution) => execution.status === 'running')?.id ?? null,
+			...(redacted.length > 0
+				? {
+						redaction: {
+							isRedacted: true,
+							canReveal: redacted.every(({ canReveal }) => canReveal),
+						},
+					}
+				: {}),
 		};
 	}
 
