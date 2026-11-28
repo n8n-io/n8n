@@ -1,5 +1,6 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import { passthroughEgressFilter } from '@n8n/backend-network';
+import { OutboundHttp, passthroughEgressFilter } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { Consumer } from 'kafkajs';
@@ -1076,6 +1077,56 @@ describe('Kafka Utils', () => {
 				expect(result).toEqual({ client: { host: 'https://fallback-registry.local' } });
 			});
 
+			it('carries the OAuth2 config through for the client to mint with', async () => {
+				const ctx = createRegistryContext({
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: 'https://schema-registry.local:8081',
+						authentication: 'oAuth2ClientCredentials',
+						tokenUrl: 'https://idp.example.com/token',
+						clientId: 'id',
+						clientSecret: 'secret',
+						scope: 'registry:read',
+					},
+				});
+
+				const result = await getSchemaRegistryOptions(ctx, '');
+
+				expect(result).toEqual({
+					client: { host: 'https://schema-registry.local:8081' },
+					oauth: {
+						tokenUrl: 'https://idp.example.com/token',
+						clientId: 'id',
+						clientSecret: 'secret',
+						scope: 'registry:read',
+						sendCredentialsIn: undefined,
+						allowedDomains: undefined,
+					},
+				});
+			});
+
+			it.each(['tokenUrl', 'clientId', 'clientSecret'])(
+				'refuses an OAuth2 credential with no %s',
+				async (missing) => {
+					const credentialData: Record<string, string> = {
+						url: 'https://schema-registry.local:8081',
+						authentication: 'oAuth2ClientCredentials',
+						tokenUrl: 'https://idp.example.com/token',
+						clientId: 'id',
+						clientSecret: 'secret',
+					};
+					delete credentialData[missing];
+					const ctx = createRegistryContext({
+						nodeCredentials: schemaRegistryNodeCredentials,
+						credentialData,
+					});
+
+					await expect(getSchemaRegistryOptions(ctx, '')).rejects.toThrow(
+						'Token URL, client ID and client secret are required',
+					);
+				},
+			);
+
 			it('should trim the credential URL', async () => {
 				const ctx = createRegistryContext({
 					nodeCredentials: schemaRegistryNodeCredentials,
@@ -1254,6 +1305,74 @@ describe('Kafka Utils', () => {
 					auth?: { username: string; password: string };
 				};
 			};
+
+			const oauthCredential = {
+				url: 'https://schema-registry.local:8081',
+				authentication: 'oAuth2ClientCredentials',
+				tokenUrl: 'https://idp.example.com/token',
+				clientId: 'id',
+				clientSecret: 'secret',
+			};
+
+			const bearerFromMiddleware = async () => {
+				const { middlewares } = (SchemaRegistry as Mock).mock.calls[0][0] as {
+					middlewares?: Array<() => { prepareRequest: (next: () => unknown) => Promise<unknown> }>;
+				};
+				const enhance = vi.fn().mockReturnValue('enhanced');
+				await middlewares?.[0]().prepareRequest(() => ({ enhance }));
+				return enhance.mock.calls[0]?.[0] as { headers: Record<string, string> };
+			};
+
+			it('mints a bearer for the registry request when the credential uses OAuth2', async () => {
+				const ctx = createRegistryContext({
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: oauthCredential,
+				});
+				const requestMock = vi.fn().mockResolvedValue({ access_token: 'tok' });
+				vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+					if (token === OutboundHttp) return { requests: () => ({ request: requestMock }) };
+					throw new Error('unexpected DI token');
+				});
+
+				await createSchemaRegistry(ctx, '');
+
+				expect(await bearerFromMiddleware()).toEqual({
+					headers: { Authorization: 'Bearer tok' },
+				});
+			});
+
+			it('allows the token endpoint separately, because it is a host of its own', async () => {
+				const { filter, validateUrl } = okFilter();
+				const ctx = createRegistryContext({
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: oauthCredential,
+					secureEgressFilter: filter,
+				});
+
+				await createSchemaRegistry(ctx, '');
+
+				expect(validateUrl.mock.calls.map(([url]) => (url as URL).href)).toEqual([
+					'https://schema-registry.local:8081/',
+					'https://idp.example.com/token',
+				]);
+			});
+
+			it('rejects a token endpoint the egress rules refuse', async () => {
+				const validateUrl = vi
+					.fn()
+					.mockResolvedValueOnce({ ok: true })
+					.mockResolvedValueOnce({ ok: false, error: new Error('Host not allowed') });
+				const ctx = createRegistryContext({
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: oauthCredential,
+					secureEgressFilter: { ...passthroughEgressFilter, validateUrl } as never,
+				});
+
+				const error = await createSchemaRegistry(ctx, '').catch((e: unknown) => e);
+
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).description).toBe('Host not allowed');
+			});
 
 			it('rejects a space-injected host when egress filtering is enabled', async () => {
 				const { filter, validateUrl } = okFilter();

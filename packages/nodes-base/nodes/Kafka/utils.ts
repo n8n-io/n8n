@@ -17,13 +17,17 @@ import type {
 	INode,
 	INodeExecutionData,
 	FunctionsBase,
+	NodeEgressFilter,
 	RequestHelperFunctions,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { raceAbort } from '@n8n/utils/race-abort';
 import { sleep } from '@n8n/utils/sleep';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+
+import type { ClientCredentialsConfig } from '../../credentials/common/client-credentials';
+import { createClientCredentialsTokenSource } from '../../credentials/common/client-credentials';
+import { getCredentialOwnRequestAllowedDomains, jsonParse, NodeOperationError } from 'n8n-workflow';
 import { OperationalError, UserError } from '@n8n/errors';
 import http from 'node:http';
 import https from 'node:https';
@@ -108,18 +112,28 @@ export interface KafkaCredentials {
 
 interface SchemaRegistryCredentials {
 	url: string;
-	authentication: 'none' | 'basicAuth';
+	authentication: 'none' | 'basicAuth' | 'oAuth2ClientCredentials';
 	username?: string;
 	password?: string;
+	tokenUrl?: string;
+	clientId?: string;
+	clientSecret?: string;
+	scope?: string;
+	sendCredentialsIn?: string;
+	allowedDomains?: string;
 	ca?: string;
 	cert?: string;
 	key?: string;
 }
 
-/** What the registry connection needs: `client` goes to the constructor, `tls` to the agent. */
+/**
+ * What the registry connection needs: `client` goes to the constructor, `tls` to the agent,
+ * and `oauth` to the token source that signs each request.
+ */
 interface ResolvedRegistryConnection {
 	client: { host: string; auth?: { username: string; password: string } };
 	tls?: TlsMaterial;
+	oauth?: ClientCredentialsConfig;
 }
 
 type TlsMaterial = { ca?: string; cert?: string; key?: string };
@@ -580,7 +594,60 @@ export async function getSchemaRegistryOptions(
 		connection.client.auth = { username: credentials.username, password: credentials.password };
 	}
 
+	if (credentials.authentication === 'oAuth2ClientCredentials') {
+		if (!(credentials.tokenUrl && credentials.clientId && credentials.clientSecret)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'Token URL, client ID and client secret are required for Schema Registry OAuth2',
+			);
+		}
+		connection.oauth = {
+			tokenUrl: credentials.tokenUrl,
+			clientId: credentials.clientId,
+			clientSecret: credentials.clientSecret,
+			scope: credentials.scope,
+			sendCredentialsIn: credentials.sendCredentialsIn,
+			allowedDomains: getCredentialOwnRequestAllowedDomains({ ...credentials }),
+		};
+	}
+
 	return connection;
+}
+
+const rejectTarget = (ctx: Pick<FunctionsBase, 'getNode'>, description: string) =>
+	new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
+		description,
+	});
+
+/** Parses one absolute http(s) target, so a scheme the client cannot use is named as such. */
+function parseTarget(ctx: Pick<FunctionsBase, 'getNode'>, rawUrl: string, label: string): URL {
+	let parsed: URL;
+	try {
+		parsed = new URL(rawUrl);
+	} catch {
+		throw rejectTarget(ctx, `The ${label} is not a valid URL`);
+	}
+	if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+		throw rejectTarget(ctx, `The ${label} must use http or https`);
+	}
+	return parsed;
+}
+
+/**
+ * Allows one parsed target, so the address the client connects to is the address
+ * the egress rules were checked against. Parsing is separate because a
+ * misconfiguration the user can see, such as http with TLS material, is worth
+ * naming before the egress rules speak.
+ */
+async function assertAllowedTarget(
+	ctx: Pick<FunctionsBase, 'getNode'>,
+	parsed: URL,
+	filter: NodeEgressFilter,
+): Promise<void> {
+	const result = await filter.validateUrl(parsed);
+	if (!result.ok) {
+		throw rejectTarget(ctx, result.error.message);
+	}
 }
 
 /**
@@ -597,41 +664,19 @@ export async function createSchemaRegistry(
 	},
 	fallbackUrl: string,
 ): Promise<SchemaRegistry> {
-	const { client, tls } = await getSchemaRegistryOptions(ctx, fallbackUrl);
+	const { client, tls, oauth } = await getSchemaRegistryOptions(ctx, fallbackUrl);
 
 	const filter = ctx.helpers.getSecureEgressFilter();
-
-	// Parse the configured host once. A valid registry host is an absolute
-	// http(s) URL; if it does not parse or uses an unexpected scheme, reject so
-	// the validated target always matches the target the client connects to.
-	let parsed: URL;
-	try {
-		parsed = new URL(client.host);
-	} catch {
-		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
-			description: 'The Schema Registry URL is not a valid URL',
-		});
-	}
-	if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
-			description: 'The Schema Registry URL must use http or https',
-		});
-	}
+	const parsed = parseTarget(ctx, client.host, 'Schema Registry URL');
 
 	if (tls && parsed.protocol !== 'https:') {
-		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
-			description: 'The credential carries TLS material, so the Schema Registry URL must use https',
-		});
+		throw rejectTarget(
+			ctx,
+			'The credential carries TLS material, so the Schema Registry URL must use https',
+		);
 	}
 
-	// Validate the target host against the configured egress rules before any
-	// request, covering direct/resolved IPs without DNS.
-	const result = await filter.validateUrl(parsed);
-	if (!result.ok) {
-		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
-			description: result.error.message,
-		});
-	}
+	await assertAllowedTarget(ctx, parsed, filter);
 
 	// Connect using the canonical href so the client re-parses the exact
 	// authority we validated, and validate the resolved addresses at connect
@@ -640,7 +685,31 @@ export async function createSchemaRegistry(
 		parsed.protocol === 'https:'
 			? new https.Agent({ lookup: filter.createSecureLookup(), ...tls })
 			: new http.Agent({ lookup: filter.createSecureLookup() });
-	return new SchemaRegistry({ ...client, host: parsed.href, agent });
+
+	if (!oauth) {
+		return new SchemaRegistry({ ...client, host: parsed.href, agent });
+	}
+
+	// The token endpoint is a host of its own, so the user has to allow it too.
+	const tokenUrl = parseTarget(ctx, String(oauth.tokenUrl), 'token URL');
+	await assertAllowedTarget(ctx, tokenUrl, filter);
+	const tokenSource = createClientCredentialsTokenSource({ ...oauth, tokenUrl: tokenUrl.href });
+
+	return new SchemaRegistry({
+		...client,
+		host: parsed.href,
+		agent,
+		middlewares: [
+			() => ({
+				async prepareRequest(next) {
+					const request = await next();
+					return request.enhance({
+						headers: { Authorization: `Bearer ${await tokenSource.getToken()}` },
+					});
+				},
+			}),
+		],
+	});
 }
 
 /**
